@@ -1,17 +1,28 @@
+import argparse
 import csv
+import json
 import os
 import subprocess
-import tkinter as tk
 import shlex
 import platform
 import psutil
 import signal
+import sys
 import time
 from threading import Thread
-from tkinter import filedialog
-from tkinter import ttk
-from tkmacosx import Button as MacButton
 from datetime import datetime
+
+# Try to import tkinter for GUI mode - fail gracefully if not available
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+    from tkinter import ttk
+    from tkmacosx import Button as MacButton
+    TKINTER_AVAILABLE = True
+except ImportError:
+    TKINTER_AVAILABLE = False
+    # Create dummy objects for when tkinter is not available
+    tk = None
 
 VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.wmv', '.mkv', '.flv', '.webm', '.m4v', '.m4p', '.mpeg', '.mpg', '.3gp', '.3g2']
 
@@ -89,6 +100,19 @@ def getAllVideoFiles(dir):
         sorted_videos_list.append(f' {index}:  {video}')
         index += 1
     return sorted_videos_list
+
+def getAllVideoObjectFiles(dir):
+    """Get all video files as VideoObject instances for CLI processing"""
+    videos_found_list = []
+    for root, dirs, files in os.walk(dir):
+        for file in files:
+            if file.lower().endswith(tuple(VIDEO_EXTENSIONS)):
+                full_path = os.path.join(root, file)
+                videos_found_list.append(VideoObject(file, full_path))
+    
+    # Sort by filename
+    videos_found_list.sort(key=lambda x: x.filename.lower())
+    return videos_found_list
 
 def windowsFfmpegCpuCalculationPrimer():
     # https://psutil.readthedocs.io/en/latest/#psutil.cpu_percent
@@ -494,28 +518,451 @@ def afterDirectoryChosen(root, directory):
         button_exit = tk.Button(error_window, text="Exit", width=30, command=lambda: exit())
         button_exit.pack()
 
+# ========================= CLI FUNCTIONS ==========================
+
+def get_state_file_path(directory):
+    """Get the path for the state file for a given directory"""
+    safe_dir_name = os.path.basename(directory.rstrip('/\\'))
+    if not safe_dir_name:
+        safe_dir_name = "root"
+    # Replace problematic characters
+    safe_dir_name = "".join(c for c in safe_dir_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+    return os.path.join(directory, f".corruptvideo_scan_state_{safe_dir_name}.json")
+
+def save_scan_state(directory, video_files, processed_files, scan_metadata):
+    """Save the current scan state to a JSON file"""
+    state_file = get_state_file_path(directory)
+    state_data = {
+        'directory': directory,
+        'scan_metadata': scan_metadata,
+        'total_files': len(video_files),
+        'video_files': [{'filename': v.filename, 'full_filepath': v.full_filepath} for v in video_files],
+        'processed_files': processed_files,
+        'last_updated': datetime.now().isoformat()
+    }
+    
+    try:
+        with open(state_file, 'w') as f:
+            json.dump(state_data, f, indent=2)
+    except Exception as e:
+        print(f"Warning: Could not save state file: {e}")
+
+def load_scan_state(directory):
+    """Load the scan state from a JSON file if it exists"""
+    state_file = get_state_file_path(directory)
+    if not os.path.exists(state_file):
+        return None
+    
+    try:
+        with open(state_file, 'r') as f:
+            state_data = json.load(f)
+        
+        # Validate the state file
+        if state_data.get('directory') != directory:
+            return None
+            
+        return state_data
+    except Exception as e:
+        print(f"Warning: Could not load state file: {e}")
+        return None
+
+def get_ffmpeg_command():
+    """Get the appropriate ffmpeg command for the current platform"""
+    # First check if system ffmpeg is available
+    try:
+        subprocess.run(['ffmpeg', '-version'], 
+                      stdout=subprocess.DEVNULL, 
+                      stderr=subprocess.DEVNULL, 
+                      check=True)
+        return 'ffmpeg'
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    
+    # Check for bundled ffmpeg
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    if isWindowsOs():
+        bundled_path = os.path.join(script_dir, 'ffmpeg.exe')
+    else:
+        bundled_path = os.path.join(script_dir, 'ffmpeg')
+    
+    if os.path.exists(bundled_path) and os.access(bundled_path, os.X_OK):
+        return bundled_path
+    
+    return None
+
+def inspect_video_files_cli(directory, resume=True, verbose=False, json_output=False):
+    """CLI version of video file inspection with automatic resume functionality"""
+    
+    # Get all video files in directory
+    video_files = getAllVideoObjectFiles(directory)
+    total_videos = len(video_files)
+    
+    if total_videos == 0:
+        print(f"No video files found in directory: {directory}")
+        return
+    
+    # Initialize scan metadata
+    scan_start_time = datetime.now()
+    scan_metadata = {
+        'directory': directory,
+        'total_files': total_videos,
+        'start_time': scan_start_time.isoformat(),
+        'platform': platform.system(),
+        'ffmpeg_command': get_ffmpeg_command()
+    }
+    
+    # Load existing state if resume is enabled
+    processed_files = set()
+    start_index = 1
+    
+    if resume:
+        state_data = load_scan_state(directory)
+        if state_data:
+            processed_files = set(state_data.get('processed_files', []))
+            start_index = len(processed_files) + 1
+            print(f"Resuming scan from file {start_index} (found {len(processed_files)} already processed)")
+            scan_metadata['resumed'] = True
+            scan_metadata['resume_time'] = scan_start_time.isoformat()
+        else:
+            print("Starting new scan")
+            scan_metadata['resumed'] = False
+    else:
+        print("Starting new scan (resume disabled)")
+        scan_metadata['resumed'] = False
+    
+    # Setup output files
+    timestamp = scan_start_time.strftime('%Y-%m-%d_%H-%M-%S')
+    log_file_path = os.path.join(directory, f'{os.path.basename(directory.rstrip("/\\"))}_Logs.log')
+    csv_file_path = os.path.join(directory, f'{os.path.basename(directory.rstrip("/\\"))}_Results.csv')
+    
+    if json_output:
+        json_file_path = os.path.join(directory, f'{os.path.basename(directory.rstrip("/\\"))}_Results.json')
+    
+    # Initialize CSV file with headers if starting new scan
+    if not resume or start_index == 1:
+        with open(csv_file_path, 'w', newline='') as csvfile:
+            fieldnames = ['File_Number', 'Filename', 'Full_Filepath', 'Corrupt']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+    
+    # Get ffmpeg command
+    ffmpeg_cmd = get_ffmpeg_command()
+    if not ffmpeg_cmd:
+        print("\nError: ffmpeg is required but not found on this system.")
+        print("Please install ffmpeg:")
+        print("  - On Ubuntu/Debian: sudo apt install ffmpeg")
+        print("  - On CentOS/RHEL: sudo yum install ffmpeg") 
+        print("  - On macOS: brew install ffmpeg")
+        print("  - On Windows: Download from https://ffmpeg.org/download.html")
+        return
+    
+    print(f"Using ffmpeg: {ffmpeg_cmd}")
+    print(f"Scanning {total_videos} video files in: {directory}")
+    print(f"Output files:")
+    print(f"  Log: {log_file_path}")
+    print(f"  CSV: {csv_file_path}")
+    if json_output:
+        print(f"  JSON: {json_file_path}")
+    print("")
+    
+    # Initialize counters and results
+    corrupt_files = []
+    clean_files = []
+    error_files = []
+    json_results = []
+    
+    # Process video files
+    for index, video in enumerate(video_files, 1):
+        # Skip if already processed during resume
+        if video.full_filepath in processed_files:
+            continue
+            
+        if index < start_index:
+            continue
+        
+        print(f"Processing {index}/{total_videos}: {video.filename}")
+        
+        file_start_time = time.time()
+        is_corrupt = False
+        ffmpeg_output = ""
+        error_msg = ""
+        
+        try:
+            # Prepare ffmpeg command with proper shell escaping
+            if isWindowsOs():
+                cmd = f'"{ffmpeg_cmd}" -v error -i "{video.full_filepath}" -f null - -hide_banner'
+            else:
+                cmd = f'{shlex.quote(ffmpeg_cmd)} -v error -i {shlex.quote(video.full_filepath)} -f null - -hide_banner'
+            
+            # Run ffmpeg
+            if verbose:
+                print(f"  Running: {cmd}")
+            
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+            ffmpeg_output = result.stderr.strip()
+            
+            # Determine if file is corrupt
+            if result.returncode != 0 or ffmpeg_output:
+                is_corrupt = True
+                corrupt_files.append(video.full_filepath)
+                status = "CORRUPT"
+            else:
+                clean_files.append(video.full_filepath)
+                status = "CLEAN"
+                
+        except subprocess.TimeoutExpired:
+            is_corrupt = True
+            error_msg = "Processing timeout (>300s)"
+            error_files.append(video.full_filepath)
+            status = "ERROR (Timeout)"
+        except Exception as e:
+            is_corrupt = True
+            error_msg = str(e)
+            error_files.append(video.full_filepath)
+            status = "ERROR"
+        
+        file_end_time = time.time()
+        processing_time = file_end_time - file_start_time
+        
+        # Log results
+        with open(log_file_path, 'a') as log_file:
+            log_file.write(f"File {index}: {video.filename}\n")
+            log_file.write(f"Path: {video.full_filepath}\n")
+            log_file.write(f"Status: {status}\n")
+            log_file.write(f"Processing time: {processing_time:.2f}s\n")
+            if ffmpeg_output:
+                log_file.write(f"FFmpeg output: {ffmpeg_output}\n")
+            if error_msg:
+                log_file.write(f"Error: {error_msg}\n")
+            log_file.write("-" * 50 + "\n")
+        
+        # Update CSV
+        with open(csv_file_path, 'a', newline='') as csvfile:
+            fieldnames = ['File_Number', 'Filename', 'Full_Filepath', 'Corrupt']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writerow({
+                'File_Number': index,
+                'Filename': video.filename,
+                'Full_Filepath': video.full_filepath,
+                'Corrupt': 'Yes' if is_corrupt else 'No'
+            })
+        
+        # Store for JSON output
+        if json_output:
+            json_results.append({
+                'file_number': index,
+                'filename': video.filename,
+                'full_filepath': video.full_filepath,
+                'is_corrupt': is_corrupt,
+                'status': status,
+                'processing_time_seconds': round(processing_time, 2),
+                'ffmpeg_output': ffmpeg_output,
+                'error_message': error_msg
+            })
+        
+        # Update processed files and save state
+        processed_files.add(video.full_filepath)
+        save_scan_state(directory, video_files, list(processed_files), scan_metadata)
+        
+        # Show progress
+        progress = calculateProgress(index, total_videos)
+        print(f"  Result: {status} ({processing_time:.1f}s) - Progress: {progress}%")
+        
+        if verbose and ffmpeg_output:
+            print(f"  FFmpeg output: {ffmpeg_output}")
+    
+    # Calculate final statistics
+    scan_end_time = datetime.now()
+    total_duration = (scan_end_time - scan_start_time).total_seconds()
+    processed_count = len(processed_files)
+    corrupt_count = len(corrupt_files)
+    clean_count = len(clean_files)
+    error_count = len(error_files)
+    
+    # Print summary
+    print("\n" + "="*60)
+    print("SCAN COMPLETE")
+    print("="*60)
+    print(f"Directory: {directory}")
+    print(f"Total files found: {total_videos}")
+    print(f"Files processed: {processed_count}")
+    print(f"Corrupt files: {corrupt_count}")
+    print(f"Clean files: {clean_count}")
+    print(f"Error files: {error_count}")
+    print(f"Corruption rate: {(corrupt_count/processed_count*100):.1f}%" if processed_count > 0 else "N/A")
+    print(f"Scan duration: {convertTime(int(total_duration))}")
+    print(f"Average per file: {(total_duration/processed_count):.1f}s" if processed_count > 0 else "N/A")
+    
+    # Generate JSON output if requested
+    if json_output:
+        scan_metadata.update({
+            'end_time': scan_end_time.isoformat(),
+            'total_duration_seconds': round(total_duration, 2),
+            'files_processed': processed_count,
+            'corrupt_files': corrupt_count,
+            'clean_files': clean_count,
+            'error_files': error_count,
+            'corruption_rate_percent': round(corrupt_count/processed_count*100, 2) if processed_count > 0 else 0,
+            'average_processing_time_seconds': round(total_duration/processed_count, 2) if processed_count > 0 else 0
+        })
+        
+        json_data = {
+            'scan_metadata': scan_metadata,
+            'results': json_results,
+            'summary': {
+                'total_files_found': total_videos,
+                'files_processed': processed_count,
+                'corrupt_files': corrupt_count,
+                'clean_files': clean_count,
+                'error_files': error_count,
+                'corruption_rate_percent': round(corrupt_count/processed_count*100, 2) if processed_count > 0 else 0,
+                'scan_duration_formatted': convertTime(int(total_duration)),
+                'average_processing_time_seconds': round(total_duration/processed_count, 2) if processed_count > 0 else 0
+            }
+        }
+        
+        with open(json_file_path, 'w') as f:
+            json.dump(json_data, f, indent=2)
+        
+        print(f"\nDetailed results saved to: {json_file_path}")
+    
+    # Clean up state file on successful completion
+    if processed_count == total_videos:
+        state_file = get_state_file_path(directory)
+        try:
+            if os.path.exists(state_file):
+                os.remove(state_file)
+                print("Scan state file cleaned up.")
+        except Exception as e:
+            print(f"Warning: Could not remove state file: {e}")
+
+def parse_cli_arguments():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(
+        description='Corrupt Video Inspector - Scan directories for corrupt video files',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Examples:
+  python CorruptVideoInspector.py                          # Run GUI mode
+  python CorruptVideoInspector.py /path/to/videos          # Run CLI mode
+  python CorruptVideoInspector.py --no-resume /path/videos # CLI without resume
+  python CorruptVideoInspector.py --verbose /path/videos   # CLI with verbose output
+  python CorruptVideoInspector.py --json /path/videos      # CLI with JSON output
+  python CorruptVideoInspector.py --list-videos /path      # List videos only
+        ''')
+    
+    parser.add_argument('directory', 
+                       nargs='?',
+                       help='Directory to scan for video files (if not provided, GUI mode will start)')
+    
+    parser.add_argument('--verbose', '-v', 
+                       action='store_true',
+                       help='Enable verbose output showing FFmpeg details')
+    
+    parser.add_argument('--no-resume', 
+                       action='store_true',
+                       help='Disable automatic resume functionality (start from beginning)')
+    
+    parser.add_argument('--list-videos', '-l', 
+                       action='store_true',
+                       help='List all video files in directory without scanning')
+    
+    parser.add_argument('--json', '-j', 
+                       action='store_true',
+                       help='Generate JSON output file with detailed scan results')
+    
+    parser.add_argument('--version', 
+                       action='version', 
+                       version='Corrupt Video Inspector v2.0')
+    
+    return parser.parse_args()
+
+def run_cli_mode(args):
+    """Run the application in CLI mode"""
+    directory = os.path.abspath(args.directory)
+    
+    # Validate directory
+    if not os.path.isdir(directory):
+        print(f"Error: Directory '{directory}' does not exist or is not a directory.")
+        sys.exit(1)
+    
+    # Handle list-videos option
+    if args.list_videos:
+        print(f'Scanning directory: {directory}')
+        video_files = getAllVideoObjectFiles(directory)
+        total_count = len(video_files)
+        
+        if total_count == 0:
+            print('No video files found in the specified directory.')
+        else:
+            print(f'\nFound {total_count} video files:')
+            for i, video in enumerate(video_files, 1):
+                print(f'  {i:3d}: {video.filename}')
+        return
+    
+    # Check if directory has video files
+    total_videos = countAllVideoFiles(directory)
+    if total_videos == 0:
+        print(f"No video files found in directory: {directory}")
+        sys.exit(1)
+    
+    # Check ffmpeg availability first
+    ffmpeg_cmd = get_ffmpeg_command()
+    if not ffmpeg_cmd:
+        print("\nError: ffmpeg is required but not found on this system.")
+        print("Please install ffmpeg:")
+        print("  - On Ubuntu/Debian: sudo apt install ffmpeg")
+        print("  - On CentOS/RHEL: sudo yum install ffmpeg")
+        print("  - On macOS: brew install ffmpeg")
+        print("  - On Windows: Download from https://ffmpeg.org/download.html")
+        sys.exit(1)
+    
+    print(f'Starting video corruption scan...')
+    print(f'Platform: {platform.system()}')
+    print(f'Using ffmpeg: {ffmpeg_cmd}')
+    
+    # Start the inspection
+    resume_enabled = not args.no_resume
+    inspect_video_files_cli(directory, resume=resume_enabled, verbose=args.verbose, json_output=args.json)
+
 # ========================= MAIN ==========================
 
-root = tk.Tk()
-root.title("Corrupt Video Inspector")
-if isMacOs():
-    root.geometry("500x650")
-if isWindowsOs():
-    root.geometry("500x750")
-    icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'icon.ico'))
-    root.iconbitmap(default=icon_path)
-if isLinuxOs():
-    root.geometry("500x750")
-g_progress = tk.StringVar()
-g_count = tk.StringVar()
-g_currently_processing = tk.StringVar()
-g_mac_pid = ''
-g_windows_pid = ''
+if __name__ == '__main__':
+    # Parse command line arguments
+    args = parse_cli_arguments()
+    
+    # If directory is provided, run in CLI mode
+    if args.directory:
+        run_cli_mode(args)
+    else:
+        # Run in GUI mode
+        if not TKINTER_AVAILABLE:
+            print("Error: tkinter is not available. GUI mode requires tkinter.")
+            print("Please install tkinter or use CLI mode by providing a directory argument.")
+            print("Example: python CorruptVideoInspector.py /path/to/videos")
+            sys.exit(1)
+        
+        root = tk.Tk()
+        root.title("Corrupt Video Inspector")
+        if isMacOs():
+            root.geometry("500x650")
+        if isWindowsOs():
+            root.geometry("500x750")
+            icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'icon.ico'))
+            root.iconbitmap(default=icon_path)
+        if isLinuxOs():
+            root.geometry("500x750")
+        g_progress = tk.StringVar()
+        g_count = tk.StringVar()
+        g_currently_processing = tk.StringVar()
+        g_mac_pid = ''
+        g_windows_pid = ''
 
-label_select_directory = tk.Label(root, wraplength=450, justify="left", text="Select a directory to search for all video files within the chosen directory and all of its containing subdirectories", font=('Helvetica', 16))
-label_select_directory.pack(fill=tk.X, pady=20, padx=20)
+        label_select_directory = tk.Label(root, wraplength=450, justify="left", text="Select a directory to search for all video files within the chosen directory and all of its containing subdirectories", font=('Helvetica', 16))
+        label_select_directory.pack(fill=tk.X, pady=20, padx=20)
 
-button_select_directory = tk.Button(root, text="Select Directory", width=20, command=lambda: selectDirectory(root, label_select_directory, button_select_directory))
-button_select_directory.pack(pady=20)
+        button_select_directory = tk.Button(root, text="Select Directory", width=20, command=lambda: selectDirectory(root, label_select_directory, button_select_directory))
+        button_select_directory.pack(pady=20)
 
-root.mainloop()
+        root.mainloop()
