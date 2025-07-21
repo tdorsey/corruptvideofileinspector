@@ -265,8 +265,18 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 g_windows_pid = proc.pid
             else:
-                # Linux not yet supported
-                exit()
+                # Linux - use system ffmpeg or bundled ffmpeg if available
+                ffmpeg_cmd = 'ffmpeg'  # Try system ffmpeg first
+                # Check if bundled ffmpeg exists and works
+                ffmpeg_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ffmpeg'))
+                if os.path.isfile(ffmpeg_path) and os.access(ffmpeg_path, os.X_OK):
+                    try:
+                        subprocess.run([ffmpeg_path, '-version'], capture_output=True, check=True, timeout=5)
+                        ffmpeg_cmd = ffmpeg_path
+                    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired, OSError):
+                        pass  # Fall back to system ffmpeg
+                proc = subprocess.Popen(f'{ffmpeg_cmd} -v error -i {shlex.quote(video.full_filepath)} -f null - 2>&1', 
+                                       shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             output, error = proc.communicate()
 
@@ -278,10 +288,11 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
             if (index_start != 1):
                 row_index = (count + 1) - index_start
 
+            # Determine if video is corrupt
             ffmpeg_result = ''
-            if isMacOs():
+            if is_macos() or is_linux_os():
                 ffmpeg_result = output
-            elif isWindowsOs():
+            elif is_windows_os():
                 ffmpeg_result = error
 
             elapsed_time = time.time() - start_time
@@ -485,10 +496,6 @@ def afterDirectoryChosen(root, directory):
 
 # ========================= MAIN ==========================
 
-if isLinuxOs():
-    # Linux not yet supported
-    exit()
-
 root = tk.Tk()
 root.title("Corrupt Video Inspector")
 if isMacOs():
@@ -497,6 +504,8 @@ if isWindowsOs():
     root.geometry("500x750")
     icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'icon.ico'))
     root.iconbitmap(default=icon_path)
+if isLinuxOs():
+    root.geometry("500x750")
 g_progress = tk.StringVar()
 g_count = tk.StringVar()
 g_currently_processing = tk.StringVar()
