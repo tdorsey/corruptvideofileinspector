@@ -182,7 +182,7 @@ def inspect_video_files_cli(directory, resume=True, verbose=False, json_output=F
                 
         except subprocess.TimeoutExpired:
             is_corrupt = True
-            error_msg = "Processing timeout (>300s)"
+            error_msg = f"Processing timeout (>{TIMEOUT_SECONDS}s)"
             error_files.append(video.full_filepath)
             status = "ERROR (Timeout)"
         except Exception as e:
