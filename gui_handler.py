@@ -443,7 +443,7 @@ def after_directory_chosen(root, directory):
         label_error_msg = tk.Label(error_window, width=375, text="No video files found in selected directory!", font=('Helvetica', 14))
         label_error_msg.pack(fill=tk.X, pady=20)
 
-        button_exit = tk.Button(error_window, text="Exit", width=30, command=lambda: exit())
+        button_exit = tk.Button(error_window, text="Exit", width=30, command=lambda: sys.exit())
         button_exit.pack()
 
 
