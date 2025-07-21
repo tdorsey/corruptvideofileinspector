@@ -40,12 +40,27 @@ def isMacOs():
         return True
     return False
 
+def is_macos():
+    if 'Darwin' in platform.system():
+        return True
+    return False
+
 def isWindowsOs():
     if 'Windows' in platform.system():
         return True
     return False
 
+def is_windows_os():
+    if 'Windows' in platform.system():
+        return True
+    return False
+
 def isLinuxOs():
+    if 'Linux' in platform.system():
+        return True
+    return False
+
+def is_linux_os():
     if 'Linux' in platform.system():
         return True
     return False
@@ -313,10 +328,11 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
             if (index_start != 1):
                 row_index = (count + 1) - index_start
 
+            # Determine if video is corrupt
             ffmpeg_result = ''
-            if isMacOs():
+            if is_macos() or is_linux_os():
                 ffmpeg_result = output
-            elif isWindowsOs():
+            elif is_windows_os():
                 ffmpeg_result = error
             else:
                 # Linux - use output like macOS
