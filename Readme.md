@@ -14,10 +14,30 @@ This program searches though a selected directory and its subdirectories for all
 
 *Update: A Windows executable has now been created using `pyinstaller`*
 
+*Update: Linux is now supported when running from source with system ffmpeg*
+
+### Requirements
+
+**This application requires ffmpeg to be installed and available in your system PATH.**
+
+#### Installing ffmpeg:
+- **macOS**: Install using Homebrew: `brew install ffmpeg`
+- **Windows**: Download from [ffmpeg.org](https://ffmpeg.org/download.html#build-windows) or install using chocolatey: `choco install ffmpeg`
+- **Linux**: Install using your package manager:
+  - Ubuntu/Debian: `sudo apt install ffmpeg`
+  - CentOS/RHEL: `sudo yum install ffmpeg` or `sudo dnf install ffmpeg`
+  - Arch: `sudo pacman -S ffmpeg`
+
+#### Running from Source:
+If running from the Python source code instead of the pre-built executables, you'll also need:
+- Python 3.10 or higher
+- Required Python packages: `pip install psutil tkmacosx`
+- Tkinter (usually included with Python, or install with `sudo apt-get install python3-tk` on Linux)
+
 ### How to Use
 * If using macOS, download and run the latest `Corrupt Video Inspector.dmg` file found in the macOS [builds](https://github.com/nhershy/CorruptVideoFileInspector/tree/main/builds/macOS/v5) folder.
 * If using Windows, download and run the latest `CorruptVideoInspector.exe` file found in the WindowsOS [builds](https://github.com/nhershy/CorruptVideoFileInspector/tree/main/builds/WindowsOS) folder. *Note: When first running the application on Windows OS, Windows Defender will display a warning message since this application is unsigned and not recognized by your PC. Click "More Info -> Run Anyway". I assure you this application is safe, as you can inspect the code yourself above.*
-* Linux is not yet supported.
+* If using Linux, or running from source: Ensure ffmpeg is installed (see Requirements above), then run `python CorruptVideoInspector.py` in a terminal.
 * Chose a directory (this will search the selected directory and all containing subdirectories for all video files)
 * Choose an index to start the scan at **(leave '1' for default to start from the beginning and scan all files)**. This "index" option allows you resume scanning from a certain video. For example, if your computer accidently restarted after scanning 90 of 100 videos in a directory, you can restart the program and type "90" to start from the 90th video file instead of scanning all videos over from the beginning. If you are unsure which video was being scanned when the computer restarted, check the "_Results.csv" file for an indexed listing of all files that have successfully been scanned/completed. 
 * The scan will automatically start once an index is chosen. You will be prompted with a window showing the total completed progress (0-100%), the file that is currently being scanned, and a list of all previously scanned videos which are marked with a green/red highlight, indicating healthy/corrupt. In addition to the GUI, two files are automatically created upon running the application: _Logs.txt and _Results.csv. These files are created and stored in the directory that was first chosen to scan for video files. These files will be overwritten on each run of the program. So remember to move them to another directory to store long-term once a full directory scan has been completed. _Logs.txt simply shows a text-based record of each file scanned, if it is healthy/corrupt, and any exceptions encountered during the scan. _Results.csv shows two colummns: "Video File" and "Corrupt". The "Corrupt" column will have a "1" if the file is corrupt. Otherwise, a "0" indicates the file is healthy. 
