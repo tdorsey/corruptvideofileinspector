@@ -24,6 +24,17 @@ class VideoObject():
 
 # ========================= FUNCTIONS ==========================
 
+def check_ffmpeg_available():
+    """Check if ffmpeg is available in the system PATH"""
+    try:
+        result = subprocess.run(['ffmpeg', '-version'], 
+                              capture_output=True, 
+                              text=True, 
+                              timeout=10)
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
 def isMacOs():
     if 'Darwin' in platform.system():
         return True
@@ -127,6 +138,15 @@ def verify_ffmpeg_still_running(root):
             output = f"ffmpeg is currently running.\nffmpeg is currently using {cpu_usage}% of CPU"
         else:
             output = "ffmpeg is NOT currently running!"
+    else:
+        # Linux support
+        proc = subprocess.Popen("ps -Ao comm,pcpu -r | head -n 10 | grep ffmpeg", shell=True, stdout=subprocess.PIPE)
+        output = proc.communicate()[0].decode('utf-8').strip()
+        if "ffmpeg" in output:
+            cpu_usage = output.split()[1]
+            output = f"ffmpeg is currently running.\nffmpeg is currently using {cpu_usage}% of CPU"
+        else:
+            output = "ffmpeg is NOT currently running!"
 
     label_ffmpeg_result = tk.Label(ffmpeg_window, width=375, text=output, font=('Helvetica', 14))
     label_ffmpeg_result.pack(fill=tk.X, pady=20)
@@ -150,6 +170,10 @@ def kill_ffmpeg_warning(root, log_file):
     elif isWindowsOs():
         button_kill_ffmpeg = tk.Button(ffmpeg_kill_window, background='#E34234', foreground='white', text="Terminate Program", width=200, command=lambda: kill_ffmpeg(root, log_file))
         button_kill_ffmpeg.pack(pady=10)
+    else:
+        # Linux support
+        button_kill_ffmpeg = tk.Button(ffmpeg_kill_window, background='#E34234', foreground='white', text="Terminate Program", width=200, command=lambda: kill_ffmpeg(root, log_file))
+        button_kill_ffmpeg.pack(pady=10)
 
 def kill_ffmpeg(root, log_file):
     if isMacOs():
@@ -170,6 +194,15 @@ def kill_ffmpeg(root, log_file):
                 if proc.name() == "ffmpeg.exe" or proc.name() == "CorruptVideoInspector.exe":
                     proc.kill()
             log_file.flush()
+        except Exception as e:
+            log_file.write(f'ERROR in "kill_ffmpeg": {e}\n')
+            log_file.flush()
+    else:
+        # Linux support
+        try:
+            global g_linux_pid
+            log_file.write(f'---USER MANUALLY TERMINATED PROGRAM---\n')
+            os.killpg(os.getpgid(g_linux_pid), signal.SIGTERM)
         except Exception as e:
             log_file.write(f'ERROR in "kill_ffmpeg": {e}\n')
             log_file.flush()
@@ -255,18 +288,20 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
             proc = ''
             if isMacOs():
                 global g_mac_pid
-                proc = subprocess.Popen(f'./ffmpeg -v error -i {shlex.quote(video.full_filepath)} -f null - 2>&1', shell=True,
+                proc = subprocess.Popen(f'ffmpeg -v error -i {shlex.quote(video.full_filepath)} -f null - 2>&1', shell=True,
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 g_mac_pid = proc.pid
             elif isWindowsOs():
                 global g_windows_pid
-                ffmpeg_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ffmpeg.exe'))
-                proc = subprocess.Popen(f'"{ffmpeg_path}" -v error -i "{video.full_filepath}" -f null error.log', shell=True,
+                proc = subprocess.Popen(f'ffmpeg -v error -i "{video.full_filepath}" -f null error.log', shell=True,
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 g_windows_pid = proc.pid
             else:
-                # Linux not yet supported
-                exit()
+                # Linux support enabled with system ffmpeg
+                global g_linux_pid
+                proc = subprocess.Popen(f'ffmpeg -v error -i {shlex.quote(video.full_filepath)} -f null - 2>&1', shell=True,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                g_linux_pid = proc.pid
 
             output, error = proc.communicate()
 
@@ -283,6 +318,9 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                 ffmpeg_result = output
             elif isWindowsOs():
                 ffmpeg_result = error
+            else:
+                # Linux - use output like macOS
+                ffmpeg_result = output
 
             elapsed_time = time.time() - start_time
             readable_time = convertTime(elapsed_time)
@@ -401,6 +439,10 @@ def start_program(directory, root, index_start, log_file, label_chosen_directory
         elif isWindowsOs():
             button_kill_ffmpeg = tk.Button(root, background='#E34234', foreground='white', text="Safely Quit", width=200, command=lambda: kill_ffmpeg_warning(root, log_file))
             button_kill_ffmpeg.pack(pady=10)
+        else:
+            # Linux support
+            button_kill_ffmpeg = tk.Button(root, background='#E34234', foreground='white', text="Safely Quit", width=200, command=lambda: kill_ffmpeg_warning(root, log_file))
+            button_kill_ffmpeg.pack(pady=10)
 
         thread = Thread(target=inspectVideoFiles, args=(directory, root, listbox_completed_videos, index_start, log_file, progress_bar))
         thread.start()
@@ -485,23 +527,30 @@ def afterDirectoryChosen(root, directory):
 
 # ========================= MAIN ==========================
 
-if isLinuxOs():
-    # Linux not yet supported
-    exit()
+# Check if ffmpeg is available on the system
+if not check_ffmpeg_available():
+    print("ERROR: ffmpeg is not installed or not found in system PATH.")
+    print("Please install ffmpeg to use this application.")
+    print("Visit https://ffmpeg.org/download.html for installation instructions.")
+    exit(1)
 
 root = tk.Tk()
 root.title("Corrupt Video Inspector")
 if isMacOs():
     root.geometry("500x650")
-if isWindowsOs():
+elif isWindowsOs():
     root.geometry("500x750")
     icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'icon.ico'))
     root.iconbitmap(default=icon_path)
+else:
+    # Linux support
+    root.geometry("500x750")
 g_progress = tk.StringVar()
 g_count = tk.StringVar()
 g_currently_processing = tk.StringVar()
 g_mac_pid = ''
 g_windows_pid = ''
+g_linux_pid = ''
 
 label_select_directory = tk.Label(root, wraplength=450, justify="left", text="Select a directory to search for all video files within the chosen directory and all of its containing subdirectories", font=('Helvetica', 16))
 label_select_directory.pack(fill=tk.X, pady=20, padx=20)
