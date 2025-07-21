@@ -227,8 +227,8 @@ def inspect_video_files_gui(directory, tkinter_window, listbox_completed_videos,
             output, error = proc.communicate()
 
             # Debug
-            print(f'output= {output}\n')
-            print(f'error= {error}\n')
+            logging.debug(f'output= {output}')
+            logging.debug(f'error= {error}')
 
             row_index = count
             if (index_start != 1):
