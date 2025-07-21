@@ -8,6 +8,7 @@ allowing users to scan directories for corrupt video files from the terminal.
 
 import argparse
 import csv
+import json
 import os
 import subprocess
 import shlex
@@ -103,11 +104,15 @@ def calculate_progress(count, total):
     """Calculate progress percentage"""
     return "{0}%".format(int((count / total) * 100))
 
-def inspect_video_files_cli(directory, start_index=1, verbose=False):
+def inspect_video_files_cli(directory, start_index=1, verbose=False, json_output=False):
     """
     CLI version of video inspection functionality
     """
     try:
+        # Initialize data structures for tracking results
+        scan_start_time = time.time()
+        scan_start_datetime = datetime.now()
+        
         # Setup log file
         log_file_path = os.path.join(directory, '_Logs.log')
         if os.path.isfile(log_file_path):
@@ -121,6 +126,8 @@ def inspect_video_files_cli(directory, start_index=1, verbose=False):
         log_file.write('=================================================================\n')
         log_file.write('CREATED: _Logs.log\n')
         log_file.write('CREATED: _Results.csv\n')
+        if json_output:
+            log_file.write('CREATED: _Results.json\n')
         log_file.write('=================================================================\n')
         log_file.flush()
 
@@ -135,23 +142,49 @@ def inspect_video_files_cli(directory, start_index=1, verbose=False):
         results_file_writer.writerow(header)
         results_file.flush()
 
+        # Setup JSON results file if requested
+        json_file_path = None
+        json_data = {
+            "scan_info": {
+                "directory": directory,
+                "start_index": start_index,
+                "start_time": scan_start_datetime.isoformat(),
+                "platform": platform.system(),
+                "ffmpeg_command": get_ffmpeg_command()
+            },
+            "results": [],
+            "summary": {}
+        }
+        
+        if json_output:
+            json_file_path = os.path.join(directory, '_Results.json')
+            if os.path.isfile(json_file_path):
+                os.remove(json_file_path)
+
         # Get all video files
         total_video_files = count_all_video_files(directory)
-        start_time = datetime.now().strftime('%Y-%m-%d %I:%M %p')
+        start_time = scan_start_datetime.strftime('%Y-%m-%d %I:%M %p')
 
         print(f'Directory: {directory}')
         print(f'Total video files found: {total_video_files}')
         print(f'Starting from video index: {start_index}')
         print(f'Start time: {start_time}')
+        if json_output:
+            print('JSON output: ENABLED')
         print('=' * 50)
 
         log_file.write(f'DIRECTORY: {directory}\n')
         log_file.write(f'TOTAL VIDEO FILES FOUND: {total_video_files}\n')
         log_file.write(f'STARTING FROM VIDEO INDEX: {start_index}\n')
         log_file.write(f'START TIME: {start_time}\n')
+        if json_output:
+            log_file.write('JSON OUTPUT: ENABLED\n')
         log_file.write('=================================================================\n')
         log_file.write('(DURATION IS IN HOURS:MINUTES:SECONDS)\n')
         log_file.flush()
+
+        # Update JSON data
+        json_data["scan_info"]["total_video_files"] = total_video_files
 
         # Collect all video files
         all_videos_found = []
@@ -171,6 +204,7 @@ def inspect_video_files_cli(directory, start_index=1, verbose=False):
         # Process videos
         count = 0
         corrupted_count = 0
+        processed_videos = []
         
         for video in all_videos_found:
             if (start_index > count + 1):
@@ -212,6 +246,17 @@ def inspect_video_files_cli(directory, start_index=1, verbose=False):
             elif is_windows_os():
                 ffmpeg_result = error
 
+            video_result = {
+                "filename": video.filename,
+                "full_path": video.full_filepath,
+                "index": count + 1,
+                "processing_time_seconds": elapsed_time,
+                "processing_time_readable": readable_time,
+                "corrupted": bool(ffmpeg_result),
+                "ffmpeg_output": ffmpeg_result.decode() if isinstance(ffmpeg_result, bytes) else str(ffmpeg_result),
+                "timestamp": datetime.now().isoformat()
+            }
+
             if not ffmpeg_result:
                 # Healthy
                 print(f"  ✓ HEALTHY ✓ (processed in {readable_time})")
@@ -238,32 +283,74 @@ def inspect_video_files_cli(directory, start_index=1, verbose=False):
 
             results_file_writer.writerow(row)
             results_file.flush()
+            
+            # Add to JSON data if enabled
+            if json_output:
+                json_data["results"].append(video_result)
+            
+            processed_videos.append(video_result)
             count += 1
+
+        # Calculate scan duration
+        scan_end_time = time.time()
+        scan_end_datetime = datetime.now()
+        total_scan_duration = scan_end_time - scan_start_time
+        total_scan_readable = convert_time(total_scan_duration)
 
         # Final summary
         final_progress = calculate_progress(count, total_video_files)
-        end_time = datetime.now().strftime('%Y-%m-%d %I:%M %p')
+        end_time = scan_end_datetime.strftime('%Y-%m-%d %I:%M %p')
         
         print('\n' + '=' * 50)
         print('SCAN COMPLETE!')
         print(f'Progress: {final_progress}')
-        print(f'Processed files: {count}/{total_video_files}')
+        processed_count = count - (start_index - 1)
+        print(f'Processed files: {processed_count}/{total_video_files}')
         print(f'Corrupted files found: {corrupted_count}')
+        print(f'Healthy files: {processed_count - corrupted_count}')
+        print(f'Total scan duration: {total_scan_readable}')
         print(f'End time: {end_time}')
         print('=' * 50)
 
         log_file.write('=================================================================\n')
-        log_file.write(f'SUCCESSFULLY PROCESSED {count} VIDEO FILES\n')
+        log_file.write(f'SUCCESSFULLY PROCESSED {processed_count} VIDEO FILES\n')
         log_file.write(f'CORRUPTED FILES FOUND: {corrupted_count}\n')
+        log_file.write(f'HEALTHY FILES: {processed_count - corrupted_count}\n')
+        log_file.write(f'TOTAL SCAN DURATION: {total_scan_readable}\n')
         log_file.write(f'END TIME: {end_time}\n')
         log_file.write('=================================================================\n')
         log_file.flush()
         log_file.close()
         results_file.close()
 
-        print(f'\nResults saved to:')
-        print(f'  Log file: {log_file_path}')
-        print(f'  CSV file: {results_file_path}')
+        # Generate JSON output if requested
+        if json_output:
+            # Update JSON summary data
+            json_data["summary"] = {
+                "total_files_found": total_video_files,
+                "files_processed": processed_count,
+                "files_skipped": start_index - 1,
+                "corrupted_files": corrupted_count,
+                "healthy_files": processed_count - corrupted_count,
+                "corruption_rate": round((corrupted_count / processed_count * 100) if processed_count > 0 else 0, 2),
+                "scan_duration_seconds": total_scan_duration,
+                "scan_duration_readable": total_scan_readable,
+                "end_time": scan_end_datetime.isoformat(),
+                "average_processing_time": round(total_scan_duration / processed_count, 2) if processed_count > 0 else 0
+            }
+            
+            # Write JSON file
+            with open(json_file_path, 'w', encoding='utf8') as json_file:
+                json.dump(json_data, json_file, indent=2, ensure_ascii=False)
+            
+            print(f'\nResults saved to:')
+            print(f'  Log file: {log_file_path}')
+            print(f'  CSV file: {results_file_path}')
+            print(f'  JSON file: {json_file_path}')
+        else:
+            print(f'\nResults saved to:')
+            print(f'  Log file: {log_file_path}')
+            print(f'  CSV file: {results_file_path}')
 
     except Exception as e:
         print(f'ERROR in video inspection: {e}')
@@ -281,14 +368,16 @@ Examples:
   corruptvideoinspector_cli.py /path/to/videos                    # Scan all videos starting from index 1
   corruptvideoinspector_cli.py /path/to/videos --start-index 10  # Resume scanning from the 10th video
   corruptvideoinspector_cli.py /path/to/videos --verbose          # Show detailed ffmpeg output
+  corruptvideoinspector_cli.py /path/to/videos --json            # Generate JSON output with detailed results
   corruptvideoinspector_cli.py --list-videos /path/to/videos      # List all video files found
 
 Supported video formats:
   ''' + ', '.join(VIDEO_EXTENSIONS) + '''
 
-The scan creates two files in the target directory:
+Output files created in the target directory:
   _Logs.log    - Detailed log of the scanning process
   _Results.csv - CSV file with corruption status for each video
+  _Results.json - JSON file with comprehensive scan results (when --json is used)
         '''
     )
     
@@ -307,6 +396,10 @@ The scan creates two files in the target directory:
     parser.add_argument('--list-videos', '-l', 
                        action='store_true',
                        help='List all video files found in directory and exit')
+    
+    parser.add_argument('--json', '-j', 
+                       action='store_true',
+                       help='Generate JSON output file with detailed scan results')
     
     parser.add_argument('--version', 
                        action='version', 
@@ -363,7 +456,7 @@ The scan creates two files in the target directory:
     
     print(f'Using ffmpeg: {ffmpeg_cmd}')
     
-    inspect_video_files_cli(directory, args.start_index, args.verbose)
+    inspect_video_files_cli(directory, args.start_index, args.verbose, args.json)
 
 if __name__ == '__main__':
     main()

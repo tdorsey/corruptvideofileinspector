@@ -47,6 +47,12 @@ python3 corruptvideoinspector_cli.py --start-index 10 /path/to/videos
 # Enable verbose output to see ffmpeg details
 python3 corruptvideoinspector_cli.py --verbose /path/to/videos
 
+# Generate JSON output with detailed scan results
+python3 corruptvideoinspector_cli.py --json /path/to/videos
+
+# Combine multiple options
+python3 corruptvideoinspector_cli.py --json --verbose --start-index 5 /path/to/videos
+
 # Show version
 python3 corruptvideoinspector_cli.py --version
 ```
@@ -57,7 +63,7 @@ The CLI supports the same video formats as the original GUI version:
 
 ## Output Files
 
-When you run a scan, two files are automatically created in the target directory:
+When you run a scan, the following files are automatically created in the target directory:
 
 ### _Logs.log
 Contains detailed information about the scanning process:
@@ -72,6 +78,19 @@ Contains detailed information about the scanning process:
 CSV file with two columns:
 - **Video File**: The filename of the video
 - **Corrupted**: 0 = healthy, 1 = corrupted
+
+### _Results.json (when --json is used)
+Comprehensive JSON file containing:
+- **scan_info**: Metadata about the scan (directory, start time, platform, etc.)
+- **results**: Array of detailed results for each processed video file including:
+  - Filename and full path
+  - Processing time (seconds and readable format)
+  - Corruption status and ffmpeg output
+  - Individual file timestamps
+- **summary**: Overall scan statistics including:
+  - Total files found/processed/skipped
+  - Corruption counts and rates
+  - Scan duration and average processing time
 
 ## Examples
 
@@ -94,11 +113,65 @@ python3 corruptvideoinspector_cli.py --list-videos ~/Movies
 ```
 This shows all video files that would be scanned without actually scanning them.
 
-### Example 4: Verbose Output for Debugging
+### Example 4: Generate JSON Output
+```bash
+python3 corruptvideoinspector_cli.py --json ~/Movies
+```
+This creates a comprehensive JSON report with detailed scan results and statistics.
+
+### Example 5: Verbose Output for Debugging
 ```bash
 python3 corruptvideoinspector_cli.py --verbose ~/Movies
 ```
 This shows detailed ffmpeg output for troubleshooting.
+
+### Example 6: Combine Multiple Options
+```bash
+python3 corruptvideoinspector_cli.py --json --verbose --start-index 10 ~/Movies
+```
+This resumes from video 10, shows detailed output, and generates JSON reports.
+
+## JSON Output Format
+
+When using the `--json` option, the _Results.json file contains:
+
+### Sample JSON Structure
+```json
+{
+  "scan_info": {
+    "directory": "/path/to/videos",
+    "start_index": 1,
+    "start_time": "2025-01-20T10:30:00.123456",
+    "platform": "Linux",
+    "ffmpeg_command": "ffmpeg",
+    "total_video_files": 100
+  },
+  "results": [
+    {
+      "filename": "video.mp4",
+      "full_path": "/path/to/videos/video.mp4",
+      "index": 1,
+      "processing_time_seconds": 2.45,
+      "processing_time_readable": "0:00:02",
+      "corrupted": false,
+      "ffmpeg_output": "",
+      "timestamp": "2025-01-20T10:30:02.123456"
+    }
+  ],
+  "summary": {
+    "total_files_found": 100,
+    "files_processed": 95,
+    "files_skipped": 5,
+    "corrupted_files": 3,
+    "healthy_files": 92,
+    "corruption_rate": 3.16,
+    "scan_duration_seconds": 450.67,
+    "scan_duration_readable": "0:07:30",
+    "end_time": "2025-01-20T10:37:30.789012",
+    "average_processing_time": 4.74
+  }
+}
+```
 
 ## How It Works
 
