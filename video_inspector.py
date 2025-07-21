@@ -168,7 +168,7 @@ def inspect_video_files_cli(directory, resume=True, verbose=False, json_output=F
             if verbose:
                 print(f"  Running: {cmd}")
             
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=FFMPEG_TIMEOUT_SECONDS)
             ffmpeg_output = result.stderr.strip()
             
             # Determine if file is corrupt
