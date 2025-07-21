@@ -1,1 +1,21 @@
 /venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+dist/
+build/
+.eggs/
+# Test files and temporary data
+test_videos/
+*_Logs.log
+*_Results.csv
+*_Results.json
+.corruptvideo_scan_state_*.json
