@@ -347,9 +347,20 @@ def load_scan_state(directory):
         
         # Validate the state file
         if state_data.get('directory') != directory:
-            return None
+            return {
+                'success': False,
+                'error': 'Directory mismatch in state file',
+                'data': None
+            }
             
-        return state_data
+        return {
+            'success': True,
+            'error': None,
+            'data': state_data
+        }
     except Exception as e:
-        print(f"Warning: Could not load state file: {e}")
-        return None
+        return {
+            'success': False,
+            'error': f"Could not load state file: {e}",
+            'data': None
+        }
