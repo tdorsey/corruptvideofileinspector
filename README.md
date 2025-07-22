@@ -74,6 +74,43 @@ ruff check .
 mypy .
 ```
 
+**Development with Docker:**
+
+For a complete development environment using Docker:
+
+```bash
+# Start development environment (uses Docker profiles)
+make docker-dev
+
+# Connect to development container
+docker exec -it video-dev /bin/bash
+
+# Stop development environment
+docker compose --profile dev down
+```
+
+**Development with VS Code Dev Containers:**
+
+This project includes a `.devcontainer` configuration for VS Code:
+
+1. Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. Open the project in VS Code
+3. Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
+4. Select "Dev Containers: Reopen in Container"
+
+The development container includes:
+- All necessary system dependencies (Python, FFmpeg, git, etc.)
+- Development tools (black, ruff, mypy, pytest)
+- Source code bind-mounted for live editing
+- Pre-configured VS Code settings and extensions
+
+**Docker Profiles:**
+
+This project uses Docker Compose profiles:
+
+- **Production (default)**: `docker compose up` - Uses production Dockerfile
+- **Development**: `docker compose --profile dev up` - Uses development Dockerfile with bind mounts
+
 ### Features
 
 - Multi-threaded video processing
