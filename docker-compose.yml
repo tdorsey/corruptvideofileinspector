@@ -1,0 +1,34 @@
+services:
+  video:
+    build: .
+    container_name: video
+    volumes:
+      - video_data:/app/videos:ro
+      - output:/app/output
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: [
+      "python3", "cli_handler.py", 
+      "--mode", "hybrid",
+      "--verbose", 
+      "--json", 
+      "--recursive",
+      "--max-workers", "6",
+      "--output", "/app/output/results.json", 
+      "/app/videos"
+    ]
+
+volumes:
+ video_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/srv/media/movies
+  output:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/ubuntu/video/output
+
