@@ -1,238 +1,226 @@
 """
 Unit tests for cli_handler.py module
 """
-import unittest
-import tempfile
+
+import logging
 import os
 import sys
-import argparse
-import logging
+import tempfile
+import unittest
 from pathlib import Path
-from unittest.mock import patch, Mock, MagicMock, call
-from unittest.mock import mock_open
-from io import StringIO
+from unittest.mock import patch
+
 import typer
 
 # Add parent directory to path for importing
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import cli_handler
+import pytest
+
 from cli_handler import (
-    setup_logging, validate_directory, validate_arguments,
-    list_video_files, check_system_requirements, main, main_command
+    check_system_requirements,
+    list_video_files,
+    main,
+    setup_logging,
+    validate_arguments,
+    validate_directory,
 )
-from video_inspector import ScanMode
 
 
 class TestSetupLogging(unittest.TestCase):
     """Test setup_logging function"""
-    
-    @patch('logging.basicConfig')
+
+    @patch("logging.basicConfig")
     def test_setup_logging_verbose(self, mock_basic_config):
         """Test setup_logging with verbose=True"""
         setup_logging(verbose=True)
-        
+
         mock_basic_config.assert_called_once()
         args, kwargs = mock_basic_config.call_args
-        self.assertEqual(kwargs['level'], logging.DEBUG)
-        self.assertIn('%(asctime)s', kwargs['format'])
-        self.assertIn('%(levelname)s', kwargs['format'])
-        self.assertIn('%(message)s', kwargs['format'])
-    
-    @patch('logging.basicConfig')
+        assert kwargs["level"] == logging.DEBUG
+        assert "%(asctime)s" in kwargs["format"]
+        assert "%(levelname)s" in kwargs["format"]
+        assert "%(message)s" in kwargs["format"]
+
+    @patch("logging.basicConfig")
     def test_setup_logging_not_verbose(self, mock_basic_config):
         """Test setup_logging with verbose=False"""
         setup_logging(verbose=False)
-        
+
         mock_basic_config.assert_called_once()
         args, kwargs = mock_basic_config.call_args
-        self.assertEqual(kwargs['level'], logging.INFO)
+        assert kwargs["level"] == logging.INFO
 
 
 class TestValidateDirectory(unittest.TestCase):
     """Test validate_directory function"""
-    
+
     def setUp(self):
         """Set up test fixtures"""
         self.temp_dir = tempfile.mkdtemp()
         self.temp_file = os.path.join(self.temp_dir, "test.txt")
-        with open(self.temp_file, 'w') as f:
+        with open(self.temp_file, "w") as f:
             f.write("test")
-    
+
     def tearDown(self):
         """Clean up test fixtures"""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-    
+
     def test_validate_existing_directory(self):
         """Test validating existing directory"""
         result = validate_directory(self.temp_dir)
-        self.assertIsInstance(result, Path)
-        self.assertEqual(str(result), str(Path(self.temp_dir).resolve()))
-    
+        assert isinstance(result, Path)
+        assert str(result) == str(Path(self.temp_dir).resolve())
+
     def test_validate_nonexistent_directory(self):
         """Test validating non-existent directory"""
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             validate_directory("/nonexistent/directory")
-    
+
     def test_validate_file_not_directory(self):
         """Test validating file instead of directory"""
-        with self.assertRaises(NotADirectoryError):
+        with pytest.raises(NotADirectoryError):
             validate_directory(self.temp_file)
-
 
 
 class TestValidateArguments(unittest.TestCase):
     """Test validate_arguments function"""
-    
+
     def test_validate_normal_arguments(self):
         """Test validating normal arguments"""
         # Should not raise any exception
         validate_arguments(
-            verbose=False,
-            quiet=False,
-            max_workers=4,
-            json_output=False,
-            output=None
+            verbose=False, quiet=False, max_workers=4, json_output=False, output=None
         )
-    
+
     def test_validate_verbose_and_quiet(self):
         """Test validating conflicting verbose and quiet flags"""
-        with self.assertRaises(typer.Exit) as context:
+        with pytest.raises(typer.Exit) as context:
             validate_arguments(
-                verbose=True,
-                quiet=True,
-                max_workers=4,
-                json_output=False,
-                output=None
+                verbose=True, quiet=True, max_workers=4, json_output=False, output=None
             )
-        
-        self.assertEqual(context.exception.exit_code, 1)
-    
+
+        assert context.value.exit_code == 1
+
     def test_validate_zero_workers(self):
         """Test validating zero max workers"""
-        with self.assertRaises(typer.Exit) as context:
+        with pytest.raises(typer.Exit) as context:
             validate_arguments(
-                verbose=False,
-                quiet=False,
-                max_workers=0,
-                json_output=False,
-                output=None
+                verbose=False, quiet=False, max_workers=0, json_output=False, output=None
             )
-        
-        self.assertEqual(context.exception.exit_code, 1)
-    
+
+        assert context.value.exit_code == 1
+
     def test_validate_output_without_json(self):
         """Test validating output argument without json flag"""
         # This should not raise an exception, just log a warning
         validate_arguments(
-            verbose=False,
-            quiet=False,
-            max_workers=4,
-            json_output=False,
-            output="/test/output.json"
+            verbose=False, quiet=False, max_workers=4, json_output=False, output="/test/output.json"
         )
 
 
 class TestListVideoFiles(unittest.TestCase):
     """Test list_video_files function"""
-    
+
     def setUp(self):
         """Set up test fixtures"""
         self.temp_dir = tempfile.mkdtemp()
         self.temp_path = Path(self.temp_dir)
-        
+
         # Create test files
         (self.temp_path / "video1.mp4").touch()
         (self.temp_path / "video2.avi").touch()
         (self.temp_path / "document.txt").touch()
-    
+
     def tearDown(self):
         """Clean up test fixtures"""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-    
-    @patch('cli_handler.get_all_video_object_files')
-    @patch('typer.echo')
+
+    @patch("cli_handler.get_all_video_object_files")
+    @patch("typer.echo")
     def test_list_video_files_found(self, mock_echo, mock_get_files):
         """Test listing video files when files are found"""
         from video_inspector import VideoFile
-        
+
         # Mock video files
         video_files = [
             VideoFile(str(self.temp_path / "video1.mp4")),
-            VideoFile(str(self.temp_path / "video2.avi"))
+            VideoFile(str(self.temp_path / "video2.avi")),
         ]
         mock_get_files.return_value = video_files
-        
+
         list_video_files(self.temp_path, recursive=True, extensions=None)
-        
+
         # Verify function was called
         mock_get_files.assert_called_once()
         mock_echo.assert_called()
-    
-    @patch('cli_handler.get_all_video_object_files')
-    @patch('typer.echo')
+
+    @patch("cli_handler.get_all_video_object_files")
+    @patch("typer.echo")
     def test_list_video_files_none_found(self, mock_echo, mock_get_files):
         """Test listing video files when no files are found"""
         mock_get_files.return_value = []
-        
+
         list_video_files(self.temp_path, recursive=True, extensions=None)
-        
+
         # Verify appropriate message is printed
         mock_get_files.assert_called_once()
         mock_echo.assert_called()
-    
-    @patch('cli_handler.get_all_video_object_files')
-    @patch('logging.error')
+
+    @patch("cli_handler.get_all_video_object_files")
+    @patch("logging.error")
     def test_list_video_files_exception(self, mock_log_error, mock_get_files):
         """Test listing video files when exception occurs"""
         mock_get_files.side_effect = Exception("Test exception")
-        
-        with self.assertRaises(SystemExit):
+
+        with pytest.raises(SystemExit):
             list_video_files(self.temp_path)
-        
+
         mock_log_error.assert_called()
 
 
 class TestCheckSystemRequirements(unittest.TestCase):
     """Test check_system_requirements function"""
-    
-    @patch('cli_handler.get_ffmpeg_command')
+
+    @patch("cli_handler.get_ffmpeg_command")
     def test_ffmpeg_found(self, mock_get_ffmpeg):
         """Test when ffmpeg is found"""
         mock_get_ffmpeg.return_value = "/usr/bin/ffmpeg"
-        
+
         result = check_system_requirements()
-        
-        self.assertEqual(result, "/usr/bin/ffmpeg")
-    
-    @patch('cli_handler.get_ffmpeg_command')
-    @patch('typer.echo')
+
+        assert result == "/usr/bin/ffmpeg"
+
+    @patch("cli_handler.get_ffmpeg_command")
+    @patch("typer.echo")
     def test_ffmpeg_not_found(self, mock_echo, mock_get_ffmpeg):
         """Test when ffmpeg is not found"""
         mock_get_ffmpeg.return_value = None
-        
-        with self.assertRaises(typer.Exit) as context:
+
+        with pytest.raises(typer.Exit) as context:
             check_system_requirements()
-        
-        self.assertEqual(context.exception.exit_code, 1)
+
+        assert context.value.exit_code == 1
         mock_echo.assert_called()
 
 
 class TestMain(unittest.TestCase):
     """Test main function"""
-    
+
     def test_main_function_exists(self):
         """Test that main function exists and is callable"""
-        self.assertTrue(callable(main))
-    
-    @patch('cli_handler.app')
+        assert callable(main)
+
+    @patch("cli_handler.app")
     def test_main_calls_app(self, mock_app):
         """Test that main function calls the typer app"""
         main()
         mock_app.assert_called_once()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
