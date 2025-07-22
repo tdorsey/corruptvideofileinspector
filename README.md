@@ -67,11 +67,17 @@ make type    # Type check with mypy
 make check   # Run all checks
 ```
 
+**Run tests:**
+```bash
+make test    # Run integration tests
+```
+
 **Or manually:**
 ```bash
 black .
 ruff check .
 mypy .
+python3 tests/run_tests.py  # Run integration tests
 ```
 
 ### Features
@@ -83,6 +89,7 @@ mypy .
 - Recursive directory scanning
 - File extension filtering
 - Progress tracking
+- Comprehensive integration testing
 
 ### Output
 
@@ -101,6 +108,13 @@ Results are saved to the `output` directory:
 ├── cli_handler.py      # Main CLI entry point
 ├── video_inspector.py  # Core video inspection logic
 ├── utils.py           # Utility functions
+├── tests/             # Integration tests
+│   ├── test_utils_integration.py
+│   ├── test_video_inspector_integration.py
+│   ├── test_cli_integration.py
+│   ├── test_end_to_end_integration.py
+│   ├── run_tests.py   # Test runner
+│   └── README.md      # Test documentation
 ├── pyproject.toml     # Modern Python packaging and tool configuration
 ├── Dockerfile         # Docker container configuration
 └── README.md          # This file
