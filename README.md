@@ -59,6 +59,15 @@ docker run --rm \
 pip install -e ".[dev]"
 ```
 
+**Set up pre-commit hooks (recommended for contributors):**
+```bash
+make pre-commit-install
+# or manually:
+pre-commit install
+```
+
+Pre-commit hooks will automatically run formatting, linting, and type checking before each commit to ensure code quality and consistency. These hooks help maintain consistent code style, catch potential bugs early, and enforce type safety across all contributions. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions.
+
 **Run formatting and linting:**
 ```bash
 make format  # Format code with black
