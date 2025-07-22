@@ -11,6 +11,7 @@ from typing import List, Optional
 
 import typer
 
+from trakt_watchlist import sync_to_trakt_watchlist
 from utils import count_all_video_files
 from video_inspector import (
     ScanMode,
@@ -18,7 +19,6 @@ from video_inspector import (
     get_ffmpeg_command,
     inspect_video_files_cli,
 )
-from trakt_watchlist import sync_to_trakt_watchlist
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ Examples:
   python3 cli_handler.py --verbose /path/videos             # CLI with verbose output
   python3 cli_handler.py --json /path/videos                # CLI with JSON output
   python3 cli_handler.py --list-videos /path                # List videos only
-  
+
   # Trakt.tv integration
   python3 cli_handler.py trakt scan_results.json --token YOUR_TOKEN                    # Auto sync to Trakt
   python3 cli_handler.py trakt scan_results.json --token YOUR_TOKEN --interactive      # Interactive mode
@@ -399,24 +399,30 @@ def main() -> None:
 def trakt(
     scan_file: str = typer.Argument(..., help="Path to JSON scan results file"),
     token: str = typer.Option(..., "--token", "-t", help="Trakt.tv OAuth access token"),
-    client_id: Optional[str] = typer.Option(None, "--client-id", "-c", help="Trakt.tv API client ID (optional)"),
+    client_id: Optional[str] = typer.Option(
+        None, "--client-id", "-c", help="Trakt.tv API client ID (optional)"
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
-    interactive: bool = typer.Option(False, "--interactive", "-i", help="Enable interactive selection of search results"),
-    output: Optional[str] = typer.Option(None, "--output", "-o", help="Save sync results to JSON file"),
+    interactive: bool = typer.Option(
+        False, "--interactive", "-i", help="Enable interactive selection of search results"
+    ),
+    output: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save sync results to JSON file"
+    ),
 ) -> None:
     """
     Sync video scan results to Trakt.tv watchlist.
-    
+
     This command processes JSON scan results from the video inspector and automatically
     adds discovered movies and TV shows to your Trakt.tv watchlist using filename parsing.
-    
+
     With --interactive mode, you can manually select the correct match when multiple
     search results are found, ensuring accurate additions to your watchlist.
-    
+
     Args:
         scan_file: Path to JSON file containing video scan results
         token: Trakt.tv OAuth 2.0 access token for API authentication
-        client_id: Optional Trakt.tv API client ID 
+        client_id: Optional Trakt.tv API client ID
         verbose: Enable detailed progress output
         interactive: Enable manual selection of search matches
         output: Optional path to save sync results as JSON
@@ -425,25 +431,25 @@ def trakt(
         # Setup logging
         setup_logging(verbose, False)
         logger.info("Starting Trakt watchlist sync command")
-        
+
         # Validate scan file exists
         scan_file_path = Path(scan_file)
         if not scan_file_path.exists():
             logger.error(f"Scan file not found: {scan_file}")
             typer.echo(f"Error: Scan file not found: {scan_file}", err=True)
             raise typer.Exit(1)
-        
-        if not scan_file_path.suffix.lower() == '.json':
+
+        if scan_file_path.suffix.lower() != ".json":
             logger.warning(f"Scan file may not be JSON: {scan_file}")
             typer.echo(f"Warning: File does not have .json extension: {scan_file}")
-        
+
         if not verbose:
             typer.echo("Syncing scan results to Trakt.tv watchlist...")
             typer.echo(f"Scan file: {scan_file}")
             if interactive:
                 typer.echo("Interactive mode: You will be prompted to select matches")
             typer.echo("Processing...")
-        
+
         # Perform the sync
         try:
             results = sync_to_trakt_watchlist(
@@ -451,50 +457,50 @@ def trakt(
                 access_token=token,
                 client_id=client_id,
                 verbose=verbose,
-                interactive=interactive
+                interactive=interactive,
             )
-            
+
             # Save results if requested
             if output:
                 output_path = Path(output)
                 logger.info(f"Saving sync results to: {output}")
-                
+
                 try:
-                    with open(output_path, 'w', encoding='utf-8') as f:
+                    with open(output_path, "w", encoding="utf-8") as f:
                         json.dump(results, f, indent=2)
-                    
+
                     if verbose:
                         typer.echo(f"\nSync results saved to: {output}")
-                    
+
                 except Exception as e:
-                    logger.error(f"Failed to save results: {e}")
+                    logger.exception(f"Failed to save results: {e}")
                     typer.echo(f"Warning: Could not save results to {output}: {e}")
-            
+
             # Exit with appropriate code
             if results["failed"] == results["total"]:
                 # All items failed
                 logger.error("All items failed to sync")
                 raise typer.Exit(1)
-            elif results["failed"] > 0:
+            if results["failed"] > 0:
                 # Some items failed
                 logger.warning(f"{results['failed']} items failed to sync")
                 # Exit with code 0 for partial success
-            
+
             logger.info("Trakt sync command completed successfully")
-            
+
         except FileNotFoundError:
-            logger.error(f"Scan file not found: {scan_file}")
+            logger.exception(f"Scan file not found: {scan_file}")
             typer.echo(f"Error: Scan file not found: {scan_file}", err=True)
             raise typer.Exit(1)
         except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in scan file: {e}")
+            logger.exception(f"Invalid JSON in scan file: {e}")
             typer.echo(f"Error: Invalid JSON in scan file: {e}", err=True)
             raise typer.Exit(1)
         except Exception as e:
             logger.exception(f"Sync failed: {e}")
             typer.echo(f"Error: Sync failed: {e}", err=True)
             raise typer.Exit(1)
-            
+
     except typer.Exit:
         # Re-raise typer exits without logging
         raise
