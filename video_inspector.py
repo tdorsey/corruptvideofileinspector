@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import os
+import signal
 import subprocess
 import tempfile
 import threading
@@ -18,6 +19,125 @@ from typing import Any, Dict, List, Optional, Set
 
 # Configure module logger
 logger = logging.getLogger(__name__)
+
+# Global progress tracking for signal handlers
+_current_progress = {
+    'current_file': '',
+    'total_files': 0,
+    'processed_count': 0,
+    'corrupt_count': 0,
+    'remaining_count': 0,
+    'scan_mode': 'unknown',
+    'start_time': 0.0
+}
+
+
+class ProgressReporter:
+    """Handles progress reporting and signal management"""
+    
+    def __init__(self, total_files: int, scan_mode: str):
+        self.total_files = total_files
+        self.scan_mode = scan_mode
+        self.processed_count = 0
+        self.corrupt_count = 0
+        self.current_file = ''
+        self.start_time = time.time()
+        
+        # Update global progress for signal handlers
+        global _current_progress
+        _current_progress.update({
+            'total_files': total_files,
+            'scan_mode': scan_mode,
+            'start_time': self.start_time
+        })
+        
+    def update(self, current_file: str = '', processed_count: int = None, corrupt_count: int = None):
+        """Update progress counters"""
+        if current_file:
+            self.current_file = current_file
+        if processed_count is not None:
+            self.processed_count = processed_count
+        if corrupt_count is not None:
+            self.corrupt_count = corrupt_count
+            
+        # Update global progress for signal handlers
+        global _current_progress
+        _current_progress.update({
+            'current_file': self.current_file,
+            'processed_count': self.processed_count,
+            'corrupt_count': self.corrupt_count,
+            'remaining_count': self.total_files - self.processed_count
+        })
+        
+    def report_progress(self, force_output: bool = False):
+        """Report current progress"""
+        elapsed_time = time.time() - self.start_time
+        remaining = self.total_files - self.processed_count
+        healthy = self.processed_count - self.corrupt_count
+        
+        if force_output:
+            print(f"\n{'='*60}")
+            print("PROGRESS REPORT")
+            print(f"{'='*60}")
+            print(f"Scan Mode: {self.scan_mode.upper()}")
+            print(f"Current File: {Path(self.current_file).name if self.current_file else 'None'}")
+            print(f"Files Processed: {self.processed_count}/{self.total_files}")
+            print(f"Corrupt Files Found: {self.corrupt_count}")
+            print(f"Healthy Files: {healthy}")
+            print(f"Files Remaining: {remaining}")
+            print(f"Elapsed Time: {elapsed_time:.1f} seconds")
+            if self.processed_count > 0:
+                avg_time = elapsed_time / self.processed_count
+                estimated_remaining = avg_time * remaining
+                print(f"Estimated Time Remaining: {estimated_remaining:.1f} seconds")
+            print(f"{'='*60}")
+        
+        logger.info(f"Progress: {self.processed_count}/{self.total_files}, "
+                   f"corrupt: {self.corrupt_count}, remaining: {remaining}")
+
+
+def signal_handler(signum, frame):
+    """Handle POSIX signals and report progress"""
+    signal_name = signal.Signals(signum).name
+    logger.info(f"Received signal {signal_name} ({signum}), reporting progress")
+    
+    # Create a temporary progress reporter from global state
+    progress = _current_progress
+    elapsed_time = time.time() - progress['start_time']
+    remaining = progress['total_files'] - progress['processed_count']
+    healthy = progress['processed_count'] - progress['corrupt_count']
+    
+    print(f"\n{'='*60}")
+    print(f"PROGRESS REPORT (Signal {signal_name})")
+    print(f"{'='*60}")
+    print(f"Scan Mode: {progress['scan_mode'].upper()}")
+    print(f"Current File: {Path(progress['current_file']).name if progress['current_file'] else 'None'}")
+    print(f"Files Processed: {progress['processed_count']}/{progress['total_files']}")
+    print(f"Corrupt Files Found: {progress['corrupt_count']}")
+    print(f"Healthy Files: {healthy}")
+    print(f"Files Remaining: {remaining}")
+    print(f"Elapsed Time: {elapsed_time:.1f} seconds")
+    if progress['processed_count'] > 0:
+        avg_time = elapsed_time / progress['processed_count']
+        estimated_remaining = avg_time * remaining
+        print(f"Estimated Time Remaining: {estimated_remaining:.1f} seconds")
+    print(f"{'='*60}")
+
+
+def setup_signal_handlers():
+    """Setup signal handlers for progress reporting"""
+    try:
+        # Handle common POSIX signals
+        signal.signal(signal.SIGUSR1, signal_handler)
+        signal.signal(signal.SIGUSR2, signal_handler)
+        # Also handle SIGTERM for graceful progress reporting before termination
+        original_sigterm = signal.signal(signal.SIGTERM, signal_handler)
+        logger.info("Signal handlers registered for SIGUSR1, SIGUSR2, and SIGTERM")
+        return original_sigterm
+    except (AttributeError, OSError) as e:
+        # Some signals might not be available on all platforms
+        logger.warning(f"Could not setup all signal handlers: {e}")
+        return None
 
 
 class ScanMode(Enum):
@@ -142,11 +262,16 @@ class WriteAheadLog:
         dir_hash = hashlib.md5(directory.encode()).hexdigest()[:8]
         mode_hash = hashlib.md5(f"{scan_mode.value}-{'-'.join(sorted(self.extensions))}".encode()).hexdigest()[:8]
         wal_filename = f"corrupt_video_inspector_wal_{dir_hash}_{mode_hash}.json"
+        results_filename = f"corrupt_video_inspector_results_{dir_hash}_{mode_hash}.json"
         
         self.wal_path = Path(tempfile.gettempdir()) / wal_filename
+        self.results_path = Path(tempfile.gettempdir()) / results_filename
         self.lock = threading.Lock()
         self.processed_files: Set[str] = set()
         self.results: List[WALEntry] = []
+        
+        logger.debug(f"WAL file: {self.wal_path}")
+        logger.debug(f"Results file: {self.results_path}")
         
     def load_existing_wal(self) -> bool:
         """Load existing WAL file if it exists. Returns True if resuming."""
@@ -195,7 +320,7 @@ class WriteAheadLog:
                 print(f"Warning: Could not create WAL file: {e}")
     
     def append_result(self, result: VideoInspectionResult) -> None:
-        """Append a scan result to the WAL file"""
+        """Append a scan result to both WAL and results files"""
         entry = WALEntry(
             filename=result.filename,
             result=result.to_dict(),
@@ -207,7 +332,7 @@ class WriteAheadLog:
             self.processed_files.add(result.filename)
             
             try:
-                # Read current WAL file
+                # Update WAL file
                 if self.wal_path.exists():
                     with open(self.wal_path, 'r') as f:
                         wal_data = json.load(f)
@@ -220,16 +345,57 @@ class WriteAheadLog:
                         'entries': []
                     }
                 
-                # Append new entry
+                # Append new entry to WAL
                 wal_data['entries'].append(entry.to_dict())
                 
-                # Write back to file
+                # Write back to WAL file
                 with open(self.wal_path, 'w') as f:
                     json.dump(wal_data, f, indent=2)
+                
+                # Update durable results file
+                self._update_results_file(result)
                     
             except Exception as e:
                 # If we can't write to WAL file, continue without it
                 print(f"Warning: Could not update WAL file: {e}")
+    
+    def _update_results_file(self, result: VideoInspectionResult) -> None:
+        """Update the durable results file with a new result"""
+        try:
+            # Load existing results file if it exists
+            if self.results_path.exists():
+                with open(self.results_path, 'r') as f:
+                    results_data = json.load(f)
+            else:
+                results_data = {
+                    'directory': self.directory,
+                    'scan_mode': self.scan_mode.value,
+                    'extensions': sorted(self.extensions),
+                    'created_at': time.time(),
+                    'last_updated': time.time(),
+                    'results': []
+                }
+            
+            # Update metadata
+            results_data['last_updated'] = time.time()
+            
+            # Add new result (avoid duplicates)
+            result_dict = result.to_dict()
+            result_dict['timestamp'] = time.time()
+            
+            # Remove any existing result for this file
+            results_data['results'] = [r for r in results_data['results'] 
+                                     if r.get('filename') != result.filename]
+            
+            # Add the new result
+            results_data['results'].append(result_dict)
+            
+            # Write back to results file
+            with open(self.results_path, 'w') as f:
+                json.dump(results_data, f, indent=2)
+                
+        except Exception as e:
+            logger.warning(f"Could not update results file: {e}")
     
     def is_processed(self, filename: str) -> bool:
         """Check if a file has already been processed"""
@@ -253,18 +419,24 @@ class WriteAheadLog:
         return results
     
     def cleanup(self) -> None:
-        """Remove the WAL file after successful completion"""
+        """Remove the WAL and results files after successful completion"""
         try:
             if self.wal_path.exists():
                 self.wal_path.unlink()
+                logger.info(f"Removed WAL file: {self.wal_path}")
         except Exception as e:
             print(f"Warning: Could not remove WAL file: {e}")
+        
+        # Keep the results file as it's a durable record
+        # Only remove it if explicitly requested
+        logger.info(f"Results file preserved: {self.results_path}")
     
     def get_resume_info(self) -> Dict[str, Any]:
         """Get information about what can be resumed"""
         return {
             'total_completed': len(self.results),
             'wal_file': str(self.wal_path),
+            'results_file': str(self.results_path),
             'last_processed': self.results[-1].timestamp if self.results else None
         }
 
@@ -636,6 +808,12 @@ def inspect_video_files_cli(
     print(f"Scan mode: {scan_mode.value.upper()}")
     print(f"Using {max_workers} worker threads")
 
+    # Setup signal handlers for progress reporting
+    original_sigterm = setup_signal_handlers()
+    
+    # Initialize progress reporter
+    progress_reporter = ProgressReporter(total_files, scan_mode.value)
+
     # Load completed results from WAL if resuming
     results = []
     corrupt_count = 0
@@ -713,6 +891,15 @@ def inspect_video_files_cli(
                             print(f"\nNEEDS DEEP SCAN: {Path(result.filename).name}")
 
                     processed_count += 1
+                    
+                    # Update progress reporter
+                    progress_reporter.update(
+                        current_file=result.filename,
+                        processed_count=processed_count,
+                        corrupt_count=corrupt_count
+                    )
+                    
+                    # Update progress display
                     phase_label = "Quick Scan " if scan_mode == ScanMode.HYBRID else ""
                     update_progress(phase_label)
 
@@ -720,6 +907,12 @@ def inspect_video_files_cli(
                     logger.exception("Error processing file")
                     print(f"\nError processing file: {e}")
                     processed_count += 1
+                    
+                    # Update progress reporter for error case
+                    progress_reporter.update(
+                        processed_count=processed_count,
+                        corrupt_count=corrupt_count
+                    )
                     update_progress()
 
         # Phase 2: Deep scan for flagged files (HYBRID mode only)
@@ -765,6 +958,7 @@ def inspect_video_files_cli(
                 # Process deep scan results
                 for future, original_index in future_to_index.items():
                     try:
+                        deep_result = future.result()
                         result_index = future_to_index[future]
 
                         # Update the original result with deep scan findings
@@ -785,12 +979,23 @@ def inspect_video_files_cli(
                             logger.info(f"Deep scan cleared: {deep_result.filename}")
 
                         processed_deep += 1
+                        
+                        # Update progress reporter for deep scan
+                        progress_reporter.update(
+                            current_file=deep_result.filename,
+                            corrupt_count=corrupt_count
+                        )
+                        
                         update_deep_progress()
 
                     except Exception as e:
                         logger.exception("Error in deep scan")
                         print(f"\nError in deep scan: {e}")
                         processed_deep += 1
+                        
+                        # Update progress reporter for deep scan error
+                        progress_reporter.update(corrupt_count=corrupt_count)
+                        
                         update_deep_progress()
 
     except KeyboardInterrupt:
