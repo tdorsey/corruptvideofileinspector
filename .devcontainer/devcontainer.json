@@ -1,0 +1,72 @@
+{
+  "name": "Corrupt Video Inspector Dev Environment",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/app",
+  "shutdownAction": "stopCompose",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true,
+      "username": "inspector",
+      "uid": "1000",
+      "gid": "1000"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "ppa": true,
+      "version": "latest"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.flake8Enabled": false,
+        "python.formatting.provider": "black",
+        "python.formatting.blackPath": "/home/inspector/.local/bin/black",
+        "python.linting.mypyEnabled": true,
+        "python.linting.mypyPath": "/home/inspector/.local/bin/mypy",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true
+        },
+        "files.exclude": {
+          "**/__pycache__": true,
+          "**/.pytest_cache": true,
+          "**/.mypy_cache": true,
+          "**/.ruff_cache": true,
+          "**/build": true,
+          "**/dist": true,
+          "**/*.egg-info": true
+        },
+        "terminal.integrated.env.linux": {
+          "PATH": "/home/inspector/.local/bin:${env:PATH}"
+        }
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.pylint",
+        "ms-python.black-formatter",
+        "ms-python.mypy-type-checker",
+        "charliermarsh.ruff",
+        "ms-python.pytest",
+        "ms-vscode.makefile-tools",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
+      ]
+    }
+  },
+
+  "forwardPorts": [],
+
+  "postCreateCommand": "pip install --user -r requirements.txt && pip install --user black ruff mypy pytest pytest-cov",
+
+  "remoteUser": "inspector"
+}
