@@ -66,7 +66,7 @@ make pre-commit-install
 pre-commit install
 ```
 
-Pre-commit hooks will automatically run formatting, linting, and type checking before each commit to ensure code quality and consistency. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions.
+Pre-commit hooks will automatically run formatting, linting, and type checking before each commit to ensure code quality and consistency. These hooks help maintain consistent code style, catch potential bugs early, and enforce type safety across all contributions. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions.
 
 **Run formatting and linting:**
 ```bash
