@@ -1,0 +1,153 @@
+"""
+Integration tests for utils module
+"""
+import unittest
+import tempfile
+import os
+from pathlib import Path
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils import count_all_video_files, format_file_size, get_video_extensions
+
+
+class TestUtilsIntegration(unittest.TestCase):
+    """Integration tests for utility functions"""
+    
+    def setUp(self):
+        """Set up test environment"""
+        self.test_dir = tempfile.mkdtemp()
+        self.test_files = []
+    
+    def tearDown(self):
+        """Clean up test environment"""
+        # Clean up test files
+        for file_path in self.test_files:
+            try:
+                os.remove(file_path)
+            except FileNotFoundError:
+                pass
+        
+        # Remove test directory
+        try:
+            os.rmdir(self.test_dir)
+        except OSError:
+            pass
+    
+    def create_test_file(self, filename: str, content: str = "test content") -> str:
+        """Create a test file and return its path"""
+        file_path = os.path.join(self.test_dir, filename)
+        with open(file_path, 'w') as f:
+            f.write(content)
+        self.test_files.append(file_path)
+        return file_path
+    
+    def test_count_video_files_empty_directory(self):
+        """Test counting video files in an empty directory"""
+        count = count_all_video_files(self.test_dir)
+        self.assertEqual(count, 0)
+    
+    def test_count_video_files_with_video_files(self):
+        """Test counting video files in directory with video files"""
+        # Create some video files
+        self.create_test_file("test1.mp4")
+        self.create_test_file("test2.avi")
+        self.create_test_file("test3.mkv")
+        self.create_test_file("not_video.txt")
+        
+        count = count_all_video_files(self.test_dir)
+        self.assertEqual(count, 3)
+    
+    def test_count_video_files_case_insensitive(self):
+        """Test that file counting is case insensitive"""
+        self.create_test_file("TEST.MP4")
+        self.create_test_file("video.AVI")
+        self.create_test_file("movie.MkV")
+        
+        count = count_all_video_files(self.test_dir)
+        self.assertEqual(count, 3)
+    
+    def test_count_video_files_custom_extensions(self):
+        """Test counting with custom extensions"""
+        self.create_test_file("test.mp4")
+        self.create_test_file("test.avi")
+        self.create_test_file("test.custom")
+        
+        # Count only mp4 files
+        count = count_all_video_files(self.test_dir, extensions=['.mp4'])
+        self.assertEqual(count, 1)
+        
+        # Count mp4 and custom files
+        count = count_all_video_files(self.test_dir, extensions=['.mp4', '.custom'])
+        self.assertEqual(count, 2)
+    
+    def test_count_video_files_recursive(self):
+        """Test recursive directory scanning"""
+        # Create files in root
+        self.create_test_file("root.mp4")
+        
+        # Create subdirectory and files
+        subdir = os.path.join(self.test_dir, "subdir")
+        os.makedirs(subdir)
+        
+        subfile = os.path.join(subdir, "sub.avi")
+        with open(subfile, 'w') as f:
+            f.write("test")
+        self.test_files.append(subfile)
+        
+        # Test recursive (default)
+        count = count_all_video_files(self.test_dir, recursive=True)
+        self.assertEqual(count, 2)
+        
+        # Test non-recursive
+        count = count_all_video_files(self.test_dir, recursive=False)
+        self.assertEqual(count, 1)
+    
+    def test_count_video_files_invalid_directory(self):
+        """Test behavior with invalid directory"""
+        # The function actually returns 0 for non-existent directories
+        # instead of raising an exception (it catches and re-raises exceptions)
+        count = count_all_video_files("/nonexistent/directory")
+        self.assertEqual(count, 0)
+    
+    def test_format_file_size(self):
+        """Test file size formatting"""
+        self.assertEqual(format_file_size(0), "0.0 B")
+        self.assertEqual(format_file_size(512), "512.0 B")
+        self.assertEqual(format_file_size(1024), "1.0 KB")
+        self.assertEqual(format_file_size(1536), "1.5 KB")
+        self.assertEqual(format_file_size(1024 * 1024), "1.0 MB")
+        self.assertEqual(format_file_size(1024 * 1024 * 1024), "1.0 GB")
+    
+    def test_get_video_extensions(self):
+        """Test getting video extensions list"""
+        extensions = get_video_extensions()
+        
+        # Should return a list
+        self.assertIsInstance(extensions, list)
+        
+        # Should contain common video formats
+        expected_extensions = ['.mp4', '.avi', '.mkv', '.mov', '.wmv']
+        for ext in expected_extensions:
+            self.assertIn(ext, extensions)
+        
+        # All extensions should start with a dot
+        for ext in extensions:
+            self.assertTrue(ext.startswith('.'))
+    
+    def test_integration_with_test_videos_directory(self):
+        """Test integration with actual test-videos directory"""
+        test_videos_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test-videos")
+        
+        if os.path.exists(test_videos_dir):
+            # This should not raise an exception
+            count = count_all_video_files(test_videos_dir)
+            # The count depends on what's in the test-videos directory
+            self.assertIsInstance(count, int)
+            self.assertGreaterEqual(count, 0)
+
+
+if __name__ == '__main__':
+    unittest.main()
