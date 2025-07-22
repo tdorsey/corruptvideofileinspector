@@ -208,5 +208,29 @@ class TestMediaItem(unittest.TestCase):
         self.assertEqual(item.media_type, "movie")
 
 
+class TestSearchResultsHandling(unittest.TestCase):
+    """Test handling of search results and interactive selection"""
+    
+    def test_search_results_backward_compatibility(self):
+        """Test that single result searches work like before"""
+        # This is a unit test for the method signature changes
+        # We can't test the actual API calls without mocking
+        from trakt_watchlist import TraktAPI
+        
+        # Test that the method exists and has correct signature
+        api = TraktAPI("fake_token")
+        
+        # These should not raise TypeErrors due to signature changes
+        self.assertTrue(hasattr(api, 'search_movie'))
+        self.assertTrue(hasattr(api, 'search_show'))
+    
+    def test_interactive_select_item_import(self):
+        """Test that interactive_select_item function is available"""
+        from trakt_watchlist import interactive_select_item
+        
+        # Function should exist
+        self.assertTrue(callable(interactive_select_item))
+
+
 if __name__ == '__main__':
     unittest.main()

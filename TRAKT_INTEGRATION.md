@@ -44,7 +44,36 @@ python3 cli_handler.py trakt scan_results.json \
 - `--token` / `-t`: **Required** - Your Trakt.tv OAuth access token
 - `--client-id` / `-c`: Optional - Your Trakt.tv API client ID
 - `--verbose` / `-v`: Enable detailed progress output
+- `--interactive` / `-i`: Enable interactive selection of search results
 - `--output` / `-o`: Save sync results to JSON file
+
+### Interactive Mode
+
+When using the `--interactive` flag, the tool will prompt you to manually select the correct match when multiple search results are found:
+
+```bash
+# Enable interactive selection for ambiguous matches
+python3 cli_handler.py trakt scan_results.json \
+  --token YOUR_ACCESS_TOKEN \
+  --interactive \
+  --verbose
+```
+
+**Interactive mode features:**
+- **Single match confirmation**: When only one result is found, you can confirm or reject it
+- **Multiple choice selection**: When multiple results are found, choose from a numbered list
+- **Skip option**: Option to skip items that don't have good matches
+- **Improved accuracy**: Manually verify matches to avoid adding incorrect items to your watchlist
+
+**Example interactive session:**
+```
+Found 2 matches for 'The Matrix' (1999):
+  0. Skip (don't add to watchlist)
+  1. The Matrix (1999) [movie]
+  2. The Matrix Reloaded (2003) [movie]
+
+Select an option [0-2]: 1
+```
 
 ## Supported Filename Formats
 

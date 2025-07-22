@@ -41,8 +41,11 @@ corrupt-video-inspector /path/to/your/videos
 # First, scan your videos with JSON output
 python3 cli_handler.py --json /path/to/your/videos
 
-# Then sync results to Trakt watchlist
+# Then sync results to Trakt watchlist (automatic mode)
 python3 cli_handler.py trakt corruption_scan_results.json --token YOUR_TRAKT_TOKEN
+
+# Or use interactive mode to manually select matches
+python3 cli_handler.py trakt corruption_scan_results.json --token YOUR_TRAKT_TOKEN --interactive
 ```
 
 ### Direct Docker Usage

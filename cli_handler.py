@@ -127,7 +127,10 @@ Examples:
   python3 cli_handler.py --json /path/videos                # CLI with JSON output
   python3 cli_handler.py --list-videos /path                # List videos only
   
-  python3 cli_handler.py trakt scan_results.json --token YOUR_TOKEN  # Sync to Trakt watchlist
+  # Trakt.tv integration
+  python3 cli_handler.py trakt scan_results.json --token YOUR_TOKEN                    # Auto sync to Trakt
+  python3 cli_handler.py trakt scan_results.json --token YOUR_TOKEN --interactive      # Interactive mode
+  python3 cli_handler.py trakt scan_results.json --token YOUR_TOKEN --verbose -o out.json  # Verbose with output
 """,
     no_args_is_help=True,
 )
@@ -398,6 +401,7 @@ def trakt(
     token: str = typer.Option(..., "--token", "-t", help="Trakt.tv OAuth access token"),
     client_id: Optional[str] = typer.Option(None, "--client-id", "-c", help="Trakt.tv API client ID (optional)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+    interactive: bool = typer.Option(False, "--interactive", "-i", help="Enable interactive selection of search results"),
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Save sync results to JSON file"),
 ) -> None:
     """
@@ -406,11 +410,15 @@ def trakt(
     This command processes JSON scan results from the video inspector and automatically
     adds discovered movies and TV shows to your Trakt.tv watchlist using filename parsing.
     
+    With --interactive mode, you can manually select the correct match when multiple
+    search results are found, ensuring accurate additions to your watchlist.
+    
     Args:
         scan_file: Path to JSON file containing video scan results
         token: Trakt.tv OAuth 2.0 access token for API authentication
         client_id: Optional Trakt.tv API client ID 
         verbose: Enable detailed progress output
+        interactive: Enable manual selection of search matches
         output: Optional path to save sync results as JSON
     """
     try:
@@ -432,6 +440,8 @@ def trakt(
         if not verbose:
             typer.echo("Syncing scan results to Trakt.tv watchlist...")
             typer.echo(f"Scan file: {scan_file}")
+            if interactive:
+                typer.echo("Interactive mode: You will be prompted to select matches")
             typer.echo("Processing...")
         
         # Perform the sync
@@ -440,7 +450,8 @@ def trakt(
                 scan_file=str(scan_file_path),
                 access_token=token,
                 client_id=client_id,
-                verbose=verbose
+                verbose=verbose,
+                interactive=interactive
             )
             
             # Save results if requested

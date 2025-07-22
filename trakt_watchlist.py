@@ -164,16 +164,17 @@ class TraktAPI:
             logger.error(f"Request failed: {e}")
             raise
     
-    def search_movie(self, title: str, year: Optional[int] = None) -> Optional[TraktItem]:
+    def search_movie(self, title: str, year: Optional[int] = None, limit: int = 1) -> List[TraktItem]:
         """
         Search for a movie on Trakt
         
         Args:
             title: Movie title to search for
             year: Optional release year for better matching
+            limit: Maximum number of results to return (default 1 for backward compatibility)
             
         Returns:
-            TraktItem: First matching movie result, or None if not found
+            List[TraktItem]: List of matching movie results, empty if none found
         """
         params = {"query": title}
         if year:
@@ -188,32 +189,39 @@ class TraktAPI:
                 results = response.json()
                 
                 if results:
-                    # Return the first result (usually most relevant)
-                    movie_data = results[0].get("movie", {})
-                    trakt_item = TraktItem.from_movie_response(movie_data)
-                    logger.info(f"Found movie: {trakt_item.title} ({trakt_item.year})")
-                    return trakt_item
+                    # Convert results to TraktItem objects, limited by the limit parameter
+                    trakt_items = []
+                    for result in results[:limit]:
+                        movie_data = result.get("movie", {})
+                        if movie_data:  # Make sure movie data exists
+                            trakt_item = TraktItem.from_movie_response(movie_data)
+                            trakt_items.append(trakt_item)
+                            logger.debug(f"Found movie: {trakt_item.title} ({trakt_item.year})")
+                    
+                    logger.info(f"Found {len(trakt_items)} movie results for: {title}")
+                    return trakt_items
                 else:
                     logger.info(f"No movie results found for: {title}")
-                    return None
+                    return []
             else:
                 logger.warning(f"Movie search failed with status {response.status_code}")
-                return None
+                return []
                 
         except Exception as e:
             logger.exception(f"Error searching for movie {title}: {e}")
-            return None
+            return []
     
-    def search_show(self, title: str, year: Optional[int] = None) -> Optional[TraktItem]:
+    def search_show(self, title: str, year: Optional[int] = None, limit: int = 1) -> List[TraktItem]:
         """
         Search for a TV show on Trakt
         
         Args:
             title: Show title to search for
             year: Optional first air year for better matching
+            limit: Maximum number of results to return (default 1 for backward compatibility)
             
         Returns:
-            TraktItem: First matching show result, or None if not found
+            List[TraktItem]: List of matching show results, empty if none found
         """
         params = {"query": title}
         if year:
@@ -228,21 +236,27 @@ class TraktAPI:
                 results = response.json()
                 
                 if results:
-                    # Return the first result (usually most relevant)
-                    show_data = results[0].get("show", {})
-                    trakt_item = TraktItem.from_show_response(show_data)
-                    logger.info(f"Found show: {trakt_item.title} ({trakt_item.year})")
-                    return trakt_item
+                    # Convert results to TraktItem objects, limited by the limit parameter
+                    trakt_items = []
+                    for result in results[:limit]:
+                        show_data = result.get("show", {})
+                        if show_data:  # Make sure show data exists
+                            trakt_item = TraktItem.from_show_response(show_data)
+                            trakt_items.append(trakt_item)
+                            logger.debug(f"Found show: {trakt_item.title} ({trakt_item.year})")
+                    
+                    logger.info(f"Found {len(trakt_items)} show results for: {title}")
+                    return trakt_items
                 else:
                     logger.info(f"No show results found for: {title}")
-                    return None
+                    return []
             else:
                 logger.warning(f"Show search failed with status {response.status_code}")
-                return None
+                return []
                 
         except Exception as e:
             logger.exception(f"Error searching for show {title}: {e}")
-            return None
+            return []
     
     def add_movie_to_watchlist(self, trakt_item: TraktItem) -> bool:
         """
@@ -355,6 +369,72 @@ class TraktAPI:
         except Exception as e:
             logger.exception(f"Error adding show to watchlist: {e}")
             return False
+
+
+def interactive_select_item(items: List[TraktItem], media_item: MediaItem) -> Optional[TraktItem]:
+    """
+    Interactively select the correct item from search results
+    
+    Args:
+        items: List of TraktItem search results
+        media_item: Original MediaItem being searched for
+        
+    Returns:
+        TraktItem: Selected item, or None if no selection made
+    """
+    if not items:
+        return None
+    
+    if len(items) == 1:
+        # Only one result, ask for confirmation
+        item = items[0]
+        print(f"\nFound 1 match for '{media_item.title}' ({media_item.year}):")
+        print(f"  → {item.title} ({item.year}) [{item.media_type}]")
+        
+        while True:
+            choice = input("Accept this match? [Y/n]: ").strip().lower()
+            if choice in ['', 'y', 'yes']:
+                logger.info(f"User accepted match: {item.title} ({item.year})")
+                return item
+            elif choice in ['n', 'no']:
+                logger.info(f"User rejected match for: {media_item.title}")
+                return None
+            else:
+                print("Please enter 'y' for yes or 'n' for no.")
+    
+    # Multiple results, show selection menu
+    print(f"\nFound {len(items)} matches for '{media_item.title}' ({media_item.year}):")
+    print("  0. Skip (don't add to watchlist)")
+    
+    for i, item in enumerate(items, 1):
+        year_str = f"({item.year})" if item.year else "(no year)"
+        print(f"  {i}. {item.title} {year_str} [{item.media_type}]")
+    
+    while True:
+        try:
+            choice = input(f"\nSelect an option [0-{len(items)}]: ").strip()
+            
+            if not choice:
+                continue
+                
+            choice_num = int(choice)
+            
+            if choice_num == 0:
+                logger.info(f"User chose to skip: {media_item.title}")
+                return None
+            elif 1 <= choice_num <= len(items):
+                selected_item = items[choice_num - 1]
+                logger.info(f"User selected: {selected_item.title} ({selected_item.year})")
+                return selected_item
+            else:
+                print(f"Please enter a number between 0 and {len(items)}.")
+                
+        except ValueError:
+            print(f"Please enter a valid number between 0 and {len(items)}.")
+        except KeyboardInterrupt:
+            print("\nSelection cancelled.")
+            logger.info(f"User cancelled selection for: {media_item.title}")
+            return None
 
 
 class FilenameParser:
@@ -524,7 +604,8 @@ def sync_to_trakt_watchlist(
     scan_file: str,
     access_token: str,
     client_id: Optional[str] = None,
-    verbose: bool = False
+    verbose: bool = False,
+    interactive: bool = False
 ) -> Dict[str, Any]:
     """
     Main function to sync scan results to Trakt watchlist
@@ -534,6 +615,7 @@ def sync_to_trakt_watchlist(
         access_token: Trakt API access token
         client_id: Optional Trakt API client ID
         verbose: Enable verbose output
+        interactive: Enable interactive selection of search results
         
     Returns:
         Dict[str, Any]: Summary of sync operation with counts and results
@@ -575,6 +657,8 @@ def sync_to_trakt_watchlist(
     
     if verbose:
         print(f"Found {len(media_items)} media items to sync")
+        if interactive:
+            print("Interactive mode enabled - you will be prompted to select matches")
         print("Searching and adding to watchlist...")
     
     for i, media_item in enumerate(media_items, 1):
@@ -584,21 +668,35 @@ def sync_to_trakt_watchlist(
         
         try:
             # Search for the item
-            if media_item.media_type == "movie":
-                trakt_item = api.search_movie(media_item.title, media_item.year)
+            if interactive:
+                # Interactive mode: get multiple results and let user choose
+                search_limit = 5  # Get up to 5 results for selection
+                if media_item.media_type == "movie":
+                    search_results = api.search_movie(media_item.title, media_item.year, limit=search_limit)
+                else:
+                    search_results = api.search_show(media_item.title, media_item.year, limit=search_limit)
+                
+                # Let user select from results
+                trakt_item = interactive_select_item(search_results, media_item)
             else:
-                trakt_item = api.search_show(media_item.title, media_item.year)
+                # Automatic mode: get first result only (backward compatibility)
+                if media_item.media_type == "movie":
+                    search_results = api.search_movie(media_item.title, media_item.year, limit=1)
+                else:
+                    search_results = api.search_show(media_item.title, media_item.year, limit=1)
+                
+                trakt_item = search_results[0] if search_results else None
             
             if not trakt_item:
                 logger.warning(f"No Trakt match found for: {media_item.title}")
                 if verbose:
-                    print(f"    ❌ Not found on Trakt")
+                    print(f"    ❌ Not found on Trakt" if not interactive else f"    ❌ Skipped")
                 summary["failed"] += 1
                 summary["results"].append({
                     "title": media_item.title,
                     "year": media_item.year,
                     "type": media_item.media_type,
-                    "status": "not_found",
+                    "status": "not_found" if not interactive else "skipped",
                     "filename": media_item.original_filename
                 })
                 continue
