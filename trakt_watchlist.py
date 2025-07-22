@@ -3,6 +3,7 @@ Trakt.tv Watchlist API Integration Tool
 
 A Python-based tool for syncing local media collections to Trakt.tv watchlist
 by processing video inspection JSON files and using filename parsing.
+
 """
 
 import json
@@ -11,7 +12,7 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 import requests
 
@@ -40,7 +41,10 @@ class MediaItem:
         if self.media_type not in ["movie", "show"]:
             self.media_type = "movie"
 
-        logger.debug(f"MediaItem created: {self.title} ({self.year}) - {self.media_type}")
+        logger.debug(
+            f"MediaItem created: {self.title} ({self.year}) - "
+            f"{self.media_type}"
+        )
 
 
 @dataclass
@@ -146,28 +150,31 @@ class TraktAPI:
                 method=method, url=url, json=data, params=params, timeout=30
             )
 
-            logger.debug(f"Response status: {response.status_code}")
+            logger.debug(
+                f"Response status: {response.status_code}"
+            )
 
             # Handle rate limiting
             if response.status_code == 429:
                 retry_after = int(response.headers.get("Retry-After", 10))
                 if "Retry-After" not in response.headers:
                     logger.warning(
-                        f"'Retry-After' header missing. Using fallback timeout of {retry_after} seconds."
+                        f"'Retry-After' header missing. "
+                        f"Using fallback timeout of {retry_after} seconds."
                     )
                 else:
                     logger.warning(
-                        f"Rate limited, waiting {retry_after} seconds as per 'Retry-After' header."
+                        f"Rate limited, waiting {retry_after} seconds as per "
+                        f"'Retry-After' header."
                     )
                 time.sleep(retry_after)
                 # Retry the request
                 return self._make_request(method, endpoint, data, params)
-
-            return response
-
-        except requests.RequestException as e:
-            logger.exception(f"Request failed: {e}")
+        except requests.RequestException:
+            logger.exception("Request failed")
             raise
+        else:
+            return response
 
     def search_movie(
         self, title: str, year: Optional[int] = None, limit: int = 1
@@ -178,10 +185,12 @@ class TraktAPI:
         Args:
             title: Movie title to search for
             year: Optional release year for better matching
-            limit: Maximum number of results to return (default 1 for backward compatibility)
+            limit: Maximum number of results to return \
+                (default 1 for backward compatibility)
 
         Returns:
-            List[TraktItem]: List of matching movie results, empty if none found
+            List[TraktItem]: List of matching movie results,
+                empty if none found
         """
         params = {"query": title}
         if year:
@@ -190,43 +199,55 @@ class TraktAPI:
         logger.info(f"Searching for movie: {title} ({year})")
 
         try:
-            response = self._make_request("GET", "/search/movie", params=params)
-
-            if response.status_code == 200:
-                results = response.json()
-
-                if results:
-                    # Convert results to TraktItem objects
-                    trakt_items = []
-                    for result in results:
-                        movie_data = result.get("movie", {})
-                        if movie_data:  # Make sure movie data exists
-                            trakt_item = TraktItem.from_movie_response(movie_data)
-
-                            # When year is provided, only include exact year matches
-                            if year is not None and trakt_item.year != year:
-                                logger.debug(
-                                    f"Skipping movie with different year: {trakt_item.title} ({trakt_item.year}) != {year}"
-                                )
-                                continue
-
-                            trakt_items.append(trakt_item)
-                            logger.debug(f"Found movie: {trakt_item.title} ({trakt_item.year})")
-
-                            # Stop if we've reached the limit
-                            if len(trakt_items) >= limit:
-                                break
-
-                    logger.info(f"Found {len(trakt_items)} movie results for: {title}")
-                    return trakt_items
-                logger.info(f"No movie results found for: {title}")
-                return []
-            logger.warning(f"Movie search failed with status {response.status_code}")
+            response = self._make_request(
+                "GET", "/search/movie", params=params
+            )
+        except Exception:
+            logger.exception("Error searching for movie")
             return []
 
-        except Exception as e:
-            logger.exception(f"Error searching for movie {title}: {e}")
+        if response.status_code == 200:
+            results = response.json()
+
+            if results:
+                trakt_items: List[TraktItem] = []
+                for result in results:
+                    movie_data = result.get("movie", {})
+                    if not movie_data:
+                        continue
+                    trakt_item = TraktItem.from_movie_response(
+                        movie_data
+                    )
+
+                    if year is not None and trakt_item.year != year:
+                        logger.debug(
+                            f"Skipping movie with different year: "
+                            f"{trakt_item.title} "
+                            f"({trakt_item.year}) != {year}"
+                        )
+                        continue
+
+                    trakt_items.append(trakt_item)
+                    logger.debug(
+                        f"Found movie: {trakt_item.title} "
+                        f"({trakt_item.year})"
+                    )
+
+                    if len(trakt_items) >= limit:
+                        break
+
+                logger.info(
+                    f"Found {len(trakt_items)} movie results for: {title}"
+                )
+                return trakt_items
+
+            logger.info(f"No movie results found for: {title}")
             return []
+
+        logger.warning(
+            f"Movie search failed with status {response.status_code}"
+        )
+        return []
 
     def search_show(
         self, title: str, year: Optional[int] = None, limit: int = 1
@@ -237,7 +258,8 @@ class TraktAPI:
         Args:
             title: Show title to search for
             year: Optional first air year for better matching
-            limit: Maximum number of results to return (default 1 for backward compatibility)
+            limit: Maximum number of results to return \
+                (default 1 for backward compatibility)
 
         Returns:
             List[TraktItem]: List of matching show results, empty if none found
@@ -250,42 +272,50 @@ class TraktAPI:
 
         try:
             response = self._make_request("GET", "/search/show", params=params)
-
-            if response.status_code == 200:
-                results = response.json()
-
-                if results:
-                    # Convert results to TraktItem objects
-                    trakt_items = []
-                    for result in results:
-                        show_data = result.get("show", {})
-                        if show_data:  # Make sure show data exists
-                            trakt_item = TraktItem.from_show_response(show_data)
-
-                            # When year is provided, only include exact year matches
-                            if year is not None and trakt_item.year != year:
-                                logger.debug(
-                                    f"Skipping show with different year: {trakt_item.title} ({trakt_item.year}) != {year}"
-                                )
-                                continue
-
-                            trakt_items.append(trakt_item)
-                            logger.debug(f"Found show: {trakt_item.title} ({trakt_item.year})")
-
-                            # Stop if we've reached the limit
-                            if len(trakt_items) >= limit:
-                                break
-
-                    logger.info(f"Found {len(trakt_items)} show results for: {title}")
-                    return trakt_items
-                logger.info(f"No show results found for: {title}")
-                return []
-            logger.warning(f"Show search failed with status {response.status_code}")
+        except Exception:
+            logger.exception("Error searching for show")
             return []
 
-        except Exception as e:
-            logger.exception(f"Error searching for show {title}: {e}")
+        if response.status_code == 200:
+            results = response.json()
+
+            if results:
+                trakt_items: List[TraktItem] = []
+                for result in results:
+                    show_data = result.get("show", {})
+                    if not show_data:
+                        continue
+                    trakt_item = TraktItem.from_show_response(show_data)
+
+                    if year is not None and trakt_item.year != year:
+                        logger.debug(
+                            f"Skipping show with different year: "
+                            f"{trakt_item.title} "
+                            f"({trakt_item.year}) != {year}"
+                        )
+                        continue
+
+                    trakt_items.append(trakt_item)
+                    logger.debug(
+                        f"Found show: {trakt_item.title} "
+                        f"({trakt_item.year})"
+                    )
+
+                    if len(trakt_items) >= limit:
+                        break
+
+                logger.info(
+                    f"Found {len(trakt_items)} show results for: {title}"
+                )
+                return trakt_items
+
+            logger.info(f"No show results found for: {title}")
             return []
+
+        logger.warning(
+            f"Show search failed with status {response.status_code}"
+        )
+        return []
 
     def add_movie_to_watchlist(self, trakt_item: TraktItem) -> bool:
         """
@@ -302,7 +332,11 @@ class TraktAPI:
             return False
 
         # Prepare movie data for watchlist
-        movie_data = {"movies": [{"title": trakt_item.title, "year": trakt_item.year, "ids": {}}]}
+        movie_data: dict[str, list[dict[str, Any]]] = {
+            "movies": [
+                {"title": trakt_item.title, "year": trakt_item.year, "ids": {}}
+            ]
+        }
 
         # Add available IDs
         if trakt_item.trakt_id:
@@ -315,24 +349,35 @@ class TraktAPI:
         logger.info(f"Adding movie to watchlist: {trakt_item.title}")
 
         try:
-            response = self._make_request("POST", "/sync/watchlist", data=movie_data)
+            response = self._make_request(
+                "POST", "/sync/watchlist", data=movie_data
+            )
 
             if response.status_code == 201:
                 result = response.json()
                 added = result.get("added", {}).get("movies", 0)
                 if added > 0:
-                    logger.info(f"Successfully added movie to watchlist: {trakt_item.title}")
+                    logger.info(
+                        f"Successfully added movie to watchlist: "
+                        f"{trakt_item.title}"
+                    )
+                    logger.info(
+                        f"Successfully added movie to watchlist: "
+                        f"{trakt_item.title}"
+                    )
                     return True
                 logger.warning(
-                    f"Movie was not added (may already be in watchlist): {trakt_item.title}"
+                    f"Movie was not added (may already be in watchlist): "
+                    f"{trakt_item.title}"
                 )
                 return True  # Consider this a success
-            logger.error(f"Failed to add movie to watchlist: {response.status_code}")
+            logger.error(
+                f"Failed to add movie to watchlist: {response.status_code}"
+            )
+        except Exception:
+            logger.exception("Error adding movie to watchlist")
             return False
-
-        except Exception as e:
-            logger.exception(f"Error adding movie to watchlist: {e}")
-            return False
+        return False
 
     def add_show_to_watchlist(self, trakt_item: TraktItem) -> bool:
         """
@@ -345,12 +390,21 @@ class TraktAPI:
             bool: True if successfully added, False otherwise
         """
         if trakt_item.media_type != "show":
-            logger.error(f"Item is not a show: {trakt_item.media_type}")
+            logger.error(
+                f"Item is not a show: {trakt_item.media_type}"
+            )
             return False
 
         # Prepare show data for watchlist
-        show_data = {"shows": [{"title": trakt_item.title, "year": trakt_item.year, "ids": {}}]}
-
+        show_data: dict[str, list[dict[str, Any]]] = {
+            "shows": [
+                {
+                    "title": trakt_item.title,
+                    "year": trakt_item.year,
+                    "ids": {},
+                }
+            ]
+        }
         # Add available IDs
         if trakt_item.trakt_id:
             show_data["shows"][0]["ids"]["trakt"] = trakt_item.trakt_id
@@ -361,30 +415,43 @@ class TraktAPI:
         if trakt_item.tvdb_id:
             show_data["shows"][0]["ids"]["tvdb"] = trakt_item.tvdb_id
 
-        logger.info(f"Adding show to watchlist: {trakt_item.title}")
+        logger.info(
+            f"Adding show to watchlist: "
+            f"{trakt_item.title}"
+        )
 
         try:
-            response = self._make_request("POST", "/sync/watchlist", data=show_data)
-
-            if response.status_code == 201:
-                result = response.json()
-                added = result.get("added", {}).get("shows", 0)
-                if added > 0:
-                    logger.info(f"Successfully added show to watchlist: {trakt_item.title}")
-                    return True
-                logger.warning(
-                    f"Show was not added (may already be in watchlist): {trakt_item.title}"
+            response = self._make_request(
+                "POST", "/sync/watchlist", data=show_data
+            )
+        except Exception:
+            logger.exception(
+                "Error adding show to watchlist"
+            )
+            return False
+        if response.status_code == 201:
+            result = response.json()
+            added = result.get("added", {}).get("shows", 0)
+            if added > 0:
+                logger.info(
+                    f"Successfully added show to watchlist: "
+                    f"{trakt_item.title}"
                 )
-                return True  # Consider this a success
-            logger.error(f"Failed to add show to watchlist: {response.status_code}")
-            return False
+                return True
+            logger.warning(
+                f"Show was not added (may already be in watchlist): "
+                f"{trakt_item.title}"
+            )
+            return True  # Consider this a success
+        logger.error(
+            f"Failed to add show to watchlist: {response.status_code}"
+        )
+        return False
 
-        except Exception as e:
-            logger.exception(f"Error adding show to watchlist: {e}")
-            return False
 
-
-def interactive_select_item(items: List[TraktItem], media_item: MediaItem) -> Optional[TraktItem]:
+def interactive_select_item(
+    items: List[TraktItem], media_item: MediaItem
+) -> Optional[TraktItem]:
     """
     Interactively select the correct item from search results
 
@@ -401,8 +468,12 @@ def interactive_select_item(items: List[TraktItem], media_item: MediaItem) -> Op
     if len(items) == 1:
         # Only one result, ask for confirmation
         item = items[0]
-        print(f"\nFound 1 match for '{media_item.title}' ({media_item.year}):")
-        print(f"  → {item.title} ({item.year}) [{item.media_type}]")
+        print(
+            f"\nFound 1 match for '{media_item.title}' ({media_item.year}):"
+        )
+        print(
+            f"  → {item.title} ({item.year}) [{item.media_type}]"
+        )
 
         while True:
             choice = input("Accept this match? [Y/n]: ").strip().lower()
@@ -415,16 +486,23 @@ def interactive_select_item(items: List[TraktItem], media_item: MediaItem) -> Op
             print("Please enter 'y' for yes or 'n' for no.")
 
     # Multiple results, show selection menu
-    print(f"\nFound {len(items)} matches for '{media_item.title}' ({media_item.year}):")
+    print(
+        f"\nFound {len(items)} matches for '{media_item.title}' "
+        f"({media_item.year}):"
+    )
     print("  0. Skip (don't add to watchlist)")
 
     for i, item in enumerate(items, 1):
         year_str = f"({item.year})" if item.year else "(no year)"
-        print(f"  {i}. {item.title} {year_str} [{item.media_type}]")
+        print(
+            f"  {i}. {item.title} {year_str} [{item.media_type}]"
+        )
 
     while True:
         try:
-            choice = input(f"\nSelect an option [0-{len(items)}]: ").strip()
+            choice = input(
+                f"\nSelect an option [0-{len(items)}]: "
+            ).strip()
 
             if not choice:
                 continue
@@ -436,12 +514,19 @@ def interactive_select_item(items: List[TraktItem], media_item: MediaItem) -> Op
                 return None
             if 1 <= choice_num <= len(items):
                 selected_item = items[choice_num - 1]
-                logger.info(f"User selected: {selected_item.title} ({selected_item.year})")
+                logger.info(
+                    f"User selected: {selected_item.title} "
+                    f"({selected_item.year})"
+                )
                 return selected_item
-            print(f"Please enter a number between 0 and {len(items)}.")
+            print(
+                f"Please enter a number between 0 and {len(items)}."
+            )
 
         except ValueError:
-            print(f"Please enter a valid number between 0 and {len(items)}.")
+            print(
+                f"Please enter a valid number between 0 and {len(items)}."
+            )
         except KeyboardInterrupt:
             print("\nSelection cancelled.")
             logger.info(f"User cancelled selection for: {media_item.title}")
@@ -452,7 +537,7 @@ class FilenameParser:
     """Parser for extracting media information from filenames"""
 
     # Patterns for movie filenames
-    MOVIE_PATTERNS = [
+    MOVIE_PATTERNS: ClassVar[list[str]] = [
         # Movie.Name.2023.1080p.BluRay.x264.mkv
         r"^(.+?)\.(\d{4})\.(?:\d+p|BluRay|WEB|HDTV|x264|H264)",
         # Movie Name (2023) [quality].ext
@@ -468,7 +553,7 @@ class FilenameParser:
     ]
 
     # Patterns for TV show filenames
-    TV_PATTERNS = [
+    TV_PATTERNS: ClassVar[list[str]] = [
         # Show.Name.S01E01.Episode.Title.2023.mkv
         r"^(.+?)\.S(\d+)E(\d+)",
         # Show Name S01E01 Episode Title (2023).mkv
@@ -493,7 +578,9 @@ class FilenameParser:
         # Get just the filename without path and extension
         base_name = Path(filename).stem
 
-        logger.debug(f"Parsing filename: {base_name}")
+        logger.debug(
+            f"Parsing filename: {base_name}"
+        )
 
         # First try TV show patterns
         for pattern in cls.TV_PATTERNS:
@@ -504,7 +591,7 @@ class FilenameParser:
                 episode = int(match.group(3))
 
                 # Extract year if present in the remaining part
-                year_match = re.search(r"(\d{4})", base_name[match.end() :])
+                year_match = re.search(r"(\d{4})", base_name[match.end():])
                 year = int(year_match.group(1)) if year_match else None
 
                 media_item = MediaItem(
@@ -516,7 +603,10 @@ class FilenameParser:
                     original_filename=filename,
                 )
 
-                logger.info(f"Parsed as TV show: {media_item.title} S{season:02d}E{episode:02d}")
+                logger.info(
+                    f"Parsed as TV show: {media_item.title} "
+                    f"S{season:02d}E{episode:02d}"
+                )
                 return media_item
 
         # Try movie patterns
@@ -537,16 +627,25 @@ class FilenameParser:
                         title = title.replace(year_match.group(0), "").strip()
 
                 media_item = MediaItem(
-                    title=title, year=year, media_type="movie", original_filename=filename
+                    title=title,
+                    year=year,
+                    media_type="movie",
+                    original_filename=filename,
                 )
 
-                logger.info(f"Parsed as movie: {media_item.title} ({year})")
+                logger.info(
+                    f"Parsed as movie: {media_item.title} ({year})"
+                )
                 return media_item
 
         # Fallback: treat as movie with just the filename as title
-        media_item = MediaItem(title=base_name, media_type="movie", original_filename=filename)
+        media_item = MediaItem(
+            title=base_name, media_type="movie", original_filename=filename
+        )
 
-        logger.warning(f"Could not parse filename, treating as movie: {base_name}")
+        logger.warning(
+            f"Could not parse filename, treating as movie: {base_name}"
+        )
         return media_item
 
 
@@ -564,24 +663,28 @@ def process_scan_file(file_path: str) -> List[MediaItem]:
         FileNotFoundError: If scan file doesn't exist
         json.JSONDecodeError: If scan file is not valid JSON
     """
-    logger.info(f"Processing scan file: {file_path}")
+    logger.info(
+        f"Processing scan file: {file_path}"
+    )
 
     file_path_obj = Path(file_path)
     if not file_path_obj.exists():
         raise FileNotFoundError(f"Scan file not found: {file_path}")
 
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with file_path_obj.open(encoding="utf-8") as f:
             scan_data = json.load(f)
-    except json.JSONDecodeError as e:
-        logger.exception(f"Invalid JSON in scan file: {e}")
+    except json.JSONDecodeError:
+        logger.exception("Invalid JSON in scan file")
         raise
 
-    media_items = []
+    media_items: list[MediaItem] = []
 
     # Process scan results
     results = scan_data.get("results", [])
-    logger.info(f"Found {len(results)} files in scan results")
+    logger.info(
+        f"Found {len(results)} files in scan results"
+    )
 
     for result in results:
         filename = result.get("filename", "")
@@ -594,12 +697,16 @@ def process_scan_file(file_path: str) -> List[MediaItem]:
         try:
             media_item = FilenameParser.parse_filename(filename)
             media_items.append(media_item)
-            logger.debug(f"Added media item: {media_item.title}")
+            logger.debug(
+                f"Added media item: {media_item.title}"
+            )
         except Exception as e:
             logger.warning(f"Failed to parse filename {filename}: {e}")
             continue
 
-    logger.info(f"Successfully parsed {len(media_items)} media items")
+    logger.info(
+        f"Successfully parsed {len(media_items)} media items"
+    )
     return media_items
 
 
@@ -623,11 +730,15 @@ def sync_to_trakt_watchlist(
     Returns:
         Dict[str, Any]: Summary of sync operation with counts and results
     """
-    logger.info("Starting Trakt watchlist sync")
+    logger.info(
+        "Starting Trakt watchlist sync"
+    )
 
     if verbose:
         print("Starting Trakt watchlist sync...")
-        print(f"Processing scan file: {scan_file}")
+        print(
+            f"Processing scan file: {scan_file}"
+        )
 
     # Initialize API client
     try:
@@ -650,7 +761,7 @@ def sync_to_trakt_watchlist(
         return {"total": 0, "movies_added": 0, "shows_added": 0, "failed": 0}
 
     # Sync to watchlist
-    summary = {
+    summary: dict[str, Any] = {
         "total": len(media_items),
         "movies_added": 0,
         "shows_added": 0,
@@ -659,16 +770,22 @@ def sync_to_trakt_watchlist(
     }
 
     if verbose:
-        print(f"Found {len(media_items)} media items to sync")
+        print(
+            f"Found {len(media_items)} media items to sync"
+        )
         if interactive:
-            print("Interactive mode enabled - you will be prompted to select matches")
+            print(
+                "Interactive mode enabled - you will be "
+                "prompted to select matches"
+            )
         print("Searching and adding to watchlist...")
 
     for i, media_item in enumerate(media_items, 1):
         if verbose:
             progress = f"({i}/{len(media_items)})"
             print(
-                f"  {progress} Processing: {media_item.title} ({media_item.year}) [{media_item.media_type}]"
+                f"  {progress} Processing: {media_item.title} "
+                f"({media_item.year}) [{media_item.media_type}]"
             )
 
         try:
@@ -686,27 +803,41 @@ def sync_to_trakt_watchlist(
                     )
 
                 # Let user select from results
-                trakt_item = interactive_select_item(search_results, media_item)
+                trakt_item = interactive_select_item(
+                    search_results, media_item
+                )
             else:
-                # Automatic mode: get first result only (backward compatibility)
+                # Automatic mode: get first result only
+                # (backward compatibility)
                 if media_item.media_type == "movie":
-                    search_results = api.search_movie(media_item.title, media_item.year, limit=1)
+                    search_results = api.search_movie(
+                        media_item.title, media_item.year, limit=1
+                    )
                 else:
-                    search_results = api.search_show(media_item.title, media_item.year, limit=1)
+                    search_results = api.search_show(
+                        media_item.title, media_item.year, limit=1
+                    )
 
                 trakt_item = search_results[0] if search_results else None
 
             if not trakt_item:
-                logger.warning(f"No Trakt match found for: {media_item.title}")
+                logger.warning(
+                    f"No Trakt match found for: {media_item.title}"
+                )
                 if verbose:
-                    print("    ❌ Not found on Trakt" if not interactive else "    ❌ Skipped")
+                    print(
+                        "    ❌ Not found on Trakt" if not interactive
+                        else "    ❌ Skipped"
+                    )
                 summary["failed"] += 1
                 summary["results"].append(
                     {
                         "title": media_item.title,
                         "year": media_item.year,
                         "type": media_item.media_type,
-                        "status": "not_found" if not interactive else "skipped",
+                        "status": (
+                            "not_found" if not interactive else "skipped"
+                        ),
                         "filename": media_item.original_filename,
                     }
                 )
@@ -756,7 +887,9 @@ def sync_to_trakt_watchlist(
             logger.exception(f"Error processing {media_item.title}")
             summary["failed"] += 1
             if verbose:
-                print(f"    ❌ Error: {e}")
+                print(
+                    f"    ❌ Error: {e}"
+                )
 
             summary["results"].append(
                 {
@@ -778,12 +911,19 @@ def sync_to_trakt_watchlist(
         print(f"Movies added: {summary['movies_added']}")
         print(f"Shows added: {summary['shows_added']}")
         print(f"Failed/Not found: {summary['failed']}")
+        percent = (
+            (summary['movies_added'] + summary['shows_added'])
+            / summary['total'] * 100
+        )
         print(
-            f"Success rate: {((summary['movies_added'] + summary['shows_added']) / summary['total'] * 100):.1f}%"
+            "Success rate: "
+            f"{percent:.1f}%"
         )
 
     logger.info(
-        f"Trakt sync completed: {summary['movies_added']} movies, {summary['shows_added']} shows added"
+        "Trakt sync completed: "
+        f"{summary['movies_added']} movies, "
+        f"{summary['shows_added']} shows added"
     )
 
     return summary

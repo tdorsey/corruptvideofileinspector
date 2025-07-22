@@ -120,26 +120,36 @@ select = [
     "TRY", # tryceratops
 ]
 ignore = [
-    "E501",   # line too long, handled by black
+    "E501",    # line too long, handled by black
     "PLR0913", # too many arguments
     "PLR0912", # too many branches
     "PLR0915", # too many statements
     "PLR2004", # magic value used in comparison
-    "T201",   # print found (we want print statements in CLI)
-    "TRY003", # avoid long messages in exception strings
-    "COM812", # trailing comma missing (handled by formatter)
-    "ISC001", # single line implicit string concatenation (conflicts with formatter)
+    "T201",    # print found (we want print statements in CLI)
+    "TRY003",  # avoid long messages in exception strings
+    "COM812",  # trailing comma missing (handled by formatter)
+    "ISC001",  # single line implicit string concatenation (conflicts with formatter)
+    "TRY300",  # suppress tryceratops warnings for return in try
 ]
 
-[tool.ruff.lint.per-file-ignores]
+ [tool.ruff.lint.per-file-ignores]
 "test_*.py" = ["ARG", "PLR2004"]
+"tests/*.py" = [
+    "PLC0415", # imports should be top-level (tests often import in funcs)
+    "PTH118",  # os.path.join -> pathlib
+    "PTH120",  # os.path.dirname -> pathlib
+    "PTH123",  # open() -> Path.open()
+    "PTH100",  # os.path.abspath -> Path.resolve()
+    "PTH110",  # os.path.exists -> Path.exists()
+    "PTH119",  # os.path.basename -> Path.name
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli_handler", "video_inspector", "utils"]
 
 # MyPy configuration
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -152,6 +162,9 @@ warn_unused_ignores = true
 warn_unreachable = true
 strict_equality = true
 show_error_codes = true
+
+[tool.mypy-type-checker]
+severity = "Warning"
 
 [[tool.mypy.overrides]]
 module = "tests.*"

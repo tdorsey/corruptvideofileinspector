@@ -4,18 +4,19 @@ Unified test runner for Corrupt Video Inspector
 Runs both unit tests and integration tests with comprehensive reporting
 """
 
-import os
+
 import sys
 import unittest
+from pathlib import Path
 
 # Add the parent directory to the path so we can import modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def discover_and_run_tests(pattern="test_*.py"):
     """Discover and run tests with the specified pattern"""
     # Set up test discovery
-    test_dir = os.path.dirname(os.path.abspath(__file__))
+    test_dir = str(Path(__file__).resolve().parent)
     loader = unittest.TestLoader()
 
     # Discover all test files in the tests directory
