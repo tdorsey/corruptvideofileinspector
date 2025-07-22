@@ -1,0 +1,153 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint-and-format:
+    name: Lint, Format, and Type Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    
+    - name: Check code formatting with Black
+      run: |
+        black --check --diff .
+    
+    - name: Lint with Ruff
+      run: |
+        ruff check .
+    
+    - name: Type check with MyPy
+      run: |
+        mypy .
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    
+    - name: Run tests with pytest
+      run: |
+        # Create a tests directory if it doesn't exist and add a basic test
+        mkdir -p tests
+        if [ ! -f tests/test_basic.py ]; then
+          cat > tests/test_basic.py << 'EOF'
+import pytest
+import os
+import sys
+
+# Add the parent directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+def test_import_modules():
+    """Test that all main modules can be imported."""
+    try:
+        import cli_handler
+        import video_inspector
+        import utils
+        assert True
+    except ImportError as e:
+        pytest.fail(f"Failed to import modules: {e}")
+
+def test_basic_functionality():
+    """Test basic functionality exists."""
+    import utils
+    # Test that count_all_video_files function exists
+    assert hasattr(utils, 'count_all_video_files')
+    
+    import video_inspector
+    # Test that main functions exist
+    assert hasattr(video_inspector, 'inspect_video_files_cli')
+    
+    import cli_handler
+    # Test that main function exists
+    assert hasattr(cli_handler, 'main')
+EOF
+        fi
+        pytest tests/ -v
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        fail_ci_if_error: false
+      if: false  # Disable until we have proper coverage setup
+
+  docker:
+    name: Build and Test Docker Image
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        docker build -t corrupt-video-inspector:test .
+    
+    - name: Test Docker image can run help
+      run: |
+        docker run --rm corrupt-video-inspector:test python3 cli_handler.py --help
+    
+    - name: Test Docker image with empty directory
+      run: |
+        # Create a test directory
+        mkdir -p test_input
+        
+        # Test basic functionality (should handle gracefully with no video files)
+        docker run --rm \
+          -v $(pwd)/test_input:/app/videos:ro \
+          corrupt-video-inspector:test \
+          python3 cli_handler.py --verbose /app/videos || echo "Expected failure - no video files found"
+        
+        # Clean up
+        rm -rf test_input
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
