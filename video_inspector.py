@@ -332,7 +332,6 @@ class WriteAheadLog:
             except Exception as e:
                 # If we can't create WAL file, continue without it
                 logger.warning(f"Could not create WAL file: {e}")
-                print(f"Warning: Could not create WAL file: {e}")
 
     def append_result(self, result: VideoInspectionResult) -> None:
         """Append a scan result to both WAL and results files"""
@@ -369,7 +368,6 @@ class WriteAheadLog:
             except Exception as e:
                 # If we can't write to WAL file, continue without it
                 logger.warning(f"Could not update WAL file: {e}")
-                print(f"Warning: Could not update WAL file: {e}")
 
     def _update_results_file(self, result: VideoInspectionResult) -> None:
         """Update the durable results file with a new result"""
@@ -439,7 +437,6 @@ class WriteAheadLog:
                 logger.info(f"Removed WAL file: {self.wal_path}")
         except Exception as e:
             logger.warning(f"Could not remove WAL file: {e}")
-            print(f"Warning: Could not remove WAL file: {e}")
 
         # Keep the results file as it's a durable record
         # Only remove it if explicitly requested
@@ -941,7 +938,6 @@ def inspect_video_files_cli(
 
                 except Exception as e:
                     logger.exception(f"Error processing file: {e}")
-                    print(f"\nError processing file: {e}")
                     processed_count += 1
 
                     # Update progress reporter for error case
@@ -1028,7 +1024,6 @@ def inspect_video_files_cli(
 
                     except Exception as e:
                         logger.exception(f"Error in deep scan: {e}")
-                        print(f"\nError in deep scan: {e}")
                         processed_deep += 1
 
                         # Update progress reporter for deep scan error
@@ -1129,6 +1124,5 @@ def inspect_video_files_cli(
             print(f"\nDetailed results saved to: {output_path}")
         except Exception as e:
             logger.exception(f"Could not save JSON results: {e}")
-            print(f"Warning: Could not save JSON results: {e}")
 
     logger.info("Video inspection process completed")
