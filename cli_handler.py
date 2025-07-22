@@ -306,8 +306,8 @@ def main_command(
         raise typer.Exit(130) from None  # Standard exit code for Ctrl+C
     except Exception as e:
         logger.critical(f"Unexpected error: {e}", exc_info=True)
-        logging.exception(f"Unexpected error: {e}")
-        raise typer.Exit(1)
+        logging.exception("Unexpected error")
+        raise typer.Exit(1) from e
     finally:
         # Restore stdout if it was redirected
         if hasattr(sys.stdout, "close") and sys.stdout != sys.__stdout__:
@@ -353,9 +353,9 @@ def list_video_files(
                 typer.echo(f"  {i:3d}: {rel_path} ({size_mb:.1f} MB)")
                 logger.debug(f"Video file {i}: {rel_path} ({size_mb:.1f} MB)")
 
-    except Exception as e:
-        logger.exception(f"Error listing video files: {e}")
-        logging.exception(f"Error listing video files: {e}")
+    except Exception:
+        logger.exception("Error listing video files")
+        logging.exception("Error listing video files")
         sys.exit(1)
 
 
@@ -466,14 +466,14 @@ def trakt(
                 logger.info(f"Saving sync results to: {output}")
 
                 try:
-                    with open(output_path, "w", encoding="utf-8") as f:
+                    with output_path.open("w", encoding="utf-8") as f:
                         json.dump(results, f, indent=2)
 
                     if verbose:
                         typer.echo(f"\nSync results saved to: {output}")
 
                 except Exception as e:
-                    logger.exception(f"Failed to save results: {e}")
+                    logger.exception("Failed to save results")
                     typer.echo(f"Warning: Could not save results to {output}: {e}")
 
             # Exit with appropriate code

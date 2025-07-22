@@ -198,7 +198,9 @@ class TraktAPI:
 
                             # When year is provided, only include exact year matches
                             if year is not None and trakt_item.year != year:
-                                logger.debug(f"Skipping movie with different year: {trakt_item.title} ({trakt_item.year}) != {year}")
+                                logger.debug(
+                                    f"Skipping movie with different year: {trakt_item.title} ({trakt_item.year}) != {year}"
+                                )
                                 continue
 
                             trakt_items.append(trakt_item)
@@ -255,7 +257,9 @@ class TraktAPI:
 
                             # When year is provided, only include exact year matches
                             if year is not None and trakt_item.year != year:
-                                logger.debug(f"Skipping show with different year: {trakt_item.title} ({trakt_item.year}) != {year}")
+                                logger.debug(
+                                    f"Skipping show with different year: {trakt_item.title} ({trakt_item.year}) != {year}"
+                                )
                                 continue
 
                             trakt_items.append(trakt_item)
@@ -621,15 +625,15 @@ def sync_to_trakt_watchlist(
     # Initialize API client
     try:
         api = TraktAPI(access_token, client_id)
-    except Exception as e:
-        logger.exception(f"Failed to initialize Trakt API: {e}")
+    except Exception:
+        logger.exception("Failed to initialize Trakt API")
         raise
 
     # Process scan file
     try:
         media_items = process_scan_file(scan_file)
-    except Exception as e:
-        logger.exception(f"Failed to process scan file: {e}")
+    except Exception:
+        logger.exception("Failed to process scan file")
         raise
 
     if not media_items:
@@ -742,7 +746,7 @@ def sync_to_trakt_watchlist(
                 )
 
         except Exception as e:
-            logger.exception(f"Error processing {media_item.title}: {e}")
+            logger.exception(f"Error processing {media_item.title}")
             summary["failed"] += 1
             if verbose:
                 print(f"    ❌ Error: {e}")

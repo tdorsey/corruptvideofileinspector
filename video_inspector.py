@@ -5,7 +5,6 @@ Video inspection functionality using FFmpeg with hybrid detection mode
 import hashlib
 import json
 import logging
-import os
 import subprocess
 import tempfile
 import threading
@@ -45,8 +44,9 @@ class VideoFile:
 
     def __post_init__(self) -> None:
         """Initialize file size if file exists."""
-        if os.path.exists(self.filename):
-            self.size = os.path.getsize(self.filename)
+        file_path = Path(self.filename)
+        if file_path.exists():
+            self.size = file_path.stat().st_size
             logger.debug(f"VideoFile created: {self.filename} ({self.size} bytes)")
 
 
