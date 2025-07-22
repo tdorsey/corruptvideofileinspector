@@ -41,4 +41,4 @@ RUN mkdir -p /app/videos /app/output
 ENV PYTHONPATH=/app
 
 # Default command
-CMD ["python3", "CorruptVideoInspector.py", "--help"]
+CMD ["python3", "cli_handler.py", "--help"]
