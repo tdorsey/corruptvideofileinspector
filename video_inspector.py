@@ -267,7 +267,6 @@ class WriteAheadLog:
             'wal_file': str(self.wal_path),
             'last_processed': self.results[-1].timestamp if self.results else None
         }
-        }
 
 
 def get_ffmpeg_command() -> Optional[str]:
