@@ -134,11 +134,46 @@ This project uses Docker Compose profiles:
 - **Resume functionality for interrupted scans using Write-Ahead Log (WAL)**
 - **Signal-based progress reporting (SIGUSR1, SIGUSR2, SIGTERM)**
 - **Durable result files for persistent scan history**
+- **Configurable logging with multiple output options**
 - Recursive directory scanning
 - File extension filtering
 - Progress tracking
 - Hybrid scan mode (quick + deep scan for suspicious files)
 - Comprehensive integration testing
+
+### Logging Configuration
+
+The Corrupt Video Inspector includes robust logging capabilities that can be configured via environment variables:
+
+**Environment Variables:**
+- `CORRUPT_VIDEO_INSPECTOR_LOG_LEVEL`: Set log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`)
+- `CORRUPT_VIDEO_INSPECTOR_LOG_FILE`: Set log file path for persistent logging
+- `CORRUPT_VIDEO_INSPECTOR_LOG_FORMAT`: Set custom log format
+
+**Examples:**
+```bash
+# Enable debug logging
+export CORRUPT_VIDEO_INSPECTOR_LOG_LEVEL=DEBUG
+python3 cli_handler.py /path/to/videos
+
+# Log to file
+export CORRUPT_VIDEO_INSPECTOR_LOG_FILE=/var/log/video-inspector.log
+python3 cli_handler.py /path/to/videos
+
+# Custom log format (simple)
+export CORRUPT_VIDEO_INSPECTOR_LOG_FORMAT='%(levelname)s: %(message)s'
+python3 cli_handler.py /path/to/videos
+
+# Combined configuration
+export CORRUPT_VIDEO_INSPECTOR_LOG_LEVEL=INFO
+export CORRUPT_VIDEO_INSPECTOR_LOG_FILE=/tmp/scan.log
+python3 cli_handler.py --verbose /path/to/videos
+```
+
+**Default Behavior:**
+- Console output goes to `stderr` to avoid interfering with scan results
+- Log level defaults to `INFO`, or `DEBUG` with `--verbose`, or `ERROR` with `--quiet`
+- Messages are logged alongside existing console output for optimal user experience
 
 ### Signal-Based Progress Reporting
 

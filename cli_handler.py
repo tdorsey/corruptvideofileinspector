@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional, List
 
 import typer
 
@@ -26,23 +26,58 @@ def setup_logging(verbose: bool = False, quiet: bool = False) -> None:
     """
     Setup comprehensive logging configuration with appropriate log levels.
 
+    Supports configuration via environment variables:
+    - CORRUPT_VIDEO_INSPECTOR_LOG_LEVEL: Set log level (DEBUG, INFO, WARNING, ERROR)
+    - CORRUPT_VIDEO_INSPECTOR_LOG_FILE: Set log file path
+    - CORRUPT_VIDEO_INSPECTOR_LOG_FORMAT: Set custom log format
+
     Args:
         verbose: Enable debug-level logging
         quiet: Suppress all but error-level logging
     """
-    # Determine log level based on verbosity settings
-    if quiet:
+    # Check environment variables for log configuration
+    env_log_level = os.getenv("CORRUPT_VIDEO_INSPECTOR_LOG_LEVEL", "").upper()
+    env_log_file = os.getenv("CORRUPT_VIDEO_INSPECTOR_LOG_FILE")
+    env_log_format = os.getenv("CORRUPT_VIDEO_INSPECTOR_LOG_FORMAT")
+
+    # Determine log level based on environment, then command line args
+    if env_log_level in ["DEBUG", "INFO", "WARNING", "ERROR"]:
+        log_level = getattr(logging, env_log_level)
+    elif quiet:
         log_level = logging.ERROR
     elif verbose:
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
 
-    # Configure root logger with consistent format
+    # Set log format (environment variable overrides default)
+    log_format = env_log_format or "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    date_format = "%Y-%m-%d %H:%M:%S"
+
+    # Configure handlers
+    handlers = []
+
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stderr)
+    console_handler.setFormatter(logging.Formatter(log_format, date_format))
+    handlers.append(console_handler)
+
+    # File handler if specified
+    if env_log_file:
+        try:
+            file_handler = logging.FileHandler(env_log_file)
+            file_handler.setFormatter(logging.Formatter(log_format, date_format))
+            handlers.append(file_handler)
+            logger.info(f"Logging to file: {env_log_file}")
+        except Exception as e:
+            logger.warning(f"Could not create log file {env_log_file}: {e}")
+
+    # Configure root logger
     logging.basicConfig(
         level=log_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        format=log_format,
+        datefmt=date_format,
+        handlers=handlers,
         force=True,  # Override any existing configuration
     )
 
@@ -50,7 +85,14 @@ def setup_logging(verbose: bool = False, quiet: bool = False) -> None:
     logging.getLogger("video_inspector").setLevel(log_level)
     logging.getLogger("utils").setLevel(log_level)
 
+    # Log configuration details
     logger.info(f"Logging initialized with level: {logging.getLevelName(log_level)}")
+    if env_log_level:
+        logger.info(f"Log level set via environment variable: {env_log_level}")
+    if env_log_file:
+        logger.info(f"Log file configured via environment variable: {env_log_file}")
+    if env_log_format:
+        logger.info(f"Log format set via environment variable")
 
 
 def validate_directory(directory: str) -> Path:

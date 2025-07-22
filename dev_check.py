@@ -5,19 +5,32 @@ This checks for obvious issues without requiring external tools.
 """
 
 import ast
+import logging
 from pathlib import Path
+
+# Configure logging for development check utility
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 
 def check_python_syntax(file_path):
     """Check if a Python file has valid syntax."""
+    logger.debug(f"Checking syntax for {file_path}")
     try:
         with open(file_path, encoding="utf-8") as f:
             source = f.read()
         ast.parse(source)
+        logger.debug(f"Syntax check passed for {file_path}")
         return True, None
     except SyntaxError as e:
+        logger.warning(f"Syntax error in {file_path}: {e}")
         return False, str(e)
     except Exception as e:
+        logger.error(f"Error checking syntax for {file_path}: {e}")
         return False, str(e)
 
 
@@ -55,17 +68,21 @@ def check_basic_imports(file_path):
 
 def main():
     """Run basic code quality checks."""
+    logger.info("Starting basic code quality checks")
     print("Running basic code quality checks...")
     print("=" * 50)
 
     py_files = list(Path().glob("*.py"))
     if not py_files:
+        logger.warning("No Python files found in current directory")
         print("No Python files found in current directory")
         return
 
+    logger.info(f"Found {len(py_files)} Python files to check")
     all_good = True
 
     for py_file in py_files:
+        logger.debug(f"Checking file: {py_file}")
         print(f"\nChecking {py_file}:")
 
         # Syntax check
@@ -98,10 +115,13 @@ def main():
 
     print("\n" + "=" * 50)
     if all_good:
+        logger.info("All basic checks passed")
         print("✓ Basic checks passed!")
     else:
+        logger.warning("Some issues found during basic checks")
         print("⚠ Some issues found - consider running proper linting tools")
 
+    logger.info("Development check completed")
     print("\nTo install proper development tools:")
     print("  pip install -e '.[dev]'")
     print("\nThen run:")
