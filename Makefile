@@ -1,20 +1,22 @@
-.PHONY: help install install-dev format lint type check test test-integration clean build docker-build docker-run
+.PHONY: help install install-dev format lint type check test test-integration clean build docker-build docker-run pre-commit-install pre-commit-run
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  install          Install the package"
-	@echo "  install-dev      Install package with development dependencies"
-	@echo "  format           Format code with black"
-	@echo "  lint             Lint code with ruff"
-	@echo "  type             Type check with mypy"
-	@echo "  check            Run all checks (format, lint, type)"
-	@echo "  test             Run integration tests"
-	@echo "  test-integration Run integration tests (alias for test)"
-	@echo "  clean            Clean build artifacts"
-	@echo "  build            Build the package"
-	@echo "  docker-build     Build Docker image"
-	@echo "  docker-run       Run Docker container"
+	@echo "  install             Install the package"
+	@echo "  install-dev         Install package with development dependencies"
+	@echo "  pre-commit-install  Install pre-commit hooks"
+	@echo "  pre-commit-run      Run pre-commit on all files"
+	@echo "  format              Format code with black"
+	@echo "  lint                Lint code with ruff"
+	@echo "  type                Type check with mypy"
+	@echo "  check               Run all checks (format, lint, type)"
+	@echo "  test                Run integration tests"
+	@echo "  test-integration    Run integration tests (alias for test)"
+	@echo "  clean               Clean build artifacts"
+	@echo "  build               Build the package"
+	@echo "  docker-build        Build Docker image"
+	@echo "  docker-run          Run Docker container"
 
 # Installation
 install:
@@ -22,6 +24,15 @@ install:
 
 install-dev:
 	pip install -e ".[dev]"
+	@echo "Now run 'make pre-commit-install' to set up pre-commit hooks"
+
+# Pre-commit hooks
+pre-commit-install:
+	pre-commit install
+	@echo "Pre-commit hooks installed successfully!"
+
+pre-commit-run:
+	pre-commit run --all-files
 
 # Code quality
 format:
