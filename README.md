@@ -131,10 +131,11 @@ This project uses Docker Compose profiles:
 - Multi-threaded video processing
 - FFmpeg-based corruption detection
 - JSON output with detailed results
-- Resume functionality for interrupted scans
+- **Resume functionality for interrupted scans using Write-Ahead Log (WAL)**
 - Recursive directory scanning
 - File extension filtering
 - Progress tracking
+- Hybrid scan mode (quick + deep scan for suspicious files)
 - Comprehensive integration testing
 
 ### Output
@@ -147,6 +148,28 @@ Results are saved to the `output` directory:
 ### Supported Formats
 
 - MP4, AVI, MKV, MOV, WMV, FLV, WebM, M4V, MPG, MPEG, 3GP, ASF
+
+### Resume Functionality
+
+The tool automatically saves progress during scans using a Write-Ahead Log (WAL) file. If a scan is interrupted:
+
+- **Automatic Resume**: Simply re-run the same command - the tool will detect the incomplete scan and resume from where it left off
+- **Progress Recovery**: All previously processed files are skipped, saving time on large directories
+- **Disable Resume**: Use `--no-resume` flag to start fresh and ignore any existing progress
+- **WAL Cleanup**: The WAL file is automatically deleted after successful completion
+
+**Example resume scenario:**
+```bash
+# Start a scan that gets interrupted
+python3 cli_handler.py /large/video/directory
+
+# Resume the scan automatically
+python3 cli_handler.py /large/video/directory
+# Output: "Resuming scan from previous session... Already processed: 1247 files"
+
+# Or start fresh (ignoring previous progress)
+python3 cli_handler.py --no-resume /large/video/directory
+```
 
 ## Project Structure
 
