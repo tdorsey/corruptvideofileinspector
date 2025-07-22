@@ -19,7 +19,7 @@ services:
     ]
 
 volumes:
- video_data:
+  video_data:
     driver: local
     driver_opts:
       type: none
