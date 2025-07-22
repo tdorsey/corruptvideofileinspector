@@ -19,6 +19,12 @@ RUN apt-get update && apt-get install -y \
 RUN useradd -m -u 1000 inspector && \
     chown -R inspector:inspector /app
 
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt .
+
+# Install Python dependencies (with SSL workaround for CI environments)
+RUN pip3 install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --no-cache-dir -r requirements.txt
+
 # Copy the application files
 COPY . .
 
@@ -35,4 +41,4 @@ RUN mkdir -p /app/videos /app/output
 ENV PYTHONPATH=/app
 
 # Default command
-CMD ["python3", "CorruptVideoInspector.py", "--help"]
+CMD ["python3", "cli_handler.py", "--help"]

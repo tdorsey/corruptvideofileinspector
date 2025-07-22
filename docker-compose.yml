@@ -1,4 +1,5 @@
 services:
+  # Production service (default profile)
   video:
     build: .
     container_name: video
@@ -18,8 +19,31 @@ services:
       "/app/videos"
     ]
 
+  # Development service (dev profile)
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: video-dev
+    profiles:
+      - dev
+    volumes:
+      # Bind mount source code for development
+      - .:/app
+      # Persistent volumes for videos and output
+      - dev_videos:/app/videos
+      - dev_output:/app/output
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    working_dir: /app
+    command: ["tail", "-f", "/dev/null"]  # Keep container running for development
+    stdin_open: true
+    tty: true
+
 volumes:
- video_data:
+  # Production volumes
+  video_data:
     driver: local
     driver_opts:
       type: none
@@ -31,4 +55,10 @@ volumes:
       type: none
       o: bind
       device: /home/ubuntu/video/output
+  
+  # Development volumes
+  dev_videos:
+    driver: local
+  dev_output:
+    driver: local
 

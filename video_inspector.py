@@ -267,6 +267,7 @@ class WriteAheadLog:
             'wal_file': str(self.wal_path),
             'last_processed': self.results[-1].timestamp if self.results else None
         }
+        }
 
 
 def get_ffmpeg_command() -> Optional[str]:
@@ -763,9 +764,8 @@ def inspect_video_files_cli(
                 logger.debug(f"Submitted {len(future_to_index)} deep scan tasks")
 
                 # Process deep scan results
-                for future in future_to_index:
+                for future, original_index in future_to_index.items():
                     try:
-                        deep_result = future.result()
                         result_index = future_to_index[future]
 
                         # Update the original result with deep scan findings
