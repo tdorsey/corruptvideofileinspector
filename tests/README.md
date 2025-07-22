@@ -1,133 +1,145 @@
-# Integration Testing for Corrupt Video Inspector
+# Testing Suite for Corrupt Video Inspector
 
-This directory contains comprehensive integration tests for the Corrupt Video Inspector application.
+This directory contains comprehensive testing coverage for the Corrupt Video Inspector project, including both unit tests and integration tests.
 
-## Overview
+## Test Types
 
-The integration tests validate the end-to-end functionality of the application, ensuring that all components work together correctly. The tests are built using Python's built-in `unittest` framework for maximum compatibility.
+### Unit Tests
+Fast, isolated tests that verify individual functions and components:
 
-## Test Structure
+- **`test_utils.py`** - Tests for utility functions in `utils.py`
+  - `count_all_video_files()` - File counting with various options
+  - `format_file_size()` - Human-readable file size formatting  
+  - `get_video_extensions()` - Supported video file extensions
 
-```
-tests/
-├── __init__.py                        # Test package initialization
-├── run_tests.py                       # Test runner script
-├── test_utils_integration.py          # Tests for utils module
-├── test_video_inspector_integration.py # Tests for video_inspector module
-├── test_cli_integration.py            # Tests for CLI functionality
-├── test_end_to_end_integration.py     # End-to-end workflow tests
-└── README.md                          # This file
-```
+- **`test_video_inspector.py`** - Tests for core video inspection functionality in `video_inspector.py`
+  - `get_ffmpeg_command()` - FFmpeg command detection
+  - `get_all_video_object_files()` - Video file discovery
+  - `inspect_single_video_quick()` - Quick video inspection
+  - `inspect_single_video_deep()` - Deep video inspection
+  - `inspect_single_video()` - Inspection mode wrapper
+  - `inspect_video_files_cli()` - CLI inspection interface
+  - Classes: `VideoFile`, `VideoInspectionResult`, `ScanMode`
 
-## Test Categories
+- **`test_cli_handler.py`** - Tests for command-line interface in `cli_handler.py`
+  - `setup_logging()` - Logging configuration
+  - `validate_directory()` - Directory validation
+  - `parse_cli_arguments()` - Argument parsing
+  - `validate_arguments()` - Argument validation
+  - `list_video_files()` - File listing functionality
+  - `check_system_requirements()` - System dependency checks
+  - `main()` - Main CLI entry point
 
-### 1. Utils Integration Tests (`test_utils_integration.py`)
-- File counting functionality
-- File size formatting
-- Video extension handling
-- Directory scanning (recursive/non-recursive)
-- Case-insensitive file matching
-- Error handling for invalid directories
+### Integration Tests
+End-to-end tests that validate complete workflows and component interactions:
 
-### 2. Video Inspector Integration Tests (`test_video_inspector_integration.py`)
-- VideoFile object creation and management
-- VideoInspectionResult object functionality
-- Video file discovery
-- FFmpeg command detection
-- Scan mode enumeration
-- JSON serialization/deserialization
+- **`test_utils_integration.py`** - Utils module integration tests
+- **`test_video_inspector_integration.py`** - Video inspector integration tests
+- **`test_cli_integration.py`** - CLI functionality integration tests
+- **`test_end_to_end_integration.py`** - Complete workflow integration tests
 
-### 3. CLI Integration Tests (`test_cli_integration.py`)
-- CLI function validation
-- Logging configuration
-- Directory validation logic
-- Integration between CLI and core modules
-- Argument validation patterns
+## Test Coverage
 
-### 4. End-to-End Integration Tests (`test_end_to_end_integration.py`)
-- Complete video discovery workflow
-- Multi-module integration
-- Large directory structure handling
-- Recursive vs non-recursive consistency
-- Extension filtering workflows
-- Performance simulation tests
+The test suite provides comprehensive coverage including:
+
+- **Normal operation cases** - Testing expected functionality
+- **Edge cases** - Boundary conditions and unusual inputs
+- **Error conditions** - Exception handling and error scenarios
+- **Input validation** - Parameter checking and validation
+- **External dependency mocking** - Mocking ffmpeg calls and file system operations
+- **End-to-end workflows** - Complete application scenarios
 
 ## Running Tests
 
 ### Run All Tests
 ```bash
-# Using make (recommended)
+# Using the test runner (recommended)
+python3 tests/run_tests.py
+
+# Using make (if available)
 make test
 
-# Or directly
-python3 tests/run_tests.py
+# Using unittest directly
+python3 -m unittest discover tests/ -v
 ```
 
-### Run Specific Test Module
+### Run Unit Tests Only
 ```bash
-# Run utils tests only
-python3 tests/run_tests.py utils_integration
+# Test utilities
+python3 -m unittest tests.test_utils -v
 
-# Run video inspector tests only
-python3 tests/run_tests.py video_inspector_integration
+# Test video inspector
+python3 -m unittest tests.test_video_inspector -v
 
-# Run CLI tests only
-python3 tests/run_tests.py cli_integration
-
-# Run end-to-end tests only
-python3 tests/run_tests.py end_to_end_integration
+# Test CLI handler
+python3 -m unittest tests.test_cli_handler -v
 ```
 
-### Run Individual Test Methods
+### Run Integration Tests Only
 ```bash
-# Run specific test class
+# Run utils integration tests
+python3 tests/run_tests.py test_utils_integration
+
+# Run video inspector integration tests
+python3 tests/run_tests.py test_video_inspector_integration
+
+# Run CLI integration tests
+python3 tests/run_tests.py test_cli_integration
+
+# Run end-to-end integration tests
+python3 tests/run_tests.py test_end_to_end_integration
+```
+
+### Run Specific Test Classes
+```bash
+# Test video file counting (unit test)
+python3 -m unittest tests.test_utils.TestCountAllVideoFiles -v
+
+# Test FFmpeg detection (unit test)
+python3 -m unittest tests.test_video_inspector.TestGetFfmpegCommand -v
+
+# Test argument parsing (unit test)
+python3 -m unittest tests.test_cli_handler.TestParseCliArguments -v
+
+# Test utils integration
 python3 -m unittest tests.test_utils_integration.TestUtilsIntegration -v
-
-# Run specific test method
-python3 -m unittest tests.test_utils_integration.TestUtilsIntegration.test_count_video_files_with_video_files -v
 ```
 
-## Test Features
+## Test Design Principles
 
-### Automatic Test Discovery
-The test runner automatically discovers all `test_*.py` files in the tests directory and runs them.
+### Isolation
+- Each test is independent and doesn't rely on other tests
+- Test fixtures are created and cleaned up for each test
+- Temporary files and directories are used to avoid side effects
+
+### Mocking
+- External dependencies (subprocess calls, file system operations) are mocked
+- Mocking is used strategically to test logic without external dependencies
+- Real file system operations are tested when appropriate for integration testing
 
 ### Comprehensive Coverage
-- **37 integration tests** covering all major functionality
-- Tests for both success and error scenarios
-- Edge cases and boundary conditions
-- Large-scale performance simulations
+- Tests cover both success and failure scenarios
+- Edge cases and boundary conditions are thoroughly tested
+- Error handling and exception scenarios are validated
 
-### Isolated Test Environment
-- Each test uses temporary directories and files
-- Automatic cleanup after each test
-- No dependencies on external files or services
-- No modification of existing project files
+## Test Statistics
 
-### Real-World Scenarios
-- Tests use realistic directory structures
-- Multiple file types and extensions
-- Nested directory hierarchies
-- Large-scale directory simulations
-
-## Test Data
-
-Tests create their own temporary test data including:
-- Video files with various extensions (.mp4, .avi, .mkv, .mov, etc.)
-- Non-video files for filtering tests
-- Nested directory structures
-- Empty directories
-- Files with different sizes and content
+- **Unit Tests**: 71 tests across 3 test modules
+- **Integration Tests**: 37 tests across 4 test modules
+- **Total Tests**: 108+ comprehensive tests
+- **Functions Tested**: All public functions and classes
+- **Code Coverage**: Comprehensive coverage of all functionality
 
 ## Dependencies
 
-The integration tests use only Python standard library modules:
-- `unittest` - Test framework
+The tests use only Python standard library modules:
+- `unittest` - Core testing framework
+- `unittest.mock` - Mocking functionality
 - `tempfile` - Temporary file/directory creation
-- `os` / `pathlib` - File system operations
-- `sys` - System-specific parameters
+- `pathlib` / `os` - Path and file operations
+- Standard library modules for specific functionality
 
-No external testing dependencies (like pytest) are required, ensuring maximum compatibility.
+No external testing dependencies are required, keeping the test suite lightweight and self-contained.
 
 ## Test Output
 
@@ -137,60 +149,20 @@ The test runner provides:
 - Detailed failure/error reporting
 - Clear indication of test results
 
-Example output:
-```
-============================================================
-INTEGRATION TEST SUMMARY
-============================================================
-Tests run: 37
-Failures: 0
-Errors: 0
-Skipped: 0
-
-All tests passed!
-```
-
 ## Adding New Tests
 
-To add new integration tests:
+### Unit Tests
+Create test files following the pattern `test_*.py` (without `_integration` suffix):
+- Focus on testing individual functions in isolation
+- Use mocking for external dependencies
+- Test edge cases and error conditions
 
-1. Create a new test file following the naming pattern `test_*_integration.py`
-2. Import required modules and set up the test class
-3. Use `setUp()` and `tearDown()` methods for test isolation
-4. Write test methods following the pattern `test_*`
-5. Use descriptive test names and docstrings
-6. Clean up any resources in `tearDown()`
-
-Example test structure:
-```python
-import unittest
-import tempfile
-import os
-
-class TestNewFeatureIntegration(unittest.TestCase):
-    def setUp(self):
-        """Set up test environment"""
-        self.test_dir = tempfile.mkdtemp()
-        
-    def tearDown(self):
-        """Clean up test environment"""
-        # Clean up code here
-        
-    def test_new_feature_functionality(self):
-        """Test description"""
-        # Test implementation here
-        
-if __name__ == '__main__':
-    unittest.main()
-```
+### Integration Tests  
+Create test files following the pattern `test_*_integration.py`:
+- Test complete workflows and component interactions
+- Use real file system operations where appropriate
+- Test realistic scenarios and data flows
 
 ## Continuous Integration
 
-These tests are designed to run in any Python 3.8+ environment and can be easily integrated into CI/CD pipelines:
-
-```bash
-# In CI script
-make test
-```
-
-The tests will exit with code 0 on success and non-zero on failure, making them suitable for automated testing environments.
+These tests are designed to run in any Python 3.8+ environment and can be easily integrated into CI/CD pipelines. The tests will exit with code 0 on success and non-zero on failure, making them suitable for automated testing environments.
