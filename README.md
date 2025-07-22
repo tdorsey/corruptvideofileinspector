@@ -174,6 +174,40 @@ Estimated Time Remaining: 170.7 seconds
 ============================================================
 ```
 
+### Docker Signal Handling
+
+The Corrupt Video Inspector implements robust signal handling for containerized deployments using **dumb-init** as PID 1 for proper signal propagation and process reaping.
+
+**Key Features:**
+- **dumb-init** ensures signals are properly received by the application process
+- Graceful shutdown handling for `SIGTERM` (sent by `docker stop`)
+- Progress preservation during container termination
+- Proper process cleanup and zombie reaping
+
+**Graceful Container Shutdown:**
+```bash
+# Standard Docker stop (sends SIGTERM, then SIGKILL after timeout)
+docker stop <container_name>
+
+# The application will:
+# 1. Receive SIGTERM via dumb-init
+# 2. Report current progress
+# 3. Finish processing current file
+# 4. Save progress to WAL file for resume
+# 5. Exit gracefully
+```
+
+**Signal Handling in Containers:**
+- Container uses `dumb-init` as PID 1 for proper signal handling
+- Supports progress reporting via `SIGUSR1`, `SIGUSR2` signals
+- Graceful shutdown on `SIGTERM` and `SIGINT` signals
+- Automatic cleanup and state preservation
+
+**Best Practices:**
+- Use `docker stop` instead of `docker kill` for graceful shutdown
+- Allow sufficient stop timeout for file processing completion: `docker stop -t 300 <container>`
+- Resume interrupted scans using the same command after container restart
+
 ### Output
 
 Results are saved to the `output` directory and temporary files:

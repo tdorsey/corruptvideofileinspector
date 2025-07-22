@@ -7,11 +7,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set working directory
 WORKDIR /app
 
-# Update system and install dependencies
+# Update system and install dependencies including dumb-init for proper signal handling
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     ffmpeg \
+    dumb-init \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -39,6 +40,9 @@ RUN mkdir -p /app/videos /app/output
 
 # Set Python path
 ENV PYTHONPATH=/app
+
+# Use dumb-init as PID 1 for proper signal handling and process reaping
+ENTRYPOINT ["dumb-init", "--"]
 
 # Default command
 CMD ["python3", "cli_handler.py", "--help"]
