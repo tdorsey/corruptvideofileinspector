@@ -808,9 +808,6 @@ def inspect_video_files_cli(
             logger.info(
                 f"Resuming scan from previous session with {len(wal.results)} already processed files"
             )
-            print(
-                f"Resuming scan from previous session... Already processed: {len(wal.results)} files"
-            )
             logger.info(f"Resuming scan from WAL with {len(wal.results)} completed files")
         else:
             wal.create_wal_file()
@@ -860,9 +857,6 @@ def inspect_video_files_cli(
 
         logger.info(
             f"Resume: Already processed {processed_count} files, {remaining_files} remaining"
-        )
-        print(
-            f"Resume: Already processed {processed_count} files, {remaining_files} files remaining"
         )
         logger.info(f"Resume: {processed_count} already processed, {remaining_files} remaining")
 
