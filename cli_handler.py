@@ -10,40 +10,96 @@ import typer
 from utils import count_all_video_files
 from video_inspector import get_all_video_object_files, get_ffmpeg_command, inspect_video_files_cli, ScanMode
 
+# Configure module logger
+logger = logging.getLogger(__name__)
 
-def setup_logging(verbose: bool) -> None:
-    """Setup logging configuration based on verbosity level"""
-    log_level = logging.DEBUG if verbose else logging.INFO
+
+def setup_logging(verbose: bool = False, quiet: bool = False) -> None:
+    """
+    Setup comprehensive logging configuration with appropriate log levels.
+    
+    Args:
+        verbose: Enable debug-level logging
+        quiet: Suppress all but error-level logging
+    """
+    # Determine log level based on verbosity settings
+    if quiet:
+        log_level = logging.ERROR
+    elif verbose:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+    
+    # Configure root logger with consistent format
     logging.basicConfig(
         level=log_level,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        force=True  # Override any existing configuration
     )
+    
+    # Set specific loggers to appropriate levels
+    logging.getLogger('video_inspector').setLevel(log_level)
+    logging.getLogger('utils').setLevel(log_level)
+    
+    logger.info(f"Logging initialized with level: {logging.getLevelName(log_level)}")
 
 
 def validate_directory(directory: str) -> Path:
-    """Validate and return Path object for directory"""
+    """
+    Validate and return Path object for directory.
+    
+    Args:
+        directory: Path to directory to validate
+        
+    Returns:
+        Path: Resolved path object
+        
+    Raises:
+        FileNotFoundError: If directory does not exist
+        NotADirectoryError: If path is not a directory
+    """
     path = Path(directory).resolve()
     if not path.exists():
+        logger.error(f"Directory '{path}' does not exist")
         raise FileNotFoundError(f"Directory '{path}' does not exist.")
     if not path.is_dir():
+        logger.error(f"Path '{path}' is not a directory")
         raise NotADirectoryError(f"Path '{path}' is not a directory.")
+    
+    logger.debug(f"Validated directory: {path}")
     return path
 
 
-
 def validate_arguments(verbose: bool, quiet: bool, max_workers: int, json_output: bool, output: Optional[str]) -> None:
-    """Validate argument combinations and values"""
+    """
+    Validate argument combinations and values.
+    
+    Args:
+        verbose: Verbose mode flag
+        quiet: Quiet mode flag
+        max_workers: Number of worker threads
+        json_output: JSON output flag
+        output: Output file path
+        
+    Raises:
+        typer.Exit: If argument combinations are invalid
+    """
     if verbose and quiet:
+        logger.error("Cannot use --verbose and --quiet together")
         typer.echo("Error: Cannot use --verbose and --quiet together", err=True)
         raise typer.Exit(1)
     
     if max_workers <= 0:
+        logger.error("Max workers must be a positive integer")
         typer.echo("Error: Max workers must be a positive integer", err=True)
         raise typer.Exit(1)
     
     if output and not json_output:
+        logger.warning("--output specified without --json, enabling JSON output")
         typer.echo("Warning: --output specified without --json, enabling JSON output")
+    
+    logger.debug(f"Arguments validated successfully")
 
 
 # Create the typer app
@@ -78,7 +134,23 @@ def main_command(
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress all output except errors"),
     version: bool = typer.Option(False, "--version", help="Show version and exit")
 ) -> None:
-    """Main CLI command for Corrupt Video Inspector"""
+    """
+    Main CLI command for Corrupt Video Inspector.
+    
+    Args:
+        directory: Directory to scan for video files
+        mode: Scan mode (quick, deep, or hybrid)
+        verbose: Enable verbose output
+        no_resume: Disable resume functionality
+        list_videos: Only list video files without scanning
+        json_output: Generate JSON output
+        output: Custom output file path
+        recursive: Scan subdirectories recursively
+        extensions: Video file extensions to scan
+        max_workers: Number of worker threads
+        quiet: Suppress all output except errors
+        version: Show version and exit
+    """
     try:
         # Handle version
         if version:
@@ -87,17 +159,20 @@ def main_command(
         
         # Validate mode
         if mode not in ['quick', 'deep', 'hybrid']:
+            logger.error(f"Invalid mode: {mode}")
             typer.echo(f"Error: Mode must be one of: quick, deep, hybrid", err=True)
             raise typer.Exit(1)
         
         # Setup logging
-        setup_logging(verbose and not quiet)
+        setup_logging(verbose and not quiet, quiet)
+        logger.info("Starting Corrupt Video Inspector")
         
         # Validate arguments
         validate_arguments(verbose, quiet, max_workers, json_output, output)
         
         # Check if directory was provided
         if not directory:
+            logger.error("Directory argument is required")
             typer.echo("Error: Directory argument is required", err=True)
             raise typer.Exit(1)
         
@@ -105,26 +180,35 @@ def main_command(
         try:
             directory_path = validate_directory(directory)
         except (FileNotFoundError, NotADirectoryError) as e:
+            logger.error(f"Directory validation failed: {e}")
             typer.echo(f"Error: {e}", err=True)
             raise typer.Exit(1)
         
         # Handle quiet mode
         if quiet:
+            logger.debug("Quiet mode enabled, redirecting stdout")
             # Redirect stdout to devnull, keep stderr for errors
             sys.stdout = open(os.devnull, 'w')
         
         # Handle list-videos option
         if list_videos:
+            logger.info("Listing video files only")
             list_video_files(directory_path, recursive, extensions)
             return
         
         # Check if directory has video files
+        logger.debug("Counting video files in directory")
         total_videos = count_all_video_files(str(directory_path))
         if total_videos == 0:
+            logger.warning(f"No video files found in directory: {directory_path}")
             typer.echo(f"No video files found in directory: {directory_path}")
             if extensions:
-                typer.echo(f"Searched for extensions: {', '.join(extensions)}")
+                extension_list = ', '.join(extensions)
+                logger.info(f"Searched for extensions: {extension_list}")
+                typer.echo(f"Searched for extensions: {extension_list}")
             raise typer.Exit(1)
+        
+        logger.info(f"Found {total_videos} video files to process")
         
         # Check system requirements
         ffmpeg_cmd = check_system_requirements()
@@ -148,6 +232,8 @@ def main_command(
             if extensions:
                 typer.echo(f'File extensions: {", ".join(extensions)}')
         
+        logger.info(f"Starting scan with mode: {mode}, workers: {max_workers}")
+        
         # Convert mode string to enum
         scan_mode = ScanMode(mode)
         
@@ -168,16 +254,21 @@ def main_command(
             scan_mode=scan_mode
         )
         
+        logger.info("Video inspection completed successfully")
+        
     except typer.Exit as e:
         # Re-raise typer exits without logging
         raise e
     except (ValueError) as e:
+        logger.error(f"Configuration error: {e}")
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)
     except KeyboardInterrupt:
+        logger.warning("Scan interrupted by user")
         typer.echo("\nScan interrupted by user", err=True)
         raise typer.Exit(130)  # Standard exit code for Ctrl+C
     except Exception as e:
+        logger.critical(f"Unexpected error: {e}", exc_info=True)
         logging.error(f"Unexpected error: {e}")
         raise typer.Exit(1)
     finally:
@@ -188,36 +279,61 @@ def main_command(
 
 
 def list_video_files(directory: Path, recursive: bool = False, extensions: Optional[List[str]] = None) -> None:
-    """List all video files in directory"""
+    """
+    List all video files in directory.
+    
+    Args:
+        directory: Path to directory to scan
+        recursive: Whether to scan subdirectories recursively
+        extensions: List of file extensions to include
+    """
+    logger.info(f'Scanning directory: {directory}')
     typer.echo(f'Scanning directory: {directory}')
     if recursive:
+        logger.info('Including subdirectories in scan')
         typer.echo('(including subdirectories)')
     
     try:
         video_files = get_all_video_object_files(str(directory), recursive, extensions)
         
         total_count = len(video_files)
+        logger.info(f"Found {total_count} video files")
         
         if total_count == 0:
+            logger.warning('No video files found in the specified directory')
             typer.echo('No video files found in the specified directory.')
             if extensions:
-                typer.echo(f'Searched for extensions: {", ".join(extensions)}')
+                extension_list = ", ".join(extensions)
+                logger.info(f'Searched for extensions: {extension_list}')
+                typer.echo(f'Searched for extensions: {extension_list}')
         else:
             typer.echo(f'\nFound {total_count} video files:')
             for i, video in enumerate(video_files, 1):
                 rel_path = Path(video.filename).relative_to(directory)
                 size_mb = Path(video.filename).stat().st_size / (1024 * 1024)
                 typer.echo(f'  {i:3d}: {rel_path} ({size_mb:.1f} MB)')
+                logger.debug(f'Video file {i}: {rel_path} ({size_mb:.1f} MB)')
                 
     except Exception as e:
+        logger.error(f"Error listing video files: {e}")
         logging.error(f"Error listing video files: {e}")
         sys.exit(1)
 
 
 def check_system_requirements() -> str:
-    """Check system requirements and return ffmpeg command"""
+    """
+    Check system requirements and return ffmpeg command.
+    
+    Returns:
+        str: Path to ffmpeg command
+        
+    Raises:
+        typer.Exit: If ffmpeg is not found
+    """
+    logger.debug("Checking for ffmpeg installation")
     ffmpeg_cmd = get_ffmpeg_command()
     if not ffmpeg_cmd:
+        logger.error("ffmpeg is required but not found on this system")
         typer.echo("\nError: ffmpeg is required but not found on this system.")
         typer.echo("Please install ffmpeg:")
         typer.echo("  - On Ubuntu/Debian: sudo apt install ffmpeg")
@@ -226,11 +342,17 @@ def check_system_requirements() -> str:
         typer.echo("  - On Windows: Download from https://ffmpeg.org/download.html")
         raise typer.Exit(1)
     
+    logger.info(f"Found ffmpeg at: {ffmpeg_cmd}")
     return ffmpeg_cmd
 
 
-def main():
-    """Main CLI entry point"""
+def main() -> None:
+    """
+    Main CLI entry point.
+    
+    Raises:
+        SystemExit: On various error conditions or user interruption
+    """
     app()
 
 
