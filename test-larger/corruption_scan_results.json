@@ -1,0 +1,95 @@
+{
+  "scan_summary": {
+    "total_files": 8,
+    "corrupt_files": 8,
+    "healthy_files": 0,
+    "deep_scans_needed": 0,
+    "scan_mode": "hybrid",
+    "scan_time": 0.19698596000671387,
+    "directory": "/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/test-larger",
+    "timestamp": "2025-07-22 00:34:12",
+    "resumed_scan": true
+  },
+  "results": [
+    {
+      "filename": "/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/test-larger/sample1.mp4",
+      "is_corrupt": true,
+      "error_message": "Video file appears to be corrupt (quick scan)",
+      "inspection_time": 0.08,
+      "file_size": 1024,
+      "scan_mode": "quick",
+      "needs_deep_scan": false,
+      "deep_scan_completed": false
+    },
+    {
+      "filename": "/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/test-larger/sample2.avi",
+      "is_corrupt": true,
+      "error_message": "Video file appears to be corrupt (quick scan)",
+      "inspection_time": 0.09,
+      "file_size": 1024,
+      "scan_mode": "quick",
+      "needs_deep_scan": false,
+      "deep_scan_completed": false
+    },
+    {
+      "filename": "/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/test-larger/sample3.mkv",
+      "is_corrupt": true,
+      "error_message": "Video file appears to be corrupt (quick scan)",
+      "inspection_time": 0.1,
+      "file_size": 1024,
+      "scan_mode": "quick",
+      "needs_deep_scan": false,
+      "deep_scan_completed": false
+    },
+    {
+      "filename": "/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/test-larger/sample4.mp4",
+      "is_corrupt": true,
+      "error_message": "Video file appears to be corrupt (quick scan)",
+      "inspection_time": 0.1169888973236084,
+      "file_size": 0,
+      "scan_mode": "quick",
+      "needs_deep_scan": false,
+      "deep_scan_completed": false
+    },
+    {
+      "filename": "/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/test-larger/sample5.mp4",
+      "is_corrupt": true,
+      "error_message": "Video file appears to be corrupt (quick scan)",
+      "inspection_time": 0.11701226234436035,
+      "file_size": 0,
+      "scan_mode": "quick",
+      "needs_deep_scan": false,
+      "deep_scan_completed": false
+    },
+    {
+      "filename": "/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/test-larger/sample6.mp4",
+      "is_corrupt": true,
+      "error_message": "Video file appears to be corrupt (quick scan)",
+      "inspection_time": 0.11608576774597168,
+      "file_size": 0,
+      "scan_mode": "quick",
+      "needs_deep_scan": false,
+      "deep_scan_completed": false
+    },
+    {
+      "filename": "/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/test-larger/sample7.mp4",
+      "is_corrupt": true,
+      "error_message": "Video file appears to be corrupt (quick scan)",
+      "inspection_time": 0.11629939079284668,
+      "file_size": 0,
+      "scan_mode": "quick",
+      "needs_deep_scan": false,
+      "deep_scan_completed": false
+    },
+    {
+      "filename": "/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/test-larger/sample8.mp4",
+      "is_corrupt": true,
+      "error_message": "Video file appears to be corrupt (quick scan)",
+      "inspection_time": 0.07932329177856445,
+      "file_size": 0,
+      "scan_mode": "quick",
+      "needs_deep_scan": false,
+      "deep_scan_completed": false
+    }
+  ]
+}
