@@ -491,15 +491,16 @@ def trakt(
         except FileNotFoundError:
             logger.exception(f"Scan file not found: {scan_file}")
             typer.echo(f"Error: Scan file not found: {scan_file}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         except json.JSONDecodeError as e:
-            logger.exception(f"Invalid JSON in scan file: {e}")
+            # Remove exception object from logging calls (TRY401)
+            logger.exception("Invalid JSON in scan file")
             typer.echo(f"Error: Invalid JSON in scan file: {e}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
         except Exception as e:
-            logger.exception(f"Sync failed: {e}")
+            logger.exception("Sync failed")
             typer.echo(f"Error: Sync failed: {e}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
     except typer.Exit:
         # Re-raise typer exits without logging
@@ -511,7 +512,7 @@ def trakt(
     except Exception as e:
         logger.critical(f"Unexpected error in Trakt sync: {e}", exc_info=True)
         typer.echo(f"Unexpected error: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 if __name__ == "__main__":

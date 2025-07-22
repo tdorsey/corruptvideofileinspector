@@ -152,9 +152,13 @@ class TraktAPI:
             if response.status_code == 429:
                 retry_after = int(response.headers.get("Retry-After", 10))
                 if "Retry-After" not in response.headers:
-                    logger.warning(f"'Retry-After' header missing. Using fallback timeout of {retry_after} seconds.")
+                    logger.warning(
+                        f"'Retry-After' header missing. Using fallback timeout of {retry_after} seconds."
+                    )
                 else:
-                    logger.warning(f"Rate limited, waiting {retry_after} seconds as per 'Retry-After' header.")
+                    logger.warning(
+                        f"Rate limited, waiting {retry_after} seconds as per 'Retry-After' header."
+                    )
                 time.sleep(retry_after)
                 # Retry the request
                 return self._make_request(method, endpoint, data, params)
