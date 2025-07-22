@@ -45,7 +45,9 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
-dependencies = []
+dependencies = [
+    "typer>=0.16.0",
+]
 
 [project.optional-dependencies]
 dev = [
