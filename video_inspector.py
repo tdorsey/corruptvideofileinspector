@@ -270,7 +270,7 @@ def inspect_single_video_quick(
     except Exception as e:
         result.needs_deep_scan = True
         result.error_message = f"Quick scan failed: {e!s} - needs deep scan"
-        logger.exception(f"Quick scan failed for {video_file.filename}: {e}")
+        logger.exception(f"Quick scan failed for {video_file.filename}")
 
     result.inspection_time = time.time() - start_time
 
@@ -282,7 +282,7 @@ def inspect_single_video_quick(
         else:
             status = "OK"
         print(
-            f"  [QUICK-{status}] {os.path.basename(video_file.filename)} ({result.inspection_time:.2f}s)"
+            f"  [QUICK-{status}] {Path(video_file.filename).name} ({result.inspection_time:.2f}s)"
         )
 
     logger.debug(f"Quick scan completed for {video_file.filename} in {result.inspection_time:.2f}s")
@@ -363,15 +363,14 @@ def inspect_single_video_deep(
         logger.exception(f"Deep scan timed out for {video_file.filename}")
     except Exception as e:
         result.error_message = f"Deep scan failed: {e!s}"
-        logger.exception(f"Deep scan failed for {video_file.filename}: {e}")
+        logger.exception(f"Deep scan failed for {video_file.filename}")
 
     result.inspection_time = time.time() - start_time
 
     if verbose:
         status = "CORRUPT" if result.is_corrupt else "OK"
-        print(
-            f"  [DEEP-{status}] {os.path.basename(video_file.filename)} ({result.inspection_time:.2f}s)"
-        )
+        print(f"  [DEEP-{status}] {Path(video_file.filename).name} ({result.inspection_time:.2f}s)")
+>>>>>>> c841961d7faa224b3854ebce2b3cf4db4a03bb8a
 
     logger.debug(f"Deep scan completed for {video_file.filename} in {result.inspection_time:.2f}s")
     return result
@@ -505,19 +504,19 @@ def inspect_video_files_cli(
                         corrupt_count += 1
                         logger.warning(f"Corrupt file found: {result.filename}")
                         if not verbose:
-                            print(f"\nCORRUPT: {os.path.basename(result.filename)}")
+                            print(f"\nCORRUPT: {Path(result.filename).name}")
                     elif result.needs_deep_scan:
                         deep_scan_needed += 1
                         logger.info(f"File needs deep scan: {result.filename}")
                         if not verbose and scan_mode == ScanMode.HYBRID:
-                            print(f"\nNEEDS DEEP SCAN: {os.path.basename(result.filename)}")
+                            print(f"\nNEEDS DEEP SCAN: {Path(result.filename).name}")
 
                     processed_count += 1
                     phase_label = "Quick Scan " if scan_mode == ScanMode.HYBRID else ""
                     update_progress(phase_label)
 
                 except Exception as e:
-                    logger.exception(f"Error processing file: {e}")
+                    logger.exception("Error processing file")
                     print(f"\nError processing file: {e}")
                     processed_count += 1
                     update_progress()
@@ -557,10 +556,9 @@ def inspect_video_files_cli(
                 logger.debug(f"Submitted {len(future_to_index)} deep scan tasks")
 
                 # Process deep scan results
-                for future in future_to_index:
+                for future, original_index in future_to_index.items():
                     try:
                         deep_result = future.result()
-                        original_index = future_to_index[future]
 
                         # Update the original result with deep scan findings
                         results[original_index] = deep_result
@@ -571,9 +569,7 @@ def inspect_video_files_cli(
                                 f"Deep scan confirmed corruption: {deep_result.filename}"
                             )
                             if not verbose:
-                                print(
-                                    f"\nDEEP SCAN CORRUPT: {os.path.basename(deep_result.filename)}"
-                                )
+                                print(f"\nDEEP SCAN CORRUPT: {Path(deep_result.filename).name}")
                         else:
                             logger.info(f"Deep scan cleared: {deep_result.filename}")
 
@@ -581,7 +577,7 @@ def inspect_video_files_cli(
                         update_deep_progress()
 
                     except Exception as e:
-                        logger.exception(f"Error in deep scan: {e}")
+                        logger.exception("Error in deep scan")
                         print(f"\nError in deep scan: {e}")
                         processed_deep += 1
                         update_deep_progress()
@@ -611,7 +607,7 @@ def inspect_video_files_cli(
     if scan_mode == ScanMode.HYBRID:
         print(f"Files requiring deep scan: {deep_scan_needed}")
     print(f"Total scan time: {total_time:.2f} seconds")
-    print(f"Average time per file: {total_time/processed_count:.2f} seconds")
+    print(f"Average time per file: {total_time / processed_count:.2f} seconds")
 
     logger.info(
         f"Scan summary - Total: {processed_count}, Corrupt: {corrupt_count}, "
@@ -636,7 +632,7 @@ def inspect_video_files_cli(
 
     # Generate JSON output if requested
     if json_output:
-        output_path = output_file or os.path.join(directory, "corruption_scan_results.json")
+        output_path = output_file or str(Path(directory) / "corruption_scan_results.json")
 
         logger.info(f"Generating JSON output to {output_path}")
         json_data = {
@@ -654,12 +650,12 @@ def inspect_video_files_cli(
         }
 
         try:
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(json_data, f, indent=2)
             logger.info(f"JSON results saved successfully to {output_path}")
             print(f"\nDetailed results saved to: {output_path}")
         except Exception as e:
-            logger.exception(f"Could not save JSON results: {e}")
+            logger.exception("Could not save JSON results")
             print(f"Warning: Could not save JSON results: {e}")
 
     logger.info("Video inspection process completed")

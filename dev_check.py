@@ -3,6 +3,7 @@
 Simple script to test basic code quality manually.
 This checks for obvious issues without requiring external tools.
 """
+
 import ast
 from pathlib import Path
 

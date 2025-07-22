@@ -1,22 +1,25 @@
-.PHONY: help install install-dev format lint type check test clean build docker-build docker-run docker-dev docker-dev-build docker-dev-run
+.PHONY: help install install-dev format lint type check test test-integration clean build docker-build docker-run docker-dev docker-dev-build docker-dev-run pre-commit-install pre-commit-run
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  install      Install the package"
-	@echo "  install-dev  Install package with development dependencies"
-	@echo "  format       Format code with black"
-	@echo "  lint         Lint code with ruff"
-	@echo "  type         Type check with mypy"
-	@echo "  check        Run all checks (format, lint, type)"
-	@echo "  test         Run tests with pytest"
-	@echo "  clean        Clean build artifacts"
-	@echo "  build        Build the package"
-	@echo "  docker-build Build Docker image"
-	@echo "  docker-run   Run Docker container"
-	@echo "  docker-dev-build Build development Docker image"
-	@echo "  docker-dev-run   Run development Docker container"
-	@echo "  docker-dev   Start development environment with Docker Compose"
+	@echo "  install             Install the package"
+	@echo "  install-dev         Install package with development dependencies"
+	@echo "  pre-commit-install  Install pre-commit hooks"
+	@echo "  pre-commit-run      Run pre-commit on all files"
+	@echo "  format              Format code with black"
+	@echo "  lint                Lint code with ruff"
+	@echo "  type                Type check with mypy"
+	@echo "  check               Run all checks (format, lint, type)"
+	@echo "  test                Run integration tests"
+	@echo "  test-integration    Run integration tests (alias for test)"
+	@echo "  clean               Clean build artifacts"
+	@echo "  build               Build the package"
+	@echo "  docker-build        Build Docker image"
+	@echo "  docker-run          Run Docker container"
+	@echo "  docker-dev-build    Build development Docker image"
+	@echo "  docker-dev-run      Run development Docker container"
+	@echo "  docker-dev          Start development environment with Docker Compose"
 
 # Installation
 install:
@@ -24,6 +27,15 @@ install:
 
 install-dev:
 	pip install -e ".[dev]"
+	@echo "Now run 'make pre-commit-install' to set up pre-commit hooks"
+
+# Pre-commit hooks
+pre-commit-install:
+	pre-commit install
+	@echo "Pre-commit hooks installed successfully!"
+
+pre-commit-run:
+	pre-commit run --all-files
 
 # Code quality
 format:
@@ -41,10 +53,14 @@ check: format lint type
 
 # Testing
 test:
-	pytest
+	python3 tests/run_tests.py
+
+test-integration:
+	python3 tests/run_tests.py
 
 test-cov:
-	pytest --cov=. --cov-report=html --cov-report=term
+	@echo "Coverage testing requires pytest-cov. Install with: pip install pytest pytest-cov"
+	@echo "For now, run: python3 tests/run_tests.py"
 
 # Build and clean
 clean:

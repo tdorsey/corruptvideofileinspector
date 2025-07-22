@@ -210,9 +210,9 @@ def main_command(
         try:
             directory_path = validate_directory(directory)
         except (FileNotFoundError, NotADirectoryError) as e:
-            logger.exception(f"Directory validation failed: {e}")
+            logger.exception("Directory validation failed")
             typer.echo(f"Error: {e}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
         # Handle quiet mode
         if quiet:
@@ -260,7 +260,7 @@ def main_command(
             if recursive:
                 typer.echo("Recursive scanning: enabled")
             if extensions:
-                typer.echo(f'File extensions: {", ".join(extensions)}')
+                typer.echo(f"File extensions: {', '.join(extensions)}")
 
         logger.info(f"Starting scan with mode: {mode}, workers: {max_workers}")
 
@@ -290,13 +290,13 @@ def main_command(
         # Re-raise typer exits without logging
         raise
     except ValueError as e:
-        logger.exception(f"Configuration error: {e}")
+        logger.exception("Configuration error")
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     except KeyboardInterrupt:
         logger.warning("Scan interrupted by user")
         typer.echo("\nScan interrupted by user", err=True)
-        raise typer.Exit(130)  # Standard exit code for Ctrl+C
+        raise typer.Exit(130) from None  # Standard exit code for Ctrl+C
     except Exception as e:
         logger.critical(f"Unexpected error: {e}", exc_info=True)
         logging.exception(f"Unexpected error: {e}")
