@@ -129,13 +129,15 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
 
         # Check for expected imports
         expected_imports = [
+            "import json",
             "import os",
             "import sys",
             "import logging",
             "from pathlib import Path",
-            "from typing import Optional, List",
+            "from typing import List, Optional",
             "from utils import",
             "from video_inspector import",
+            "from trakt_watchlist import",
         ]
 
         for import_line in expected_imports:
