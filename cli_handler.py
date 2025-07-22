@@ -31,11 +31,6 @@ def validate_directory(directory: str) -> Path:
     return path
 
 
-def parse_cli_arguments():
-    """Parse command line arguments - kept for compatibility"""
-    # This function is kept for backward compatibility but not used in typer implementation
-    pass
-
 
 def validate_arguments(verbose: bool, quiet: bool, max_workers: int, json_output: bool, output: Optional[str]) -> None:
     """Validate argument combinations and values"""
