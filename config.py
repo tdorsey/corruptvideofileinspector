@@ -49,7 +49,7 @@ _additional_sensitive_keys: Set[str] = set()
 def add_sensitive_key(key: str) -> None:
     """
     Add a custom sensitive key that must be loaded from Docker secrets only.
-    
+
     Args:
         key: Configuration key name to treat as sensitive
     """
@@ -134,10 +134,10 @@ class ConfigLoader:
     def load_from_yaml(self, config_path: Union[str, Path]) -> None:
         """
         Load configuration from YAML file.
-        
+
         Args:
             config_path: Path to YAML configuration file
-            
+
         Raises:
             FileNotFoundError: If config file doesn't exist
             yaml.YAMLError: If YAML parsing fails
@@ -170,10 +170,10 @@ class ConfigLoader:
     def load_from_cli_args(self, args: Optional[List[str]] = None) -> argparse.Namespace:
         """
         Load configuration from CLI arguments.
-        
+
         Args:
             args: Optional list of arguments to parse (defaults to sys.argv)
-            
+
         Returns:
             Parsed command line arguments namespace
         """
@@ -209,7 +209,7 @@ class ConfigLoader:
             parsed_args = parser.parse_args(args)
 
         # Apply CLI args to configuration (non-sensitive only)
-        cli_config = {}
+        cli_config: dict[str, Any] = {}
         if getattr(parsed_args, 'debug', False):
             cli_config.setdefault('logging', {})['level'] = 'DEBUG'
         if getattr(parsed_args, 'host', None):
@@ -345,7 +345,7 @@ class ConfigLoader:
     def validate_configuration(self) -> None:
         """
         Validate that all required sensitive values are present.
-        
+
         Raises:
             ConfigurationError: If any required sensitive values are missing
         """
@@ -438,22 +438,22 @@ def load_config(
 ) -> Config:
     """
     Load configuration with proper precedence handling and security validation.
-    
+
     Precedence (lowest to highest):
     1. Configuration File - Base configuration from YAML files
-    2. CLI Flags - Command line arguments  
+    2. CLI Flags - Command line arguments
     3. Docker Secrets - Sensitive values ONLY (at /run/secrets/)
     4. Environment Variables - Non-sensitive configuration overrides
     5. Defaults - Final fallback for non-sensitive values only
-    
+
     Args:
         config_file: Optional path to specific configuration file
         cli_args: Optional CLI arguments to parse
         validate_secrets: Whether to validate that all required secrets are present
-        
+
     Returns:
         Config: Loaded configuration object
-        
+
     Raises:
         ConfigurationError: If required sensitive values are missing and validate_secrets=True
     """
@@ -497,14 +497,14 @@ def load_config(
 def get_config(key: str, default: Any = None) -> Any:
     """
     Get a configuration value by key.
-    
+
     Args:
         key: Configuration key name
         default: Default value if key is not found
-        
+
     Returns:
         Configuration value or default
-        
+
     Raises:
         RuntimeError: If configuration has not been loaded
     """
@@ -527,7 +527,7 @@ def _get_sensitive_value(key: str) -> Optional[str]:
     """Get a sensitive value, ensuring it exists."""
     try:
         value = get_config(key)
-        return value
+        return str(value) if value is not None else None
     except (RuntimeError, ConfigurationError):
         return None
 

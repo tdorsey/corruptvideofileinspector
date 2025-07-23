@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 from config import Config, ConfigLoader, load_config
@@ -21,18 +22,18 @@ class TestConfigDataClasses(unittest.TestCase):
         cfg = Config()
 
         # Test logging defaults
-        self.assertEqual(cfg.logging.level, "INFO")
-        self.assertIn("%(asctime)s", cfg.logging.format)
+        assert cfg.logging.level == "INFO"
+        assert "%(asctime)s" in cfg.logging.format
 
         # Test processing defaults
-        self.assertEqual(cfg.processing.max_workers, 4)
-        self.assertEqual(cfg.processing.default_mode, "hybrid")
+        assert cfg.processing.max_workers == 4
+        assert cfg.processing.default_mode == "hybrid"
 
         # Test scan defaults
-        self.assertTrue(cfg.scan.recursive)
-        self.assertIsNone(cfg.scan.default_input_dir)  # Should be None by default
-        self.assertIn(".mp4", cfg.scan.extensions)
-        self.assertIn(".mkv", cfg.scan.extensions)
+        assert cfg.scan.recursive
+        assert cfg.scan.default_input_dir is None  # Should be None by default
+        assert ".mp4" in cfg.scan.extensions
+        assert ".mkv" in cfg.scan.extensions
 
 
 class TestConfigLoader(unittest.TestCase):
@@ -67,9 +68,9 @@ class TestConfigLoader(unittest.TestCase):
 
         self.loader.load_from_yaml(config_file)
 
-        self.assertEqual(self.loader.config.logging.level, "DEBUG")
-        self.assertEqual(self.loader.config.processing.max_workers, 8)
-        self.assertEqual(self.loader.config.scan.recursive, False)
+        assert self.loader.config.logging.level == "DEBUG"
+        assert self.loader.config.processing.max_workers == 8
+        assert not self.loader.config.scan.recursive
 
     def test_load_from_yaml_nonexistent(self):
         """Test loading from non-existent YAML file"""
@@ -79,7 +80,7 @@ class TestConfigLoader(unittest.TestCase):
         self.loader.load_from_yaml(nonexistent_file)
 
         # Config should remain at defaults
-        self.assertEqual(self.loader.config.logging.level, "INFO")
+        assert self.loader.config.logging.level == "INFO"
 
     def test_load_from_yaml_invalid(self):
         """Test loading invalid YAML file"""
@@ -87,7 +88,7 @@ class TestConfigLoader(unittest.TestCase):
         with open(config_file, 'w') as f:
             f.write("invalid: yaml: content: [\n")
 
-        with self.assertRaises(yaml.YAMLError):
+        with pytest.raises(yaml.YAMLError):
             self.loader.load_from_yaml(config_file)
 
     def test_load_from_environment(self):
@@ -100,28 +101,28 @@ class TestConfigLoader(unittest.TestCase):
 
         self.loader.load_from_environment()
 
-        self.assertEqual(self.loader.config.logging.level, "ERROR")
-        self.assertEqual(self.loader.config.processing.max_workers, 12)
-        self.assertEqual(self.loader.config.processing.default_mode, "quick")
-        self.assertEqual(self.loader.config.scan.recursive, False)
-        self.assertEqual(self.loader.config.scan.extensions, ['.mp4', '.avi', '.mkv'])
+        assert self.loader.config.logging.level == "ERROR"
+        assert self.loader.config.processing.max_workers == 12
+        assert self.loader.config.processing.default_mode == "quick"
+        assert not self.loader.config.scan.recursive
+        assert self.loader.config.scan.extensions == ['.mp4', '.avi', '.mkv']
 
     def test_type_conversion(self):
         """Test automatic type conversion"""
         # Test boolean conversion
         self.loader._set_config_value('scan', 'recursive', 'true', 'test')
-        self.assertTrue(self.loader.config.scan.recursive)
+        assert self.loader.config.scan.recursive
 
         self.loader._set_config_value('scan', 'recursive', 'false', 'test')
-        self.assertFalse(self.loader.config.scan.recursive)
+        assert not self.loader.config.scan.recursive
 
         # Test integer conversion
         self.loader._set_config_value('processing', 'max_workers', '16', 'test')
-        self.assertEqual(self.loader.config.processing.max_workers, 16)
+        assert self.loader.config.processing.max_workers == 16
 
         # Test list conversion
         self.loader._set_config_value('scan', 'extensions', '.mp4,.mkv,.avi', 'test')
-        self.assertEqual(self.loader.config.scan.extensions, ['.mp4', '.mkv', '.avi'])
+        assert self.loader.config.scan.extensions == ['.mp4', '.mkv', '.avi']
 
     def test_unknown_config_section(self):
         """Test handling of unknown configuration section"""
@@ -129,7 +130,7 @@ class TestConfigLoader(unittest.TestCase):
         self.loader._set_config_value('unknown_section', 'key', 'value', 'test')
 
         # Config should remain unchanged
-        self.assertEqual(self.loader.config.logging.level, "INFO")
+        assert self.loader.config.logging.level == "INFO"
 
     def test_unknown_config_key(self):
         """Test handling of unknown configuration key"""
@@ -137,7 +138,7 @@ class TestConfigLoader(unittest.TestCase):
         self.loader._set_config_value('logging', 'unknown_key', 'value', 'test')
 
         # Config should remain unchanged for known keys
-        self.assertEqual(self.loader.config.logging.level, "INFO")
+        assert self.loader.config.logging.level == "INFO"
 
     @patch('pathlib.Path.exists')
     def test_load_docker_secrets_missing_path(self, mock_exists):
@@ -148,7 +149,7 @@ class TestConfigLoader(unittest.TestCase):
         self.loader.load_docker_secrets()
 
         # Config should remain at defaults
-        self.assertEqual(self.loader.config.logging.level, "INFO")
+        assert self.loader.config.logging.level == "INFO"
 
     def test_load_docker_secrets_with_files(self):
         """Test Docker secrets loading with actual files"""
@@ -164,8 +165,8 @@ class TestConfigLoader(unittest.TestCase):
 
         self.loader.load_docker_secrets()
 
-        self.assertEqual(self.loader.config.logging.level, "WARNING")
-        self.assertEqual(self.loader.config.processing.max_workers, 6)
+        assert self.loader.config.logging.level == "WARNING"
+        assert self.loader.config.processing.max_workers == 6
 
 
 class TestLoadConfig(unittest.TestCase):
@@ -197,8 +198,8 @@ class TestLoadConfig(unittest.TestCase):
 
         cfg = load_config(config_file, validate_secrets=False)
 
-        self.assertEqual(cfg.logging.level, "WARNING")
-        self.assertEqual(cfg.processing.max_workers, 10)
+        assert cfg.logging.level == "WARNING"
+        assert cfg.processing.max_workers == 10
 
     def test_load_config_precedence(self):
         """Test configuration precedence: env vars > config file"""
@@ -218,19 +219,19 @@ class TestLoadConfig(unittest.TestCase):
         cfg = load_config(config_file, validate_secrets=False)
 
         # Environment variable should override config file
-        self.assertEqual(cfg.logging.level, "ERROR")
+        assert cfg.logging.level == "ERROR"
         # Config file value should still be used for non-overridden values
-        self.assertEqual(cfg.processing.max_workers, 10)
+        assert cfg.processing.max_workers == 10
 
     def test_load_config_defaults_only(self):
         """Test loading configuration with defaults only"""
         cfg = load_config(validate_secrets=False)
 
         # Should have default values
-        self.assertEqual(cfg.logging.level, "INFO")
-        self.assertEqual(cfg.processing.max_workers, 4)
-        self.assertEqual(cfg.processing.default_mode, "hybrid")
-        self.assertIsNone(cfg.scan.default_input_dir)  # Should be None by default
+        assert cfg.logging.level == "INFO"
+        assert cfg.processing.max_workers == 4
+        assert cfg.processing.default_mode == "hybrid"
+        assert cfg.scan.default_input_dir is None  # Should be None by default
 
 
 class TestInputOutputDirectoryConfiguration(unittest.TestCase):
@@ -269,9 +270,9 @@ class TestInputOutputDirectoryConfiguration(unittest.TestCase):
         self.loader.load_from_yaml(config_file)
 
         # Verify YAML values are loaded
-        self.assertEqual(self.loader.config.scan.default_input_dir, '/test/input/directory')
-        self.assertEqual(self.loader.config.output.default_output_dir, '/test/output/directory')
-        self.assertEqual(self.loader.config.output.default_filename, 'custom_results.json')
+        assert self.loader.config.scan.default_input_dir == '/test/input/directory'
+        assert self.loader.config.output.default_output_dir == '/test/output/directory'
+        assert self.loader.config.output.default_filename == 'custom_results.json'
 
         # Test environment variable override
         os.environ['CVI_INPUT_DIR'] = '/env/input/override'
@@ -280,10 +281,10 @@ class TestInputOutputDirectoryConfiguration(unittest.TestCase):
         self.loader.load_from_environment()
 
         # Environment should override YAML
-        self.assertEqual(self.loader.config.scan.default_input_dir, '/env/input/override')
-        self.assertEqual(self.loader.config.output.default_output_dir, '/env/output/override')
+        assert self.loader.config.scan.default_input_dir == '/env/input/override'
+        assert self.loader.config.output.default_output_dir == '/env/output/override'
         # Non-overridden value should remain from YAML
-        self.assertEqual(self.loader.config.output.default_filename, 'custom_results.json')
+        assert self.loader.config.output.default_filename == 'custom_results.json'
 
 
 if __name__ == '__main__':
