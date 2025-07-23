@@ -246,7 +246,22 @@ class ConfigLoader:
             # Convert string values to appropriate type (from env vars)
             elif isinstance(value, str):
                 if isinstance(current_value, bool):
-                    converted_value = value.lower() in ("true", "1", "yes", "on")
+
+                    def raise_invalid_value_error(value: str) -> None:
+                        raise ValueError(f"Invalid boolean value: {value}")
+
+                    def validate_boolean(value: str) -> bool:
+                        valid_true = ("true", "1", "yes", "on")
+                        valid_false = ("false", "0", "no", "off")
+                        if value.lower() in valid_true:
+                            return True
+                        if value.lower() in valid_false:
+                            return False
+                        raise_invalid_value_error(value)
+                        return False  # Explicit return for clarity
+
+                    converted_value = validate_boolean(value)
+
                 elif isinstance(current_value, int):
                     converted_value = int(value)
                 elif isinstance(current_value, list):
