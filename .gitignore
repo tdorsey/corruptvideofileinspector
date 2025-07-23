@@ -82,3 +82,14 @@ output/
 *.log
 test-larger/
 *.json
+
+# Configuration files (keep default config.yaml but ignore local overrides)
+config.local.yaml
+config.local.yml
+*.local.yaml
+*.local.yml
+
+# Docker secrets (never commit actual secrets)
+secrets/*.txt
+secrets/*.key
+secrets/*.pem

@@ -6,10 +6,22 @@ services:
     volumes:
       - video_data:/app/videos:ro
       - output:/app/output
+      # Mount configuration file if it exists
+      - ./config.yaml:/app/config.yaml:ro
     environment:
       - PYTHONUNBUFFERED=1
+      # Configuration can also be set via environment variables
+      # These will override config file settings
+      # - CVI_LOG_LEVEL=INFO
+      # - CVI_MAX_WORKERS=6
+      # - CVI_DEFAULT_MODE=hybrid
+    secrets:
+      # Docker secrets for sensitive configuration
+      - cvi_log_level
+      - cvi_ffmpeg_command
     command: [
       "python3", "cli_handler.py", 
+      "--config", "/app/config.yaml",
       "--mode", "hybrid",
       "--verbose", 
       "--json", 
@@ -36,10 +48,19 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
+      # Development environment variables can override config
+      # - CVI_LOG_LEVEL=DEBUG
     working_dir: /app
     command: ["tail", "-f", "/dev/null"]  # Keep container running for development
     stdin_open: true
     tty: true
+
+# Docker secrets configuration
+secrets:
+  cvi_log_level:
+    file: ./secrets/cvi_log_level.txt
+  cvi_ffmpeg_command:
+    file: ./secrets/cvi_ffmpeg_command.txt
 
 volumes:
   # Production volumes
