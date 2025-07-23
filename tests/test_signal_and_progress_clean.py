@@ -38,18 +38,18 @@ def test_signal_handler_function():
         }
     )
 
-    # Mock the print function to capture output
-    with patch("builtins.print") as mock_print:
+    # Mock the logger to capture output
+    with patch("video_inspector.logger") as mock_logger:
         # Call signal handler directly (simulate SIGUSR1)
         video_inspector.signal_handler(signal.SIGUSR1, None)
 
-        # Check that print was called (progress was reported)
-        assert mock_print.called
+        # Check that logger.info was called (progress was reported)
+        assert mock_logger.info.called
 
-        # Check that progress report header was printed
-        calls = [str(call) for call in mock_print.call_args_list]
+        # Check that progress report header was logged
+        calls = [str(call) for call in mock_logger.info.call_args_list]
         progress_calls = [call for call in calls if "PROGRESS REPORT" in call]
-        assert len(progress_calls) > 0, "Progress report should be printed"
+        assert len(progress_calls) > 0, "Progress report should be logged"
 
 
 def test_progress_reporter_creation():
@@ -76,14 +76,14 @@ def test_progress_reporter_output():
     reporter = video_inspector.ProgressReporter(100, "deep")
     reporter.update(current_file="/test/video.mp4", processed_count=75, corrupt_count=2)
 
-    with patch("builtins.print") as mock_print:
+    with patch("video_inspector.logger") as mock_logger:
         reporter.report_progress(force_output=True)
-        assert mock_print.called
+        assert mock_logger.info.called
 
-        # Check that progress information was printed
-        calls = [str(call) for call in mock_print.call_args_list]
-        progress_calls = [call for call in calls if "Files Processed: 75/100" in call]
-        assert len(progress_calls) > 0, "Progress info should be printed"
+        # Check that progress information was logged
+        calls = [str(call) for call in mock_logger.info.call_args_list]
+        progress_calls = [call for call in calls if "Progress:" in call and "75/100" in call]
+        assert len(progress_calls) > 0, "Progress info should be logged"
 
 
 def test_wal_with_results_file():
