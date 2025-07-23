@@ -195,10 +195,12 @@ class TestSearchResultsHandling(unittest.TestCase):
         """Test that single result searches work like before"""
         # This is a unit test for the method signature changes
         # We can't test the actual API calls without mocking
-        from trakt_watchlist import TraktAPI
+        from trakt_watchlist import MemoryTokenStorage, TraktAPI
 
         # Test that the method exists and has correct signature
-        api = TraktAPI("fake_token")
+        token_storage = MemoryTokenStorage()
+        token_storage.save_tokens({"access_token": "fake_token"})
+        api = TraktAPI("fake_client_id", "fake_client_secret", token_storage)
 
         # These should not raise TypeErrors due to signature changes
         assert hasattr(api, "search_movie")

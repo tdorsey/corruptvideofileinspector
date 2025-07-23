@@ -49,6 +49,7 @@ dependencies = [
     "typer>=0.16.0",
     "PyYAML>=6.0",
     "requests>=2.28.0",
+    "trakt.py>=4.0.0",
 ]
 
 [project.optional-dependencies]
@@ -183,7 +184,7 @@ python_functions = ["test_*"]
 
 # Coverage configuration
 [tool.coverage.run]
-source = ["cli_handler", "video_inspector", "utils"]
+source = ["cli_handler", "video_inspector", "utils", "trakt_watchlist", "config"]
 omit = [
     "tests/*",
     "*/__pycache__/*",

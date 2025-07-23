@@ -55,7 +55,7 @@ class ScanConfig:
     recursive: bool = True
     default_input_dir: Optional[str] = None  # Default directory to scan
     extensions: List[str] = field(default_factory=lambda: [
-        ".mp4", ".avi", ".mkv", ".mov", ".wmv", 
+        ".mp4", ".avi", ".mkv", ".mov", ".wmv",
         ".flv", ".webm", ".m4v", ".mpg", ".mpeg"
     ])
 
@@ -80,11 +80,11 @@ class Config:
 
 class ConfigLoader:
     """Configuration loader with precedence handling."""
-    
+
     def __init__(self):
         self.config = Config()
         self._loaded_files: List[str] = []
-    
+
     def load_from_yaml(self, config_path: Union[str, Path]) -> None:
         """
         Load configuration from YAML file.
@@ -97,30 +97,30 @@ class ConfigLoader:
             yaml.YAMLError: If YAML parsing fails
         """
         config_path = Path(config_path)
-        
+
         if not config_path.exists():
             logger.warning(f"Configuration file not found: {config_path}")
             return
-            
+
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, encoding='utf-8') as f:
                 data = yaml.safe_load(f)
-                
+
             if data is None:
                 logger.warning(f"Empty configuration file: {config_path}")
                 return
-                
+
             self._apply_config_dict(data)
             self._loaded_files.append(str(config_path))
             logger.info(f"Loaded configuration from: {config_path}")
-            
+
         except yaml.YAMLError as e:
             logger.error(f"Failed to parse YAML config {config_path}: {e}")
             raise
         except Exception as e:
             logger.error(f"Failed to load config {config_path}: {e}")
             raise
-    
+
     def load_from_environment(self) -> None:
         """Load configuration overrides from environment variables."""
         env_mappings = {
@@ -128,44 +128,44 @@ class ConfigLoader:
             'CVI_LOG_LEVEL': ('logging', 'level'),
             'CVI_LOG_FORMAT': ('logging', 'format'),
             'CVI_LOG_FILE': ('logging', 'file'),
-            
+
             # FFmpeg
             'CVI_FFMPEG_COMMAND': ('ffmpeg', 'command'),
             'CVI_FFMPEG_QUICK_TIMEOUT': ('ffmpeg', 'quick_timeout'),
             'CVI_FFMPEG_DEEP_TIMEOUT': ('ffmpeg', 'deep_timeout'),
-            
+
             # Processing
             'CVI_MAX_WORKERS': ('processing', 'max_workers'),
             'CVI_DEFAULT_MODE': ('processing', 'default_mode'),
-            
+
             # Output
             'CVI_DEFAULT_JSON': ('output', 'default_json'),
             'CVI_OUTPUT_DIR': ('output', 'default_output_dir'),
             'CVI_OUTPUT_FILENAME': ('output', 'default_filename'),
-            
+
             # Scan
             'CVI_RECURSIVE': ('scan', 'recursive'),
             'CVI_INPUT_DIR': ('scan', 'default_input_dir'),
             'CVI_EXTENSIONS': ('scan', 'extensions'),
-            
+
             # Secrets
             'CVI_SECRETS_PATH': ('secrets', 'docker_secrets_path'),
         }
-        
+
         for env_var, (section, key) in env_mappings.items():
             value = os.getenv(env_var)
             if value is not None:
                 self._set_config_value(section, key, value)
                 logger.debug(f"Set {section}.{key} from environment: {env_var}")
-    
+
     def load_docker_secrets(self) -> None:
         """Load configuration from Docker secrets."""
         secrets_path = Path(self.config.secrets.docker_secrets_path)
-        
+
         if not secrets_path.exists():
             logger.debug(f"Docker secrets path not found: {secrets_path}")
             return
-            
+
         # Docker secrets mapping
         secret_mappings = {
             'cvi_log_level': ('logging', 'level'),
@@ -175,7 +175,7 @@ class ConfigLoader:
             'cvi_output_dir': ('output', 'default_output_dir'),
             # Add more secrets as needed
         }
-        
+
         for secret_name, (section, key) in secret_mappings.items():
             secret_file = secrets_path / secret_name
             if secret_file.exists():
@@ -185,34 +185,34 @@ class ConfigLoader:
                     logger.debug(f"Set {section}.{key} from Docker secret: {secret_name}")
                 except Exception as e:
                     logger.warning(f"Failed to read secret {secret_name}: {e}")
-    
+
     def load_default_configs(self) -> None:
         """Load configuration from default locations."""
         # Look for config files in common locations
         config_paths = [
             Path.cwd() / "config.yaml",
-            Path.cwd() / "config.yml", 
+            Path.cwd() / "config.yml",
             Path.home() / ".config" / "corrupt-video-inspector" / "config.yaml",
             Path("/etc/corrupt-video-inspector/config.yaml"),
         ]
-        
+
         for config_path in config_paths:
             if config_path.exists():
                 self.load_from_yaml(config_path)
                 break
         else:
             logger.debug("No default configuration file found")
-    
+
     def _apply_config_dict(self, data: Dict) -> None:
         """Apply configuration dictionary to config object."""
         for section_name, section_data in data.items():
             if not isinstance(section_data, dict):
                 logger.warning(f"Invalid config section: {section_name}")
                 continue
-                
+
             for key, value in section_data.items():
                 self._set_config_value(section_name, key, value)
-    
+
     def _set_config_value(self, section: str, key: str, value) -> None:
         """Set a configuration value with type conversion."""
         try:
@@ -220,14 +220,14 @@ class ConfigLoader:
             if config_section is None:
                 logger.warning(f"Unknown config section: {section}")
                 return
-                
+
             if not hasattr(config_section, key):
                 logger.warning(f"Unknown config key: {section}.{key}")
                 return
-            
+
             # Get the current value to determine the expected type
             current_value = getattr(config_section, key)
-            
+
             # If value is already the correct type (from YAML), use it directly
             if isinstance(value, type(current_value)) or current_value is None:
                 converted_value = value
@@ -244,13 +244,13 @@ class ConfigLoader:
                     converted_value = value
             else:
                 converted_value = value
-                
+
             setattr(config_section, key, converted_value)
             logger.debug(f"Set {section}.{key} = {converted_value}")
-            
+
         except (ValueError, AttributeError) as e:
             logger.error(f"Failed to set {section}.{key} = {value}: {e}")
-    
+
     def get_loaded_files(self) -> List[str]:
         """Get list of successfully loaded configuration files."""
         return self._loaded_files.copy()
@@ -274,19 +274,19 @@ def load_config(config_file: Optional[Union[str, Path]] = None) -> Config:
         Config: Loaded configuration object
     """
     loader = ConfigLoader()
-    
+
     # Load from default locations first (lowest precedence)
     if config_file is None:
         loader.load_default_configs()
     else:
         # Load from specified file
         loader.load_from_yaml(config_file)
-    
+
     # Load Docker secrets (higher precedence)
     loader.load_docker_secrets()
-    
+
     # Load environment variables (highest precedence)
     loader.load_from_environment()
-    
+
     logger.info(f"Configuration loaded from: {loader.get_loaded_files()}")
     return loader.config
