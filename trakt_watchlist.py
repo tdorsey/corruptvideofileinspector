@@ -4,6 +4,8 @@ Trakt.tv Watchlist API Integration Tool
 A Python-based tool for syncing local media collections to Trakt.tv watchlist
 by processing video inspection JSON files and using filename parsing.
 
+This module maintains backward compatibility with the existing CLI while
+providing enhanced functionality through the new WatchlistManager library.
 """
 
 import json
@@ -15,6 +17,9 @@ from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
 
 import requests
+
+# Import the new library
+from trakt_library import WatchlistManager, TraktWatchlistError, SearchResult, OperationResult
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -46,7 +51,7 @@ class MediaItem:
 
 @dataclass
 class TraktItem:
-    """Represents an item from Trakt API with identifiers"""
+    """Represents an item from Trakt API with identifiers (legacy compatibility)"""
 
     title: str
     year: Optional[int]
@@ -55,6 +60,19 @@ class TraktItem:
     imdb_id: Optional[str] = None
     tmdb_id: Optional[int] = None
     tvdb_id: Optional[int] = None
+
+    @classmethod
+    def from_search_result(cls, search_result: SearchResult) -> "TraktItem":
+        """Create TraktItem from new SearchResult for backward compatibility."""
+        return cls(
+            title=search_result.title,
+            year=search_result.year,
+            media_type=search_result.content_type,
+            trakt_id=search_result.ids.get("trakt"),
+            imdb_id=search_result.ids.get("imdb"),
+            tmdb_id=search_result.ids.get("tmdb"),
+            tvdb_id=search_result.ids.get("tvdb"),
+        )
 
     @classmethod
     def from_movie_response(cls, data: Dict[str, Any]) -> "TraktItem":
@@ -85,7 +103,7 @@ class TraktItem:
 
 
 class TraktAPI:
-    """Trakt.tv API client for watchlist management"""
+    """Legacy Trakt.tv API client for backward compatibility"""
 
     BASE_URL = "https://api.trakt.tv"
     API_VERSION = "2"
