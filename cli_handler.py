@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
 import typer
 
@@ -58,7 +58,7 @@ def setup_logging(verbose: bool = False, quiet: bool = False) -> None:
     date_format = "%Y-%m-%d %H:%M:%S"
 
     # Configure handlers
-    handlers = []
+    handlers: list[logging.Handler] = []
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stderr)
@@ -72,7 +72,7 @@ def setup_logging(verbose: bool = False, quiet: bool = False) -> None:
             file_handler.setFormatter(logging.Formatter(log_format, date_format))
             handlers.append(file_handler)
         except Exception as e:
-            print(f"Could not create log file {env_log_file}: {e}")  # Temporary fallback
+            logger.exception(f"Could not create log file {env_log_file}: {e}")  # Temporary fallback
 
     # Log successful file handler addition after configuration
     if env_log_file:
@@ -90,10 +90,7 @@ def setup_logging(verbose: bool = False, quiet: bool = False) -> None:
     logging.getLogger("video_inspector").setLevel(log_level)
     logging.getLogger("utils").setLevel(log_level)
 
-    logger.info(
-        f"Logging initialized with level: "
-        f"{logging.getLevelName(log_level)}"
-    )
+    logger.info(f"Logging initialized with level: " f"{logging.getLevelName(log_level)}")
 
 
 def validate_directory(directory: str) -> Path:
@@ -144,9 +141,7 @@ def validate_arguments(
     """
     if verbose and quiet:
         logger.error("Cannot use --verbose and --quiet together")
-        typer.echo(
-            "Error: Cannot use --verbose and --quiet together", err=True
-        )
+        typer.echo("Error: Cannot use --verbose and --quiet together", err=True)
         raise typer.Exit(1)
 
     if max_workers <= 0:
@@ -155,12 +150,8 @@ def validate_arguments(
         raise typer.Exit(1)
 
     if output and not json_output:
-        logger.warning(
-            "--output specified without --json, enabling JSON output"
-        )
-        typer.echo(
-            "Warning: --output specified without --json, enabling JSON output"
-        )
+        logger.warning("--output specified without --json, enabling JSON output")
+        typer.echo("Warning: --output specified without --json, enabling JSON output")
 
     logger.debug("Arguments validated successfully")
 
@@ -168,8 +159,7 @@ def validate_arguments(
 # Create the typer app
 app = typer.Typer(
     help=(
-        "Corrupt Video Inspector - Scan directories for corrupt video files "
-        "and sync to Trakt"
+        "Corrupt Video Inspector - Scan directories for corrupt video files " "and sync to Trakt"
     ),
     epilog=(
         """
@@ -197,9 +187,7 @@ Examples:
 
 @app.command()
 def main_command(
-    directory: Optional[str] = typer.Argument(
-        None, help="Directory to scan for video files"
-    ),
+    directory: Optional[str] = typer.Argument(None, help="Directory to scan for video files"),
     mode: str = typer.Option(
         "hybrid",
         "--mode",
@@ -250,20 +238,13 @@ def main_command(
         "-w",
         help="Maximum number of worker threads for parallel processing",
     ),
-    quiet: bool = typer.Option(
-        False, "--quiet", "-q", help="Suppress all output except errors"
-    ),
-    version: bool = typer.Option(
-        False, "--version", help="Show version and exit"
-    ),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress all output except errors"),
+    version: bool = typer.Option(False, "--version", help="Show version and exit"),
 ) -> None:
     if extensions is None:
         extensions = typer.Option(
             default=None,
-            help=(
-                "Specify video file extensions to scan "
-                "(e.g., mp4 mkv avi)"
-            ),
+            help=("Specify video file extensions to scan " "(e.g., mp4 mkv avi)"),
         )
     """
     Main CLI command for Corrupt Video Inspector.
@@ -295,9 +276,7 @@ def main_command(
         # Validate mode
         if mode not in ["quick", "deep", "hybrid"]:
             logger.error(f"Invalid mode: {mode}")
-            typer.echo(
-                "Error: Mode must be one of: quick, deep, hybrid", err=True
-            )
+            typer.echo("Error: Mode must be one of: quick, deep, hybrid", err=True)
             _exit()
 
         # Setup logging
@@ -341,20 +320,12 @@ def main_command(
                 logger.debug("Counting video files in directory")
                 total_videos = count_all_video_files(str(directory_path))
                 if total_videos == 0:
-                    logger.warning(
-                        f"No video files found in directory: {directory_path}"
-                    )
-                    typer.echo(
-                        f"No video files found in directory: {directory_path}"
-                    )
+                    logger.warning(f"No video files found in directory: {directory_path}")
+                    typer.echo(f"No video files found in directory: {directory_path}")
                     if extensions:
                         extension_list = ", ".join(extensions)
-                        logger.info(
-                            f"Searched for extensions: {extension_list}"
-                        )
-                        typer.echo(
-                            f"Searched for extensions: {extension_list}"
-                        )
+                        logger.info(f"Searched for extensions: {extension_list}")
+                        typer.echo(f"Searched for extensions: {extension_list}")
                     _exit()
                 logger.info(f"Found {total_videos} video files to process")
                 ffmpeg_cmd = check_system_requirements()
@@ -363,9 +334,7 @@ def main_command(
                 # but keep logic for completeness.
                 # All output is suppressed in quiet mode,
                 # so this block is unreachable.
-                logger.info(
-                    f"Starting scan with mode: {mode}, workers: {max_workers}"
-                )
+                logger.info(f"Starting scan with mode: {mode}, workers: {max_workers}")
                 scan_mode = ScanMode(mode)
                 if output and not json_output:
                     json_output = True
@@ -393,9 +362,7 @@ def main_command(
         logger.debug("Counting video files in directory")
         total_videos = count_all_video_files(str(directory_path))
         if total_videos == 0:
-            logger.warning(
-                f"No video files found in directory: {directory_path}"
-            )
+            logger.warning(f"No video files found in directory: {directory_path}")
             typer.echo(f"No video files found in directory: {directory_path}")
             if extensions:
                 extension_list = ", ".join(extensions)
@@ -414,9 +381,7 @@ def main_command(
             typer.echo(f"Scan mode: {mode.upper()}")
             if mode == "hybrid":
                 typer.echo("  Phase 1: Quick scan all files (1min timeout)")
-                typer.echo(
-                    "  Phase 2: Deep scan suspicious files (15min timeout)"
-                )
+                typer.echo("  Phase 2: Deep scan suspicious files (15min timeout)")
             elif mode == "quick":
                 typer.echo("  Quick scan only (1min timeout per file)")
             elif mode == "deep":
@@ -490,9 +455,7 @@ def list_video_files(
         typer.echo("(including subdirectories)")
 
     try:
-        video_files = get_all_video_object_files(
-            str(directory), recursive, extensions
-        )
+        video_files = get_all_video_object_files(str(directory), recursive, extensions)
 
         total_count = len(video_files)
         logger.info(f"Found {total_count} video files")
@@ -537,9 +500,7 @@ def check_system_requirements() -> str:
         typer.echo("  - On Ubuntu/Debian: sudo apt install ffmpeg")
         typer.echo("  - On CentOS/RHEL: sudo yum install ffmpeg")
         typer.echo("  - On macOS: brew install ffmpeg")
-        typer.echo(
-            "  - On Windows: Download from https://ffmpeg.org/download.html"
-        )
+        typer.echo("  - On Windows: Download from https://ffmpeg.org/download.html")
         raise typer.Exit(1)
 
     logger.info(f"Found ffmpeg at: {ffmpeg_cmd}")
@@ -614,6 +575,7 @@ def trakt(
         interactive: Enable manual selection of search matches
         output: Optional path to save sync results as JSON
     """
+
     def _exit():
         raise typer.Exit(1)
 
@@ -631,17 +593,13 @@ def trakt(
 
         if scan_file_path.suffix.lower() != ".json":
             logger.warning(f"Scan file may not be JSON: {scan_file}")
-            typer.echo(
-                f"Warning: File does not have .json extension: {scan_file}"
-            )
+            typer.echo(f"Warning: File does not have .json extension: {scan_file}")
 
         if not verbose:
             typer.echo("Syncing scan results to Trakt.tv watchlist...")
             typer.echo(f"Scan file: {scan_file}")
             if interactive:
-                typer.echo(
-                    "Interactive mode: You will be prompted to select matches"
-                )
+                typer.echo("Interactive mode: You will be prompted to select matches")
             typer.echo("Processing...")
 
         # Perform the sync
@@ -668,9 +626,7 @@ def trakt(
 
                 except Exception as e:
                     logger.exception("Failed to save results")
-                    typer.echo(
-                        f"Warning: Could not save results to {output}: {e}"
-                    )
+                    typer.echo(f"Warning: Could not save results to {output}: {e}")
 
             # Exit with appropriate code
             if results["failed"] == results["total"]:
