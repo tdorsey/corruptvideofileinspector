@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional, Set
 logger = logging.getLogger(__name__)
 
 # Global progress tracking for signal handlers
-_current_progress = {
+_current_progress: Dict[str, Any] = {
     "current_file": "",
     "total_files": 0,
     "processed_count": 0,
@@ -52,7 +52,7 @@ class ProgressReporter:
         current_file: str = "",
         processed_count: Optional[int] = None,
         corrupt_count: Optional[int] = None,
-    ):
+    ) -> None:
         """Update progress counters"""
         if current_file:
             self.current_file = current_file
@@ -84,36 +84,42 @@ class ProgressReporter:
         )
 
 
-def signal_handler(signum, frame):
+def signal_handler(signum: int, _frame: Any) -> None:
     """Handle POSIX signals and report progress"""
-    _ = frame  # Parameter required by signal handler interface
     signal_name = signal.Signals(signum).name
     logger.info(f"Received signal {signal_name} ({signum}), reporting progress")
 
     # Create a temporary progress reporter from global state
     progress = _current_progress
-    elapsed_time = time.time() - progress["start_time"]
-    remaining = progress["total_files"] - progress["processed_count"]
-    healthy = progress["processed_count"] - progress["corrupt_count"]
+    start_time = float(progress["start_time"])
+    total_files = int(progress["total_files"])
+    processed_count = int(progress["processed_count"])
+    corrupt_count = int(progress["corrupt_count"])
+    current_file = str(progress["current_file"])
+    scan_mode = str(progress["scan_mode"])
+
+    elapsed_time = time.time() - start_time
+    remaining = total_files - processed_count
+    healthy = processed_count - corrupt_count
 
     sep_line = "=" * 60
     logger.info("\n%s", sep_line)
     logger.info("PROGRESS REPORT (Signal %s)", signal_name)
     logger.info("%s", sep_line)
-    logger.info("Scan Mode: %s", progress["scan_mode"].upper())
-    curr = Path(progress["current_file"]).name if progress["current_file"] else "None"
+    logger.info("Scan Mode: %s", scan_mode.upper())
+    curr = Path(current_file).name if current_file else "None"
     logger.info("Current File: %s", curr)
     logger.info(
         "Files Processed: %d/%d",
-        progress["processed_count"],
-        progress["total_files"],
+        processed_count,
+        total_files,
     )
-    logger.info("Corrupt Files Found: %d", progress["corrupt_count"])
+    logger.info("Corrupt Files Found: %d", corrupt_count)
     logger.info("Healthy Files: %d", healthy)
     logger.info("Files Remaining: %d", remaining)
     logger.info("Elapsed Time: %.1f seconds", elapsed_time)
-    if progress["processed_count"] > 0:
-        avg = elapsed_time / progress["processed_count"]
+    if processed_count > 0:
+        avg = elapsed_time / processed_count
         rem = avg * remaining
         logger.info("Estimated Time Remaining: %.1f seconds", rem)
     logger.info("%s", sep_line)
