@@ -36,6 +36,18 @@ python3 cli_handler.py /path/to/your/videos
 corrupt-video-inspector /path/to/your/videos
 ```
 
+**Sync to Trakt.tv watchlist:**
+```bash
+# First, scan your videos with JSON output
+python3 cli_handler.py --json /path/to/your/videos
+
+# Then sync results to Trakt watchlist (automatic mode)
+python3 cli_handler.py trakt corruption_scan_results.json --token YOUR_TRAKT_TOKEN
+
+# Or use interactive mode to manually select matches
+python3 cli_handler.py trakt corruption_scan_results.json --token YOUR_TRAKT_TOKEN --interactive
+```
+
 ### Direct Docker Usage
 
 **Build the image:**
@@ -139,6 +151,7 @@ This project uses Docker Compose profiles:
 - File extension filtering
 - Progress tracking
 - Hybrid scan mode (quick + deep scan for suspicious files)
+- **Trakt.tv watchlist integration for automatic media syncing**
 - Comprehensive integration testing
 
 ### Logging Configuration

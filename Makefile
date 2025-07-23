@@ -1,6 +1,5 @@
 .PHONY: help install install-dev format lint type check test test-integration clean build docker-build docker-run docker-dev docker-dev-build docker-dev-run pre-commit-install pre-commit-run
 
-# Default target
 help:
 	@echo "Available targets:"
 	@echo "  install             Install the package"
@@ -18,6 +17,8 @@ help:
 	@echo "  docker-build        Build Docker image"
 	@echo "  docker-run          Run Docker container"
 	@echo "  docker-dev-build    Build development Docker image"
+lint:
+	ruff check --fix .
 	@echo "  docker-dev-run      Run development Docker container"
 	@echo "  docker-dev          Start development environment with Docker Compose"
 
@@ -41,9 +42,6 @@ pre-commit-run:
 format:
 	black .
 	ruff check --fix .
-
-lint:
-	ruff check .
 
 type:
 	mypy .

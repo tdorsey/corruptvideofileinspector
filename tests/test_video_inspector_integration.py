@@ -2,15 +2,12 @@
 Integration tests for video_inspector module
 """
 
+import contextlib
 import os
 import sys
 import tempfile
 import unittest
-
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import contextlib
+from pathlib import Path
 
 from video_inspector import (
     ScanMode,
@@ -19,6 +16,8 @@ from video_inspector import (
     get_all_video_object_files,
     get_ffmpeg_command,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 class TestVideoInspectorIntegration(unittest.TestCase):
@@ -34,19 +33,18 @@ class TestVideoInspectorIntegration(unittest.TestCase):
         # Clean up test files
         for file_path in self.test_files:
             with contextlib.suppress(FileNotFoundError):
-                os.remove(file_path)
+                Path(file_path).unlink()
 
         # Remove test directory
         with contextlib.suppress(OSError):
-            os.rmdir(self.test_dir)
+            Path(self.test_dir).rmdir()
 
     def create_test_file(self, filename: str, content: str = "test content") -> str:
         """Create a test file and return its path"""
-        file_path = os.path.join(self.test_dir, filename)
-        with open(file_path, "w") as f:
-            f.write(content)
-        self.test_files.append(file_path)
-        return file_path
+        file_path = Path(self.test_dir) / filename
+        file_path.write_text(content)
+        self.test_files.append(str(file_path))
+        return str(file_path)
 
     def test_video_file_creation(self):
         """Test VideoFile object creation"""
@@ -155,13 +153,12 @@ class TestVideoInspectorIntegration(unittest.TestCase):
         self.create_test_file("root.mp4")
 
         # Create subdirectory and files
-        subdir = os.path.join(self.test_dir, "subdir")
-        os.makedirs(subdir)
+        subdir = Path(self.test_dir) / "subdir"
+        subdir.mkdir(parents=True, exist_ok=True)
 
-        subfile = os.path.join(subdir, "sub.avi")
-        with open(subfile, "w") as f:
-            f.write("test")
-        self.test_files.append(subfile)
+        subfile = subdir / "sub.avi"
+        subfile.write_text("test")
+        self.test_files.append(str(subfile))
 
         # Test recursive (default)
         video_files = get_all_video_object_files(self.test_dir, recursive=True)
@@ -201,11 +198,11 @@ class TestVideoInspectorIntegration(unittest.TestCase):
 
     def test_integration_with_test_videos_directory(self):
         """Test integration with actual test-videos directory"""
-        test_videos_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test-videos")
+        test_videos_dir = Path(__file__).resolve().parent.parent / "test-videos"
 
-        if os.path.exists(test_videos_dir):
+        if test_videos_dir.exists():
             # This should not raise an exception
-            video_files = get_all_video_object_files(test_videos_dir)
+            video_files = get_all_video_object_files(str(test_videos_dir))
 
             # Should return a list
             assert isinstance(video_files, list)
