@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Set
 # Configure module logger
 logger = logging.getLogger(__name__)
 
-# Global progress tracking for signal handlers
+
 _current_progress: Dict[str, Any] = {
     "current_file": "",
     "total_files": 0,
@@ -47,7 +47,11 @@ class ProgressReporter:
 
         # Update global progress for signal handlers
         _current_progress.update(
-            {"total_files": total_files, "scan_mode": scan_mode, "start_time": self.start_time}
+            {
+                "total_files": total_files,
+                "scan_mode": scan_mode,
+                "start_time": self.start_time,
+            }
         )
 
     def update(
@@ -126,13 +130,13 @@ def signal_handler(signum: int, _frame: Any) -> None:
         avg = elapsed_time / processed_count
         rem = avg * remaining
         logger.info("Estimated Time Remaining: %.1f seconds", rem)
-    
+
     # Handle graceful shutdown for SIGTERM and SIGINT
     if signum in (signal.SIGTERM, signal.SIGINT):
         logger.info("Graceful shutdown requested via %s", signal_name)
         logger.info("Finishing current file processing and cleaning up...")
         _shutdown_requested = True
-    
+
     logger.info("%s", sep_line)
 
 
@@ -255,13 +259,22 @@ class WALEntry:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "WALEntry":
-        return cls(filename=data["filename"], result=data["result"], timestamp=data["timestamp"])
+        return cls(
+            filename=data["filename"],
+            result=data["result"],
+            timestamp=data["timestamp"],
+        )
 
 
 class WriteAheadLog:
     """Write-ahead log for resuming interrupted directory scans"""
 
-    def __init__(self, directory: str, scan_mode: ScanMode, extensions: Optional[List[str]] = None):
+    def __init__(
+        self,
+        directory: str,
+        scan_mode: ScanMode,
+        extensions: Optional[List[str]] = None,
+    ):
         self.directory = directory
         self.scan_mode = scan_mode
         # Use the same default extensions as get_all_video_object_files
@@ -348,7 +361,11 @@ class WriteAheadLog:
 
     def append_result(self, result: VideoInspectionResult) -> None:
         """Append a scan result to both WAL and results files"""
-        entry = WALEntry(filename=result.filename, result=result.to_dict(), timestamp=time.time())
+        entry = WALEntry(
+            filename=result.filename,
+            result=result.to_dict(),
+            timestamp=time.time(),
+        )
 
         with self.lock:
             self.results.append(entry)
@@ -461,7 +478,7 @@ class WriteAheadLog:
             "total_completed": len(self.results),
             "wal_file": str(self.wal_path),
             "results_file": str(self.results_path),
-            "last_processed": self.results[-1].timestamp if self.results else None,
+            "last_processed": (self.results[-1].timestamp if self.results else None),
         }
 
 
@@ -912,7 +929,7 @@ def inspect_video_files_cli(
                         if not f.done():
                             f.cancel()
                     break
-                    
+
                 try:
                     result = future.result()
                     results.append(result)
@@ -1004,14 +1021,16 @@ def inspect_video_files_cli(
                 for future, original_index in future_to_index.items():
                     # Check for shutdown request
                     if is_shutdown_requested():
-                        logger.info("Shutdown requested during deep scan, cancelling remaining tasks")
+                        logger.info(
+                            "Shutdown requested during deep scan, cancelling remaining tasks"
+                        )
                         print("\nShutdown requested, finishing current deep scan operations...")
                         # Cancel remaining futures
                         for f in future_to_index:
                             if not f.done():
                                 f.cancel()
                         break
-                        
+
                     try:
                         deep_result = future.result()
                         result_index = original_index
@@ -1062,10 +1081,12 @@ def inspect_video_files_cli(
         if wal:
             print(f"Progress saved to WAL file. Use same command to resume from: {wal.wal_path}")
         raise  # Re-raise to maintain exit code
-    
+
     # Check if we finished due to shutdown request
     if is_shutdown_requested():
-        logger.info(f"Scan completed due to graceful shutdown after processing {processed_count}/{total_files} files")
+        logger.info(
+            f"Scan completed due to graceful shutdown after processing {processed_count}/{total_files} files"
+        )
         print(f"\n\nGraceful shutdown completed. Processed {processed_count}/{total_files} files")
         if wal:
             print(f"Progress saved to WAL file. Use same command to resume from: {wal.wal_path}")
@@ -1139,8 +1160,8 @@ def inspect_video_files_cli(
         }
 
         try:
-            with Path(output_path).open("w") as f:
-                json.dump(json_data, f, indent=2)
+            with Path(output_path).open("w", encoding="utf-8") as file:
+                json.dump(json_data, file, indent=2)
             logger.info(f"JSON results saved successfully to {output_path}")
             print(f"\nDetailed results saved to: {output_path}")
         except Exception as e:
