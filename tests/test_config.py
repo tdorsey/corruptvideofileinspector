@@ -31,6 +31,7 @@ class TestConfigDataClasses(unittest.TestCase):
         
         # Test scan defaults
         self.assertTrue(cfg.scan.recursive)
+        self.assertIsNone(cfg.scan.default_input_dir)  # Should be None by default
         self.assertIn(".mp4", cfg.scan.extensions)
         self.assertIn(".mkv", cfg.scan.extensions)
 
@@ -48,7 +49,7 @@ class TestConfigLoader(unittest.TestCase):
         # Clean up any environment variables we might have set
         env_vars = [
             'CVI_LOG_LEVEL', 'CVI_MAX_WORKERS', 'CVI_DEFAULT_MODE',
-            'CVI_RECURSIVE', 'CVI_EXTENSIONS'
+            'CVI_RECURSIVE', 'CVI_EXTENSIONS', 'CVI_INPUT_DIR', 'CVI_OUTPUT_DIR'
         ]
         for var in env_vars:
             os.environ.pop(var, None)
@@ -230,6 +231,60 @@ class TestLoadConfig(unittest.TestCase):
         self.assertEqual(cfg.logging.level, "INFO")
         self.assertEqual(cfg.processing.max_workers, 4)
         self.assertEqual(cfg.processing.default_mode, "hybrid")
+        self.assertIsNone(cfg.scan.default_input_dir)  # Should be None by default
+
+
+class TestInputOutputDirectoryConfiguration(unittest.TestCase):
+    """Test input and output directory configuration functionality"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.loader = ConfigLoader()
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up test fixtures"""
+        # Clean up any environment variables we might have set
+        env_vars = ['CVI_INPUT_DIR', 'CVI_OUTPUT_DIR']
+        for var in env_vars:
+            os.environ.pop(var, None)
+
+    def test_input_output_directory_configuration(self):
+        """Test input and output directory configuration via YAML and environment"""
+        # Test YAML configuration
+        config_data = {
+            'scan': {
+                'default_input_dir': '/test/input/directory',
+                'recursive': True
+            },
+            'output': {
+                'default_output_dir': '/test/output/directory',
+                'default_filename': 'custom_results.json'
+            }
+        }
+        
+        config_file = Path(self.temp_dir) / "test_dirs.yaml"
+        with open(config_file, 'w') as f:
+            yaml.dump(config_data, f)
+        
+        self.loader.load_from_yaml(config_file)
+        
+        # Verify YAML values are loaded
+        self.assertEqual(self.loader.config.scan.default_input_dir, '/test/input/directory')
+        self.assertEqual(self.loader.config.output.default_output_dir, '/test/output/directory')
+        self.assertEqual(self.loader.config.output.default_filename, 'custom_results.json')
+        
+        # Test environment variable override
+        os.environ['CVI_INPUT_DIR'] = '/env/input/override'
+        os.environ['CVI_OUTPUT_DIR'] = '/env/output/override'
+        
+        self.loader.load_from_environment()
+        
+        # Environment should override YAML
+        self.assertEqual(self.loader.config.scan.default_input_dir, '/env/input/override')
+        self.assertEqual(self.loader.config.output.default_output_dir, '/env/output/override')
+        # Non-overridden value should remain from YAML
+        self.assertEqual(self.loader.config.output.default_filename, 'custom_results.json')
 
 
 if __name__ == '__main__':

@@ -29,6 +29,7 @@ output:
 # File scanning configuration
 scan:
   recursive: true  # Scan subdirectories recursively by default
+  default_input_dir: null  # Default directory to scan (null = require directory argument)
   extensions:  # Video file extensions to scan
     - ".mp4"
     - ".avi" 

@@ -61,6 +61,7 @@ output:
 # File scanning configuration
 scan:
   recursive: true  # Scan subdirectories recursively by default
+  default_input_dir: null  # Default directory to scan (null = require directory argument)
   extensions:  # Video file extensions to scan
     - ".mp4"
     - ".avi"
@@ -97,6 +98,7 @@ All configuration options can be overridden using environment variables with the
 
 ### Scanning
 - `CVI_RECURSIVE` - Scan recursively (true/false)
+- `CVI_INPUT_DIR` - Default input directory to scan
 - `CVI_EXTENSIONS` - Comma-separated list of extensions (.mp4,.mkv,.avi)
 
 ### Secrets
@@ -109,8 +111,12 @@ All configuration options can be overridden using environment variables with the
 export CVI_LOG_LEVEL=DEBUG
 export CVI_MAX_WORKERS=8
 
+# Configure input and output directories
+export CVI_INPUT_DIR=/path/to/videos
+export CVI_OUTPUT_DIR=/path/to/results
+
 # Run with environment overrides
-python cli_handler.py /videos
+python cli_handler.py  # Uses CVI_INPUT_DIR as default
 
 # One-time environment override
 CVI_LOG_LEVEL=ERROR CVI_MAX_WORKERS=2 python cli_handler.py /videos
@@ -125,6 +131,8 @@ For secure deployment, sensitive configuration can be provided via Docker secret
 - `cvi_log_level` - Override logging level
 - `cvi_ffmpeg_command` - Override ffmpeg command path
 - `cvi_max_workers` - Override worker count
+- `cvi_input_dir` - Override default input directory
+- `cvi_output_dir` - Override default output directory
 
 ### Docker Compose Setup
 
@@ -223,25 +231,39 @@ output:
   default_output_dir: "/app/output"
 ```
 
-### High-Performance Configuration
+### Configuration with Default Directories
 
 ```yaml
-# config.performance.yaml
+# config.autorun.yaml
 logging:
-  level: "WARNING"  # Minimal logging for performance
-
-processing:
-  max_workers: 16  # High parallelism
-  default_mode: "quick"  # Fast scans only
-
-ffmpeg:
-  quick_timeout: 30  # Shorter timeouts
+  level: "INFO"
+  file: "/app/output/inspector.log"
 
 scan:
-  extensions:  # Only most common formats
-    - ".mp4"
-    - ".mkv"
-    - ".avi"
+  default_input_dir: "/app/videos"  # Default input directory
+  recursive: true
+
+output:
+  default_json: true
+  default_output_dir: "/app/output"  # Default output directory
+  default_filename: "corruption_scan.json"
+
+processing:
+  max_workers: 4
+  default_mode: "hybrid"
+```
+
+With this configuration, you can run the scanner without specifying directories:
+
+```bash
+# Uses default_input_dir and default_output_dir from config
+python cli_handler.py --config config.autorun.yaml
+
+# Override just the input directory
+python cli_handler.py --config config.autorun.yaml /custom/videos
+
+# Override with environment variables
+CVI_INPUT_DIR=/other/videos CVI_OUTPUT_DIR=/other/output python cli_handler.py --config config.autorun.yaml
 ```
 
 ## Troubleshooting

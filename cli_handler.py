@@ -167,6 +167,8 @@ Examples:
   python3 cli_handler.py --verbose /path/videos             # CLI with verbose output
   python3 cli_handler.py --json /path/videos                # CLI with JSON output
   python3 cli_handler.py --list-videos /path                # List videos only
+  python3 cli_handler.py --config config.yaml               # Use default input dir from config
+  CVI_INPUT_DIR=/videos python3 cli_handler.py              # Set input dir via environment
 """,
     no_args_is_help=True,
 )
@@ -174,7 +176,7 @@ Examples:
 
 @app.command()
 def main_command(
-    directory: Optional[str] = typer.Argument(None, help="Directory to scan for video files"),
+    directory: Optional[str] = typer.Argument(None, help="Directory to scan for video files (optional if default_input_dir is configured)"),
     config_file: Optional[str] = typer.Option(
         None, "--config", "-c", help="Path to configuration file (YAML)"
     ),
@@ -264,11 +266,15 @@ def main_command(
         # Validate arguments
         validate_arguments(resolved_verbose, quiet, resolved_max_workers, resolved_json_output, output)
 
-        # Check if directory was provided
+        # Check if directory was provided or use default from config
         if not directory:
-            logger.error("Directory argument is required")
-            typer.echo("Error: Directory argument is required", err=True)
-            raise typer.Exit(1)
+            if cfg.scan.default_input_dir:
+                directory = cfg.scan.default_input_dir
+                logger.info(f"Using default input directory from config: {directory}")
+            else:
+                logger.error("Directory argument is required (no default configured)")
+                typer.echo("Error: Directory argument is required. Either provide a directory or configure scan.default_input_dir", err=True)
+                raise typer.Exit(1)
 
         # Validate directory
         try:
@@ -334,6 +340,14 @@ def main_command(
         # Enable JSON output if output file is specified
         if output and not resolved_json_output:
             resolved_json_output = True
+        
+        # Handle output directory from config
+        if resolved_json_output and not output and cfg.output.default_output_dir:
+            # Use configured output directory and filename
+            output_dir = Path(cfg.output.default_output_dir)
+            output_filename = cfg.output.default_filename
+            output = str(output_dir / output_filename)
+            logger.info(f"Using configured output path: {output}")
 
         # Start the inspection using video_inspector module
         inspect_video_files_cli(

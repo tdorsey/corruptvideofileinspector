@@ -29,6 +29,7 @@ output:
 # File scanning configuration
 scan:
   recursive: true
+  default_input_dir: "/app/videos"  # Default directory to scan if none provided
   extensions:
     - ".mp4"
     - ".mkv" 

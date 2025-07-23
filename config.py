@@ -53,6 +53,7 @@ class OutputConfig:
 class ScanConfig:
     """File scanning configuration settings."""
     recursive: bool = True
+    default_input_dir: Optional[str] = None  # Default directory to scan
     extensions: List[str] = field(default_factory=lambda: [
         ".mp4", ".avi", ".mkv", ".mov", ".wmv", 
         ".flv", ".webm", ".m4v", ".mpg", ".mpeg"
@@ -144,6 +145,7 @@ class ConfigLoader:
             
             # Scan
             'CVI_RECURSIVE': ('scan', 'recursive'),
+            'CVI_INPUT_DIR': ('scan', 'default_input_dir'),
             'CVI_EXTENSIONS': ('scan', 'extensions'),
             
             # Secrets
@@ -169,6 +171,8 @@ class ConfigLoader:
             'cvi_log_level': ('logging', 'level'),
             'cvi_ffmpeg_command': ('ffmpeg', 'command'),
             'cvi_max_workers': ('processing', 'max_workers'),
+            'cvi_input_dir': ('scan', 'default_input_dir'),
+            'cvi_output_dir': ('output', 'default_output_dir'),
             # Add more secrets as needed
         }
         
