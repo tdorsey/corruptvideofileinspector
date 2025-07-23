@@ -2,7 +2,6 @@
 Integration tests for CLI handler functionality (core functions only)
 """
 
-
 import contextlib
 import logging
 import os
@@ -45,9 +44,7 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
     def test_setup_logging_function_exists(self):
         """Test that setup_logging function can be imported and called"""
         # We'll import the function directly to avoid typer import issues
-        cli_handler_path = (
-            Path(__file__).resolve().parent.parent / "cli_handler.py"
-        )
+        cli_handler_path = Path(__file__).resolve().parent.parent / "cli_handler.py"
         content = cli_handler_path.read_text()
 
         # Check that setup_logging function exists
@@ -65,9 +62,7 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
         Test that validate_directory function exists and has correct
         signature
         """
-        cli_handler_path = (
-            Path(__file__).resolve().parent.parent / "cli_handler.py"
-        )
+        cli_handler_path = Path(__file__).resolve().parent.parent / "cli_handler.py"
         content = cli_handler_path.read_text()
 
         # Check that validate_directory function exists
@@ -78,17 +73,13 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
 
     def test_validate_arguments_function_exists(self):
         """Test that validate_arguments function exists"""
-        cli_handler_path = (
-            Path(__file__).resolve().parent.parent / "cli_handler.py"
-        )
+        cli_handler_path = Path(__file__).resolve().parent.parent / "cli_handler.py"
         content = cli_handler_path.read_text()
 
         # Check that validate_arguments function exists
         assert "def validate_arguments" in content
         assert "verbose and quiet" in content
-        assert (
-            "max_workers <= 0" in content
-        )
+        assert "max_workers <= 0" in content
 
     def test_directory_validation_logic(self):
         """Test directory validation logic manually"""
@@ -138,7 +129,7 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
             os.path.dirname(os.path.dirname(__file__)),
             "cli_handler.py",
         )
-        with open(cli_handler_path) as f:
+        with Path(cli_handler_path).open() as f:
             content = f.read()
 
         # Check for expected imports
@@ -163,7 +154,7 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
             os.path.dirname(os.path.dirname(__file__)),
             "cli_handler.py",
         )
-        with open(cli_handler_path) as f:
+        with Path(cli_handler_path).open() as f:
             content = f.read()
 
         # Check for main functions

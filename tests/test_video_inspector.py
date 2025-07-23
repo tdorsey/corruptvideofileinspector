@@ -242,7 +242,7 @@ class TestInspectSingleVideoQuick(unittest.TestCase):
         self.test_file = os.path.join(self.temp_dir, "test.mp4")
 
         # Create a test file
-        with open(self.test_file, "wb") as f:
+        with Path(self.test_file).open("wb") as f:
             f.write(b"0" * 1024)
 
         self.video_file = VideoFile(self.test_file)
@@ -348,7 +348,7 @@ class TestInspectSingleVideoDeep(unittest.TestCase):
         self.test_file = os.path.join(self.temp_dir, "test.mp4")
 
         # Create a test file
-        with open(self.test_file, "wb") as f:
+        with Path(self.test_file).open("wb") as f:
             f.write(b"0" * 1024)
 
         self.video_file = VideoFile(self.test_file)
@@ -432,7 +432,7 @@ class TestInspectSingleVideo(unittest.TestCase):
         self.test_file = os.path.join(self.temp_dir, "test.mp4")
 
         # Create a test file
-        with open(self.test_file, "wb") as f:
+        with Path(self.test_file).open("wb") as f:
             f.write(b"0" * 1024)
 
         self.video_file = VideoFile(self.test_file)

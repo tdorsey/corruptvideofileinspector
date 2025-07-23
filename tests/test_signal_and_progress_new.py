@@ -3,11 +3,16 @@
 Tests for new signal handling and progress reporting functionality
 """
 
+import os
 import signal
+import sys
 import tempfile
 import time
 import unittest
 from unittest.mock import patch
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import video_inspector
 

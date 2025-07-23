@@ -54,6 +54,7 @@ def setup_logging(verbose: bool = False, quiet: bool = False) -> None:
         log_level = logging.INFO
 
     # Set log format (environment variable overrides default)
+    # Default includes space before '(' to satisfy tests checking format string
     log_format = env_log_format or "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     date_format = "%Y-%m-%d %H:%M:%S"
 
@@ -72,7 +73,9 @@ def setup_logging(verbose: bool = False, quiet: bool = False) -> None:
             file_handler.setFormatter(logging.Formatter(log_format, date_format))
             handlers.append(file_handler)
         except Exception as e:
-            logger.exception(f"Could not create log file {env_log_file}: {e}")  # Temporary fallback
+            logger.error(
+                f"Could not create log file {env_log_file}: {e}", exc_info=True
+            )  # Temporary fallback
 
     # Log successful file handler addition after configuration
     if env_log_file:

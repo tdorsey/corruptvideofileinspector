@@ -79,9 +79,7 @@ class TestEndToEndIntegration(unittest.TestCase):
         empty_dir = Path(self.test_dir) / "empty"
         empty_dir.mkdir(parents=True, exist_ok=True)
 
-    def create_test_file(
-        self, filename: str, content: str = "test content"
-    ) -> str:
+    def create_test_file(self, filename: str, content: str = "test content") -> str:
         """Create a test file and return its path"""
         file_path = Path(self.test_dir) / filename
         with file_path.open("w") as f:
@@ -96,16 +94,12 @@ class TestEndToEndIntegration(unittest.TestCase):
 
         assert total_count == 6  # All video files including subdirs
 
-        non_recursive_count = count_all_video_files(
-            str(self.test_dir), recursive=False
-        )
+        non_recursive_count = count_all_video_files(str(self.test_dir), recursive=False)
         assert non_recursive_count == 3  # Only root level videos
 
         # Step 2: Get video file objects using video_inspector
 
-        video_files = get_all_video_object_files(
-            str(self.test_dir), recursive=True
-        )
+        video_files = get_all_video_object_files(str(self.test_dir), recursive=True)
         assert len(video_files) == 6
 
         # Verify all are VideoFile objects
@@ -170,9 +164,7 @@ class TestEndToEndIntegration(unittest.TestCase):
 
             # Should be a valid format
             assert isinstance(formatted_size, str)
-            assert any(
-                unit in formatted_size for unit in ["B", "KB", "MB", "GB"]
-            )
+            assert any(unit in formatted_size for unit in ["B", "KB", "MB", "GB"])
 
             # Should be parseable (contains a number)
             assert any(char.isdigit() for char in formatted_size)
@@ -181,20 +173,12 @@ class TestEndToEndIntegration(unittest.TestCase):
         """Test consistency between recursive and non-recursive scanning"""
         # Get all files recursively
 
-        all_recursive_count = count_all_video_files(
-            str(self.test_dir), recursive=True
-        )
-        all_recursive_objects = get_all_video_object_files(
-            str(self.test_dir), recursive=True
-        )
+        all_recursive_count = count_all_video_files(str(self.test_dir), recursive=True)
+        all_recursive_objects = get_all_video_object_files(str(self.test_dir), recursive=True)
 
         # Get root files only
-        root_count = count_all_video_files(
-            str(self.test_dir), recursive=False
-        )
-        root_objects = get_all_video_object_files(
-            str(self.test_dir), recursive=False
-        )
+        root_count = count_all_video_files(str(self.test_dir), recursive=False)
+        root_objects = get_all_video_object_files(str(self.test_dir), recursive=False)
 
         # Consistency checks
         assert all_recursive_count == len(all_recursive_objects)
@@ -214,12 +198,8 @@ class TestEndToEndIntegration(unittest.TestCase):
         """Test custom extension filtering across the workflow"""
         # Test with only MP4 files
 
-        mp4_count = count_all_video_files(
-            str(self.test_dir), extensions=[".mp4"]
-        )
-        mp4_objects = get_all_video_object_files(
-            str(self.test_dir), extensions=[".mp4"]
-        )
+        mp4_count = count_all_video_files(str(self.test_dir), extensions=[".mp4"])
+        mp4_objects = get_all_video_object_files(str(self.test_dir), extensions=[".mp4"])
 
         assert mp4_count == len(mp4_objects)
 
@@ -229,12 +209,8 @@ class TestEndToEndIntegration(unittest.TestCase):
 
         # Test with multiple extensions
 
-        multi_count = count_all_video_files(
-            str(self.test_dir), extensions=[".mp4", ".avi"]
-        )
-        multi_objects = get_all_video_object_files(
-            str(self.test_dir), extensions=[".mp4", ".avi"]
-        )
+        multi_count = count_all_video_files(str(self.test_dir), extensions=[".mp4", ".avi"])
+        multi_objects = get_all_video_object_files(str(self.test_dir), extensions=[".mp4", ".avi"])
 
         assert multi_count == len(multi_objects)
         assert multi_count > mp4_count  # Should find more files
@@ -285,9 +261,7 @@ class TestEndToEndIntegration(unittest.TestCase):
             assert count == expected_video_count
 
             # Test object creation
-            objects = get_all_video_object_files(
-                str(large_test_dir), recursive=True
-            )
+            objects = get_all_video_object_files(str(large_test_dir), recursive=True)
             assert len(objects) == expected_video_count
 
             # Verify all objects are valid
@@ -296,7 +270,4 @@ class TestEndToEndIntegration(unittest.TestCase):
                 assert obj.size > 0
                 assert obj.filename.endswith(".mp4")
         except Exception as e:
-            self.fail(
-                "Exception occurred during large directory structure "
-                f"simulation: {e}"
-            )
+            self.fail("Exception occurred during large directory structure " f"simulation: {e}")

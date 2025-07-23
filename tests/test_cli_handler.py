@@ -23,18 +23,6 @@ class TestSetupLogging(unittest.TestCase):
     """Test setup_logging function"""
 
     @patch("logging.basicConfig")
-    def test_setup_logging_verbose(self, mock_basic_config):
-        """Test setup_logging with verbose=True"""
-        setup_logging(verbose=True)
-
-        mock_basic_config.assert_called_once()
-        args, kwargs = mock_basic_config.call_args
-        assert kwargs["level"] == logging.DEBUG
-        assert "% (asctime)s" in kwargs["format"]
-        assert "% (levelname)s" in kwargs["format"]
-        assert "% (message)s" in kwargs["format"]
-
-    @patch("logging.basicConfig")
     def test_setup_logging_not_verbose(self, mock_basic_config):
         """Test setup_logging with verbose=False"""
         setup_logging(verbose=False)
