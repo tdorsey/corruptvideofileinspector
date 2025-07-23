@@ -60,8 +60,8 @@ def count_all_video_files(
         logger.info(f"Counted {count} video files in {directory}")
         return count
 
-    except Exception as e:
-        logger.exception(f"Error counting video files in {directory}: {e}")
+    except Exception:
+        logger.exception(f"Error counting video files in {directory}")
         raise
 
 

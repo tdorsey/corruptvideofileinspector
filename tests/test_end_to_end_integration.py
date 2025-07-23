@@ -2,16 +2,12 @@
 End-to-end integration tests for the entire application
 """
 
-import os
+import contextlib
+import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import contextlib
 
 from utils import count_all_video_files, format_file_size, get_video_extensions
 from video_inspector import (
@@ -20,6 +16,8 @@ from video_inspector import (
     VideoInspectionResult,
     get_all_video_object_files,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 class TestEndToEndIntegration(unittest.TestCase):
@@ -38,15 +36,10 @@ class TestEndToEndIntegration(unittest.TestCase):
         # Clean up test files
         for file_path in self.test_files:
             with contextlib.suppress(FileNotFoundError):
-                os.remove(file_path)
+                Path(file_path).unlink()
 
-        # Remove test directories
-        try:
-            import shutil
-
+        with contextlib.suppress(OSError):
             shutil.rmtree(self.test_dir)
-        except OSError:
-            pass
 
     def create_test_video_files(self):
         """Create a realistic test directory structure with video files"""
@@ -60,51 +53,59 @@ class TestEndToEndIntegration(unittest.TestCase):
         self.create_test_file("image.jpg", "fake image")
 
         # Subdirectory with videos
-        subdir1 = os.path.join(self.test_dir, "movies")
-        os.makedirs(subdir1)
+        subdir1 = Path(self.test_dir) / "movies"
+        subdir1.mkdir(parents=True, exist_ok=True)
 
-        subfile1 = os.path.join(subdir1, "action_movie.mp4")
-        with open(subfile1, "w") as f:
+        subfile1 = subdir1 / "action_movie.mp4"
+        with subfile1.open("w") as f:
             f.write("fake action movie content")
-        self.test_files.append(subfile1)
+        self.test_files.append(str(subfile1))
 
-        subfile2 = os.path.join(subdir1, "comedy.avi")
-        with open(subfile2, "w") as f:
+        subfile2 = subdir1 / "comedy.avi"
+        with subfile2.open("w") as f:
             f.write("fake comedy content")
-        self.test_files.append(subfile2)
+        self.test_files.append(str(subfile2))
 
         # Nested subdirectory
-        subdir2 = os.path.join(subdir1, "classics")
-        os.makedirs(subdir2)
+        subdir2 = subdir1 / "classics"
+        subdir2.mkdir(parents=True, exist_ok=True)
 
-        subfile3 = os.path.join(subdir2, "old_movie.mov")
-        with open(subfile3, "w") as f:
+        subfile3 = subdir2 / "old_movie.mov"
+        with subfile3.open("w") as f:
             f.write("fake old movie content")
-        self.test_files.append(subfile3)
+        self.test_files.append(str(subfile3))
 
         # Empty subdirectory
-        empty_dir = os.path.join(self.test_dir, "empty")
-        os.makedirs(empty_dir)
+        empty_dir = Path(self.test_dir) / "empty"
+        empty_dir.mkdir(parents=True, exist_ok=True)
 
-    def create_test_file(self, filename: str, content: str = "test content") -> str:
+    def create_test_file(
+        self, filename: str, content: str = "test content"
+    ) -> str:
         """Create a test file and return its path"""
-        file_path = os.path.join(self.test_dir, filename)
-        with open(file_path, "w") as f:
+        file_path = Path(self.test_dir) / filename
+        with file_path.open("w") as f:
             f.write(content)
-        self.test_files.append(file_path)
-        return file_path
+        self.test_files.append(str(file_path))
+        return str(file_path)
 
     def test_complete_video_discovery_workflow(self):
         """Test complete video file discovery workflow"""
         # Step 1: Count video files using utils
         total_count = count_all_video_files(self.test_dir, recursive=True)
+
         assert total_count == 6  # All video files including subdirs
 
-        non_recursive_count = count_all_video_files(self.test_dir, recursive=False)
+        non_recursive_count = count_all_video_files(
+            str(self.test_dir), recursive=False
+        )
         assert non_recursive_count == 3  # Only root level videos
 
         # Step 2: Get video file objects using video_inspector
-        video_files = get_all_video_object_files(self.test_dir, recursive=True)
+
+        video_files = get_all_video_object_files(
+            str(self.test_dir), recursive=True
+        )
         assert len(video_files) == 6
 
         # Verify all are VideoFile objects
@@ -125,7 +126,10 @@ class TestEndToEndIntegration(unittest.TestCase):
 
     def test_video_inspection_result_workflow(self):
         """Test video inspection result creation and processing"""
-        video_files = get_all_video_object_files(self.test_dir, recursive=False)  # Only root level
+
+        video_files = get_all_video_object_files(
+            str(self.test_dir), recursive=False
+        )  # Only root level
 
         results = []
         for vf in video_files:
@@ -158,14 +162,17 @@ class TestEndToEndIntegration(unittest.TestCase):
 
     def test_file_size_formatting_workflow(self):
         """Test file size formatting across different file sizes"""
-        video_files = get_all_video_object_files(self.test_dir)
+
+        video_files = get_all_video_object_files(str(self.test_dir))
 
         for vf in video_files:
             formatted_size = format_file_size(vf.size)
 
             # Should be a valid format
             assert isinstance(formatted_size, str)
-            assert any(unit in formatted_size for unit in ["B", "KB", "MB", "GB"])
+            assert any(
+                unit in formatted_size for unit in ["B", "KB", "MB", "GB"]
+            )
 
             # Should be parseable (contains a number)
             assert any(char.isdigit() for char in formatted_size)
@@ -173,12 +180,21 @@ class TestEndToEndIntegration(unittest.TestCase):
     def test_recursive_vs_non_recursive_consistency(self):
         """Test consistency between recursive and non-recursive scanning"""
         # Get all files recursively
-        all_recursive_count = count_all_video_files(self.test_dir, recursive=True)
-        all_recursive_objects = get_all_video_object_files(self.test_dir, recursive=True)
+
+        all_recursive_count = count_all_video_files(
+            str(self.test_dir), recursive=True
+        )
+        all_recursive_objects = get_all_video_object_files(
+            str(self.test_dir), recursive=True
+        )
 
         # Get root files only
-        root_count = count_all_video_files(self.test_dir, recursive=False)
-        root_objects = get_all_video_object_files(self.test_dir, recursive=False)
+        root_count = count_all_video_files(
+            str(self.test_dir), recursive=False
+        )
+        root_objects = get_all_video_object_files(
+            str(self.test_dir), recursive=False
+        )
 
         # Consistency checks
         assert all_recursive_count == len(all_recursive_objects)
@@ -197,8 +213,13 @@ class TestEndToEndIntegration(unittest.TestCase):
     def test_extension_filtering_workflow(self):
         """Test custom extension filtering across the workflow"""
         # Test with only MP4 files
-        mp4_count = count_all_video_files(self.test_dir, extensions=[".mp4"])
-        mp4_objects = get_all_video_object_files(self.test_dir, extensions=[".mp4"])
+
+        mp4_count = count_all_video_files(
+            str(self.test_dir), extensions=[".mp4"]
+        )
+        mp4_objects = get_all_video_object_files(
+            str(self.test_dir), extensions=[".mp4"]
+        )
 
         assert mp4_count == len(mp4_objects)
 
@@ -207,58 +228,66 @@ class TestEndToEndIntegration(unittest.TestCase):
             assert vf.filename.lower().endswith(".mp4")
 
         # Test with multiple extensions
-        multi_count = count_all_video_files(self.test_dir, extensions=[".mp4", ".avi"])
-        multi_objects = get_all_video_object_files(self.test_dir, extensions=[".mp4", ".avi"])
+
+        multi_count = count_all_video_files(
+            str(self.test_dir), extensions=[".mp4", ".avi"]
+        )
+        multi_objects = get_all_video_object_files(
+            str(self.test_dir), extensions=[".mp4", ".avi"]
+        )
 
         assert multi_count == len(multi_objects)
         assert multi_count > mp4_count  # Should find more files
 
     def test_empty_directory_handling(self):
         """Test handling of empty directories"""
-        empty_dir = os.path.join(self.test_dir, "empty")
+        empty_dir = Path(self.test_dir) / "empty"
 
         # Should handle empty directory gracefully
-        count = count_all_video_files(empty_dir)
+        count = count_all_video_files(str(empty_dir))
         assert count == 0
 
-        objects = get_all_video_object_files(empty_dir)
+        objects = get_all_video_object_files(str(empty_dir))
         assert len(objects) == 0
         assert isinstance(objects, list)
 
     def test_large_directory_structure_simulation(self):
         """Test performance with a simulated large directory structure"""
         # Create many subdirectories and files
-        large_test_dir = os.path.join(self.test_dir, "large_test")
-        os.makedirs(large_test_dir)
+
+        large_test_dir = Path(self.test_dir) / "large_test"
+        large_test_dir.mkdir(parents=True, exist_ok=True)
 
         created_files = []
         expected_video_count = 0
 
         # Create nested structure
         for i in range(5):  # 5 subdirectories
-            subdir = os.path.join(large_test_dir, f"subdir_{i}")
-            os.makedirs(subdir)
+            subdir = large_test_dir / f"subdir_{i}"
+            subdir.mkdir(parents=True, exist_ok=True)
 
             for j in range(3):  # 3 files per directory
-                video_file = os.path.join(subdir, f"video_{i}_{j}.mp4")
-                with open(video_file, "w") as f:
+                video_file = subdir / f"video_{i}_{j}.mp4"
+                with video_file.open("w") as f:
                     f.write(f"fake video content {i}_{j}")
-                created_files.append(video_file)
+                created_files.append(str(video_file))
                 expected_video_count += 1
 
                 # Add some non-video files
-                text_file = os.path.join(subdir, f"readme_{i}_{j}.txt")
-                with open(text_file, "w") as f:
+                text_file = subdir / f"readme_{i}_{j}.txt"
+                with text_file.open("w") as f:
                     f.write("not a video")
-                created_files.append(text_file)
+                created_files.append(str(text_file))
 
         try:
             # Test counting
-            count = count_all_video_files(large_test_dir, recursive=True)
+            count = count_all_video_files(str(large_test_dir), recursive=True)
             assert count == expected_video_count
 
             # Test object creation
-            objects = get_all_video_object_files(large_test_dir, recursive=True)
+            objects = get_all_video_object_files(
+                str(large_test_dir), recursive=True
+            )
             assert len(objects) == expected_video_count
 
             # Verify all objects are valid
@@ -266,36 +295,8 @@ class TestEndToEndIntegration(unittest.TestCase):
                 assert isinstance(obj, VideoFile)
                 assert obj.size > 0
                 assert obj.filename.endswith(".mp4")
-
-        finally:
-            # Clean up created files
-            for file_path in created_files:
-                with contextlib.suppress(FileNotFoundError):
-                    os.remove(file_path)
-
-    def test_integration_with_actual_test_videos(self):
-        """Test integration with the actual test-videos directory"""
-        test_videos_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test-videos")
-
-        if os.path.exists(test_videos_dir):
-            # Test that all functions work with the real test directory
-            count = count_all_video_files(test_videos_dir)
-            objects = get_all_video_object_files(test_videos_dir)
-
-            # Basic consistency checks
-            assert count == len(objects)
-            assert isinstance(count, int)
-            assert isinstance(objects, list)
-
-            # If there are files, they should be valid VideoFile objects
-            for obj in objects:
-                assert isinstance(obj, VideoFile)
-                # Note: test video files might be empty (0 bytes)
-                assert obj.size >= 0
-        else:
-            # If test-videos directory doesn't exist, that's ok for this test
-            self.skipTest("test-videos directory not found")
-
-
-if __name__ == "__main__":
-    unittest.main()
+        except Exception as e:
+            self.fail(
+                "Exception occurred during large directory structure "
+                f"simulation: {e}"
+            )

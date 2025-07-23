@@ -32,11 +32,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: 'pip'
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --timeout=300 --retries=3 -e ".[dev]"
+          make install-dev
+
+      - name: Install pre-commit hooks
+        run: make pre-commit-install
 
       - name: Verify tools are available
         run: |

@@ -1,18 +1,15 @@
-"""
-Unit tests for utils.py module
-"""
+"""Unit tests for utils.py module"""
 
 import os
-
-# Add parent directory to path for importing
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from utils import count_all_video_files, format_file_size, get_video_extensions
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 class TestCountAllVideoFiles(unittest.TestCase):
@@ -74,7 +71,7 @@ class TestCountAllVideoFiles(unittest.TestCase):
             count = count_all_video_files(empty_dir, recursive=True)
             assert count == 0
         finally:
-            os.rmdir(empty_dir)
+            Path(empty_dir).rmdir()
 
     def test_count_case_insensitive_extensions(self):
         """Test that extensions are case insensitive"""
@@ -87,7 +84,8 @@ class TestCountAllVideoFiles(unittest.TestCase):
 
     def test_count_nonexistent_directory(self):
         """Test behavior with non-existent directory"""
-        # The function returns 0 for non-existent directories (Path.glob handles this gracefully)
+        # The function returns 0 for non-existent directories
+        # (Path.glob handles this gracefully)
         count = count_all_video_files("/nonexistent/directory")
         assert count == 0
 
@@ -110,18 +108,18 @@ class TestFormatFileSize(unittest.TestCase):
     def test_format_megabytes(self):
         """Test formatting megabytes"""
         assert format_file_size(1024 * 1024) == "1.0 MB"
-        assert format_file_size(1024 * 1024 * 2.5) == "2.5 MB"
+        assert format_file_size(int(1024 * 1024 * 2.5)) == "2.5 MB"
         assert format_file_size(1024 * 1024 * 100) == "100.0 MB"
 
     def test_format_gigabytes(self):
         """Test formatting gigabytes"""
         assert format_file_size(1024 * 1024 * 1024) == "1.0 GB"
-        assert format_file_size(1024 * 1024 * 1024 * 4.7) == "4.7 GB"
+        assert format_file_size(int(1024 * 1024 * 1024 * 4.7)) == "4.7 GB"
 
     def test_format_terabytes(self):
         """Test formatting terabytes"""
         assert format_file_size(1024 * 1024 * 1024 * 1024) == "1.0 TB"
-        assert format_file_size(1024 * 1024 * 1024 * 1024 * 2.3) == "2.3 TB"
+        assert format_file_size(int(1024 * 1024 * 1024 * 1024 * 2.3)) == "2.3 TB"
 
     def test_format_negative_size(self):
         """Test formatting negative size (edge case)"""
