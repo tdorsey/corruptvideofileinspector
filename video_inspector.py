@@ -1174,8 +1174,8 @@ def inspect_video_files_cli(
         print(f"Files requiring deep scan: {deep_scan_needed}")
     print(f"Total scan time: {total_time:.2f} seconds")
     if processed_count > 0:
-        print(f"Average time per file: {total_time / processed_count:.2f} seconds")
-
+        average_time_per_file = total_time / processed_count
+        print(f"Average time per file: {average_time_per_file:.2f} seconds")
     logger.info(
         f"Scan summary - Total: {processed_count}, Corrupt: {corrupt_count}, "
         f"Healthy: {processed_count - corrupt_count}, Time: {total_time:.2f}s"
