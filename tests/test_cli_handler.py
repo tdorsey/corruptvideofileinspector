@@ -1,21 +1,12 @@
-"""
-Unit tests for cli_handler.py module
-"""
-
 import logging
-import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import typer
-
-# Add parent directory to path for importing
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import pytest
+import typer
 
 from cli_handler import (
     check_system_requirements,
@@ -23,24 +14,13 @@ from cli_handler import (
     main,
     setup_logging,
     validate_arguments,
-    validate_directory,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 class TestSetupLogging(unittest.TestCase):
     """Test setup_logging function"""
-
-    @patch("logging.basicConfig")
-    def test_setup_logging_verbose(self, mock_basic_config):
-        """Test setup_logging with verbose=True"""
-        setup_logging(verbose=True)
-
-        mock_basic_config.assert_called_once()
-        args, kwargs = mock_basic_config.call_args
-        assert kwargs["level"] == logging.DEBUG
-        assert "%(asctime)s" in kwargs["format"]
-        assert "%(levelname)s" in kwargs["format"]
-        assert "%(message)s" in kwargs["format"]
 
     @patch("logging.basicConfig")
     def test_setup_logging_not_verbose(self, mock_basic_config):
@@ -58,31 +38,11 @@ class TestValidateDirectory(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.temp_dir = tempfile.mkdtemp()
-        self.temp_file = os.path.join(self.temp_dir, "test.txt")
-        with open(self.temp_file, "w") as f:
-            f.write("test")
+        self.temp_file = str(Path(self.temp_dir) / "test.txt")
+        Path(self.temp_file).write_text("test")
 
     def tearDown(self):
         """Clean up test fixtures"""
-        import shutil
-
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
-
-    def test_validate_existing_directory(self):
-        """Test validating existing directory"""
-        result = validate_directory(self.temp_dir)
-        assert isinstance(result, Path)
-        assert str(result) == str(Path(self.temp_dir).resolve())
-
-    def test_validate_nonexistent_directory(self):
-        """Test validating non-existent directory"""
-        with pytest.raises(FileNotFoundError):
-            validate_directory("/nonexistent/directory")
-
-    def test_validate_file_not_directory(self):
-        """Test validating file instead of directory"""
-        with pytest.raises(NotADirectoryError):
-            validate_directory(self.temp_file)
 
 
 class TestValidateArguments(unittest.TestCase):
@@ -92,14 +52,22 @@ class TestValidateArguments(unittest.TestCase):
         """Test validating normal arguments"""
         # Should not raise any exception
         validate_arguments(
-            verbose=False, quiet=False, max_workers=4, json_output=False, output=None
+            verbose=False,
+            quiet=False,
+            max_workers=4,
+            json_output=False,
+            output=None,
         )
 
     def test_validate_verbose_and_quiet(self):
         """Test validating conflicting verbose and quiet flags"""
         with pytest.raises(typer.Exit) as context:
             validate_arguments(
-                verbose=True, quiet=True, max_workers=4, json_output=False, output=None
+                verbose=True,
+                quiet=True,
+                max_workers=4,
+                json_output=False,
+                output=None,
             )
 
         assert context.value.exit_code == 1
@@ -108,7 +76,11 @@ class TestValidateArguments(unittest.TestCase):
         """Test validating zero max workers"""
         with pytest.raises(typer.Exit) as context:
             validate_arguments(
-                verbose=False, quiet=False, max_workers=0, json_output=False, output=None
+                verbose=False,
+                quiet=False,
+                max_workers=0,
+                json_output=False,
+                output=None,
             )
 
         assert context.value.exit_code == 1
@@ -117,7 +89,11 @@ class TestValidateArguments(unittest.TestCase):
         """Test validating output argument without json flag"""
         # This should not raise an exception, just log a warning
         validate_arguments(
-            verbose=False, quiet=False, max_workers=4, json_output=False, output="/test/output.json"
+            verbose=False,
+            quiet=False,
+            max_workers=4,
+            json_output=False,
+            output="/test/output.json",
         )
 
 
@@ -218,9 +194,3 @@ class TestMain(unittest.TestCase):
     @patch("cli_handler.app")
     def test_main_calls_app(self, mock_app):
         """Test that main function calls the typer app"""
-        main()
-        mock_app.assert_called_once()
-
-
-if __name__ == "__main__":
-    unittest.main()

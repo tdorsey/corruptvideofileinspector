@@ -36,6 +36,18 @@ python3 cli_handler.py /path/to/your/videos
 corrupt-video-inspector /path/to/your/videos
 ```
 
+**Sync to Trakt.tv watchlist:**
+```bash
+# First, scan your videos with JSON output
+python3 cli_handler.py --json /path/to/your/videos
+
+# Then sync results to Trakt watchlist (automatic mode)
+python3 cli_handler.py trakt corruption_scan_results.json --token YOUR_TRAKT_TOKEN
+
+# Or use interactive mode to manually select matches
+python3 cli_handler.py trakt corruption_scan_results.json --token YOUR_TRAKT_TOKEN --interactive
+```
+
 ### Direct Docker Usage
 
 **Build the image:**
@@ -134,11 +146,47 @@ This project uses Docker Compose profiles:
 - **Resume functionality for interrupted scans using Write-Ahead Log (WAL)**
 - **Signal-based progress reporting (SIGUSR1, SIGUSR2, SIGTERM)**
 - **Durable result files for persistent scan history**
+- **Configurable logging with multiple output options**
 - Recursive directory scanning
 - File extension filtering
 - Progress tracking
 - Hybrid scan mode (quick + deep scan for suspicious files)
+- **Trakt.tv watchlist integration for automatic media syncing**
 - Comprehensive integration testing
+
+### Logging Configuration
+
+The Corrupt Video Inspector includes robust logging capabilities that can be configured via environment variables:
+
+**Environment Variables:**
+- `CORRUPT_VIDEO_INSPECTOR_LOG_LEVEL`: Set log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`)
+- `CORRUPT_VIDEO_INSPECTOR_LOG_FILE`: Set log file path for persistent logging
+- `CORRUPT_VIDEO_INSPECTOR_LOG_FORMAT`: Set custom log format
+
+**Examples:**
+```bash
+# Enable debug logging
+export CORRUPT_VIDEO_INSPECTOR_LOG_LEVEL=DEBUG
+python3 cli_handler.py /path/to/videos
+
+# Log to file
+export CORRUPT_VIDEO_INSPECTOR_LOG_FILE=/var/log/video-inspector.log
+python3 cli_handler.py /path/to/videos
+
+# Custom log format (simple)
+export CORRUPT_VIDEO_INSPECTOR_LOG_FORMAT='%(levelname)s: %(message)s'
+python3 cli_handler.py /path/to/videos
+
+# Combined configuration
+export CORRUPT_VIDEO_INSPECTOR_LOG_LEVEL=INFO
+export CORRUPT_VIDEO_INSPECTOR_LOG_FILE=/tmp/scan.log
+python3 cli_handler.py --verbose /path/to/videos
+```
+
+**Default Behavior:**
+- Console output goes to `stderr` to avoid interfering with scan results
+- Log level defaults to `INFO`, or `DEBUG` with `--verbose`, or `ERROR` with `--quiet`
+- Messages are logged alongside existing console output for optimal user experience
 
 ### Signal-Based Progress Reporting
 

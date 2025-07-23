@@ -60,8 +60,8 @@ def count_all_video_files(
         logger.info(f"Counted {count} video files in {directory}")
         return count
 
-    except Exception as e:
-        logger.exception(f"Error counting video files in {directory}: {e}")
+    except Exception:
+        logger.exception(f"Error counting video files in {directory}")
         raise
 
 
@@ -77,14 +77,16 @@ def format_file_size(size_bytes: int) -> str:
     """
     logger.debug(f"Formatting file size: {size_bytes} bytes")
 
+    size_float = float(size_bytes)  # Convert to float for calculations
+
     for unit in ["B", "KB", "MB", "GB"]:
-        if size_bytes < 1024:
-            formatted = f"{size_bytes:.1f} {unit}"
+        if size_float < 1024:
+            formatted = f"{size_float:.1f} {unit}"
             logger.debug(f"Formatted size: {formatted}")
             return formatted
-        size_bytes /= 1024
+        size_float /= 1024
 
-    formatted = f"{size_bytes:.1f} TB"
+    formatted = f"{size_float:.1f} TB"
     logger.debug(f"Formatted size: {formatted}")
     return formatted
 

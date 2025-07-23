@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # We'll test the functions that don't require typer
 # by importing and testing them individually
@@ -26,27 +26,26 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
         self.test_files = []
 
         # Create a test file in the directory
-        test_file = os.path.join(self.test_dir, "test.txt")
-        with open(test_file, "w") as f:
-            f.write("test content")
-        self.test_files.append(test_file)
+        test_file = Path(self.test_dir) / "test.txt"
+        test_file.write_text("test content")
+        self.test_files.append(str(test_file))
 
     def tearDown(self):
         """Clean up test environment"""
         # Clean up test files
         for file_path in self.test_files:
             with contextlib.suppress(FileNotFoundError):
-                os.remove(file_path)
+                Path(file_path).unlink()
 
         # Remove test directory
         with contextlib.suppress(OSError):
-            os.rmdir(self.test_dir)
+            Path(self.test_dir).rmdir()
 
     def test_setup_logging_function_exists(self):
         """Test that setup_logging function can be imported and called"""
         # We'll import the function directly to avoid typer import issues
-        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cli_handler.py")) as f:
-            content = f.read()
+        cli_handler_path = Path(__file__).resolve().parent.parent / "cli_handler.py"
+        content = cli_handler_path.read_text()
 
         # Check that setup_logging function exists
         assert "def setup_logging" in content
@@ -59,9 +58,12 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
         assert logger is not None
 
     def test_validate_directory_function_exists(self):
-        """Test that validate_directory function exists and has correct signature"""
-        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cli_handler.py")) as f:
-            content = f.read()
+        """
+        Test that validate_directory function exists and has correct
+        signature
+        """
+        cli_handler_path = Path(__file__).resolve().parent.parent / "cli_handler.py"
+        content = cli_handler_path.read_text()
 
         # Check that validate_directory function exists
         assert "def validate_directory" in content
@@ -71,8 +73,8 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
 
     def test_validate_arguments_function_exists(self):
         """Test that validate_arguments function exists"""
-        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cli_handler.py")) as f:
-            content = f.read()
+        cli_handler_path = Path(__file__).resolve().parent.parent / "cli_handler.py"
+        content = cli_handler_path.read_text()
 
         # Check that validate_arguments function exists
         assert "def validate_arguments" in content
@@ -92,12 +94,11 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
         assert not nonexistent.exists()
 
         # Test file instead of directory (create a file)
-        test_file = os.path.join(self.test_dir, "not_a_directory.txt")
-        with open(test_file, "w") as f:
-            f.write("test")
-        self.test_files.append(test_file)
+        test_file = Path(self.test_dir) / "not_a_directory.txt"
+        test_file.write_text("test")
+        self.test_files.append(str(test_file))
 
-        file_path = Path(test_file)
+        file_path = test_file
         assert file_path.exists()
         assert not file_path.is_dir()
 
@@ -124,18 +125,24 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
 
     def test_cli_imports_and_dependencies(self):
         """Test that CLI module has expected imports"""
-        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cli_handler.py")) as f:
+        cli_handler_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "cli_handler.py",
+        )
+        with Path(cli_handler_path).open() as f:
             content = f.read()
 
         # Check for expected imports
         expected_imports = [
+            "import json",
             "import os",
             "import sys",
             "import logging",
             "from pathlib import Path",
-            "from typing import Optional, List",
+            "from typing import List, Optional",
             "from utils import",
             "from video_inspector import",
+            "from trakt_watchlist import",
         ]
 
         for import_line in expected_imports:
@@ -143,7 +150,11 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
 
     def test_cli_main_functions_exist(self):
         """Test that main CLI functions exist"""
-        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cli_handler.py")) as f:
+        cli_handler_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "cli_handler.py",
+        )
+        with Path(cli_handler_path).open() as f:
             content = f.read()
 
         # Check for main functions
@@ -157,7 +168,9 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
             assert function in content
 
     def test_integration_with_utils_and_video_inspector(self):
-        """Test that CLI handler can integrate with utils and video_inspector"""
+        """
+        Test that CLI handler can integrate with utils and video_inspector
+        """
         # Test that we can import the required functions from other modules
         sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 

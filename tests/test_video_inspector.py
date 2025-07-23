@@ -4,15 +4,11 @@ Unit tests for video_inspector.py module
 
 import os
 import subprocess
-
-# Add parent directory to path for importing
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 
@@ -27,6 +23,8 @@ from video_inspector import (
     inspect_single_video_quick,
     inspect_video_files_cli,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 class TestScanMode(unittest.TestCase):
@@ -45,11 +43,10 @@ class TestVideoFile(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.temp_dir = tempfile.mkdtemp()
-        self.test_file = os.path.join(self.temp_dir, "test.mp4")
+        self.test_file = str(Path(self.temp_dir) / "test.mp4")
 
         # Create a test file with known size
-        with open(self.test_file, "wb") as f:
-            f.write(b"0" * 1024)  # 1KB file
+        Path(self.test_file).write_bytes(b"0" * 1024)  # 1KB file
 
     def tearDown(self):
         """Clean up test fixtures"""
@@ -190,8 +187,14 @@ class TestGetAllVideoObjectFiles(unittest.TestCase):
         video_files = get_all_video_object_files(str(self.temp_path), recursive=True)
 
         assert len(video_files) == 5
-        filenames = [os.path.basename(vf.filename) for vf in video_files]
-        expected_files = ["video1.mp4", "video2.avi", "video3.mkv", "video4.mov", "video5.wmv"]
+        filenames = [Path(vf.filename).name for vf in video_files]
+        expected_files = [
+            "video1.mp4",
+            "video2.avi",
+            "video3.mkv",
+            "video4.mov",
+            "video5.wmv",
+        ]
 
         for expected in expected_files:
             assert expected in filenames
@@ -239,7 +242,7 @@ class TestInspectSingleVideoQuick(unittest.TestCase):
         self.test_file = os.path.join(self.temp_dir, "test.mp4")
 
         # Create a test file
-        with open(self.test_file, "wb") as f:
+        with Path(self.test_file).open("wb") as f:
             f.write(b"0" * 1024)
 
         self.video_file = VideoFile(self.test_file)
@@ -322,7 +325,7 @@ class TestInspectSingleVideoQuick(unittest.TestCase):
 
         assert not result.is_corrupt
         assert result.needs_deep_scan
-        assert "timed out" in result.error_message.lower()  # Actual message is "timed out"
+        assert "timed out" in result.error_message.lower()
 
     @patch("video_inspector.subprocess.run")
     def test_quick_inspection_exception(self, mock_run):
@@ -345,7 +348,7 @@ class TestInspectSingleVideoDeep(unittest.TestCase):
         self.test_file = os.path.join(self.temp_dir, "test.mp4")
 
         # Create a test file
-        with open(self.test_file, "wb") as f:
+        with Path(self.test_file).open("wb") as f:
             f.write(b"0" * 1024)
 
         self.video_file = VideoFile(self.test_file)
@@ -417,7 +420,7 @@ class TestInspectSingleVideoDeep(unittest.TestCase):
         result = inspect_single_video_deep(self.video_file, "/usr/bin/ffmpeg", verbose=False)
 
         assert result.is_corrupt
-        assert "timed out" in result.error_message.lower()  # Actual message is "timed out"
+        assert "timed out" in result.error_message.lower()
 
 
 class TestInspectSingleVideo(unittest.TestCase):
@@ -429,7 +432,7 @@ class TestInspectSingleVideo(unittest.TestCase):
         self.test_file = os.path.join(self.temp_dir, "test.mp4")
 
         # Create a test file
-        with open(self.test_file, "wb") as f:
+        with Path(self.test_file).open("wb") as f:
             f.write(b"0" * 1024)
 
         self.video_file = VideoFile(self.test_file)
@@ -538,7 +541,7 @@ class TestInspectVideoFilesCli(unittest.TestCase):
     @patch("video_inspector.get_ffmpeg_command")
     @patch("video_inspector.get_all_video_object_files")
     @patch("video_inspector.inspect_single_video")
-    @patch("builtins.open", new_callable=mock_open)
+    @patch("pathlib.Path.open", new_callable=mock_open)
     @patch("json.dump")
     @patch("builtins.print")  # Suppress print output
     def test_json_output(
