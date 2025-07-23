@@ -127,6 +127,7 @@ ignore = [
     "PLR0912", # too many branches
     "PLR0915", # too many statements
     "PLR2004", # magic value used in comparison
+    "PLW0603", # global statement (acceptable for signal handling)
     "T201",    # print found (we want print statements in CLI)
     "TRY003",  # avoid long messages in exception strings
     "COM812",  # trailing comma missing (handled by formatter)
