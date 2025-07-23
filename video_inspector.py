@@ -30,6 +30,9 @@ _current_progress: Dict[str, Any] = {
     "start_time": 0.0,
 }
 
+# Global shutdown flag for graceful termination
+_shutdown_requested = False
+
 
 class ProgressReporter:
     """Handles progress reporting and signal management"""
@@ -86,6 +89,7 @@ class ProgressReporter:
 
 def signal_handler(signum: int, _frame: Any) -> None:
     """Handle POSIX signals and report progress"""
+    global _shutdown_requested
     signal_name = signal.Signals(signum).name
     logger.info(f"Received signal {signal_name} ({signum}), reporting progress")
 
@@ -122,18 +126,31 @@ def signal_handler(signum: int, _frame: Any) -> None:
         avg = elapsed_time / processed_count
         rem = avg * remaining
         logger.info("Estimated Time Remaining: %.1f seconds", rem)
+    
+    # Handle graceful shutdown for SIGTERM and SIGINT
+    if signum in (signal.SIGTERM, signal.SIGINT):
+        logger.info("Graceful shutdown requested via %s", signal_name)
+        logger.info("Finishing current file processing and cleaning up...")
+        _shutdown_requested = True
+    
     logger.info("%s", sep_line)
 
 
+def is_shutdown_requested():
+    """Check if graceful shutdown has been requested"""
+    return _shutdown_requested
+
+
 def setup_signal_handlers():
-    """Setup signal handlers for progress reporting"""
+    """Setup signal handlers for progress reporting and graceful shutdown"""
     try:
         # Handle common POSIX signals
         signal.signal(signal.SIGUSR1, signal_handler)
         signal.signal(signal.SIGUSR2, signal_handler)
         # Also handle SIGTERM for graceful progress reporting before termination
         original_sigterm = signal.signal(signal.SIGTERM, signal_handler)
-        logger.info("Signal handlers registered for SIGUSR1, SIGUSR2, and SIGTERM")
+        signal.signal(signal.SIGINT, signal_handler)
+        logger.info("Signal handlers registered for SIGUSR1, SIGUSR2, SIGTERM, and SIGINT")
         return original_sigterm
     except (AttributeError, OSError) as e:
         # Some signals might not be available on all platforms
@@ -886,6 +903,16 @@ def inspect_video_files_cli(
 
             # Process completed tasks
             for future in future_to_video:
+                # Check for shutdown request
+                if is_shutdown_requested():
+                    logger.info("Shutdown requested, cancelling remaining tasks")
+                    print("\nShutdown requested, finishing current operations...")
+                    # Cancel remaining futures
+                    for f in future_to_video:
+                        if not f.done():
+                            f.cancel()
+                    break
+                    
                 try:
                     result = future.result()
                     results.append(result)
@@ -930,7 +957,7 @@ def inspect_video_files_cli(
                     update_progress()
 
         # Phase 2: Deep scan for flagged files (HYBRID mode only)
-        if scan_mode == ScanMode.HYBRID and deep_scan_needed > 0:
+        if scan_mode == ScanMode.HYBRID and deep_scan_needed > 0 and not is_shutdown_requested():
             logger.info(f"Starting Phase 2: Deep scan for {deep_scan_needed} files")
             print(f"\n\n=== PHASE 2: DEEP SCAN ({deep_scan_needed} files) ===")
 
@@ -975,6 +1002,16 @@ def inspect_video_files_cli(
 
                 # Process deep scan results
                 for future, original_index in future_to_index.items():
+                    # Check for shutdown request
+                    if is_shutdown_requested():
+                        logger.info("Shutdown requested during deep scan, cancelling remaining tasks")
+                        print("\nShutdown requested, finishing current deep scan operations...")
+                        # Cancel remaining futures
+                        for f in future_to_index:
+                            if not f.done():
+                                f.cancel()
+                        break
+                        
                     try:
                         deep_result = future.result()
                         result_index = original_index
@@ -1025,6 +1062,13 @@ def inspect_video_files_cli(
         if wal:
             print(f"Progress saved to WAL file. Use same command to resume from: {wal.wal_path}")
         raise  # Re-raise to maintain exit code
+    
+    # Check if we finished due to shutdown request
+    if is_shutdown_requested():
+        logger.info(f"Scan completed due to graceful shutdown after processing {processed_count}/{total_files} files")
+        print(f"\n\nGraceful shutdown completed. Processed {processed_count}/{total_files} files")
+        if wal:
+            print(f"Progress saved to WAL file. Use same command to resume from: {wal.wal_path}")
 
     total_time = time.time() - start_time
     logger.info(f"Scan completed in {total_time:.2f} seconds")
@@ -1032,13 +1076,16 @@ def inspect_video_files_cli(
     if not verbose:
         print()  # New line after progress
 
-    # Clean up WAL file on successful completion
-    if wal:
+    # Clean up WAL file only on full successful completion (not on shutdown)
+    if wal and not is_shutdown_requested():
         wal.cleanup()
 
     # Print summary
     print("\n" + "=" * 50)
-    print("SCAN COMPLETE")
+    if is_shutdown_requested():
+        print("SCAN TERMINATED (GRACEFUL SHUTDOWN)")
+    else:
+        print("SCAN COMPLETE")
     print("=" * 50)
     print(f"Scan mode: {scan_mode.value.upper()}")
     print(f"Total files scanned: {processed_count}")
@@ -1047,8 +1094,9 @@ def inspect_video_files_cli(
     if scan_mode == ScanMode.HYBRID:
         print(f"Files requiring deep scan: {deep_scan_needed}")
     print(f"Total scan time: {total_time:.2f} seconds")
-    print(f"Average time per file: {total_time / processed_count:.2f} seconds")
-
+    if processed_count > 0:
+        average_time_per_file = total_time / processed_count
+        print(f"Average time per file: {average_time_per_file:.2f} seconds")
     logger.info(
         f"Scan summary - Total: {processed_count}, Corrupt: {corrupt_count}, "
         f"Healthy: {processed_count - corrupt_count}, Time: {total_time:.2f}s"
