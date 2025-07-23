@@ -68,10 +68,12 @@ def setup_logging(verbose: bool = False, quiet: bool = False) -> None:
             file_handler = logging.FileHandler(env_log_file)
             file_handler.setFormatter(logging.Formatter(log_format, date_format))
             handlers.append(file_handler)
-            logger.info(f"Logging to file: {env_log_file}")
         except Exception as e:
-            logger.warning(f"Could not create log file {env_log_file}: {e}")
+            print(f"Could not create log file {env_log_file}: {e}")  # Temporary fallback
 
+    # Log successful file handler addition after configuration
+    if env_log_file:
+        logger.info(f"Logging to file: {env_log_file}")
     # Configure root logger
     logging.basicConfig(
         level=log_level,
