@@ -1,0 +1,47 @@
+# Corrupt Video Inspector Configuration
+# This file contains default configuration settings for the video inspector.
+# Settings can be overridden by environment variables or command-line flags.
+
+# Logging configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+  file: null  # Optional log file path
+
+# FFmpeg configuration
+ffmpeg:
+  command: null  # Auto-detect ffmpeg if not specified
+  quick_timeout: 60  # Timeout in seconds for quick scans
+  deep_timeout: 900  # Timeout in seconds for deep scans (15 minutes)
+
+# Processing configuration
+processing:
+  max_workers: 4  # Number of parallel worker threads
+  default_mode: "hybrid"  # Default scan mode: quick, deep, or hybrid
+
+# Output configuration
+output:
+  default_json: false  # Generate JSON output by default
+  default_output_dir: null  # Default output directory (null = current directory)
+  default_filename: "scan_results.json"  # Default output filename
+
+# File scanning configuration
+scan:
+  recursive: true  # Scan subdirectories recursively by default
+  default_input_dir: null  # Default directory to scan (null = require directory argument)
+  extensions:  # Video file extensions to scan
+    - ".mp4"
+    - ".avi" 
+    - ".mkv"
+    - ".mov"
+    - ".wmv"
+    - ".flv"
+    - ".webm"
+    - ".m4v"
+    - ".mpg"
+    - ".mpeg"
+
+# Secrets configuration (Docker and external services)
+secrets:
+  docker_secrets_path: "/run/secrets"  # Path to Docker secrets
