@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
 import typer
 
@@ -97,48 +97,6 @@ def setup_logging(verbose: bool = False, quiet: bool = False) -> None:
     logger.info(f"Logging initialized with level: " f"{logging.getLevelName(log_level)}")
 
 
-def setup_logging_from_config(cfg, verbose: bool = False, quiet: bool = False) -> None:
-    """
-    Setup logging configuration using config object with CLI overrides.
-
-    Args:
-        cfg: Configuration object
-        verbose: Enable debug-level logging (CLI override)
-        quiet: Suppress all but error-level logging (CLI override)
-    """
-    # Determine log level: CLI args override config
-    if quiet:
-        log_level = logging.ERROR
-    elif verbose:
-        log_level = logging.DEBUG
-    else:
-        # Use config level if no CLI override
-        log_level = getattr(logging, cfg.logging.level.upper(), logging.INFO)
-
-    # Configure logging with config settings
-    logging_config = {
-        'level': log_level,
-        'format': cfg.logging.format,
-        'datefmt': cfg.logging.date_format,
-        'force': True,  # Override any existing configuration
-    }
-    
-    # Add file handler if specified in config
-    if cfg.logging.file:
-        logging_config['filename'] = cfg.logging.file
-
-    logging.basicConfig(**logging_config)
-
-    # Set specific loggers to appropriate levels
-    logging.getLogger("video_inspector").setLevel(log_level)
-    logging.getLogger("utils").setLevel(log_level)
-    logging.getLogger("config").setLevel(log_level)
-
-    logger.info(f"Logging initialized with level: {logging.getLevelName(log_level)}")
-    if cfg.logging.file:
-        logger.info(f"Logging to file: {cfg.logging.file}")
-
-
 def validate_directory(directory: str) -> Path:
     """
     Validate and return Path object for directory.
@@ -210,18 +168,6 @@ app = typer.Typer(
     epilog=(
         """
 Examples:
-<<<<<<< HEAD
-  python3 cli_handler.py /path/to/videos                    # Run hybrid mode (default)
-  python3 cli_handler.py --mode quick /path                 # Quick scan only
-  python3 cli_handler.py --mode deep /path                  # Deep scan all files
-  python3 cli_handler.py --no-resume /path/videos           # CLI without resume
-  python3 cli_handler.py --verbose /path/videos             # CLI with verbose output
-  python3 cli_handler.py --json /path/videos                # CLI with JSON output
-  python3 cli_handler.py --list-videos /path                # List videos only
-  python3 cli_handler.py --config config.yaml               # Use default input dir from config
-  CVI_INPUT_DIR=/videos python3 cli_handler.py              # Set input dir via environment
-""",
-=======
   python3 cli_handler.py /path/to/videos  # Run hybrid mode (default)
   python3 cli_handler.py --mode quick /path  # Quick scan only
   python3 cli_handler.py --mode deep /path  # Deep scan all files
@@ -239,35 +185,26 @@ Examples:
     --verbose -o out.json  # Verbose with output
 """
     ),
->>>>>>> origin/main
     no_args_is_help=True,
 )
 
 
 @app.command()
 def main_command(
-    directory: Optional[str] = typer.Argument(None, help="Directory to scan for video files (optional if default_input_dir is configured)"),
-    config_file: Optional[str] = typer.Option(
-        None, "--config", "-c", help="Path to configuration file (YAML)"
-    ),
-    mode: Optional[str] = typer.Option(
-        None,
+    directory: Optional[str] = typer.Argument(None, help="Directory to scan for video files"),
+    mode: str = typer.Option(
+        "hybrid",
         "--mode",
         help=(
             "Scan mode: quick (1min timeout), deep (full scan), "
             "hybrid (quick then deep for suspicious files)"
         ),
     ),
-<<<<<<< HEAD
-    verbose: Optional[bool] = typer.Option(
-        None, "--verbose", "-v", help="Enable verbose output showing FFmpeg details"
-=======
     verbose: bool = typer.Option(
         False,
         "--verbose",
         "-v",
         help="Enable verbose output showing FFmpeg details",
->>>>>>> origin/main
     ),
     no_resume: bool = typer.Option(
         False,
@@ -280,16 +217,11 @@ def main_command(
         "-l",
         help="List all video files in directory without scanning",
     ),
-<<<<<<< HEAD
-    json_output: Optional[bool] = typer.Option(
-        None, "--json", "-j", help="Generate JSON output file with detailed scan results"
-=======
     json_output: bool = typer.Option(
         False,
         "--json",
         "-j",
         help="Generate JSON output file with detailed scan results",
->>>>>>> origin/main
     ),
     output: Optional[str] = typer.Option(
         None,
@@ -297,16 +229,6 @@ def main_command(
         "-o",
         help="Specify custom output file path for results",
     ),
-<<<<<<< HEAD
-    recursive: Optional[bool] = typer.Option(
-        None, "--recursive", "-r", help="Recursively scan subdirectories"
-    ),
-    extensions: Optional[List[str]] = typer.Option(
-        None, "--extensions", "-e", help="Specify video file extensions to scan (e.g., mp4 mkv avi)"
-    ),
-    max_workers: Optional[int] = typer.Option(
-        None, "--max-workers", "-w", help="Maximum number of worker threads for parallel processing"
-=======
     recursive: bool = typer.Option(
         True,
         "--recursive",
@@ -319,7 +241,6 @@ def main_command(
         "--max-workers",
         "-w",
         help="Maximum number of worker threads for parallel processing",
->>>>>>> origin/main
     ),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress all output except errors"),
     version: bool = typer.Option(False, "--version", help="Show version and exit"),
@@ -334,7 +255,6 @@ def main_command(
 
     Args:
         directory: Directory to scan for video files
-        config_file: Path to configuration file (YAML)
         mode: Scan mode (quick, deep, or hybrid)
         verbose: Enable verbose output
         no_resume: Disable resume functionality
@@ -357,51 +277,24 @@ def main_command(
             typer.echo("Corrupt Video Inspector v2.0 (Hybrid Detection)")
             return
 
-        # Load configuration first
-        try:
-            cfg = load_config(config_file)
-            logger.debug("Configuration loaded successfully")
-        except Exception as e:
-            logger.error(f"Failed to load configuration: {e}")
-            typer.echo(f"Error loading configuration: {e}", err=True)
-            raise typer.Exit(1) from e
-
-        # Apply configuration defaults to CLI arguments (CLI args override config)
-        resolved_mode = mode if mode is not None else cfg.processing.default_mode
-        resolved_verbose = verbose if verbose is not None else False  # Keep CLI default
-        resolved_json_output = json_output if json_output is not None else cfg.output.default_json
-        resolved_recursive = recursive if recursive is not None else cfg.scan.recursive
-        resolved_extensions = extensions if extensions is not None else cfg.scan.extensions
-        resolved_max_workers = max_workers if max_workers is not None else cfg.processing.max_workers
-
         # Validate mode
-        if resolved_mode not in ["quick", "deep", "hybrid"]:
-            logger.error(f"Invalid mode: {resolved_mode}")
+        if mode not in ["quick", "deep", "hybrid"]:
+            logger.error(f"Invalid mode: {mode}")
             typer.echo("Error: Mode must be one of: quick, deep, hybrid", err=True)
             _exit()
 
-        # Setup logging with configuration defaults
-        setup_logging_from_config(cfg, resolved_verbose, quiet)
+        # Setup logging
+        setup_logging(verbose and not quiet, quiet)
         logger.info("Starting Corrupt Video Inspector")
 
         # Validate arguments
-        validate_arguments(resolved_verbose, quiet, resolved_max_workers, resolved_json_output, output)
+        validate_arguments(verbose, quiet, max_workers, json_output, output)
 
-        # Check if directory was provided or use default from config
+        # Check if directory was provided
         if not directory:
-<<<<<<< HEAD
-            if cfg.scan.default_input_dir:
-                directory = cfg.scan.default_input_dir
-                logger.info(f"Using default input directory from config: {directory}")
-            else:
-                logger.error("Directory argument is required (no default configured)")
-                typer.echo("Error: Directory argument is required. Either provide a directory or configure scan.default_input_dir", err=True)
-                raise typer.Exit(1)
-=======
             logger.error("Directory argument is required")
             typer.echo("Error: Directory argument is required", err=True)
             _exit()
->>>>>>> origin/main
 
         # Validate directory
         # Ensure directory is not None for type checker
@@ -466,17 +359,17 @@ def main_command(
         # Handle list-videos option
         if list_videos:
             logger.info("Listing video files only")
-            list_video_files(directory_path, resolved_recursive, resolved_extensions)
+            list_video_files(directory_path, recursive, extensions)
             return
 
         # Check if directory has video files
         logger.debug("Counting video files in directory")
-        total_videos = count_all_video_files(str(directory_path), resolved_recursive, resolved_extensions)
+        total_videos = count_all_video_files(str(directory_path))
         if total_videos == 0:
             logger.warning(f"No video files found in directory: {directory_path}")
             typer.echo(f"No video files found in directory: {directory_path}")
-            if resolved_extensions:
-                extension_list = ", ".join(resolved_extensions)
+            if extensions:
+                extension_list = ", ".join(extensions)
                 logger.info(f"Searched for extensions: {extension_list}")
                 typer.echo(f"Searched for extensions: {extension_list}")
             _exit()
@@ -484,54 +377,46 @@ def main_command(
         logger.info(f"Found {total_videos} video files to process")
 
         # Check system requirements
-        ffmpeg_cmd = check_system_requirements(cfg)
+        ffmpeg_cmd = check_system_requirements()
 
         if not quiet:
             typer.echo("Starting video corruption scan...")
             typer.echo(f"Directory: {directory_path}")
-            typer.echo(f"Scan mode: {resolved_mode.upper()}")
-            if resolved_mode == "hybrid":
+            typer.echo(f"Scan mode: {mode.upper()}")
+            if mode == "hybrid":
                 typer.echo("  Phase 1: Quick scan all files (1min timeout)")
                 typer.echo("  Phase 2: Deep scan suspicious files (15min timeout)")
-            elif resolved_mode == "quick":
+            elif mode == "quick":
                 typer.echo("  Quick scan only (1min timeout per file)")
-            elif resolved_mode == "deep":
+            elif mode == "deep":
                 typer.echo("  Deep scan all files (15min timeout per file)")
             typer.echo(f"Platform: {sys.platform}")
             typer.echo(f"Using ffmpeg: {ffmpeg_cmd}")
-            typer.echo(f"Max workers: {resolved_max_workers}")
-            if resolved_recursive:
+            typer.echo(f"Max workers: {max_workers}")
+            if recursive:
                 typer.echo("Recursive scanning: enabled")
-            if resolved_extensions:
-                typer.echo(f"File extensions: {', '.join(resolved_extensions)}")
+            if extensions:
+                typer.echo(f"File extensions: {', '.join(extensions)}")
 
-        logger.info(f"Starting scan with mode: {resolved_mode}, workers: {resolved_max_workers}")
+        logger.info(f"Starting scan with mode: {mode}, workers: {max_workers}")
 
         # Convert mode string to enum
-        scan_mode = ScanMode(resolved_mode)
+        scan_mode = ScanMode(mode)
 
         # Enable JSON output if output file is specified
-        if output and not resolved_json_output:
-            resolved_json_output = True
-        
-        # Handle output directory from config
-        if resolved_json_output and not output and cfg.output.default_output_dir:
-            # Use configured output directory and filename
-            output_dir = Path(cfg.output.default_output_dir)
-            output_filename = cfg.output.default_filename
-            output = str(output_dir / output_filename)
-            logger.info(f"Using configured output path: {output}")
+        if output and not json_output:
+            json_output = True
 
         # Start the inspection using video_inspector module
         inspect_video_files_cli(
             directory=str(directory_path),
             resume=not no_resume,
-            verbose=resolved_verbose and not quiet,
-            json_output=resolved_json_output,
+            verbose=verbose and not quiet,
+            json_output=json_output,
             output_file=output,
-            recursive=resolved_recursive,
-            extensions=resolved_extensions,
-            max_workers=resolved_max_workers,
+            recursive=recursive,
+            extensions=extensions,
+            max_workers=max_workers,
             scan_mode=scan_mode,
         )
 
@@ -600,12 +485,9 @@ def list_video_files(
         sys.exit(1)
 
 
-def check_system_requirements(cfg=None) -> str:
+def check_system_requirements() -> str:
     """
     Check system requirements and return ffmpeg command.
-
-    Args:
-        cfg: Configuration object (optional)
 
     Returns:
         str: Path to ffmpeg command
@@ -614,14 +496,7 @@ def check_system_requirements(cfg=None) -> str:
         typer.Exit: If ffmpeg is not found
     """
     logger.debug("Checking for ffmpeg installation")
-    
-    # Use configured ffmpeg command if available
-    if cfg and cfg.ffmpeg.command:
-        ffmpeg_cmd = cfg.ffmpeg.command
-        logger.debug(f"Using configured ffmpeg command: {ffmpeg_cmd}")
-    else:
-        ffmpeg_cmd = get_ffmpeg_command()
-        
+    ffmpeg_cmd = get_ffmpeg_command()
     if not ffmpeg_cmd:
         logger.error("ffmpeg is required but not found on this system")
         typer.echo("\nError: ffmpeg is required but not found on this system.")
