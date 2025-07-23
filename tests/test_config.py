@@ -279,7 +279,3 @@ class TestInputOutputDirectoryConfiguration(unittest.TestCase):
         assert self.loader.config.output.default_output_dir == "/env/output/override"
         # Non-overridden value should remain from YAML
         assert self.loader.config.output.default_filename == "custom_results.json"
-
-
-if __name__ == "__main__":
-    unittest.main()

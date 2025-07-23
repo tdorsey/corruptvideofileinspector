@@ -225,7 +225,7 @@ class ConfigLoader:
             for key, value in section_data.items():
                 self._set_config_value(section_name, key, value)
 
-    def _set_config_value(self, section: str, key: str, value) -> None:
+    def _set_config_value(self, section: str, key: str, value: object) -> None:
         """Set a configuration value with type conversion."""
         try:
             config_section = getattr(self.config, section, None)
