@@ -242,7 +242,7 @@ class TestInspectSingleVideoQuick(unittest.TestCase):
         self.test_file = os.path.join(self.temp_dir, "test.mp4")
 
         # Create a test file
-        with open(self.test_file, "wb") as f:
+        with Path(self.test_file).open("wb") as f:
             f.write(b"0" * 1024)
 
         self.video_file = VideoFile(self.test_file)
@@ -348,7 +348,7 @@ class TestInspectSingleVideoDeep(unittest.TestCase):
         self.test_file = os.path.join(self.temp_dir, "test.mp4")
 
         # Create a test file
-        with open(self.test_file, "wb") as f:
+        with Path(self.test_file).open("wb") as f:
             f.write(b"0" * 1024)
 
         self.video_file = VideoFile(self.test_file)
@@ -432,7 +432,7 @@ class TestInspectSingleVideo(unittest.TestCase):
         self.test_file = os.path.join(self.temp_dir, "test.mp4")
 
         # Create a test file
-        with open(self.test_file, "wb") as f:
+        with Path(self.test_file).open("wb") as f:
             f.write(b"0" * 1024)
 
         self.video_file = VideoFile(self.test_file)
@@ -541,7 +541,7 @@ class TestInspectVideoFilesCli(unittest.TestCase):
     @patch("video_inspector.get_ffmpeg_command")
     @patch("video_inspector.get_all_video_object_files")
     @patch("video_inspector.inspect_single_video")
-    @patch("builtins.open", new_callable=mock_open)
+    @patch("pathlib.Path.open", new_callable=mock_open)
     @patch("json.dump")
     @patch("builtins.print")  # Suppress print output
     def test_json_output(
