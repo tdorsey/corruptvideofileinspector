@@ -724,11 +724,12 @@ def inspect_single_video_deep(
 
     if verbose:
         status = "CORRUPT" if result.is_corrupt else "OK"
-        status_msg = (
-            f"[DEEP-{status}] {Path(video_file.filename).name} ({result.inspection_time:.2f}s)"
+        logger.debug(
+            f"Deep scan result: [DEEP-{status}] {Path(video_file.filename).name} ({result.inspection_time:.2f}s)"
         )
-        logger.debug(f"Deep scan result: {status_msg}")
-        print(f"  {status_msg}")
+        print(
+            f"  [DEEP-{status}] {Path(video_file.filename).name} ({result.inspection_time:.2f}s)"
+        )
 
     logger.debug(f"Deep scan completed for {video_file.filename} in {result.inspection_time:.2f}s")
     return result
