@@ -633,11 +633,12 @@ def inspect_single_video_quick(
             status = "NEEDS_DEEP_SCAN"
         else:
             status = "OK"
-        status_msg = (
-            f"[QUICK-{status}] {Path(video_file.filename).name} ({result.inspection_time:.2f}s)"
+        logger.debug(
+            f"Quick scan result: [QUICK-{status}] {Path(video_file.filename).name} ({result.inspection_time:.2f}s)"
         )
-        logger.debug(f"Quick scan result: {status_msg}")
-        print(f"  {status_msg}")
+        print(
+            f"  [QUICK-{status}] {Path(video_file.filename).name} ({result.inspection_time:.2f}s)"
+        )
 
     logger.debug(f"Quick scan completed for {video_file.filename} in {result.inspection_time:.2f}s")
     return result
