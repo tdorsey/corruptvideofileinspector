@@ -18,8 +18,6 @@ help:
 	@echo "  docker-build        Build Docker image"
 	@echo "  docker-run          Run Docker container"
 	@echo "  docker-dev-build    Build development Docker image"
-lint:
-	ruff check --fix .
 	@echo "  docker-dev-run      Run development Docker container"
 	@echo "  docker-dev          Start development environment with Docker Compose"
 
@@ -43,6 +41,9 @@ pre-commit-run:
 format:
 	black .
 	ruff check --fix --unsafe-fixes .
+
+lint:
+	ruff check --fix .
 
 type:
 	mypy .

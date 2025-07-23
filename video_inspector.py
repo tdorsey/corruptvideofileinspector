@@ -5,7 +5,6 @@ Video inspection functionality using FFmpeg with hybrid detection mode
 import hashlib
 import json
 import logging
-import os
 import signal
 import subprocess
 import tempfile
@@ -44,7 +43,6 @@ class ProgressReporter:
         self.start_time = time.time()
 
         # Update global progress for signal handlers
-        global _current_progress
         _current_progress.update(
             {"total_files": total_files, "scan_mode": scan_mode, "start_time": self.start_time}
         )
@@ -64,7 +62,6 @@ class ProgressReporter:
             self.corrupt_count = corrupt_count
 
         # Update global progress for signal handlers
-        global _current_progress
         _current_progress.update(
             {
                 "current_file": self.current_file,
@@ -74,8 +71,9 @@ class ProgressReporter:
             }
         )
 
-    def report_progress(self, force_output: bool = False):
+    def report_progress(self, force_output: bool = False) -> None:
         """Report current progress"""
+        _ = force_output  # Parameter kept for compatibility
         time.time() - self.start_time
         remaining = self.total_files - self.processed_count
         self.processed_count - self.corrupt_count
@@ -88,6 +86,7 @@ class ProgressReporter:
 
 def signal_handler(signum, frame):
     """Handle POSIX signals and report progress"""
+    _ = frame  # Parameter required by signal handler interface
     signal_name = signal.Signals(signum).name
     logger.info(f"Received signal {signal_name} ({signum}), reporting progress")
 
@@ -161,8 +160,9 @@ class VideoFile:
 
     def __post_init__(self) -> None:
         """Initialize file size if file exists."""
-        if os.path.exists(self.filename):
-            self.size = os.path.getsize(self.filename)
+        file_path = Path(self.filename)
+        if file_path.exists():
+            self.size = file_path.stat().st_size
             logger.debug(f"VideoFile created: {self.filename} ({self.size} bytes)")
 
 
