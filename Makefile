@@ -10,15 +10,14 @@ help:
 	@echo "  lint                Lint code with ruff"
 	@echo "  type                Type check with mypy"
 	@echo "  check               Run all checks (format, lint, type)"
-	@echo "  test                Run integration tests"
-	@echo "  test-integration    Run integration tests (alias for test)"
+	@echo "  test                Run all tests with pytest"
+	@echo "  test-integration    Run integration tests only"
+	@echo "  test-cov            Run tests with coverage report"
 	@echo "  clean               Clean build artifacts"
 	@echo "  build               Build the package"
 	@echo "  docker-build        Build Docker image"
 	@echo "  docker-run          Run Docker container"
 	@echo "  docker-dev-build    Build development Docker image"
-lint:
-	ruff check --fix .
 	@echo "  docker-dev-run      Run development Docker container"
 	@echo "  docker-dev          Start development environment with Docker Compose"
 
@@ -41,6 +40,9 @@ pre-commit-run:
 # Code quality
 format:
 	black .
+	ruff check --fix --unsafe-fixes .
+
+lint:
 	ruff check --fix .
 
 type:
@@ -51,14 +53,13 @@ check: format lint type
 
 # Testing
 test:
-	python3 tests/run_tests.py
+	pytest tests/ -v
 
 test-integration:
-	python3 tests/run_tests.py
+	pytest tests/ -v -k "integration"
 
 test-cov:
-	@echo "Coverage testing requires pytest-cov. Install with: pip install pytest pytest-cov"
-	@echo "For now, run: python3 tests/run_tests.py"
+	pytest tests/ --cov=. --cov-report=html --cov-report=term-missing
 
 # Build and clean
 clean:
