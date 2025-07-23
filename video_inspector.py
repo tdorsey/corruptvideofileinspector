@@ -89,7 +89,7 @@ class ProgressReporter:
 
 def signal_handler(signum: int, _frame: Any) -> None:
     """Handle POSIX signals and report progress"""
-    global _shutdown_requested
+    global _shutdown_requested  # noqa: PLW0603
     signal_name = signal.Signals(signum).name
     logger.info(f"Received signal {signal_name} ({signum}), reporting progress")
 
@@ -126,13 +126,13 @@ def signal_handler(signum: int, _frame: Any) -> None:
         avg = elapsed_time / processed_count
         rem = avg * remaining
         logger.info("Estimated Time Remaining: %.1f seconds", rem)
-    
+
     # Handle graceful shutdown for SIGTERM and SIGINT
     if signum in (signal.SIGTERM, signal.SIGINT):
         logger.info("Graceful shutdown requested via %s", signal_name)
         logger.info("Finishing current file processing and cleaning up...")
         _shutdown_requested = True
-    
+
     logger.info("%s", sep_line)
 
 
@@ -908,11 +908,11 @@ def inspect_video_files_cli(
                     logger.info("Shutdown requested, cancelling remaining tasks")
                     print("\nShutdown requested, finishing current operations...")
                     # Cancel remaining futures
-                    for f in future_to_video:
-                        if not f.done():
-                            f.cancel()
+                    for fut in future_to_video:
+                        if not fut.done():
+                            fut.cancel()
                     break
-                    
+
                 try:
                     result = future.result()
                     results.append(result)
@@ -1004,14 +1004,16 @@ def inspect_video_files_cli(
                 for future, original_index in future_to_index.items():
                     # Check for shutdown request
                     if is_shutdown_requested():
-                        logger.info("Shutdown requested during deep scan, cancelling remaining tasks")
+                        logger.info(
+                            "Shutdown requested during deep scan, cancelling remaining tasks"
+                        )
                         print("\nShutdown requested, finishing current deep scan operations...")
                         # Cancel remaining futures
-                        for f in future_to_index:
-                            if not f.done():
-                                f.cancel()
+                        for fut in future_to_index:
+                            if not fut.done():
+                                fut.cancel()
                         break
-                        
+
                     try:
                         deep_result = future.result()
                         result_index = original_index
@@ -1062,10 +1064,12 @@ def inspect_video_files_cli(
         if wal:
             print(f"Progress saved to WAL file. Use same command to resume from: {wal.wal_path}")
         raise  # Re-raise to maintain exit code
-    
+
     # Check if we finished due to shutdown request
     if is_shutdown_requested():
-        logger.info(f"Scan completed due to graceful shutdown after processing {processed_count}/{total_files} files")
+        logger.info(
+            f"Scan completed due to graceful shutdown after processing {processed_count}/{total_files} files"
+        )
         print(f"\n\nGraceful shutdown completed. Processed {processed_count}/{total_files} files")
         if wal:
             print(f"Progress saved to WAL file. Use same command to resume from: {wal.wal_path}")

@@ -8,11 +8,10 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
 import typer
 
-from config import load_config
 from trakt_watchlist import sync_to_trakt_watchlist
 from utils import count_all_video_files
 from video_inspector import (
