@@ -361,3 +361,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Made with ❤️ for the media management community**
+
+# Documentation
+
+- [Trakt Integration](docs/TRAKT_INTEGRATION.md)
+- [Configuration](docs/CONFIG.md)
+- [Contributing Guidelines](docs/CONTRIBUTING.md)
+- [Secrets Documentation](docs/secrets.md)
+- [Test Videos Documentation](docs/test-videos.md)
+- [Tests Documentation](docs/tests.md)
