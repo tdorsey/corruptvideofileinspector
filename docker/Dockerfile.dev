@@ -1,5 +1,6 @@
-# Development Dockerfile - minimal setup that focuses on dev environment
-FROM ubuntu:22.04
+# Multi-stage development Dockerfile - optimized for development workflow
+# Build stage - Install dependencies
+FROM ubuntu:22.04 AS builder
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -7,10 +8,38 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set working directory
 WORKDIR /app
 
-# Update system and install dependencies including dumb-init for proper signal handling
+# Update system and install build dependencies
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
+    python3-venv \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create virtual environment for isolated dependencies
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy just the requirements to do a pip install
+COPY requirements.txt ./
+
+# Install requirements with development packages
+RUN pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --no-cache-dir --upgrade pip && \
+    pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --no-cache-dir -r requirements.txt
+
+# Development runtime stage
+FROM ubuntu:22.04 AS development
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set working directory
+WORKDIR /app
+
+# Install runtime and development tools
+RUN apt-get update && apt-get install -y \
+    python3 \
     ffmpeg \
     git \
     curl \
@@ -18,7 +47,6 @@ RUN apt-get update && apt-get install -y \
     vim \
     nano \
     zsh \
-    build-essential \
     ca-certificates \
     dumb-init \
     && rm -rf /var/lib/apt/lists/* \
@@ -26,25 +54,19 @@ RUN apt-get update && apt-get install -y \
 
 # Create a non-root user for security
 RUN useradd -m -u 1000 inspector && \
+    mkdir -p /app/videos /app/output /app/config && \
     chown -R inspector:inspector /app
 
-# Copy just the requirements to do a pip install
-COPY requirements.txt ./
+# Copy virtual environment from builder stage
+COPY --from=builder /opt/venv /opt/venv
 
-# Install basic requirements with --break-system-packages for Ubuntu 24.04+ compatibility
-RUN pip install --break-system-packages -r requirements.txt || \
-    pip install -r requirements.txt || \
-    python3 -m pip install -r requirements.txt
+# Set up environment for virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONPATH=/app
+ENV PATH="/home/inspector/.local/bin:$PATH"
 
 # Switch to non-root user
 USER inspector
-
-# Create directories for input and output
-RUN mkdir -p /app/videos /app/output
-
-# Set Python path
-ENV PYTHONPATH=/app
-ENV PATH="/home/inspector/.local/bin:$PATH"
 
 # Use dumb-init as PID 1 for proper signal handling and process reaping
 ENTRYPOINT ["dumb-init", "--"]
