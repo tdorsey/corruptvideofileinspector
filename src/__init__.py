@@ -30,8 +30,8 @@ from .core.models import (
     MediaType,
 )
 from .core.scanner import VideoScanner
-from .config import load_config
-from .config import AppConfig
+from .config.loader import load_config
+from .config.settings import AppConfig
 
 # Exception exports
 from .core.models import (

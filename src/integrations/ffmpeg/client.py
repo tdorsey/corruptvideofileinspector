@@ -9,7 +9,7 @@ from typing import Optional
 
 from ...config.settings import FFmpegConfig
 from ...core.models import FFmpegError, ScanResult, VideoFile
-from .detector import CorruptionDetector
+from ...core.detector import CorruptionDetector
 
 logger = logging.getLogger(__name__)
 

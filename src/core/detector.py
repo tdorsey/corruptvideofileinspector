@@ -205,50 +205,32 @@ class CorruptionDetector:
                 analysis.error_message = (
                     f"FFmpeg error (code {exit_code}) - investigation needed"
                 )
-            else:
-                analysis.error_message = (
-                    f"FFmpeg error (code {exit_code}): {stderr[:200]}"
-                )
-
-        def _find_pattern_matches(
-            self, patterns: List[Pattern], text: str
-        ) -> List[str]:
-            """Find all pattern matches in text."""
-            matches = []
-            for pattern in patterns:
-                match = pattern.search(text)
-                if match:
-                    matches.append(match.group(0))
-            return matches
-
-        analysis.error_message = (
-            "Processing timeout - may indicate corruption"
-        )
-
-        analysis.error_message = (
-            "Deep scan timeout - likely severe corruption"
-        )
-
-        analysis.error_message = (
-            "MP4 container corruption: missing moov atom"
-        )
-
-        streaming_indicators = [
-            "connection", "network", "http", "ssl", "certificate"
-        ]
-        if any(
-            indicator in stderr_lower for indicator in streaming_indicators
-        ):
-            pass
-
-        # Fix long lines
-        """
-        Determine if scan should be retried with different FFmpeg settings.
-        """
-
-        logger.info(
-            "Signal handlers registered for SIGUSR1, SIGUSR2, SIGTERM, "
-            "and SIGINT"
-        )
+        # Assign confidence based on critical exit codes or other indicators if needed
+        if not analysis.error_message and exit_code != 0:
+            analysis.error_message = f"FFmpeg exited with code {exit_code}"
 
         return analysis
+
+    def _find_pattern_matches(
+        self, patterns: List[Pattern], text: str
+    ) -> List[str]:
+        """Find all pattern matches in text."""
+        matches = []
+        for pattern in patterns:
+            match = pattern.search(text)
+            if match:
+                matches.append(match.group(0))
+        return matches
+
+    def _format_corruption_message(
+        self, matches: List[str], is_quick_scan: bool = False
+    ) -> str:
+        """Format corruption message from detected issues."""
+        if not matches:
+            return ""
+        
+        primary_issue = matches[0]
+        if len(matches) == 1:
+            return f"Corruption detected: {primary_issue}"
+        else:
+            return f"Multiple corruption indicators: {primary_issue} and {len(matches)-1} others"

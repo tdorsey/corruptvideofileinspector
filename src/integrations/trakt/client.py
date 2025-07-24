@@ -13,21 +13,30 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
 
-from trakt import Trakt
+try:
+    from trakt import Trakt
+    TRAKT_AVAILABLE = True
+except ImportError:
+    TRAKT_AVAILABLE = False
+    Trakt = None
 
-from .config import load_config
-from .trakt_watchlist import interactive_select_item
+from ...config.loader import load_config
 
 # Configure module logger
 logger = logging.getLogger(__name__)
 
-# Load configuration
-config = load_config()
-
-# Configure Trakt client using config values
-Trakt.configuration.defaults.client(
-    id=config.secrets.trakt_client_id, secret=config.secrets.trakt_client_secret
-)
+# Load configuration and configure Trakt client if available
+if TRAKT_AVAILABLE:
+    try:
+        config = load_config()
+        # Configure Trakt client using config values
+        Trakt.configuration.defaults.client(
+            id=config.trakt.client_id, 
+            secret=config.trakt.client_secret if hasattr(config.trakt, 'client_secret') else None
+        )
+    except Exception as e:
+        logger.warning(f"Failed to configure Trakt client: {e}")
+        TRAKT_AVAILABLE = False
 
 
 @dataclass
