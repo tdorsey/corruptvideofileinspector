@@ -1,0 +1,46 @@
+# Example configuration file for Corrupt Video Inspector
+# This file demonstrates the structure and available options
+# Copy this file to config.yaml and modify as needed
+
+# Scanner configuration
+scanner:
+  max_workers: 4
+  default_mode: "hybrid"  # Options: quick, deep, hybrid
+  recursive: true
+  extensions: [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".m4v", ".flv", ".webm"]
+
+# FFmpeg configuration
+ffmpeg:
+  quick_timeout: 60     # Timeout in seconds for quick scan
+  deep_timeout: 900     # Timeout in seconds for deep scan (15 minutes)
+  command: "/usr/bin/ffmpeg"  # Path to ffmpeg binary (auto-detect if not specified)
+
+# Trakt.tv integration (optional)
+trakt:
+  client_id: "your_trakt_client_id_here"
+  client_secret: "your_trakt_client_secret_here"
+  # Note: For production, use environment variables or Docker secrets instead
+
+# Logging configuration
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: null     # Optional log file path (null for console only)
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Output configuration
+output:
+  default_format: "json"  # Options: json, yaml, csv
+  pretty_print: true
+  include_metadata: true
+
+# Resume and progress configuration
+resume:
+  enabled: true
+  wal_file: "/app/output/scan_progress.wal"
+  checkpoint_interval: 10  # Save progress every N files
+
+# Performance tuning
+performance:
+  chunk_size: 100
+  memory_limit_mb: 1024
+  temp_directory: "/tmp"

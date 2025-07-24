@@ -1,13 +1,15 @@
 services:
   # Production service (default profile)
   video:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: video
     volumes:
       - video_data:/app/videos:ro
       - output:/app/output
-      # Mount configuration file if it exists
-      - ./config.yaml:/app/config.yaml:ro
+      # Mount configuration file (copy config.example.yaml to config.yaml first)
+      - ./config.yaml:/app/config/config.yaml:ro
     environment:
       - TRAKT_CLIENT_ID=test_client_id
       - PYTHONUNBUFFERED=1
@@ -20,13 +22,13 @@ services:
       # Docker secrets for sensitive configuration
       - cvi_log_level
       - cvi_ffmpeg_command
-    command: [ "python3", "cli_handler.py", "--config", "/app/config.yaml", "--mode", "hybrid", "--verbose", "--json", "--recursive", "--max-workers", "6", "--output", "/app/output/results.json", "/app/videos" ]
+    command: [ "python3", "cli_handler.py", "--config", "/app/config/config.yaml", "--mode", "hybrid", "--verbose", "--json", "--recursive", "--max-workers", "6", "--output", "/app/output/results.json", "/app/videos" ]
 
   # Development service (dev profile)
   dev:
     build:
-      context: .
-      dockerfile: Dockerfile.dev
+      context: ..
+      dockerfile: docker/Dockerfile.dev
     container_name: video-dev
     profiles:
       - dev
@@ -36,6 +38,8 @@ services:
       # Persistent volumes for videos and output
       - dev_videos:/app/videos
       - dev_output:/app/output
+      # Mount development config
+      - ./config.example.yaml:/app/config/config.yaml:ro
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1

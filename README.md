@@ -201,6 +201,119 @@ echo "your_client_secret" | docker secret create trakt_client_secret -
 
 ## 🐳 Docker Usage
 
+The application is containerized with Docker best practices implemented for security and efficiency.
+
+### Docker Best Practices Implemented
+
+#### ✅ **Multi-Stage Builds**
+- **Build stage**: Installs dependencies and builds the application in isolation
+- **Runtime stage**: Creates minimal production image with only necessary components
+- **Size optimization**: Reduces image size by ~32% (922MB → 628MB)
+
+#### ✅ **Non-Root User Security**
+- Runs as `inspector` user (UID 1000) for enhanced security
+- Proper file permissions and ownership
+- No unnecessary privileges
+
+#### ✅ **Configuration File Mounting**
+- External config files mounted via volumes
+- Read-only mounting for immutable configuration
+- Proper permissions for non-root user access
+
+### Quick Start
+
+```bash
+# Build the optimized image
+docker build -f docker/Dockerfile -t corrupt-video-inspector .
+
+# Run with config file mounting
+docker run --rm \
+  -v $(pwd)/config.yaml:/app/config/config.yaml:ro \
+  -v /path/to/videos:/app/videos:ro \
+  -v $(pwd)/output:/app/output \
+  corrupt-video-inspector
+
+# Use Docker Compose for complete setup
+cd docker && docker compose up
+```
+
+### Configuration File Setup
+
+1. **Create your configuration**:
+   ```bash
+   cp config.example.yaml config.yaml
+   # Edit config.yaml with your settings
+   ```
+
+2. **Mount the configuration**:
+   ```bash
+   # Single container
+   docker run -v $(pwd)/config.yaml:/app/config/config.yaml:ro <image>
+   
+   # Docker Compose (automatically mounted)
+   docker compose up
+   ```
+
+### Development Environment
+
+```bash
+# Start development environment
+cd docker && docker compose --profile dev up -d
+
+# Connect to development container
+docker exec -it video-dev /bin/bash
+
+# Or use VS Code Dev Containers extension
+```
+
+### Production Deployment
+
+```bash
+# Production with Docker Compose
+cd docker && docker compose up -d
+
+# Check container status
+docker compose ps
+
+# View logs
+docker compose logs -f video
+```
+
+### Security Features
+
+- **Non-root execution**: All processes run as `inspector` user
+- **Read-only configurations**: Config files mounted read-only
+- **Isolated dependencies**: Virtual environment in build stage
+- **Minimal attack surface**: Only necessary components in runtime image
+
+### Volume Mounting
+
+| Mount Point | Purpose | Example |
+|-------------|---------|---------|
+| `/app/config/config.yaml` | Configuration file | `-v ./config.yaml:/app/config/config.yaml:ro` |
+| `/app/videos` | Video files to scan | `-v /path/to/videos:/app/videos:ro` |
+| `/app/output` | Scan results output | `-v ./output:/app/output` |
+
+### Legacy Docker Setup (Single-stage)
+
+The previous single-stage build is still available for comparison:
+
+```dockerfile
+# Legacy Dockerfile (922MB)
+FROM ubuntu:22.04
+# ... single stage build
+```
+
+The new multi-stage build provides significant benefits:
+- **32% smaller image** (628MB vs 922MB)
+- **Better security** with isolated build environment  
+- **Faster deployments** due to smaller image size
+- **Better caching** with separated build stages
+
+---
+
+## 🐳 **Legacy Docker Usage (Deprecated)**
+
 ```dockerfile
 # Dockerfile
 FROM python:3.11-slim
