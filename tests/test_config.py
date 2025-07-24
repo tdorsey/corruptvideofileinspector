@@ -190,7 +190,10 @@ class TestLoadConfig(unittest.TestCase):
 
     def test_load_config_with_file(self):
         """Test loading configuration with specific file"""
-        config_data = {"logging": {"level": "WARNING"}, "processing": {"max_workers": 10}}
+        config_data = {
+            "logging": {"level": "WARNING"},
+            "processing": {"max_workers": 10},
+        }
 
         config_file = Path(self.temp_dir) / "config.yaml"
         with open(config_file, "w") as f:
@@ -204,7 +207,10 @@ class TestLoadConfig(unittest.TestCase):
     def test_load_config_precedence(self):
         """Test configuration precedence: env vars > config file"""
         # Create config file
-        config_data = {"logging": {"level": "WARNING"}, "processing": {"max_workers": 10}}
+        config_data = {
+            "logging": {"level": "WARNING"},
+            "processing": {"max_workers": 10},
+        }
 
         config_file = Path(self.temp_dir) / "config.yaml"
         with open(config_file, "w") as f:
@@ -279,3 +285,41 @@ class TestInputOutputDirectoryConfiguration(unittest.TestCase):
         assert self.loader.config.output.default_output_dir == "/env/output/override"
         # Non-overridden value should remain from YAML
         assert self.loader.config.output.default_filename == "custom_results.json"
+
+
+class TestNonSecretConfigValues(unittest.TestCase):
+    """Test non-secret configuration values"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.loader = ConfigLoader()
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up test fixtures"""
+        # Clean up any environment variables we might have set
+        env_vars = ["CVI_INPUT_DIR", "CVI_OUTPUT_DIR", "CVI_TRAKT_CLIENT_ID"]
+        for var in env_vars:
+            os.environ.pop(var, None)
+
+    def test_trakt_client_id(self):
+        """Test Trakt client ID configuration value"""
+        # Test YAML configuration
+        config_data = {"trakt_client_id": "test_client_id"}
+
+        config_file = Path(self.temp_dir) / "test_trakt.yaml"
+        with open(config_file, "w") as f:
+            yaml.dump(config_data, f)
+
+        self.loader.load_from_yaml(config_file)
+
+        # Verify YAML value is loaded
+        assert self.loader.config.trakt_client_id == "test_client_id"
+
+        # Test environment variable override
+        os.environ["CVI_TRAKT_CLIENT_ID"] = "env_client_id"
+
+        self.loader.load_from_environment()
+
+        # Environment should override YAML
+        assert self.loader.config.trakt_client_id == "env_client_id"

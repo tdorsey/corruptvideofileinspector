@@ -9,6 +9,7 @@ services:
       # Mount configuration file if it exists
       - ./config.yaml:/app/config.yaml:ro
     environment:
+      - TRAKT_CLIENT_ID=test_client_id
       - PYTHONUNBUFFERED=1
       # Configuration can also be set via environment variables
       # These will override config file settings
@@ -19,17 +20,7 @@ services:
       # Docker secrets for sensitive configuration
       - cvi_log_level
       - cvi_ffmpeg_command
-    command: [
-      "python3", "cli_handler.py", 
-      "--config", "/app/config.yaml",
-      "--mode", "hybrid",
-      "--verbose", 
-      "--json", 
-      "--recursive",
-      "--max-workers", "6",
-      "--output", "/app/output/results.json", 
-      "/app/videos"
-    ]
+    command: [ "python3", "cli_handler.py", "--config", "/app/config.yaml", "--mode", "hybrid", "--verbose", "--json", "--recursive", "--max-workers", "6", "--output", "/app/output/results.json", "/app/videos" ]
 
   # Development service (dev profile)
   dev:
@@ -51,7 +42,7 @@ services:
       # Development environment variables can override config
       # - CVI_LOG_LEVEL=DEBUG
     working_dir: /app
-    command: ["tail", "-f", "/dev/null"]  # Keep container running for development
+    command: [ "tail", "-f", "/dev/null" ] # Keep container running for development
     stdin_open: true
     tty: true
 
@@ -76,10 +67,9 @@ volumes:
       type: none
       o: bind
       device: /home/ubuntu/video/output
-  
+
   # Development volumes
   dev_videos:
     driver: local
   dev_output:
     driver: local
-

@@ -1,7 +1,7 @@
 """
 Configuration management for Corrupt Video Inspector.
 
-Supports configuration loading from YAML files, environment variables,
+Supports configuration loading from environment variables,
 and Docker secrets with proper precedence handling.
 """
 
@@ -10,8 +10,6 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Union
-
-import yaml
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -84,6 +82,13 @@ class SecretsConfig:
 
 
 @dataclass
+class TraktConfig:
+    """Trakt.tv configuration settings."""
+
+    client_id: str
+
+
+@dataclass
 class Config:
     """Main configuration container."""
 
@@ -93,6 +98,7 @@ class Config:
     output: OutputConfig = field(default_factory=OutputConfig)
     scan: ScanConfig = field(default_factory=ScanConfig)
     secrets: SecretsConfig = field(default_factory=SecretsConfig)
+    trakt: TraktConfig = field(default_factory=TraktConfig)
 
 
 class ConfigLoader:
@@ -101,42 +107,6 @@ class ConfigLoader:
     def __init__(self):
         self.config = Config()
         self._loaded_files: List[str] = []
-
-    def load_from_yaml(self, config_path: Union[str, Path]) -> None:
-        """
-        Load configuration from YAML file.
-
-        Args:
-            config_path: Path to YAML configuration file
-
-        Raises:
-            FileNotFoundError: If config file doesn't exist
-            yaml.YAMLError: If YAML parsing fails
-        """
-        config_path = Path(config_path)
-
-        if not config_path.exists():
-            logger.warning(f"Configuration file not found: {config_path}")
-            return
-
-        try:
-            with config_path.open(encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-
-            if data is None:
-                logger.warning(f"Empty configuration file: {config_path}")
-                return
-
-            self._apply_config_dict(data)
-            self._loaded_files.append(str(config_path))
-            logger.info(f"Loaded configuration from: {config_path}")
-
-        except yaml.YAMLError:
-            logger.exception(f"Failed to parse YAML config {config_path}")
-            raise
-        except Exception:
-            logger.exception(f"Failed to load config {config_path}")
-            raise
 
     def load_from_environment(self) -> None:
         """Load configuration overrides from environment variables."""
@@ -160,6 +130,8 @@ class ConfigLoader:
             "CVI_RECURSIVE": ("scan", "recursive"),
             "CVI_INPUT_DIR": ("scan", "default_input_dir"),
             "CVI_EXTENSIONS": ("scan", "extensions"),
+            # Trakt
+            "TRAKT_CLIENT_ID": ("trakt", "client_id"),
             # Secrets
             "CVI_SECRETS_PATH": ("secrets", "docker_secrets_path"),
         }
@@ -194,26 +166,11 @@ class ConfigLoader:
                 try:
                     value = secret_file.read_text().strip()
                     self._set_config_value(section, key, value)
-                    logger.debug(f"Set {section}.{key} from Docker secret: {secret_name}")
+                    logger.debug(
+                        f"Set {section}.{key} from Docker secret: " f"{secret_name}"
+                    )
                 except Exception as e:
                     logger.warning(f"Failed to read secret {secret_name}: {e}")
-
-    def load_default_configs(self) -> None:
-        """Load configuration from default locations."""
-        # Look for config files in common locations
-        config_paths = [
-            Path.cwd() / "config.yaml",
-            Path.cwd() / "config.yml",
-            Path.home() / ".config" / "corrupt-video-inspector" / "config.yaml",
-            Path("/etc/corrupt-video-inspector/config.yaml"),
-        ]
-
-        for config_path in config_paths:
-            if config_path.exists():
-                self.load_from_yaml(config_path)
-                break
-        else:
-            logger.debug("No default configuration file found")
 
     def _apply_config_dict(self, data: Dict) -> None:
         """Apply configuration dictionary to config object."""
@@ -246,27 +203,22 @@ class ConfigLoader:
             # Convert string values to appropriate type (from env vars)
             elif isinstance(value, str):
                 if isinstance(current_value, bool):
-
-                    def raise_invalid_value_error(value: str) -> None:
+                    valid_true = ("true", "1", "yes", "on")
+                    valid_false = ("false", "0", "no", "off")
+                    if value.lower() in valid_true:
+                        converted_value = True
+                    elif value.lower() in valid_false:
+                        converted_value = False
+                    else:
                         raise ValueError(f"Invalid boolean value: {value}")
-
-                    def validate_boolean(value: str) -> bool:
-                        valid_true = ("true", "1", "yes", "on")
-                        valid_false = ("false", "0", "no", "off")
-                        if value.lower() in valid_true:
-                            return True
-                        if value.lower() in valid_false:
-                            return False
-                        raise_invalid_value_error(value)
-                        return False  # Explicit return for clarity
-
-                    converted_value = validate_boolean(value)
 
                 elif isinstance(current_value, int):
                     converted_value = int(value)
                 elif isinstance(current_value, list):
                     # Handle comma-separated lists
-                    converted_value = [item.strip() for item in value.split(",") if item.strip()]
+                    converted_value = [
+                        item.strip() for item in value.split(",") if item.strip()
+                    ]
                 else:
                     converted_value = value
             else:
@@ -290,24 +242,12 @@ def load_config(config_file: Optional[Union[str, Path]] = None) -> Config:
     Precedence (highest to lowest):
     1. Environment variables
     2. Docker secrets (if available)
-    3. Specified config file
-    4. Default config file locations
-    5. Built-in defaults
-
-    Args:
-        config_file: Optional path to specific configuration file
+    3. Built-in defaults
 
     Returns:
         Config: Loaded configuration object
     """
     loader = ConfigLoader()
-
-    # Load from default locations first (lowest precedence)
-    if config_file is None:
-        loader.load_default_configs()
-    else:
-        # Load from specified file
-        loader.load_from_yaml(config_file)
 
     # Load Docker secrets (higher precedence)
     loader.load_docker_secrets()
