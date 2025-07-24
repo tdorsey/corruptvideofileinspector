@@ -38,8 +38,8 @@ jobs:
         run: |
           make install-dev
 
-      - name: Install pre-commit hooks
-        run: make pre-commit-install
+     # - name: Install pre-commit hooks
+      #  run: make pre-commit-install
 
       - name: Verify tools are available
         run: |
