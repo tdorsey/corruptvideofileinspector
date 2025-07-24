@@ -190,3 +190,32 @@ style errors from ruff or mypy should be fixed automatically.
    - Place all imports at the top of the file, after any comments.
    - Do not include executable code before imports.
    - Sort imports alphabetically.
+
+   ### Commit Message Guidelines
+
+This project follows the [Conventional Commits](https://www.conventionalcommits.org/) specification for commit messages. Please ensure your commit messages adhere to the following format:
+
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+
+
+#### Types
+- **feat**: A new feature
+- **fix**: A bug fix
+- **docs**: Documentation only changes
+- **style**: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc.)
+- **refactor**: A code change that neither fixes a bug nor adds a feature
+- **perf**: A code change that improves performance
+- **test**: Adding missing tests or correcting existing tests
+- **chore**: Changes to the build process or auxiliary tools and libraries such as documentation generation
+
+#### Examples
+- `feat(auth): add login functionality`
+- `fix(video): resolve playback issue`
+- `docs(readme): update installation instructions`
+
+### Why Conventional Commits?
+Using Conventional Commits helps automate the release process, generate changelogs, and
