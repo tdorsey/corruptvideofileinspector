@@ -1,7 +1,9 @@
 services:
   # Production service (default profile)
   video:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: video
     volumes:
       - video_data:/app/videos:ro
@@ -25,8 +27,8 @@ services:
   # Development service (dev profile)
   dev:
     build:
-      context: .
-      dockerfile: Dockerfile.dev
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: video-dev
     profiles:
       - dev
@@ -48,10 +50,8 @@ services:
 
 # Docker secrets configuration
 secrets:
-  cvi_log_level:
-    file: ./secrets/cvi_log_level.txt
-  cvi_ffmpeg_command:
-    file: ./secrets/cvi_ffmpeg_command.txt
+  trakt_client_secret:
+    file: ./secrets/trakt_client_secret.txt
 
 volumes:
   # Production volumes
