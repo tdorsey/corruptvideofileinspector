@@ -20,7 +20,7 @@ services:
       # - CVI_MAX_WORKERS=6
       # - CVI_DEFAULT_MODE=hybrid
     # No secrets required for this service
-    command: [ "python3", "cli_handler.py", "--config", "/app/config.yaml", "--mode", "hybrid", "--verbose", "--json", "--recursive", "--max-workers", "6", "--output", "/app/output/results.json", "/app/videos" ]
+    command: [ "python3", "src/cli/cli_handler.py", "--config", "/app/config.yaml", "--mode", "hybrid", "--verbose", "--json", "--recursive", "--max-workers", "6", "--output", "/app/output/results.json", "/app/videos" ]
 
   # Development service (dev profile)
   dev:
