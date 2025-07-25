@@ -51,9 +51,7 @@ class MediaItem:
         if self.media_type not in ["movie", "show"]:
             self.media_type = "movie"
 
-        logger.debug(
-            f"MediaItem created: {self.title} ({self.year}) - " f"{self.media_type}"
-        )
+        logger.debug(f"MediaItem created: {self.title} ({self.year}) - " f"{self.media_type}")
 
 
 @dataclass
@@ -209,14 +207,10 @@ class TraktAPI:
             )
 
             if response and response.get("added", {}).get("movies", 0) > 0:
-                logger.info(
-                    f"Successfully added movie to watchlist: {trakt_item.title}"
-                )
+                logger.info(f"Successfully added movie to watchlist: {trakt_item.title}")
                 return True
 
-            logger.warning(
-                f"Movie was not added (may already be in watchlist): {trakt_item.title}"
-            )
+            logger.warning(f"Movie was not added (may already be in watchlist): {trakt_item.title}")
             return True  # Consider this a success
         except Exception:
             logger.exception("Error adding movie to watchlist")
@@ -260,9 +254,7 @@ class TraktAPI:
                 logger.info(f"Successfully added show to watchlist: {trakt_item.title}")
                 return True
 
-            logger.warning(
-                f"Show was not added (may already be in watchlist): {trakt_item.title}"
-            )
+            logger.warning(f"Show was not added (may already be in watchlist): {trakt_item.title}")
             return True  # Consider this a success
         except Exception:
             logger.exception("Error adding show to watchlist")
@@ -291,9 +283,7 @@ class TraktAPI:
             logger.info(f"Successfully added movie to watchlist: {item.title}")
 
             return item
-        print(
-            f"\nFound {len(items)} matches for '{media_item.title}' ({media_item.year}):"
-        )
+        print(f"\nFound {len(items)} matches for '{media_item.title}' ({media_item.year}):")
         print("  0. Skip (don't add to watchlist)")
 
         for i, item in enumerate(items, 1):
@@ -314,9 +304,7 @@ class TraktAPI:
                     return None
                 if 1 <= choice_num <= len(items):
                     selected_item = items[choice_num - 1]
-                    logger.info(
-                        f"User selected: {selected_item.title} ({selected_item.year})"
-                    )
+                    logger.info(f"User selected: {selected_item.title} ({selected_item.year})")
                     return selected_item
                 print(f"Please enter a number between 0 and {len(items)}.")
 
@@ -397,9 +385,7 @@ class FilenameParser:
                     original_filename=filename,
                 )
 
-                logger.info(
-                    f"Parsed as TV show: {media_item.title} S{season:02d}E{episode:02d}"
-                )
+                logger.info(f"Parsed as TV show: {media_item.title} S{season:02d}E{episode:02d}")
                 return media_item
 
         # Try movie patterns
@@ -430,9 +416,7 @@ class FilenameParser:
                 return media_item
 
         # Fallback: treat as movie with just the filename as title
-        media_item = MediaItem(
-            title=base_name, media_type="movie", original_filename=filename
-        )
+        media_item = MediaItem(title=base_name, media_type="movie", original_filename=filename)
 
         logger.warning(f"Could not parse filename, treating as movie: {base_name}")
         return media_item
@@ -580,24 +564,16 @@ def sync_to_trakt_watchlist(
                 # Automatic mode: get first result only
                 # (backward compatibility)
                 if media_item.media_type == "movie":
-                    search_results = api.search_movie(
-                        media_item.title, media_item.year, limit=1
-                    )
+                    search_results = api.search_movie(media_item.title, media_item.year, limit=1)
                 else:
-                    search_results = api.search_show(
-                        media_item.title, media_item.year, limit=1
-                    )
+                    search_results = api.search_show(media_item.title, media_item.year, limit=1)
 
                 trakt_item = search_results[0] if search_results else None
 
             if not trakt_item:
                 logger.warning(f"No Trakt match found for: {media_item.title}")
                 if verbose:
-                    print(
-                        "    ❌ Not found on Trakt"
-                        if not interactive
-                        else "    ❌ Skipped"
-                    )
+                    print("    ❌ Not found on Trakt" if not interactive else "    ❌ Skipped")
                 summary["failed"] += 1
                 summary["results"].append(
                     {
@@ -676,9 +652,7 @@ def sync_to_trakt_watchlist(
         print(f"Movies added: {summary['movies_added']}")
         print(f"Shows added: {summary['shows_added']}")
         print(f"Failed/Not found: {summary['failed']}")
-        percent = (
-            (summary["movies_added"] + summary["shows_added"]) / summary["total"] * 100
-        )
+        percent = (summary["movies_added"] + summary["shows_added"]) / summary["total"] * 100
         print("Success rate: " f"{percent:.1f}%")
 
     logger.info(

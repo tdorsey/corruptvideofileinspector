@@ -38,17 +38,18 @@ pre-commit-run:
 	pre-commit run --all-files
 
 # Code quality
+
 format:
 	black .
-	ruff check --fix --unsafe-fixes .
+	$(MAKE) lint
 
 lint:
-	ruff check --fix .
+	ruff check --fix --unsafe-fixes .
 
 type:
 	mypy .
 
-check: format lint type
+check: format type
 	@echo "All checks passed!"
 
 # Testing

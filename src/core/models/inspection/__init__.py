@@ -1,8 +1,35 @@
+# Public API exports
+__all__ = [
+    "MediaType",
+    "VideoFile",
+    "MediaInfo",
+    "CorruptVideoInspectorError",
+]
+import re
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+from typing import Any, ClassVar
+
+
+class MediaType(Enum):
+    """Types of media content.
+
+    Attributes:
+        MOVIE: Single movie file
+        TV_SHOW: TV show episode
+        UNKNOWN: Unable to determine media type
+    """
+
+    MOVIE = "movie"
+    TV_SHOW = "show"
+    UNKNOWN = "unknown"
+
 
 @dataclass(frozen=True)
 class VideoFile:
     """Represents a video file with its properties.
-    
+
     Attributes:
         path: Filesystem path to the video file
         size: File size in bytes (computed automatically)
@@ -29,6 +56,8 @@ class VideoFile:
     def name(self) -> str:
         """Get just the filename without path."""
         return self.path.name
+
+    media_type: "MediaType" = MediaType.MOVIE
 
     @property
     def stem(self) -> str:
@@ -62,7 +91,7 @@ class VideoFile:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> VideoFile:
+    def from_dict(cls, data: dict[str, Any]) -> "VideoFile":
         """Create VideoFile from dictionary."""
         video_file = cls(Path(data["path"]))
         if "duration" in data:
@@ -72,19 +101,7 @@ class VideoFile:
 
 @dataclass
 class MediaInfo:
-    """Parsed media information from filename.
-    
-    Attributes:
-        title: Cleaned media title
-        year: Release year if detected
-        media_type: Type of media (movie/tv show)
-        season: Season number for TV shows
-        episode: Episode number for TV shows  
-        quality: Video quality (1080p, 4K, etc.)
-        source: Source format (BluRay, WEB-DL, etc.)
-        codec: Video codec (x264, H.265, etc.)
-        original_filename: Original filename before parsing
-    """
+    """Parsed media information from filename."""
 
     title: str
     year: int | None = None
@@ -107,14 +124,13 @@ class MediaInfo:
 
     def _clean_title(self, title: str) -> str:
         """Clean up title by removing dots, underscores, etc.
-        
+
         Args:
             title: Raw title string
-            
+
         Returns:
             Cleaned title string
         """
-        import re
 
         # Replace dots and underscores with spaces
         title = re.sub(r"[._]", " ", title)
@@ -170,7 +186,7 @@ class MediaInfo:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> MediaInfo:
+    def from_dict(cls, data: dict[str, Any]) -> "MediaInfo":
         """Create MediaInfo from dictionary."""
         return cls(
             title=data["title"],
@@ -185,23 +201,19 @@ class MediaInfo:
         )
 
 
-
-
 # Data classes for specialized operations
-
-
 
 
 class CorruptVideoInspectorError(Exception):
     """Base exception for all application errors.
-    
+
     This is the root exception that all other application-specific
     exceptions inherit from. It provides a common base for error handling.
     """
 
     def __init__(self, message: str, cause: Exception | None = None) -> None:
         """Initialize the exception.
-        
+
         Args:
             message: Human-readable error message
             cause: Optional underlying exception that caused this error
@@ -223,16 +235,3 @@ class CorruptVideoInspectorError(Exception):
             "message": self.message,
             "cause": str(self.cause) if self.cause else None,
         }
-
-class MediaType(Enum):
-    """Types of media content.
-    
-    Attributes:
-        MOVIE: Single movie file
-        TV_SHOW: TV show episode
-        UNKNOWN: Unable to determine media type
-    """
-
-    MOVIE = "movie"
-    TV_SHOW = "show"
-    UNKNOWN = "unknown"

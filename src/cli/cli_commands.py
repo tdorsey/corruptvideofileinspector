@@ -12,7 +12,7 @@ import click
 from ..config.loader import load_config
 from ..core.models import ScanMode
 from ..utils.logging import setup_logging
-from .handlers import ScanHandler, TraktHandler, ListHandler
+from .handlers import ListHandler, ScanHandler, TraktHandler
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +58,11 @@ def global_options(f):
         is_flag=True,
         help="Suppress all output except errors",
     )(f)
-    f = click.option(
+    return click.option(
         "--profile",
         type=click.Choice(["default", "development", "production"]),
         help="Configuration profile to use",
     )(f)
-    return f
 
 
 @click.group()
@@ -124,9 +123,7 @@ def cli(ctx):
     help="Output format",
     show_default=True,
 )
-@click.option(
-    "--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True
-)
+@click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
 @click.pass_context
 def scan(
     ctx,
@@ -287,16 +284,13 @@ def trakt(ctx):
     Sync scan results to your Trakt.tv watchlist by parsing filenames
     and matching them against Trakt's database.
     """
-    pass
 
 
 @trakt.command()
 @global_options
 @click.argument("scan_file", type=PathType(exists=True))
 @click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
-@click.option(
-    "--client-id", help="Trakt.tv API client ID (can be set via config or env var)"
-)
+@click.option("--client-id", help="Trakt.tv API client ID (can be set via config or env var)")
 @click.option(
     "--interactive/--no-interactive",
     "-i",
@@ -304,9 +298,7 @@ def trakt(ctx):
     help="Enable interactive selection of search results",
     show_default=True,
 )
-@click.option(
-    "--dry-run", is_flag=True, help="Show what would be synced without actually syncing"
-)
+@click.option("--dry-run", is_flag=True, help="Show what would be synced without actually syncing")
 @click.option("--output", "-o", type=PathType(), help="Save sync results to file")
 @click.option(
     "--filter-corrupt/--include-corrupt",
@@ -453,20 +445,14 @@ def test_ffmpeg(ctx, config, verbose, quiet, profile):
         click.echo("=" * 40)
 
         click.echo(f"FFmpeg Path: {test_results['ffmpeg_path'] or 'Not found'}")
-        click.echo(
-            f"FFmpeg Available: {'✓' if test_results['ffmpeg_available'] else '✗'}"
-        )
-        click.echo(
-            f"FFprobe Available: {'✓' if test_results['ffprobe_available'] else '✗'}"
-        )
+        click.echo(f"FFmpeg Available: {'✓' if test_results['ffmpeg_available'] else '✗'}")
+        click.echo(f"FFprobe Available: {'✓' if test_results['ffprobe_available'] else '✗'}")
 
         if test_results["version_info"]:
             click.echo(f"Version: {test_results['version_info']}")
 
         if test_results["supported_formats"]:
-            click.echo(
-                f"Supported Formats: {', '.join(test_results['supported_formats'])}"
-            )
+            click.echo(f"Supported Formats: {', '.join(test_results['supported_formats'])}")
 
         if not test_results["ffmpeg_available"]:
             click.echo("\nFFmpeg is not available. Please install it:")
@@ -558,9 +544,7 @@ def report(
 
 @cli.command()
 @global_options
-@click.option(
-    "--all-configs", is_flag=True, help="Show all configuration sources and values"
-)
+@click.option("--all-configs", is_flag=True, help="Show all configuration sources and values")
 @click.pass_context
 def show_config(ctx, all_configs, config, verbose, quiet, profile):
     """

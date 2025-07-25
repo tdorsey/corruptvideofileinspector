@@ -8,13 +8,12 @@ from pathlib import Path
 from typing import NoReturn
 
 import click
-from rich.console import Console
-from rich.logging import RichHandler
-
 from corrupt_video_inspector import __version__
 from corrupt_video_inspector.cli.commands import scan
 from corrupt_video_inspector.config.settings import load_config
 from corrupt_video_inspector.core.models import ConfigurationError
+from rich.console import Console
+from rich.logging import RichHandler
 
 # Setup rich console for beautiful output
 console = Console()
@@ -22,7 +21,7 @@ console = Console()
 
 def setup_logging(verbose: int) -> None:
     """Setup logging configuration based on verbosity level.
-    
+
     Args:
         verbose: Verbosity level (0=WARNING, 1=INFO, 2=DEBUG).
     """
@@ -31,9 +30,9 @@ def setup_logging(verbose: int) -> None:
         1: logging.INFO,
         2: logging.DEBUG,
     }
-    
+
     level = level_map.get(verbose, logging.DEBUG)
-    
+
     logging.basicConfig(
         level=level,
         format="%(message)s",
@@ -46,7 +45,7 @@ def setup_logging(verbose: int) -> None:
             )
         ],
     )
-    
+
     # Suppress noisy third-party loggers in production
     if verbose < 2:
         logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -73,10 +72,10 @@ def setup_logging(verbose: int) -> None:
 @click.pass_context
 def cli(ctx: click.Context, verbose: int, config: Path | None) -> None:
     """Corrupt Video Inspector - Detect and manage corrupted video files.
-    
+
     A comprehensive tool for scanning video directories, detecting corruption
     using FFmpeg, and optionally syncing healthy files to Trakt.tv.
-    
+
     Examples:
         corrupt-video-inspector scan /path/to/videos
         corrupt-video-inspector scan /movies --mode deep --recursive
@@ -84,7 +83,7 @@ def cli(ctx: click.Context, verbose: int, config: Path | None) -> None:
     """
     # Setup logging first
     setup_logging(verbose)
-    
+
     # Load configuration
     try:
         app_config = load_config(config)
@@ -94,7 +93,7 @@ def cli(ctx: click.Context, verbose: int, config: Path | None) -> None:
     except ConfigurationError as e:
         console.print(f"[red]Configuration error:[/red] {e}")
         raise click.Abort() from e
-    
+
     # If no command specified, show help
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
@@ -112,22 +111,22 @@ def handle_keyboard_interrupt() -> NoReturn:
 
 def handle_general_error(error: Exception) -> NoReturn:
     """Handle general errors with rich formatting.
-    
+
     Args:
         error: The exception that occurred.
     """
     console.print(f"[red]Error:[/red] {error}")
-    
+
     # Show traceback in verbose mode
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         console.print_exception()
-    
+
     sys.exit(1)
 
 
 def main() -> int:
     """Main entry point with error handling.
-    
+
     Returns:
         Exit code (0 for success, non-zero for failure).
     """

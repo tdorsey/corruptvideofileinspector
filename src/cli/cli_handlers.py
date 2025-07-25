@@ -68,7 +68,7 @@ class ScanHandler(BaseHandler):
         """
         try:
             # Show initial information
-            if not self.config.logging.level == "QUIET":
+            if self.config.logging.level != "QUIET":
                 self._show_scan_info(directory, scan_mode, recursive)
 
             # Check if directory has video files
@@ -89,9 +89,7 @@ class ScanHandler(BaseHandler):
                 recursive=recursive,
                 resume=resume,
                 progress_callback=(
-                    self._progress_callback
-                    if not self.config.logging.level == "QUIET"
-                    else None
+                    self._progress_callback if self.config.logging.level != "QUIET" else None
                 ),
             )
 
@@ -114,9 +112,7 @@ class ScanHandler(BaseHandler):
         except Exception as e:
             self._handle_error(e, "Scan failed")
 
-    def _show_scan_info(
-        self, directory: Path, scan_mode: ScanMode, recursive: bool
-    ) -> None:
+    def _show_scan_info(self, directory: Path, scan_mode: ScanMode, recursive: bool) -> None:
         """Show initial scan information."""
         click.echo("Starting video corruption scan...")
         click.echo(f"Directory: {directory}")
@@ -144,10 +140,7 @@ class ScanHandler(BaseHandler):
         current_time = time.time()
 
         # Throttle progress updates
-        if (
-            current_time - self._last_progress_update
-            < self.config.ui.progress_update_interval
-        ):
+        if current_time - self._last_progress_update < self.config.ui.progress_update_interval:
             return
 
         self._last_progress_update = current_time
@@ -195,7 +188,7 @@ class ScanHandler(BaseHandler):
 
     def _show_scan_results(self, summary) -> None:
         """Show scan completion results."""
-        if not self.config.logging.level == "QUIET":
+        if self.config.logging.level != "QUIET":
             click.echo()  # New line after progress
 
         click.echo("=" * 50)
@@ -395,12 +388,8 @@ class TraktHandler(BaseHandler):
         click.echo("=" * 50)
 
         click.echo(f"Total items processed: {results['total']}")
-        click.echo(
-            f"Movies {'would be' if dry_run else ''} added: {results['movies_added']}"
-        )
-        click.echo(
-            f"Shows {'would be' if dry_run else ''} added: {results['shows_added']}"
-        )
+        click.echo(f"Movies {'would be' if dry_run else ''} added: {results['movies_added']}")
+        click.echo(f"Shows {'would be' if dry_run else ''} added: {results['shows_added']}")
         click.echo(f"Failed/Not found: {results['failed']}")
 
         if results["total"] > 0:
@@ -411,9 +400,7 @@ class TraktHandler(BaseHandler):
         # Show failed items if any
         if results.get("results"):
             failed_items = [
-                r
-                for r in results["results"]
-                if r["status"] in ["failed", "not_found", "error"]
+                r for r in results["results"] if r["status"] in ["failed", "not_found", "error"]
             ]
             if failed_items:
                 click.echo(f"\nFailed items ({len(failed_items)}):")

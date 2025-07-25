@@ -4,36 +4,39 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import AsyncIterator, Callable, Iterator
+from typing import Callable, Iterator
 
-from corrupt_video_inspector.config.settings import AppConfig
+from corrupt_video_inspector.config.settings import AppConfig, load_config
 from corrupt_video_inspector.core.models import (
     ScanProgress,
     VideoFile,
+)
+from corrupt_video_inspector.core.models.scanning import (
+    ScanMode,
+    ScanResult,
+    ScanSummary,
 )
 
 logger = logging.getLogger(__name__)
 
 
+class VideoScanner:
     """Service for locating video files and tracking scan progress."""
 
     def __init__(self, config: AppConfig | None = None) -> None:
         """Initialize the video scanner.
-        
+
         Args:
             config: Application configuration. If None, will load default config.
         """
         if config is None:
-            from corrupt_video_inspector.config.settings import load_config
             config = load_config()
-            
+
         self.config = config
         self._shutdown_requested = False
         self._current_scan_summary: ScanSummary | None = None
-        
+
         logger.info("VideoScanner initialized with config: %s", config.scanner)
 
     async def locate_video_files_async(
@@ -57,9 +60,7 @@ logger = logging.getLogger(__name__)
         """
         logger.info("Locating video files in: %s", directory)
         self._validate_directory(directory)
-        video_files = await self._find_video_files_async(
-            directory, recursive, extensions
-        )
+        video_files = await self._find_video_files_async(directory, recursive, extensions)
         progress = ScanProgress(
             total_files=len(video_files),
             processed_count=0,
@@ -182,9 +183,9 @@ logger = logging.getLogger(__name__)
             raise NotADirectoryError(f"Path is not a directory: {directory}")
 
     async def _find_video_files_async(
-        self, 
-        directory: Path, 
-        recursive: bool, 
+        self,
+        directory: Path,
+        recursive: bool,
         extensions: list[str] | None,
     ) -> list[VideoFile]:
         """Find all video files in directory asynchronously."""
@@ -194,7 +195,7 @@ logger = logging.getLogger(__name__)
         logger.debug("Scanning for video files with extensions: %s", extensions)
 
         video_files: list[VideoFile] = []
-        
+
         # Use asyncio to make file system operations non-blocking
         def _scan_directory() -> Iterator[VideoFile]:
             pattern = "**/*" if recursive else "*"
@@ -208,19 +209,15 @@ logger = logging.getLogger(__name__)
 
         # Run in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
-        video_files = await loop.run_in_executor(
-            None, lambda: list(_scan_directory())
-        )
+        video_files = await loop.run_in_executor(None, lambda: list(_scan_directory()))
 
         return sorted(video_files, key=lambda x: x.path)
 
     # ...existing code for _validate_directory and _find_video_files_async...
-"""Validation logic for scan results."""
-from .models import ScanResult, ScanMode
-from typing import List
 
-def validate_scan_results(results: List[ScanResult]) -> List[str]:
-    issues: List[str] = []
+
+def validate_scan_results(results: list[ScanResult]) -> list[str]:
+    issues: list[str] = []
     if not results:
         return issues
     for i, result in enumerate(results):
@@ -230,11 +227,15 @@ def validate_scan_results(results: List[ScanResult]) -> List[str]:
         if not result.video_file.path:
             issues.append(f"Result {i}: Invalid file path")
         if result.inspection_time < 0:
-            issues.append(f"Result {i}: Negative inspection time: {result.inspection_time}")
+            issues.append(f"Result {i}: Negative inspection time: " f"{result.inspection_time}")
         if result.confidence < 0 or result.confidence > 1:
-            issues.append(f"Result {i}: Invalid confidence value: {result.confidence}")
+            issues.append(f"Result {i}: Invalid confidence value: " f"{result.confidence}")
         if result.is_corrupt and result.needs_deep_scan:
-            issues.append(f"Result {i}: File marked as both corrupt and needing deep scan")
-        if result.deep_scan_completed and not result.needs_deep_scan and result.scan_mode == ScanMode.QUICK:
-            issues.append(f"Result {i}: Deep scan completed but not needed and mode is quick")
+            issues.append(f"Result {i}: File marked as both corrupt " f"and needing deep scan")
+        if (
+            result.deep_scan_completed
+            and not result.needs_deep_scan
+            and result.scan_mode == ScanMode.QUICK
+        ):
+            issues.append(f"Result {i}: Deep scan completed but not needed " f"and mode is quick")
     return issues
