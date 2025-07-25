@@ -108,7 +108,7 @@ docker-dev-run:
 
 # Docker Compose (compose file inside docker/ folder)
 docker-prod:
-	docker compose -f docker/docker-compose.yml --project-directory . up --build video
+	docker compose -f docker/docker-compose.yml  up --build video
 
 docker-dev:
-	docker compose -f docker/docker-compose.yml --project-directory .  up --build dev
+	docker compose -f docker/docker-compose.yml  up --build dev
