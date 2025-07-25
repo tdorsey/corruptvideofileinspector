@@ -50,4 +50,4 @@ ENV PATH="/home/inspector/.local/bin:$PATH"
 ENTRYPOINT ["dumb-init", "--"]
 
 # Default command for development (keep container running)
-CMD ["tail", "-f", "/dev/null"]
+CMD ["python3", "cli/cli_handler.py", "--help"]

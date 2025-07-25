@@ -45,4 +45,4 @@ ENV PYTHONPATH=/app
 ENTRYPOINT ["dumb-init", "--"]
 
 # Default command
-CMD ["python3", "cli_handler.py", "--help"]
+CMD ["python3", "cli/cli_handler.py", "--help"]
