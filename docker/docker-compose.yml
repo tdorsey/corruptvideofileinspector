@@ -11,17 +11,15 @@ services:
       # Mount configuration file if it exists
       - ./config.yaml:/app/config.yaml:ro
     environment:
-      - TRAKT_CLIENT_ID=test_client_id
+      - TRAKT_CLIENT_ID=5442745fccf9801ee2897718197d90fd6070f0a774a0cfa740b63f0fa8f96804
+      - TRAKT_CLIENT_SECRET_FILE=/run/secrets/trakt_client_secret
       - PYTHONUNBUFFERED=1
       # Configuration can also be set via environment variables
       # These will override config file settings
       # - CVI_LOG_LEVEL=INFO
       # - CVI_MAX_WORKERS=6
       # - CVI_DEFAULT_MODE=hybrid
-    secrets:
-      # Docker secrets for sensitive configuration
-      - cvi_log_level
-      - cvi_ffmpeg_command
+    # No secrets required for this service
     command: [ "python3", "cli_handler.py", "--config", "/app/config.yaml", "--mode", "hybrid", "--verbose", "--json", "--recursive", "--max-workers", "6", "--output", "/app/output/results.json", "/app/videos" ]
 
   # Development service (dev profile)
@@ -52,6 +50,9 @@ services:
 secrets:
   trakt_client_secret:
     file: ./secrets/trakt_client_secret.txt
+  cvi_ffmpeg_command:
+    # (keep this secret definition if needed elsewhere)
+    external: true
 
 volumes:
   # Production volumes
