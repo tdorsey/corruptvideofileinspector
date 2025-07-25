@@ -80,10 +80,10 @@ build: clean
 
 # Docker images
 docker-build:
-	docker build -t corrupt-video-inspector .
+	docker build -f docker/Dockerfile . -t corrupt-video-inspector
 
 docker-dev-build:
-	docker build -f Dockerfile.dev -t corrupt-video-inspector-dev .
+	docker build -f docker/Dockerfile.dev . -t corrupt-video-inspector-dev .
 
 # Docker containers run directly
 docker-run:

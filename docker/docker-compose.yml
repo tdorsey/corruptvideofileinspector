@@ -50,9 +50,6 @@ services:
 secrets:
   trakt_client_secret:
     file: ./secrets/trakt_client_secret.txt
-  cvi_ffmpeg_command:
-    # (keep this secret definition if needed elsewhere)
-    external: true
 
 volumes:
   # Production volumes
