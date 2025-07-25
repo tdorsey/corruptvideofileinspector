@@ -4,7 +4,7 @@ Configuration settings for the Corrupt Video Inspector application.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -103,7 +103,7 @@ class StorageConfig:
                 try:
                     temp_path.mkdir(parents=True, exist_ok=True)
                 except OSError as e:
-                    raise ValueError(f"Cannot create temp directory: {e}")
+                    raise ValueError(f"Cannot create temp directory: {e}") from e
 
 
 @dataclass
@@ -164,7 +164,8 @@ class SecurityConfig:
 
     secrets_dir: str = "/run/secrets"
     max_file_size: int = 100 * 1024 * 1024 * 1024  # 100GB
-    allowed_extensions: Optional[List[str]] = None  # None = use scanner extensions
+    allowed_extensions: Optional[List[str]] = None
+    # None = use scanner extensions
 
     def __post_init__(self) -> None:
         """Validate security configuration."""
@@ -222,7 +223,7 @@ class AppConfig:
         """Get the effective log level."""
         return self.logging.level
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
         return {
             "logging": {

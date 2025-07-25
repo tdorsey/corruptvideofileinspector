@@ -533,34 +533,36 @@ class ScanFilter:
         Returns:
             True if result matches filter criteria
         """
-        # Check corruption status
-        if result.is_corrupt and not self.include_corrupt:
-            return False
-        if not result.is_corrupt and result.needs_deep_scan and not self.include_suspicious:
-            return False
-        if not result.is_corrupt and not result.needs_deep_scan and not self.include_healthy:
-            return False
+        match = True
+        # Combine corruption status checks
+        if (
+            (result.is_corrupt and not self.include_corrupt)
+            or (not result.is_corrupt and result.needs_deep_scan and not self.include_suspicious)
+            or (not result.is_corrupt and not result.needs_deep_scan and not self.include_healthy)
+        ):
+            match = False
 
         # Check file size
-        if result.video_file.size < self.min_file_size:
-            return False
-        if self.max_file_size and result.video_file.size > self.max_file_size:
-            return False
+        if match and result.video_file.size < self.min_file_size:
+            match = False
+        if match and self.max_file_size and result.video_file.size > self.max_file_size:
+            match = False
 
         # Check file extension
-        if self.file_extensions:
+        if match and self.file_extensions:
             ext = result.video_file.suffix.lower()
             if ext not in self.file_extensions:
-                return False
+                match = False
 
         # Check exclude paths
-        if self.exclude_paths:
+        if match and self.exclude_paths:
             file_path_str = str(result.video_file.path)
             for exclude_pattern in self.exclude_paths:
                 if exclude_pattern in file_path_str:
-                    return False
+                    match = False
+                    break
 
-        return True
+        return match
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""

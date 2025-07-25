@@ -4,19 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
-from typing import Callable, Iterator
+from typing import TYPE_CHECKING, Callable, Iterator
 
-from corrupt_video_inspector.config.settings import AppConfig, load_config
-from corrupt_video_inspector.core.models import (
-    ScanProgress,
-    VideoFile,
-)
-from corrupt_video_inspector.core.models.scanning import (
-    ScanMode,
-    ScanResult,
-    ScanSummary,
-)
+from src.config.config_loader import load_config
+from src.core.models import ScanProgress, VideoFile
+from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from src.config.config_settings import AppConfig
 
 logger = logging.getLogger(__name__)
 

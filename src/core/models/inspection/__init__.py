@@ -1,9 +1,9 @@
 # Public API exports
 __all__ = [
+    "CorruptVideoInspectorError",
+    "MediaInfo",
     "MediaType",
     "VideoFile",
-    "MediaInfo",
-    "CorruptVideoInspectorError",
 ]
 import re
 from dataclasses import dataclass, field
