@@ -1,4 +1,6 @@
-.PHONY: help install install-dev format lint type check test test-integration clean build docker-build docker-run docker-dev docker-dev-build docker-dev-run pre-commit-install pre-commit-run
+.PHONY: help install install-dev format lint type check test test-integration clean build \
+        docker-build docker-run docker-dev-build docker-dev-run docker-prod docker-dev \
+        pre-commit-install pre-commit-run
 
 help:
 	@echo "Available targets:"
@@ -19,7 +21,8 @@ help:
 	@echo "  docker-run          Run Docker container"
 	@echo "  docker-dev-build    Build development Docker image"
 	@echo "  docker-dev-run      Run development Docker container"
-	@echo "  docker-dev          Start development environment with Docker Compose"
+	@echo "  docker-prod         Start production Docker Compose service"
+	@echo "  docker-dev          Start development Docker Compose service"
 
 # Installation
 install:
@@ -38,7 +41,6 @@ pre-commit-run:
 	pre-commit run --all-files
 
 # Code quality
-
 format:
 	black .
 	$(MAKE) lint
@@ -76,10 +78,14 @@ clean:
 build: clean
 	python -m build
 
-# Docker
+# Docker images
 docker-build:
 	docker build -t corrupt-video-inspector .
 
+docker-dev-build:
+	docker build -f Dockerfile.dev -t corrupt-video-inspector-dev .
+
+# Docker containers run directly
 docker-run:
 	@echo "Usage: make docker-run VIDEO_DIR=/path/to/videos"
 	@if [ -z "$(VIDEO_DIR)" ]; then \
@@ -92,10 +98,6 @@ docker-run:
 		corrupt-video-inspector \
 		python3 cli_handler.py --verbose --json /app/videos
 
-# Development Docker
-docker-dev-build:
-	docker build -f Dockerfile.dev -t corrupt-video-inspector-dev .
-
 docker-dev-run:
 	docker run --rm -it \
 		-v "$(PWD):/app" \
@@ -104,12 +106,9 @@ docker-dev-run:
 		corrupt-video-inspector-dev \
 		/bin/bash
 
+# Docker Compose (compose file inside docker/ folder)
+docker-prod:
+	docker compose -f docker/docker-compose.yml --project-directory . up --build video
+
 docker-dev:
-	@echo "Starting development environment..."
-dev-up:
-	docker compose --file docker/docker-compose.yml --project-directory . up --build
-	@echo "Development container started. Connect with:"
-	@echo "  docker exec -it video-dev /bin/bash"
-	@echo "Or use VS Code with the Dev Containers extension."
-	@echo ""
-	@echo "To stop: docker compose --profile dev down"
+	docker compose -f docker/docker-compose.yml --project-directory .  up --build dev
