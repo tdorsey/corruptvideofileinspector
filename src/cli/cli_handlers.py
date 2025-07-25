@@ -11,11 +11,11 @@ from typing import Optional
 
 import click
 
-from ..config.settings import AppConfig
-from ..core.models import ScanMode, ScanProgress
-from ..core.scanner import VideoScanner
-from ..integrations.trakt.sync import TraktSyncService
-from ..utils.output import OutputFormatter
+from src.config.config_settings import AppConfig
+from src.core.models import ScanMode, ScanProgress
+from src.core.scanner import VideoScanner
+from src.integrations.trakt.sync import TraktSyncService
+from src.utils.output import OutputFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +154,6 @@ class ScanHandler(BaseHandler):
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
         try:
-            import click
 
             # Use click's progress bar if available
             with click.progressbar(

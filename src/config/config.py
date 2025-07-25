@@ -192,12 +192,11 @@ class ConfigLoader:
                 if isinstance(current_value, bool):
                     valid_true = ("true", "1", "yes", "on")
                     valid_false = ("false", "0", "no", "off")
+
                     if value.lower() in valid_true:
                         converted_value = True
                     elif value.lower() in valid_false:
                         converted_value = False
-                    else:
-                        raise ValueError(f"Invalid boolean value: {value}")
                 elif isinstance(current_value, int):
                     converted_value = int(value)
                 elif isinstance(current_value, list):

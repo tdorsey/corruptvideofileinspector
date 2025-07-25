@@ -106,7 +106,8 @@ docker-dev-run:
 
 docker-dev:
 	@echo "Starting development environment..."
-	docker compose --profile dev up -d dev
+dev-up:
+	docker compose --file docker/docker-compose.yml --project-directory . up --build
 	@echo "Development container started. Connect with:"
 	@echo "  docker exec -it video-dev /bin/bash"
 	@echo "Or use VS Code with the Dev Containers extension."

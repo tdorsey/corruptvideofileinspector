@@ -2,11 +2,15 @@
 Configuration loader with support for multiple sources and precedence handling.
 """
 
+
 import json
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+
+import yaml
 
 from .settings import ENV_MAPPINGS, SECRETS_MAPPINGS, AppConfig
 
@@ -67,7 +71,7 @@ class ConfigLoader:
         if load_env:
             self._load_environment_variables()
 
-        logger.info(f"Configuration loaded from sources: {', '.join(self.loaded_sources)}")
+        logger.info(f"Configuration loaded from sources: " f"{', '.join(self.loaded_sources)}")
         return self.config
 
     def _load_config_file(self, config_file: Union[str, Path]) -> None:
@@ -79,28 +83,27 @@ class ConfigLoader:
             return
 
         try:
-            with file_path.open("r", encoding="utf-8") as f:
-                if file_path.suffix.lower() in [".yml", ".yaml"]:
-                    try:
-                        import yaml
-
-                        data = yaml.safe_load(f)
-                    except ImportError:
-                        logger.exception("PyYAML not installed, cannot load YAML config")
-                        return
-                elif file_path.suffix.lower() == ".json":
-                    data = json.load(f)
-                else:
-                    logger.warning(f"Unsupported config file format: {file_path.suffix}")
+            data = None
+            if file_path.suffix.lower() in [".yaml", ".yml"]:
+                if yaml is None:
+                    logger.exception("PyYAML not installed, cannot load YAML config")
                     return
+                with file_path.open("r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+            elif file_path.suffix.lower() == ".json":
+                with file_path.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                logger.warning(f"Unsupported config file format: {file_path.suffix}")
+                return
 
             if data:
                 self._apply_config_dict(data)
                 self.loaded_sources.append(f"file:{file_path}")
                 logger.info(f"Loaded configuration from: {file_path}")
 
-        except Exception as e:
-            logger.exception(f"Failed to load configuration file {file_path}: {e}")
+        except Exception:
+            logger.exception("Failed to load configuration file")
 
     def _load_environment_variables(self) -> None:
         """Load configuration from environment variables."""
@@ -185,55 +188,54 @@ class ConfigLoader:
 
             logger.debug(f"Set config {'.'.join(config_path)} = {converted_value}")
 
-        except Exception as e:
-            logger.exception(f"Failed to set config {'.'.join(config_path)} = {value}: {e}")
+        except Exception:
+            logger.exception("Failed to set config value")
 
     def _convert_value(self, value: str, current_value: Any) -> Any:
         """Convert string value to appropriate type based on current value."""
+        result: Any = value
         if current_value is None:
-            return value
-
+            return result
         target_type = type(current_value)
-
-        if target_type == bool:
-            return value.lower() in ("true", "1", "yes", "on", "enabled")
-        if target_type == int:
-            return int(value)
-        if target_type == float:
-            return float(value)
-        if target_type == list:
-            # Handle comma-separated lists
+        if target_type is bool:
+            result = value.lower() in ("true", "1", "yes", "on", "enabled")
+        if target_type is int:
+            try:
+                result = int(value)
+            except ValueError:
+                result = current_value
+        if target_type is float:
+            try:
+                result = float(value)
+            except ValueError:
+                result = current_value
+        if target_type is list:
             if (
                 isinstance(current_value, list)
                 and current_value
                 and isinstance(current_value[0], str)
             ):
-                return [item.strip() for item in value.split(",") if item.strip()]
-            return [value]  # Single item list
-        return value
+                result = [item.strip() for item in value.split(",") if item.strip()]
+            else:
+                result = [value]
+        return result
 
     def save_config(self, file_path: Union[str, Path], format: str = "yaml") -> None:
         """Save current configuration to file."""
         file_path = Path(file_path)
         config_dict = self.config.to_dict()
-
         try:
             with file_path.open("w", encoding="utf-8") as f:
-                if format.lower() == "yaml":
-                    try:
-                        import yaml
-
-                        yaml.dump(config_dict, f, default_flow_style=False, indent=2)
-                    except ImportError:
+                if format in ["yaml", "yml"]:
+                    if yaml is None:
                         logger.exception("PyYAML not installed, cannot save YAML config")
                         return
+                    yaml.dump(config_dict, f, default_flow_style=False, indent=2)
                 else:  # JSON
                     json.dump(config_dict, f, indent=2)
-
             logger.info(f"Configuration saved to: {file_path}")
-
-        except Exception as e:
-            logger.exception(f"Failed to save configuration to {file_path}: {e}")
+        except Exception:
+            logger.exception("Failed to save configuration")
 
     def validate_config(self) -> List[str]:
         """Validate configuration and return list of issues."""
@@ -264,7 +266,6 @@ class ConfigLoader:
 
     def _command_exists(self, command: str) -> bool:
         """Check if a command exists in PATH."""
-        import shutil
 
         return shutil.which(command) is not None
 
@@ -272,7 +273,7 @@ class ConfigLoader:
 def load_config(
     config_file: Optional[Union[str, Path]] = None,
     profile: Optional[str] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> AppConfig:
     """
     Convenience function to load configuration.
