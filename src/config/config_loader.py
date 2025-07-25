@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from .settings import AppConfig, ENV_MAPPINGS, SECRETS_MAPPINGS
+from .settings import ENV_MAPPINGS, SECRETS_MAPPINGS, AppConfig
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +67,7 @@ class ConfigLoader:
         if load_env:
             self._load_environment_variables()
 
-        logger.info(
-            f"Configuration loaded from sources: {', '.join(self.loaded_sources)}"
-        )
+        logger.info(f"Configuration loaded from sources: {', '.join(self.loaded_sources)}")
         return self.config
 
     def _load_config_file(self, config_file: Union[str, Path]) -> None:
@@ -88,14 +86,12 @@ class ConfigLoader:
 
                         data = yaml.safe_load(f)
                     except ImportError:
-                        logger.error("PyYAML not installed, cannot load YAML config")
+                        logger.exception("PyYAML not installed, cannot load YAML config")
                         return
                 elif file_path.suffix.lower() == ".json":
                     data = json.load(f)
                 else:
-                    logger.warning(
-                        f"Unsupported config file format: {file_path.suffix}"
-                    )
+                    logger.warning(f"Unsupported config file format: {file_path.suffix}")
                     return
 
             if data:
@@ -104,7 +100,7 @@ class ConfigLoader:
                 logger.info(f"Loaded configuration from: {file_path}")
 
         except Exception as e:
-            logger.error(f"Failed to load configuration file {file_path}: {e}")
+            logger.exception(f"Failed to load configuration file {file_path}: {e}")
 
     def _load_environment_variables(self) -> None:
         """Load configuration from environment variables."""
@@ -190,7 +186,7 @@ class ConfigLoader:
             logger.debug(f"Set config {'.'.join(config_path)} = {converted_value}")
 
         except Exception as e:
-            logger.error(f"Failed to set config {'.'.join(config_path)} = {value}: {e}")
+            logger.exception(f"Failed to set config {'.'.join(config_path)} = {value}: {e}")
 
     def _convert_value(self, value: str, current_value: Any) -> Any:
         """Convert string value to appropriate type based on current value."""
@@ -201,11 +197,11 @@ class ConfigLoader:
 
         if target_type == bool:
             return value.lower() in ("true", "1", "yes", "on", "enabled")
-        elif target_type == int:
+        if target_type == int:
             return int(value)
-        elif target_type == float:
+        if target_type == float:
             return float(value)
-        elif target_type == list:
+        if target_type == list:
             # Handle comma-separated lists
             if (
                 isinstance(current_value, list)
@@ -214,8 +210,7 @@ class ConfigLoader:
             ):
                 return [item.strip() for item in value.split(",") if item.strip()]
             return [value]  # Single item list
-        else:
-            return value
+        return value
 
     def save_config(self, file_path: Union[str, Path], format: str = "yaml") -> None:
         """Save current configuration to file."""
@@ -230,7 +225,7 @@ class ConfigLoader:
 
                         yaml.dump(config_dict, f, default_flow_style=False, indent=2)
                     except ImportError:
-                        logger.error("PyYAML not installed, cannot save YAML config")
+                        logger.exception("PyYAML not installed, cannot save YAML config")
                         return
                 else:  # JSON
                     json.dump(config_dict, f, indent=2)
@@ -238,7 +233,7 @@ class ConfigLoader:
             logger.info(f"Configuration saved to: {file_path}")
 
         except Exception as e:
-            logger.error(f"Failed to save configuration to {file_path}: {e}")
+            logger.exception(f"Failed to save configuration to {file_path}: {e}")
 
     def validate_config(self) -> List[str]:
         """Validate configuration and return list of issues."""
@@ -251,9 +246,7 @@ class ConfigLoader:
         # Check FFmpeg command availability
         if self.config.ffmpeg.command:
             ffmpeg_path = Path(self.config.ffmpeg.command)
-            if not ffmpeg_path.exists() and not self._command_exists(
-                self.config.ffmpeg.command
-            ):
+            if not ffmpeg_path.exists() and not self._command_exists(self.config.ffmpeg.command):
                 issues.append(f"FFmpeg command not found: {self.config.ffmpeg.command}")
 
         # Check temp directory permissions

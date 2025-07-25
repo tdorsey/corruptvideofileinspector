@@ -1,10 +1,18 @@
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+from typing import Any
+
+from src.core.models.inspection import VideoFile
+
 
 class ScanMode(Enum):
     """Scan modes for video inspection.
-    
+
     Attributes:
         QUICK: Fast scan using basic FFmpeg checks
-        DEEP: Thorough scan analyzing entire video stream  
+        DEEP: Thorough scan analyzing entire video stream
         HYBRID: Smart scan - quick first, then deep for suspicious files
     """
 
@@ -16,7 +24,7 @@ class ScanMode(Enum):
 @dataclass
 class ScanResult:
     """Results of video file inspection.
-    
+
     Attributes:
         video_file: The video file that was scanned
         is_corrupt: Whether corruption was detected
@@ -56,10 +64,9 @@ class ScanResult:
         """Get human-readable status."""
         if self.is_corrupt:
             return "CORRUPT"
-        elif self.needs_deep_scan:
+        if self.needs_deep_scan:
             return "SUSPICIOUS"
-        else:
-            return "HEALTHY"
+        return "HEALTHY"
 
     @property
     def confidence_percentage(self) -> float:
@@ -85,12 +92,12 @@ class ScanResult:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ScanResult:
+    def from_dict(cls, data: dict[str, Any]) -> "ScanResult":
         """Create ScanResult from dictionary.
-        
+
         Args:
             data: Dictionary containing scan result data
-            
+
         Returns:
             ScanResult instance
         """
@@ -99,7 +106,7 @@ class ScanResult:
             video_file = VideoFile.from_dict(data["video_file"])
         else:
             video_file = VideoFile(Path(data["filename"]))
-            
+
         return cls(
             video_file=video_file,
             is_corrupt=data.get("is_corrupt", False),
@@ -121,20 +128,18 @@ class ScanResult:
         if self.is_corrupt:
             if self.confidence > 0.8:
                 return "HIGH"
-            elif self.confidence > 0.5:
+            if self.confidence > 0.5:
                 return "MEDIUM"
-            else:
-                return "LOW"
-        elif self.needs_deep_scan:
+            return "LOW"
+        if self.needs_deep_scan:
             return "SUSPICIOUS"
-        else:
-            return "NONE"
+        return "NONE"
 
 
 @dataclass
 class ScanSummary:
     """Summary of a complete scan operation.
-    
+
     Attributes:
         directory: Directory that was scanned
         total_files: Total number of video files found
@@ -217,12 +222,12 @@ class ScanSummary:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ScanSummary:
+    def from_dict(cls, data: dict[str, Any]) -> "ScanSummary":
         """Create ScanSummary from dictionary.
-        
+
         Args:
             data: Dictionary containing summary data
-            
+
         Returns:
             ScanSummary instance
         """
@@ -243,38 +248,35 @@ class ScanSummary:
 
     def get_status_summary(self) -> str:
         """Get a human-readable status summary.
-        
+
         Returns:
             Status summary string
         """
         if not self.is_complete:
-            return f"In progress: {self.processed_files}/{self.total_files} files processed"
-        
+            return f"In progress: {self.processed_files}/" f"{self.total_files} files processed"
+
         status_parts = [
             f"{self.total_files} files scanned",
             f"{self.corrupt_files} corrupt",
             f"{self.healthy_files} healthy",
         ]
-        
+
         if self.deep_scans_needed > 0:
             status_parts.append(f"{self.deep_scans_needed} needed deep scan")
-            
+
         return ", ".join(status_parts)
 
     def get_performance_summary(self) -> str:
         """Get performance statistics summary.
-        
+
         Returns:
             Performance summary string
         """
-        return (
-            f"Completed in {self.scan_time:.2f}s "
-            f"({self.files_per_second:.1f} files/sec)"
-        )
+        return f"Completed in {self.scan_time:.2f}s " f"({self.files_per_second:.1f} files/sec)"
 
     def get_detailed_summary(self) -> str:
         """Get detailed summary with all statistics.
-        
+
         Returns:
             Detailed summary string
         """
@@ -282,24 +284,24 @@ class ScanSummary:
             f"Directory: {self.directory}",
             f"Status: {'Complete' if self.is_complete else 'In Progress'}",
             f"Files: {self.processed_files}/{self.total_files} processed",
-            f"Results: {self.healthy_files} healthy, {self.corrupt_files} corrupt",
+            f"Results: {self.healthy_files} healthy, " f"{self.corrupt_files} corrupt",
             f"Performance: {self.files_per_second:.1f} files/sec",
             f"Success Rate: {self.success_rate:.1f}%",
         ]
-        
+
         if self.deep_scans_needed > 0:
-            lines.append(f"Deep Scans: {self.deep_scans_completed}/{self.deep_scans_needed}")
-            
+            lines.append(f"Deep Scans: {self.deep_scans_completed}/" f"{self.deep_scans_needed}")
+
         if self.was_resumed:
             lines.append("Note: This scan was resumed from a previous session")
-            
+
         return "\n".join(lines)
 
 
 @dataclass
 class ScanProgress:
     """Real-time scan progress information.
-    
+
     Attributes:
         current_file: Path of currently processing file
         total_files: Total number of files to process
@@ -374,12 +376,12 @@ class ScanProgress:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ScanProgress:
+    def from_dict(cls, data: dict[str, Any]) -> "ScanProgress":
         """Create ScanProgress from dictionary.
-        
+
         Args:
             data: Dictionary containing progress data
-            
+
         Returns:
             ScanProgress instance
         """
@@ -395,37 +397,36 @@ class ScanProgress:
 
     def get_eta_string(self) -> str:
         """Get estimated time remaining as human-readable string.
-        
+
         Returns:
             ETA string (e.g., "2m 30s" or "Unknown")
         """
         eta = self.estimated_remaining_time
         if eta is None:
             return "Unknown"
-            
+
         if eta < 60:
             return f"{int(eta)}s"
-        elif eta < 3600:
+        if eta < 3600:
             minutes = int(eta // 60)
             seconds = int(eta % 60)
             return f"{minutes}m {seconds}s"
-        else:
-            hours = int(eta // 3600)
-            minutes = int((eta % 3600) // 60)
-            return f"{hours}h {minutes}m"
+        hours = int(eta // 3600)
+        minutes = int((eta % 3600) // 60)
+        return f"{hours}h {minutes}m"
 
     def get_progress_bar_string(self, width: int = 20) -> str:
         """Get ASCII progress bar representation.
-        
+
         Args:
             width: Width of progress bar in characters
-            
+
         Returns:
             Progress bar string
         """
         if self.total_files == 0:
             return "█" * width
-            
+
         filled = int((self.processed_count / self.total_files) * width)
         bar = "█" * filled + "░" * (width - filled)
         percentage = self.progress_percentage
@@ -433,20 +434,23 @@ class ScanProgress:
 
     def get_status_line(self) -> str:
         """Get single-line status summary.
-        
+
         Returns:
             Status line string
         """
         return (
-            f"[{self.phase.upper()}] {self.processed_count}/{self.total_files} "
-            f"({self.progress_percentage:.1f}%) - "
-            f"{self.corrupt_count} corrupt, {self.healthy_count} healthy - "
+            f"[{self.phase.upper()}] {self.processed_count}/"
+            f"{self.total_files} ({self.progress_percentage:.1f}%) - "
+            f"{self.corrupt_count} corrupt, "
+            f"{self.healthy_count} healthy - "
             f"ETA: {self.get_eta_string()}"
         )
+
+
 @dataclass
 class BatchScanRequest:
     """Request for batch scanning multiple directories.
-    
+
     Attributes:
         directories: List of directories to scan
         scan_mode: Scan mode to use for all directories
@@ -455,19 +459,19 @@ class BatchScanRequest:
         max_parallel: Maximum parallel scans
         output_format: Output format for results
     """
-    
+
     directories: list[Path]
     scan_mode: ScanMode = ScanMode.HYBRID
     recursive: bool = True
     extensions: list[str] | None = None
     max_parallel: int = 2
     output_format: str = "json"
-    
+
     def __post_init__(self) -> None:
         """Validate batch scan request."""
         if not self.directories:
             raise ValueError("At least one directory must be specified")
-            
+
         for directory in self.directories:
             if not directory.exists():
                 raise FileNotFoundError(f"Directory not found: {directory}")
@@ -486,7 +490,7 @@ class BatchScanRequest:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> BatchScanRequest:
+    def from_dict(cls, data: dict[str, Any]) -> "BatchScanRequest":
         """Create BatchScanRequest from dictionary."""
         return cls(
             directories=[Path(d) for d in data["directories"]],
@@ -501,7 +505,7 @@ class BatchScanRequest:
 @dataclass
 class ScanFilter:
     """Filtering options for scan results.
-    
+
     Attributes:
         include_corrupt: Include corrupt files in results
         include_healthy: Include healthy files in results
@@ -511,7 +515,7 @@ class ScanFilter:
         file_extensions: Only include these extensions
         exclude_paths: Exclude files matching these path patterns
     """
-    
+
     include_corrupt: bool = True
     include_healthy: bool = True
     include_suspicious: bool = True
@@ -519,13 +523,13 @@ class ScanFilter:
     max_file_size: int | None = None
     file_extensions: list[str] | None = None
     exclude_paths: list[str] | None = None
-    
-    def matches(self, result: ScanResult) -> bool:
+
+    def matches(self, result: "ScanResult") -> bool:
         """Check if scan result matches this filter.
-        
+
         Args:
             result: Scan result to check
-            
+
         Returns:
             True if result matches filter criteria
         """
@@ -536,26 +540,26 @@ class ScanFilter:
             return False
         if not result.is_corrupt and not result.needs_deep_scan and not self.include_healthy:
             return False
-            
+
         # Check file size
         if result.video_file.size < self.min_file_size:
             return False
         if self.max_file_size and result.video_file.size > self.max_file_size:
             return False
-            
+
         # Check file extension
         if self.file_extensions:
             ext = result.video_file.suffix.lower()
             if ext not in self.file_extensions:
                 return False
-                
+
         # Check exclude paths
         if self.exclude_paths:
             file_path_str = str(result.video_file.path)
             for exclude_pattern in self.exclude_paths:
                 if exclude_pattern in file_path_str:
                     return False
-                    
+
         return True
 
     def to_dict(self) -> dict[str, Any]:
@@ -571,7 +575,7 @@ class ScanFilter:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ScanFilter:
+    def from_dict(cls, data: dict[str, Any]) -> "ScanFilter":
         """Create ScanFilter from dictionary."""
         return cls(
             include_corrupt=data.get("include_corrupt", True),

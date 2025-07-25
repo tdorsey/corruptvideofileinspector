@@ -1,18 +1,20 @@
-"""Video corruption detection logic for analyzing FFmpeg output."""
+"""
+Video corruption detection logic for analyzing FFmpeg output.
+"""
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class CorruptionSeverity(Enum):
     """Severity levels for detected corruption."""
-    
+
     NONE = "none"
     LOW = "low"
     MEDIUM = "medium"
@@ -23,7 +25,7 @@ class CorruptionSeverity(Enum):
 @dataclass
 class CorruptionAnalysis:
     """Results of corruption analysis.
-    
+
     Attributes:
         is_corrupt: Whether definitive corruption was detected
         needs_deep_scan: Whether file needs deeper analysis
@@ -42,45 +44,43 @@ class CorruptionAnalysis:
     severity: CorruptionSeverity = CorruptionSeverity.NONE
     suggested_action: str = ""
 
-    def __post_init__(self) -> None:
+    def __post_init__(self: CorruptionAnalysis) -> None:
         """Set suggested action based on analysis results."""
         if not self.suggested_action:
             self.suggested_action = self._determine_suggested_action()
 
-    def _determine_suggested_action(self) -> str:
+    def _determine_suggested_action(self: CorruptionAnalysis) -> str:
         """Determine suggested action based on corruption analysis."""
         if self.is_corrupt:
             if self.severity == CorruptionSeverity.CRITICAL:
-                return "File is severely corrupted and should be deleted or re-downloaded"
-            elif self.severity == CorruptionSeverity.HIGH:
+                return "File is severely corrupted and should be deleted or " "restored from backup"
+            if self.severity == CorruptionSeverity.HIGH:
                 return "File has significant corruption and may be unusable"
-            else:
-                return "File has corruption but may still be playable"
-        elif self.needs_deep_scan:
+            return "File has corruption but may still be playable"
+        if self.needs_deep_scan:
             return "Run deep scan to determine if file is corrupt"
-        else:
-            return "File appears to be healthy"
+        return "File appears to be healthy"
 
 
 class Inspector:
     """Inspector for analyzing video file health using FFmpegClient."""
 
-    def __init__(self, ffmpeg_client):
-        self.ffmpeg_client = ffmpeg_client
+    def __init__(self: Inspector, ffmpeg_client: Any) -> None:
+        self.ffmpeg_client: Any = ffmpeg_client
 
-    def inspect_quick(self, video_file):
+    def inspect_quick(self: Inspector, video_file: Any) -> CorruptionAnalysis:
         """Perform quick inspection using FFmpegClient."""
-        scan_result = self.ffmpeg_client.inspect_quick(video_file)
+        scan_result: Any = self.ffmpeg_client.inspect_quick(video_file)
         return self._analyze_scan_result(scan_result)
 
-    def inspect_deep(self, video_file):
+    def inspect_deep(self: Inspector, video_file: Any) -> CorruptionAnalysis:
         """Perform deep inspection using FFmpegClient."""
-        scan_result = self.ffmpeg_client.inspect_deep(video_file)
+        scan_result: Any = self.ffmpeg_client.inspect_deep(video_file)
         return self._analyze_scan_result(scan_result)
 
-    def _analyze_scan_result(self, scan_result):
+    def _analyze_scan_result(self: Inspector, scan_result: Any) -> CorruptionAnalysis:
         """Convert ScanResult to CorruptionAnalysis."""
-        severity = CorruptionSeverity.NONE
+        severity: CorruptionSeverity = CorruptionSeverity.NONE
         if scan_result.is_corrupt:
             if scan_result.confidence > 0.8:
                 severity = CorruptionSeverity.CRITICAL
@@ -98,5 +98,5 @@ class Inspector:
             confidence=scan_result.confidence,
             detected_issues=[],
             severity=severity,
-            suggested_action=""
+            suggested_action="",
         )

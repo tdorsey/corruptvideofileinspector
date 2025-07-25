@@ -21,61 +21,56 @@ __author__ = "Your Name"
 __email__ = "your.email@example.com"
 
 # Public API exports
-from .core.models import (
-    ScanMode,
-    ScanResult,
-    ScanSummary,
-    VideoFile,
-    MediaInfo,
-    MediaType,
-)
-from .core.scanner import VideoScanner
-from .config import load_config
-from .config import AppConfig
+from .config import AppConfig, load_config
 
 # Exception exports
 from .core.models import (
-    CorruptVideoInspectorError,
     ConfigurationError,
-    ScanError,
+    CorruptVideoInspectorError,
     FFmpegError,
-    TraktError,
+    MediaInfo,
+    MediaType,
+    ScanError,
+    ScanMode,
+    ScanResult,
+    ScanSummary,
     StorageError,
+    TraktError,
+    VideoFile,
 )
+from .core.scanner import VideoScanner
 
 # Version info
 __version_info__ = tuple(map(int, __version__.split(".")))
 
 # Package metadata
 __title__ = "corrupt-video-inspector"
-__description__ = (
-    "A comprehensive tool for detecting corrupted video files and syncing to Trakt.tv"
-)
+__description__ = "A comprehensive tool for detecting corrupted video files and syncing to Trakt.tv"
 __url__ = "https://github.com/yourusername/corrupt-video-inspector"
 __license__ = "MIT"
 __copyright__ = "Copyright 2024"
 
 # Public API
 __all__ = [
-    # Core classes
-    "VideoScanner",
     "AppConfig",
-    "load_config",
+    "ConfigurationError",
+    # Exceptions
+    "CorruptVideoInspectorError",
+    "FFmpegError",
+    "MediaInfo",
+    "MediaType",
+    "ScanError",
     # Models
     "ScanMode",
     "ScanResult",
     "ScanSummary",
-    "VideoFile",
-    "MediaInfo",
-    "MediaType",
-    # Exceptions
-    "CorruptVideoInspectorError",
-    "ConfigurationError",
-    "ScanError",
-    "FFmpegError",
-    "TraktError",
     "StorageError",
+    "TraktError",
+    "VideoFile",
+    # Core classes
+    "VideoScanner",
     # Version info
     "__version__",
     "__version_info__",
+    "load_config",
 ]
