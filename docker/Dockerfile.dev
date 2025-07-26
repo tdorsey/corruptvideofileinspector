@@ -1,5 +1,5 @@
 # Development Dockerfile - minimal setup that focuses on dev environment
-FROM ubuntu:22.04
+FROM python:bookworm
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -9,7 +9,6 @@ WORKDIR /app
 
 # Update system and install dependencies including dumb-init for proper signal handling
 RUN <<EOF
-  set -euxo pipefail
   apt-get update
   apt-get install -y \
     python3 \
@@ -30,7 +29,6 @@ EOF
 
 # Create a non-root user for security
 RUN <<EOF
-  set -euxo pipefail
   useradd -m -u 1000 inspector
   chown -R inspector:inspector /app
 EOF
@@ -40,7 +38,6 @@ COPY requirements.txt ./
 
 # Install basic requirements with --break-system-packages for Ubuntu 24.04+ compatibility
 RUN <<EOF
-  set -euxo pipefail
   pip install --break-system-packages -r requirements.txt || \
     pip install -r requirements.txt || \
     python3 -m pip install -r requirements.txt

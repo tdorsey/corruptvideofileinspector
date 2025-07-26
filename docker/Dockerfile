@@ -1,7 +1,7 @@
 # =============================================================================
 # Base stage - Common dependencies and setup
 # =============================================================================
-FROM ubuntu:22.04 AS base
+FROM python:bookworm AS base
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -40,7 +40,6 @@ COPY requirements.txt .
 
 # Install Python dependencies (with SSL workaround for CI environments)
 RUN <<EOF
-  set -euxo pipefail
   pip3 install --trusted-host pypi.org \
     --trusted-host pypi.python.org \
     --trusted-host files.pythonhosted.org \
@@ -55,7 +54,6 @@ EOF
 FROM base AS development
 
 RUN <<EOF
-  set -euxo pipefail
   apt-get update
   apt-get install -y \
     git \
