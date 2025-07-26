@@ -77,11 +77,3 @@ build: clean
 # Docker Compose (compose file inside docker/ folder)
 docker:
 	docker compose -f docker/docker-compose.yml up --build video
-
-
-docker-dev:
-	docker compose -f docker/docker-compose.yml --profile dev up -d dev
-	docker compose -f docker/docker-compose.yml --profile dev exec dev python3 src/main.py
-
-docker-dev-shell:
-	docker compose -f docker/docker-compose.yml --profile dev exec dev /bin/bash

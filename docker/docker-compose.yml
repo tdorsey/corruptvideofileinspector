@@ -1,9 +1,7 @@
 services:
-  # Production service (default profile)
   video:
     build:
       context: .
-      target: production
     container_name: video
     volumes:
       - ./config.yaml:/app/config.yaml:ro
@@ -14,41 +12,12 @@ services:
     environment:
       - TRAKT_CLIENT_ID=test_client_id
       - PYTHONUNBUFFERED=1
-      # Configuration can also be set via environment variables
-      # These will override config file settings
-      # - CVI_LOG_LEVEL=INFO
-      # - CVI_MAX_WORKERS=6
-      # - CVI_DEFAULT_MODE=hybrid
     secrets:
       # Docker secrets for sensitive configuration
       - trakt_client_id
       - trakt_client_secret
     # Command can be overridden at runtime, but Dockerfile provides sensible default
     command: [ "python3", "src/main.py" ]
-
-  # Development service (dev profile)
-  dev:
-    build:
-      context: .
-      target: development
-    container_name: video-dev
-    profiles:
-      - dev
-    volumes:
-      # Bind mount source code for development
-      - .:/app
-      # Persistent volumes for videos and output
-      - dev_videos:/app/videos
-      - dev_output:/app/output
-    environment:
-      - PYTHONUNBUFFERED=1
-      - PYTHONDONTWRITEBYTECODE=1
-      # Development environment variables can override config
-      # - CVI_LOG_LEVEL=DEBUG
-    working_dir: /app
-    command: [ "tail", "-f", "/dev/null" ] # Keep container running for development
-    stdin_open: true
-    tty: true
 
 # Docker secrets configuration
 secrets:
