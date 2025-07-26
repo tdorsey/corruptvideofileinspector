@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies including dumb-init
+# Install system dependencies including dumb-init and ffmpeg
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     dumb-init \
@@ -29,11 +29,11 @@ ENV PATH="/home/inspector/.local/bin:$PATH"
 # =============================================================================
 FROM base AS dependencies
 
-# Explicitly set working directory here as well
 WORKDIR /app
 
 # Upgrade pip and install build tools
-RUN pip install --upgrade pip setuptools wheel
+RUN pip install --upgrade pip setuptools wheel hatchling
+RUN pip install click typer PyYAML requests piny pydantic
 
 # Copy project files needed for dependency resolution
 COPY pyproject.toml .
@@ -41,34 +41,25 @@ COPY README.md .
 COPY src/ ./src/
 
 # Install the project and its dependencies
-RUN pip install --user .
+RUN pip install .
 
 # =============================================================================
 # Development stage - For development with mounted source code
 # =============================================================================
 FROM base AS development
 
-# Copy Python packages from dependencies stage
-COPY --from=dependencies /root/.local /home/inspector/.local
-
-# Switch to non-root user
 USER inspector
 
 # Create directories for volumes
 RUN mkdir -p /app/videos /app/output /app/logs
 
-# Development environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app
 
-# Ensure we're in the right directory
 WORKDIR /app
 
-# Use dumb-init as PID 1 for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
-
-# Default command for development
 CMD ["python3", "-m", "src", "--help"]
 
 # =============================================================================
@@ -76,28 +67,24 @@ CMD ["python3", "-m", "src", "--help"]
 # =============================================================================
 FROM base AS production
 
-# Copy Python packages from dependencies stage
-COPY --from=dependencies /root/.local /home/inspector/.local
+# Copy installed packages from dependencies stage
+COPY --from=dependencies /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=dependencies /usr/local/bin /usr/local/bin
 
-# Copy application source code (src/__init__.py already exists)
+# Copy application source code (if needed)
 COPY --chown=inspector:inspector src/ /app/src/
 
-# Switch to non-root user
+# Create directories and set ownership as root
+RUN mkdir -p /app/videos /app/output /app/logs && chown -R inspector:inspector /app
+
+# Switch to non-root user after directories are created and owned
 USER inspector
 
-# Create directories for volumes
-RUN mkdir -p /app/videos /app/output /app/logs
-
-# Production environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app
 
-# Change working directory to /app so python -m src.main works
 WORKDIR /app
 
-# Use dumb-init as PID 1 for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
-
-# Default command
 CMD ["python3", "-m", "src"]
