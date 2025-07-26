@@ -1,7 +1,8 @@
 services:
   video:
     build:
-      context: .
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: video
     volumes:
       - ./config.yaml:/app/config.yaml:ro

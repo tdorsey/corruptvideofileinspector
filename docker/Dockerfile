@@ -38,55 +38,8 @@ FROM base AS dependencies
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install Python dependencies (with SSL workaround for CI environments)
-RUN <<EOF
-  pip3 install --trusted-host pypi.org \
-    --trusted-host pypi.python.org \
-    --trusted-host files.pythonhosted.org \
-    --no-cache-dir \
-    --user \
-    -r requirements.txt
-EOF
-
-# =============================================================================
-# Development stage - Additional dev tools and setup
-# =============================================================================
-FROM base AS development
-
-RUN <<EOF
-  apt-get update
-  apt-get install -y \
-    git \
-    curl \
-    wget \
-    vim \
-    nano \
-    zsh \
-    build-essential \
-    python3-dev
-  rm -rf /var/lib/apt/lists/*
-  apt-get clean
-EOF
-
-
-# Switch to non-root user
-USER inspector
-
-# Create directories for input and output
-RUN mkdir -p /app/videos /app/output
-
-# Declare mount points for config, input, output, and logs
-VOLUME ["/app/config.yaml", "/app/videos", "/app/output", "/app/logs"]
-
-# Additional development environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-
-# Use dumb-init as PID 1 for proper signal handling and process reaping
-ENTRYPOINT ["dumb-init", "--"]
-
-# Default command for development (show help)
-CMD ["python3", "src/main.py"]
+# Install Python dependencies
+RUN pip3 install --no-cache-dir --user -r requirements.txt
 
 # =============================================================================
 # Production stage - Minimal production image
@@ -94,7 +47,7 @@ CMD ["python3", "src/main.py"]
 FROM base AS production
 
 # Copy the application files
-COPY --chown=inspector:inspector . .
+COPY --chown=inspector:inspector src/ /app/src/
 
 # Switch to non-root user
 USER inspector
@@ -111,21 +64,5 @@ ENV PYTHONUNBUFFERED=1
 # Use dumb-init as PID 1 for proper signal handling and process reaping
 ENTRYPOINT ["dumb-init", "--"]
 
-# Default command - show help
+# Default command
 CMD ["python3", "src/main.py"]
-
-# =============================================================================
-# Application stage - Copy application code and set entry point
-# =============================================================================
-FROM dependencies AS application
-
-# Copy application code
-COPY src/ /app/src/
-
-# Set entry point
-ENTRYPOINT ["python3", "src/main.py"]
-
-# =============================================================================
-# Default target
-# =============================================================================
-FROM production
