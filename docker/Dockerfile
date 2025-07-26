@@ -56,12 +56,16 @@ RUN mkdir -p /app/videos /app/output /app/logs
 # Development environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
+
+# Ensure we're in the right directory
+WORKDIR /app
 
 # Use dumb-init as PID 1 for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
 # Default command for development
-CMD ["python3", "src/main.py", "--help"]
+CMD ["python3", "-m", "src.main", "--help"]
 
 # =============================================================================
 # Production stage - Complete production image
@@ -83,9 +87,13 @@ RUN mkdir -p /app/videos /app/output /app/logs
 # Production environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
+
+# Change working directory to /app so python -m src.main works
+WORKDIR /app
 
 # Use dumb-init as PID 1 for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
 # Default command
-CMD ["python3", "src/main.py"]
+CMD ["python3", "-m", "src.main"]
