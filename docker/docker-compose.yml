@@ -2,8 +2,8 @@ services:
   # Production service (default profile)
   video:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.dev
+      context: .
+      target: production
     container_name: video
     volumes:
       - video_data:/app/videos:ro
@@ -11,23 +11,24 @@ services:
       # Mount configuration file if it exists
       - ./config.yaml:/app/config.yaml:ro
     environment:
-      - TRAKT_CLIENT_ID=5442745fccf9801ee2897718197d90fd6070f0a774a0cfa740b63f0fa8f96804
-      - TRAKT_CLIENT_SECRET_FILE=/run/secrets/trakt_client_secret
+      - TRAKT_CLIENT_ID=test_client_id
       - PYTHONUNBUFFERED=1
       # Configuration can also be set via environment variables
       # These will override config file settings
       # - CVI_LOG_LEVEL=INFO
       # - CVI_MAX_WORKERS=6
       # - CVI_DEFAULT_MODE=hybrid
-    # No secrets required for this service
-    working_dir: /app
-    command: [ "python3", "cli/cli_handler.py", "--config", "/app/config.yaml", "--mode", "hybrid", "--verbose", "--json", "--recursive", "--max-workers", "6", "--output", "/app/output/results.json", "/app/videos" ]
+    secrets:
+      # Docker secrets for sensitive configuration
+      - cvi_log_level
+      - cvi_ffmpeg_command
+    # Command can be overridden at runtime, but Dockerfile provides sensible default
 
   # Development service (dev profile)
   dev:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: .
+      target: development
     container_name: video-dev
     profiles:
       - dev
@@ -49,8 +50,10 @@ services:
 
 # Docker secrets configuration
 secrets:
-  trakt_client_secret:
-    file: ./secrets/trakt_client_secret.txt
+  cvi_log_level:
+    file: ./secrets/cvi_log_level.txt
+  cvi_ffmpeg_command:
+    file: ./secrets/cvi_ffmpeg_command.txt
 
 volumes:
   # Production volumes

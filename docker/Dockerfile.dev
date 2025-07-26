@@ -1,53 +1,12 @@
-# Development Dockerfile - minimal setup that focuses on dev environment
-FROM ubuntu:22.04
+# Development Dockerfile - uses the development stage from main Dockerfile
+FROM . AS development
 
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
+# This Dockerfile simply targets the development stage from the main Dockerfile
+# All development-specific setup is handled in the multi-stage build
 
-# Set working directory
-WORKDIR /app
-
-# Update system and install dependencies including dumb-init for proper signal handling
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    ffmpeg \
-    git \
-    curl \
-    wget \
-    vim \
-    nano \
-    zsh \
-    build-essential \
-    ca-certificates \
-    dumb-init \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Create a non-root user for security
-RUN useradd -m -u 1000 inspector && \
-    chown -R inspector:inspector /app
-
-# Copy just the requirements to do a pip install
-COPY requirements.txt ./
-
-# Install basic requirements with --break-system-packages for Ubuntu 24.04+ compatibility
-RUN pip install --break-system-packages -r requirements.txt || \
-    pip install -r requirements.txt || \
-    python3 -m pip install -r requirements.txt
-
-# Switch to non-root user
-USER inspector
-
-# Create directories for input and output
-RUN mkdir -p /app/videos /app/output
-
-# Set Python path
-ENV PYTHONPATH=/app
-ENV PATH="/home/inspector/.local/bin:$PATH"
-
-# Use dumb-init as PID 1 for proper signal handling and process reaping
-ENTRYPOINT ["dumb-init", "--"]
-
-# Default command for development (keep container running)
-CMD ["python3", "cli/cli_handler.py", "--help"]
+# The development stage includes:
+# - All base dependencies (Python, FFmpeg, dumb-init)
+# - Development tools (git, curl, vim, nano, zsh, build-essential)
+# - Python dependencies installed in user space
+# - Development environment variables
+# - Container kept alive with tail -f /dev/null
