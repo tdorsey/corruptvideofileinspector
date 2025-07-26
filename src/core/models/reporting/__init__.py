@@ -30,7 +30,7 @@ class ReportConfiguration:
     template_path: Path | None = None
 
     # Valid formats
-    VALID_FORMATS: ClassVar[set[str]] = {"json", "csv", "html", "text", "xml"}
+    VALID_FORMATS: ClassVar[set[str]] = {"json", "csv", "html", "text", "yaml"}
     VALID_SORT_FIELDS: ClassVar[set[str]] = {
         "path",
         "size",

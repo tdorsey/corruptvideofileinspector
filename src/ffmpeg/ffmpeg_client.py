@@ -5,7 +5,7 @@ FFmpeg client for video file inspection and corruption detection.
 import logging
 import shutil
 import subprocess
-from typing import Optional
+from typing import Any, Optional
 
 from src.config.config import FFmpegConfig
 from src.core.models import FFmpegError, ScanResult, VideoFile
@@ -186,6 +186,86 @@ class FFmpegClient:
                 needs_deep_scan=False,
                 error_message=f"Deep scan failed: {e}",
             )
+
+    def test_installation(self) -> dict[str, Any]:
+        """Test FFmpeg installation and return diagnostic information.
+
+        Returns:
+            dict: Dictionary containing test results with keys:
+                - ffmpeg_available: bool
+                - ffprobe_available: bool
+                - ffmpeg_path: str | None
+                - version_info: str | None
+                - supported_formats: list[str] | None
+        """
+        results = {
+            "ffmpeg_available": False,
+            "ffprobe_available": False,
+            "ffmpeg_path": None,
+            "version_info": None,
+            "supported_formats": None,
+        }
+
+        # Test FFmpeg availability
+        if self._ffmpeg_path:
+            results["ffmpeg_path"] = self._ffmpeg_path
+            results["ffmpeg_available"] = self._validate_ffmpeg_command(self._ffmpeg_path)
+
+            # Get version info
+            if results["ffmpeg_available"]:
+                try:
+                    version_result = subprocess.run(
+                        [self._ffmpeg_path, "-version"],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                        check=False,
+                    )
+                    if version_result.returncode == 0:
+                        # Extract first line which contains version
+                        first_line = version_result.stdout.split("\n")[0]
+                        results["version_info"] = first_line.strip()
+                except Exception:
+                    pass
+
+                # Get supported formats (basic list)
+                try:
+                    formats_result = subprocess.run(
+                        [self._ffmpeg_path, "-formats"],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                        check=False,
+                    )
+                    if formats_result.returncode == 0:
+                        # Extract common video formats
+                        common_formats = ["mp4", "mkv", "avi", "mov", "wmv", "flv"]
+                        supported = []
+                        output_lower = formats_result.stdout.lower()
+                        for fmt in common_formats:
+                            if fmt in output_lower:
+                                supported.append(fmt)
+                        results["supported_formats"] = supported
+                except Exception:
+                    pass
+
+        # Test FFprobe (usually comes with FFmpeg)
+        ffprobe_cmd = (
+            self._ffmpeg_path.replace("ffmpeg", "ffprobe") if self._ffmpeg_path else "ffprobe"
+        )
+        try:
+            probe_result = subprocess.run(
+                [ffprobe_cmd, "-version"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            results["ffprobe_available"] = probe_result.returncode == 0
+        except Exception:
+            results["ffprobe_available"] = False
+
+        return results
 
     def _process_ffmpeg_result(
         self,

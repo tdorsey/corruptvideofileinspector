@@ -22,14 +22,11 @@ Example:
 
 from __future__ import annotations
 
-import re
 import sys
 
 from src.version import __version__
 
 from .cli.main import main
-from .config.config_loader import load_config
-from .config.config_settings import AppConfig
 from .core.errors.errors import (
     ConfigurationError,
     FFmpegError,
@@ -50,9 +47,6 @@ from .core.models.scanning import (
     ScanSummary,
 )
 from .core.scanner import VideoScanner
-
-# Version information
-__version_info__ = _parse_version_info("1.0.0")
 
 # Package metadata
 __title__ = "corrupt-video-inspector"
@@ -91,11 +85,6 @@ __all__ = [
 ]
 
 
-def _parse_version_info(version: str) -> tuple[int, ...]:
-    """Parse version string into a tuple of ints, ignoring non-integer parts."""
-    return tuple(int(part) for part in re.findall(r"\d+", version))
-
-
 def get_version() -> str:
     """Get the current version of the package.
 
@@ -103,15 +92,6 @@ def get_version() -> str:
         The version string.
     """
     return __version__
-
-
-def get_version_info() -> tuple[int, ...]:
-    """Get version information as a tuple.
-
-    Returns:
-        Version tuple (major, minor, patch).
-    """
-    return __version_info__
 
 
 if __name__ == "__main__":

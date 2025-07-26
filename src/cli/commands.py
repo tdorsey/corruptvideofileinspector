@@ -9,10 +9,11 @@ from pathlib import Path
 
 import click
 
-from ..config import load_config
-from ..core.models import ScanMode
-from ..utils import setup_logging
-from .handlers import ListHandler, ScanHandler, TraktHandler
+from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
+from src.cli.main import setup_logging
+from src.config import load_config
+from src.core.models.scanning import ScanMode
+from src.ffmpeg.ffmpeg_client import FFmpegClient
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,8 @@ class PathType(click.Path):
 
     def convert(self, value, param, ctx):
         path_str = super().convert(value, param, ctx)
+        if isinstance(path_str, bytes):
+            path_str = path_str.decode("utf-8")
         return Path(path_str)
 
 
@@ -126,7 +129,6 @@ def cli(ctx):
 @click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
 @click.pass_context
 def scan(
-    ctx,
     directory,
     mode,
     max_workers,
@@ -137,9 +139,6 @@ def scan(
     output_format,
     pretty,
     config,
-    verbose,
-    quiet,
-    profile,
 ):
     """
     Scan a directory for corrupt video files.
@@ -167,7 +166,7 @@ def scan(
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config(config_path=config)
 
         # Override config with CLI options
         if max_workers:
@@ -177,16 +176,12 @@ def scan(
                 f".{ext}" if not ext.startswith(".") else ext for ext in extensions
             ]
 
-        # Setup logging
-        setup_logging(app_config.logging, verbose, quiet)
-
         # Create and run scan handler
         handler = ScanHandler(app_config)
         handler.run_scan(
             directory=directory,
             scan_mode=mode,
             recursive=recursive,
-            resume=resume,
             output_file=output,
             output_format=output_format,
             pretty_print=pretty,
@@ -220,16 +215,12 @@ def scan(
 )
 @click.pass_context
 def list_files(
-    ctx,
     directory,
     recursive,
     extensions,
     output,
     output_format,
     config,
-    verbose,
-    quiet,
-    profile,
 ):
     """
     List all video files in a directory without scanning.
@@ -249,7 +240,7 @@ def list_files(
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config(config_path=config)
 
         # Override config with CLI options
         if extensions:
@@ -258,7 +249,6 @@ def list_files(
             ]
 
         # Setup logging
-        setup_logging(app_config.logging, verbose, quiet)
 
         # Create and run list handler
         handler = ListHandler(app_config)
@@ -308,7 +298,6 @@ def trakt(ctx):
 )
 @click.pass_context
 def sync(
-    ctx,
     scan_file,
     token,
     client_id,
@@ -317,9 +306,6 @@ def sync(
     output,
     filter_corrupt,
     config,
-    verbose,
-    quiet,
-    profile,
 ):
     """
     Sync scan results to Trakt.tv watchlist.
@@ -344,14 +330,13 @@ def sync(
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config(config_path=config)
 
         # Override config with CLI options
         if client_id:
             app_config.trakt.client_id = client_id
 
         # Setup logging
-        setup_logging(app_config.logging, verbose, quiet)
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
@@ -372,56 +357,8 @@ def sync(
 
 @cli.command()
 @global_options
-@click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["yaml", "json"], case_sensitive=False),
-    default="yaml",
-    help="Configuration file format",
-    show_default=True,
-)
-@click.option(
-    "--output",
-    "-o",
-    type=PathType(),
-    default="config.yml",
-    help="Output file path",
-    show_default=True,
-)
 @click.pass_context
-def init_config(ctx, output_format, output, config, verbose, quiet, profile):
-    """
-    Generate an example configuration file.
-
-    Creates a configuration file with all available options and their
-    default values, which you can then customize for your needs.
-
-    Examples:
-
-    \b
-    # Generate YAML config
-    corrupt-video-inspector init-config
-
-    \b
-    # Generate JSON config
-    corrupt-video-inspector init-config --format json --output config.json
-    """
-    try:
-        from ..config import create_example_config
-
-        create_example_config(output, output_format)
-        click.echo(f"Configuration file created: {output}")
-
-    except Exception as e:
-        logger.exception("Config init command failed")
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(1)
-
-
-@cli.command()
-@global_options
-@click.pass_context
-def test_ffmpeg(ctx, config, verbose, quiet, profile):
+def test_ffmpeg(config):
     """
     Test FFmpeg installation and show diagnostic information.
 
@@ -430,14 +367,11 @@ def test_ffmpeg(ctx, config, verbose, quiet, profile):
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config(config_path=config)
 
         # Setup logging
-        setup_logging(app_config.logging, verbose, quiet)
-
+        setup_logging(app_config.logging)
         # Test FFmpeg
-        from ..integrations.ffmpeg.client import FFmpegClient
-
         ffmpeg = FFmpegClient(app_config.ffmpeg)
         test_results = ffmpeg.test_installation()
 
@@ -490,15 +424,10 @@ def test_ffmpeg(ctx, config, verbose, quiet, profile):
 )
 @click.pass_context
 def report(
-    ctx,
     scan_file,
     output,
     output_format,
     include_healthy,
-    config,
-    verbose,
-    quiet,
-    profile,
 ):
     """
     Generate a detailed report from scan results.
@@ -512,20 +441,14 @@ def report(
     # Generate HTML report
     corrupt-video-inspector report results.json
 
-    \b
-    # Generate PDF report with only corrupt files
-    corrupt-video-inspector report results.json --format pdf --corrupt-only
-    """
+"""
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config()
 
         # Setup logging
-        setup_logging(app_config.logging, verbose, quiet)
-
+        setup_logging(app_config.logging)
         # Generate report
-        from ..utils import ReportGenerator
-
         generator = ReportGenerator(app_config)
         report_path = generator.generate_report(
             scan_file=scan_file,
@@ -546,7 +469,7 @@ def report(
 @global_options
 @click.option("--all-configs", is_flag=True, help="Show all configuration sources and values")
 @click.pass_context
-def show_config(ctx, all_configs, config, verbose, quiet, profile):
+def show_config(all_configs, config):
     """
     Show current configuration settings.
 
@@ -555,7 +478,7 @@ def show_config(ctx, all_configs, config, verbose, quiet, profile):
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config(config_path=config)
 
         if all_configs:
             # Show detailed configuration
