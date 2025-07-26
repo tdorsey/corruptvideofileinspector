@@ -17,11 +17,7 @@ help:
 	@echo "  test-cov            Run tests with coverage report"
 	@echo "  clean               Clean build artifacts"
 	@echo "  build               Build the package"
-	@echo "  docker-build        Build Docker image"
-	@echo "  docker-run          Run Docker container"
-	@echo "  docker-dev-build    Build development Docker image"
-	@echo "  docker-dev-run      Run development Docker container"
-	@echo "  docker-prod         Start production Docker Compose service"
+	@echo "  docker         Start production Docker Compose service"
 	@echo "  docker-dev          Start development Docker Compose service"
 
 # Installation
@@ -37,8 +33,6 @@ pre-commit-install:
 	pre-commit install
 	@echo "Pre-commit hooks installed successfully!"
 
-pre-commit-run:
-	pre-commit run --all-files
 
 # Code quality
 format:
@@ -78,37 +72,16 @@ clean:
 build: clean
 	python -m build
 
-# Docker images
-docker-build:
-	docker build -f docker/Dockerfile . -t corrupt-video-inspector
 
-docker-dev-build:
-	docker build -f docker/Dockerfile.dev . -t corrupt-video-inspector-dev .
-
-# Docker containers run directly
-docker-run:
-	@echo "Usage: make docker-run VIDEO_DIR=/path/to/videos"
-	@if [ -z "$(VIDEO_DIR)" ]; then \
-		echo "Please specify VIDEO_DIR, e.g., make docker-run VIDEO_DIR=/path/to/videos"; \
-		exit 1; \
-	fi
-	docker run --rm \
-		-v "$(VIDEO_DIR):/app/videos:ro" \
-		-v "$(PWD)/output:/app/output" \
-		corrupt-video-inspector \
-		python3 cli_handler.py --verbose --json /app/videos
-
-docker-dev-run:
-	docker run --rm -it \
-		-v "$(PWD):/app" \
-		-v dev_videos:/app/videos \
-		-v dev_output:/app/output \
-		corrupt-video-inspector-dev \
-		/bin/bash
 
 # Docker Compose (compose file inside docker/ folder)
-docker-prod:
-	docker compose -f docker/docker-compose.yml  up --build video
+docker:
+	docker compose -f docker/docker-compose.yml up --build video
+
 
 docker-dev:
-	docker compose -f docker/docker-compose.yml  up --build dev
+	docker compose -f docker/docker-compose.yml --profile dev up -d dev
+	docker compose -f docker/docker-compose.yml --profile dev exec dev python3 src/main.py
+
+docker-dev-shell:
+	docker compose -f docker/docker-compose.yml --profile dev exec dev /bin/bash

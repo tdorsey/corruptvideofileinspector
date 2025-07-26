@@ -115,6 +115,17 @@ ENTRYPOINT ["dumb-init", "--"]
 CMD ["python3", "src/main.py"]
 
 # =============================================================================
+# Application stage - Copy application code and set entry point
+# =============================================================================
+FROM dependencies AS application
+
+# Copy application code
+COPY src/ /app/src/
+
+# Set entry point
+ENTRYPOINT ["python3", "src/main.py"]
+
+# =============================================================================
 # Default target
 # =============================================================================
 FROM production
