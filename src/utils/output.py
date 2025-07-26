@@ -1,5 +1,6 @@
 """Output formatting utilities for CLI results."""
 
+import contextlib
 import json
 import logging
 from pathlib import Path
@@ -40,8 +41,8 @@ class OutputFormatter:
                 logger.warning(f"Output format '{format}' not implemented, using JSON")
                 self._write_json_results(summary, output_file, pretty_print)
 
-        except Exception as e:
-            logger.error(f"Failed to write scan results: {e}")
+        except Exception:
+            logger.exception("Failed to write scan results")
             raise
 
     def write_file_list(
@@ -66,8 +67,8 @@ class OutputFormatter:
             else:
                 self._write_text_file_list(video_files, directory, output_file)
 
-        except Exception as e:
-            logger.error(f"Failed to write file list: {e}")
+        except Exception:
+            logger.exception("Failed to write file list")
             raise
 
     def _write_json_results(self, summary: Any, output_file: Path, pretty_print: bool) -> None:
@@ -99,11 +100,8 @@ class OutputFormatter:
         file_data = []
         for video_file in video_files:
             rel_path = getattr(video_file, "path", video_file)
-            if hasattr(rel_path, "relative_to"):
-                try:
-                    rel_path = rel_path.relative_to(directory)
-                except ValueError:
-                    pass  # Not relative to directory
+            with contextlib.suppress(ValueError):
+                rel_path = rel_path.relative_to(directory)
 
             file_info = {
                 "path": str(rel_path),
@@ -131,10 +129,8 @@ class OutputFormatter:
             for i, video_file in enumerate(video_files, 1):
                 rel_path = getattr(video_file, "path", video_file)
                 if hasattr(rel_path, "relative_to"):
-                    try:
+                    with contextlib.suppress(ValueError):
                         rel_path = rel_path.relative_to(directory)
-                    except ValueError:
-                        pass  # Not relative to directory
 
                 size_mb = (
                     getattr(video_file, "size", 0) / (1024 * 1024)

@@ -8,8 +8,13 @@ import time
 from typing import TYPE_CHECKING, Callable, Iterator
 
 from src.config import load_config
-from src.core.models import ScanProgress, VideoFile
-from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
+from src.core.models.inspection import VideoFile
+from src.core.models.scanning import (
+    ScanMode,
+    ScanProgress,
+    ScanResult,
+    ScanSummary,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -199,6 +204,7 @@ class VideoScanner:
         if not video_files:
             logger.warning("No video files found to scan")
             return ScanSummary(
+                directory=directory,
                 total_files=0,
                 processed_files=0,
                 corrupt_files=0,
@@ -240,6 +246,7 @@ class VideoScanner:
 
         # Create summary
         summary = ScanSummary(
+            directory=directory,
             total_files=len(video_files),
             processed_files=progress.processed_count,
             corrupt_files=progress.corrupt_count,

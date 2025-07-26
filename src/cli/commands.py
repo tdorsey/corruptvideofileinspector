@@ -12,7 +12,9 @@ import click
 from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
 from src.cli.main import setup_logging
 from src.config import load_config
-from src.core.models.scanning import ScanMode
+from src.core.models.inspection import VideoFile
+from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
+from src.core.reporter import ReportService
 from src.ffmpeg.ffmpeg_client import FFmpegClient
 
 logger = logging.getLogger(__name__)
@@ -134,7 +136,6 @@ def scan(
     max_workers,
     recursive,
     extensions,
-    resume,
     output,
     output_format,
     pretty,
@@ -170,9 +171,9 @@ def scan(
 
         # Override config with CLI options
         if max_workers:
-            app_config.scanner.max_workers = max_workers
+            app_config.scan.max_workers = max_workers
         if extensions:
-            app_config.scanner.extensions = [
+            app_config.scan.extensions = [
                 f".{ext}" if not ext.startswith(".") else ext for ext in extensions
             ]
 
@@ -244,7 +245,7 @@ def list_files(
 
         # Override config with CLI options
         if extensions:
-            app_config.scanner.extensions = [
+            app_config.scan.extensions = [
                 f".{ext}" if not ext.startswith(".") else ext for ext in extensions
             ]
 
@@ -370,7 +371,7 @@ def test_ffmpeg(config):
         app_config = load_config(config_path=config)
 
         # Setup logging
-        setup_logging(app_config.logging)
+        setup_logging(0)
         # Test FFmpeg
         ffmpeg = FFmpegClient(app_config.ffmpeg)
         test_results = ffmpeg.test_installation()
@@ -426,7 +427,6 @@ def test_ffmpeg(config):
 def report(
     scan_file,
     output,
-    output_format,
     include_healthy,
 ):
     """
@@ -441,19 +441,47 @@ def report(
     # Generate HTML report
     corrupt-video-inspector report results.json
 
-"""
+    """
     try:
         # Load configuration
         app_config = load_config()
 
         # Setup logging
-        setup_logging(app_config.logging)
+        setup_logging(logging.getLevelName(app_config.logging.level))
         # Generate report
-        generator = ReportGenerator(app_config)
-        report_path = generator.generate_report(
-            scan_file=scan_file,
-            output_file=output,
-            format=output_format,
+        # Load scan results from file
+        with scan_file.open("r", encoding="utf-8") as f:
+            scan_data = json.load(f)
+
+        # Extract summary from scan data
+        summary = ScanSummary(
+            directory=Path(scan_data.get("directory", "/")),
+            total_files=scan_data.get("total_files", 0),
+            processed_files=scan_data.get("processed_files", 0),
+            corrupt_files=scan_data.get("corrupt_files", 0),
+            healthy_files=scan_data.get("healthy_files", 0),
+            scan_mode=ScanMode(scan_data.get("scan_mode", "quick")),
+            scan_time=scan_data.get("scan_time", 0.0),
+        )
+
+        # Extract results
+        results = []
+        for result_data in scan_data.get("results", []):
+            video_file = VideoFile(Path(result_data.get("filename", "")))
+            result = ScanResult(
+                video_file=video_file,
+                needs_deep_scan=result_data.get("needs_deep_scan", False),
+                error_message=result_data.get("error_message", ""),
+            )
+            results.append(result)
+
+        # Use ReportService to generate report
+        service = ReportService(app_config)
+        report_path = service.generate_report(
+            summary=summary,
+            results=results,
+            output_path=output,
+            format="text",
             include_healthy=include_healthy,
         )
 
@@ -482,17 +510,15 @@ def show_config(all_configs, config):
 
         if all_configs:
             # Show detailed configuration
-            config_dict = app_config.to_dict()
+            config_dict = app_config.model_dump()
             click.echo(json.dumps(config_dict, indent=2))
         else:
             # Show key settings
             click.echo("Current Configuration")
             click.echo("=" * 30)
-            click.echo(f"Profile: {app_config.profile}")
-            click.echo(f"Debug Mode: {app_config.debug}")
             click.echo(f"Log Level: {app_config.logging.level}")
-            click.echo(f"Max Workers: {app_config.scanner.max_workers}")
-            click.echo(f"Default Scan Mode: {app_config.scanner.default_mode}")
+            click.echo(f"Max Workers: {app_config.scan.max_workers}")
+            click.echo(f"Default Scan Mode: {app_config.scan.mode}")
             click.echo(f"FFmpeg Command: {app_config.ffmpeg.command or 'auto-detect'}")
             click.echo(f"Quick Timeout: {app_config.ffmpeg.quick_timeout}s")
             click.echo(f"Deep Timeout: {app_config.ffmpeg.deep_timeout}s")

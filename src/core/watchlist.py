@@ -9,14 +9,13 @@ by processing video inspection JSON files and using filename parsing.
 import json
 import logging
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
 
-from trakt import Trakt
+from pydantic import BaseModel, Field, field_validator
+from trakt import Trakt  # type: ignore
 
-from .config import load_config
-from .trakt_watchlist import interactive_select_item
+from src.config import load_config
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -25,46 +24,65 @@ logger = logging.getLogger(__name__)
 config = load_config()
 
 # Configure Trakt client using config values
-Trakt.configuration.defaults.client(
-    id=config.secrets.trakt_client_id, secret=config.secrets.trakt_client_secret
-)
+Trakt.configuration.defaults.client(id=config.trakt.client_id, secret=config.trakt.client_secret)
 
 
-@dataclass
-class MediaItem:
+class MediaItem(BaseModel):
     """Represents a parsed media item (movie or TV show)"""
 
     title: str
     year: Optional[int] = None
-    media_type: str = "movie"  # "movie" or "show"
-    season: Optional[int] = None
-    episode: Optional[int] = None
+    media_type: str = Field(default="movie", pattern=r"^(movie|show)$")
+    season: Optional[int] = Field(default=None, ge=1)
+    episode: Optional[int] = Field(default=None, ge=1)
     original_filename: str = ""
 
-    def __post_init__(self) -> None:
-        """Validate and clean up media item data"""
+    @field_validator("title")
+    def clean_title(cls, v):
+        """Clean up title by removing dots, underscores, and normalizing whitespace."""
+        if not v:
+            raise ValueError("Title cannot be empty")
         # Clean up title (remove dots, underscores, etc.)
-        self.title = re.sub(r"[._]", " ", self.title).strip()
-        self.title = re.sub(r"\s+", " ", self.title)  # Normalize whitespace
+        cleaned = re.sub(r"[._]", " ", v).strip()
+        return re.sub(r"\s+", " ", cleaned)  # Normalize whitespace
 
-        # Ensure media_type is valid
-        if self.media_type not in ["movie", "show"]:
-            self.media_type = "movie"
+    @field_validator("media_type")
+    def validate_media_type(cls, v):
+        """Ensure media_type is valid."""
+        if v not in ["movie", "show"]:
+            return "movie"  # Default fallback
+        return v
 
-        logger.debug(f"MediaItem created: {self.title} ({self.year}) - " f"{self.media_type}")
+    def __str__(self) -> str:
+        if self.media_type == "show" and self.season and self.episode:
+            return f"{self.title} S{self.season:02d}E{self.episode:02d} ({self.year})"
+        return f"{self.title} ({self.year}) [{self.media_type}]"
 
 
-@dataclass
-class TraktItem:
+class TraktItem(BaseModel):
     """Represents an item from Trakt API with identifiers"""
 
     title: str
-    year: Optional[int]
-    media_type: str
-    trakt_id: Optional[int] = None
-    imdb_id: Optional[str] = None
-    tmdb_id: Optional[int] = None
-    tvdb_id: Optional[int] = None
+    year: Optional[int] = Field(default=None, ge=1800, le=2100)
+    media_type: str = Field(default="movie", pattern=r"^(movie|show)$")
+    trakt_id: Optional[int] = Field(default=None, ge=1)
+    imdb_id: Optional[str] = Field(default=None, pattern=r"^tt\d+$")
+    tmdb_id: Optional[int] = Field(default=None, ge=1)
+    tvdb_id: Optional[int] = Field(default=None, ge=1)
+
+    @field_validator("title")
+    def validate_title(cls, v):
+        """Ensure title is not empty."""
+        if not v or not v.strip():
+            raise ValueError("Title cannot be empty")
+        return v.strip()
+
+    @field_validator("imdb_id")
+    def validate_imdb_id(cls, v: Optional[str]) -> Optional[str]:
+        """Validate imdb_id format if present."""
+        if v is not None and not re.match(r"^tt\d+$", v):
+            raise ValueError("imdb_id must match the pattern ^tt\\d+$")
+        return v
 
     @classmethod
     def from_movie_response(cls, data: Dict[str, Any]) -> "TraktItem":
@@ -92,6 +110,10 @@ class TraktItem:
             tmdb_id=ids.get("tmdb"),
             tvdb_id=ids.get("tvdb"),
         )
+
+    def __str__(self) -> str:
+        year_str = f"({self.year})" if self.year else "(no year)"
+        return f"{self.title} {year_str} [{self.media_type}]"
 
 
 class TraktAPI:
@@ -260,9 +282,10 @@ class TraktAPI:
             logger.exception("Error adding show to watchlist")
             return False
 
+    @staticmethod
     def interactive_select_item(
-        items: List[TraktItem], media_item: MediaItem
-    ) -> Optional[TraktItem]:
+        items: List["TraktItem"], media_item: "MediaItem"
+    ) -> Optional["TraktItem"]:
         """
         Interactively select the correct item from search results
 
@@ -559,7 +582,7 @@ def sync_to_trakt_watchlist(
                     )
 
                 # Let user select from results
-                trakt_item = interactive_select_item(search_results, media_item)
+                trakt_item = TraktAPI.interactive_select_item(search_results, media_item)
             else:
                 # Automatic mode: get first result only
                 # (backward compatibility)
