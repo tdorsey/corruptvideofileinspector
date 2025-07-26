@@ -71,7 +71,7 @@ def setup_logging(verbose: int) -> None:
     help="Path to configuration file",
 )
 @click.pass_context
-def cli(ctx: click.Context, verbose: int, config: Path | None) -> None:
+def cli(ctx: click.Context, verbose: int | None) -> None:
     """Corrupt Video Inspector - Detect and manage corrupted video files.
 
     A comprehensive tool for scanning video directories, detecting corruption
@@ -83,16 +83,16 @@ def cli(ctx: click.Context, verbose: int, config: Path | None) -> None:
         corrupt-video-inspector scan /tv-shows --trakt-sync
     """
     # Setup logging first
-    setup_logging(verbose)
+    setup_logging(verbose or 0)
 
     # Load configuration
     try:
-        app_config = load_config(config)
+        app_config = load_config()
         ctx.ensure_object(dict)
         ctx.obj["config"] = app_config
         ctx.obj["verbose"] = verbose
     except ConfigurationError as e:
-        console.print(f"[red]Configuration error:[/red] {e}")
+        logging.exception("Configuration error")
         raise click.Abort() from e
 
     # If no command specified, show help
@@ -101,7 +101,7 @@ def cli(ctx: click.Context, verbose: int, config: Path | None) -> None:
 
 
 # Register commands
-cli.add_command(scan.scan)
+cli.add_command(scan)
 
 
 def handle_keyboard_interrupt() -> NoReturn:

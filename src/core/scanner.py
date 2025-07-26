@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import TYPE_CHECKING, Callable, Iterator
 
-from src.config.config_loader import load_config
+from src.config import load_config
 from src.core.models import ScanProgress, VideoFile
 from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from src.config.config_settings import AppConfig
+    from src.config.config import AppConfig
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class VideoScanner:
         self._shutdown_requested = False
         self._current_scan_summary: ScanSummary | None = None
 
-        logger.info("VideoScanner initialized with config: %s", config.scanner)
+        logger.info("VideoScanner initialized with config: %s", config.scan)
 
     async def locate_video_files_async(
         self,
@@ -170,6 +171,92 @@ class VideoScanner:
         """Check if graceful shutdown was requested."""
         return self._shutdown_requested
 
+    def scan_directory(
+        self,
+        directory: Path,
+        scan_mode: ScanMode,
+        recursive: bool = True,
+        progress_callback: Callable[[ScanProgress], None] | None = None,
+    ) -> ScanSummary:
+        """Scan a directory for corrupt video files.
+
+        Args:
+            directory: Directory to scan
+            scan_mode: Type of scan to perform
+            recursive: Whether to scan subdirectories
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            ScanSummary: Summary of the scan operation
+        """
+        logger.info("Starting directory scan: %s", directory)
+        logger.info("Scan mode: %s, recursive: %s", scan_mode.value, recursive)
+
+        self._validate_directory(directory)
+
+        # Get video files
+        video_files = self.get_video_files(directory, recursive=recursive)
+        if not video_files:
+            logger.warning("No video files found to scan")
+            return ScanSummary(
+                total_files=0,
+                processed_files=0,
+                corrupt_files=0,
+                healthy_files=0,
+                scan_mode=scan_mode,
+                scan_time=0.0,
+            )
+
+        logger.info("Found %d video files to scan", len(video_files))
+
+        # Create progress tracker
+        progress = ScanProgress(
+            total_files=len(video_files),
+            processed_count=0,
+            corrupt_count=0,
+            scan_mode=scan_mode.value,
+        )
+
+        # For now, we'll create a basic scanner that doesn't actually scan
+        # This is just a placeholder to get the structure working
+        start_time = time.time()
+
+        # Simulate scanning (placeholder)
+        for i, video_file in enumerate(video_files):
+            if self._shutdown_requested:
+                break
+
+            progress.processed_count = i + 1
+            progress.current_file = str(video_file.path)
+
+            if progress_callback:
+                progress_callback(progress)
+
+            # TODO: Implement actual scanning logic using FFmpegClient
+            # For now, just mark all files as healthy
+            time.sleep(0.01)  # Simulate processing time
+
+        scan_time = time.time() - start_time
+
+        # Create summary
+        summary = ScanSummary(
+            total_files=len(video_files),
+            processed_files=progress.processed_count,
+            corrupt_files=progress.corrupt_count,
+            healthy_files=progress.processed_count - progress.corrupt_count,
+            scan_mode=scan_mode,
+            scan_time=scan_time,
+        )
+
+        logger.info(
+            "Scan completed: %d files, %d corrupt, %.2fs",
+            summary.processed_files,
+            summary.corrupt_files,
+            summary.scan_time,
+        )
+
+        return summary
+
     # Private methods
 
     def _validate_directory(self, directory: Path) -> None:
@@ -187,7 +274,7 @@ class VideoScanner:
     ) -> list[VideoFile]:
         """Find all video files in directory asynchronously."""
         if extensions is None:
-            extensions = self.config.scanner.extensions
+            extensions = self.config.scan.extensions
 
         logger.debug("Scanning for video files with extensions: %s", extensions)
 
@@ -197,11 +284,7 @@ class VideoScanner:
         def _scan_directory() -> Iterator[VideoFile]:
             pattern = "**/*" if recursive else "*"
             for file_path in directory.glob(pattern):
-                if (
-                    file_path.is_file()
-                    and file_path.suffix.lower() in extensions
-                    and file_path.stat().st_size <= self.config.security.max_file_size
-                ):
+                if file_path.is_file() and file_path.suffix.lower() in extensions:
                     yield VideoFile(file_path)
 
         # Run in thread pool to avoid blocking

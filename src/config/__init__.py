@@ -1,12 +1,21 @@
-# Export AppConfig and load_config for public API
-from .config_loader import ConfigLoader
-from .config_settings import AppConfig
+from pathlib import Path
+from typing import Optional
+
+from .config import Config
+from .config import load_config as _load_config
+
+__all__ = ["Config", "load_config"]
 
 
-def load_config(*args, **kwargs):
-    """Load configuration using ConfigLoader."""
-    loader = ConfigLoader()
-    return loader.load(*args, **kwargs)
+def load_config(config_path: Optional[Path] = None) -> Config:
+    """
+    Load configuration from a YAML file with Pydantic schema validation.
 
+    Args:
+        config_path: Optional path to the configuration file.
+                   If None, the default config.yaml will be used.
 
-__all__ = ["AppConfig", "load_config"]
+    Returns:
+        Config: Loaded configuration object with validation
+    """
+    return _load_config(config_path)

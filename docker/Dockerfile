@@ -33,11 +33,15 @@ ENV PATH="/home/inspector/.local/bin:$PATH"
 # =============================================================================
 FROM base AS dependencies
 
-# Copy requirements file
-COPY requirements.txt .
+# Upgrade pip and install build tools
+RUN pip install --upgrade pip setuptools wheel
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir --user -r requirements.txt
+# Copy project files needed for dependency resolution
+COPY pyproject.toml .
+COPY src/ ./src/
+
+# Install the project and its dependencies
+RUN pip install --user .
 
 # =============================================================================
 # Development stage - For development with mounted source code
