@@ -50,10 +50,10 @@ services:
 
 # Docker secrets configuration
 secrets:
-  cvi_log_level:
-    file: ./secrets/cvi_log_level.txt
-  cvi_ffmpeg_command:
-    file: ./secrets/cvi_ffmpeg_command.txt
+  trakt_client_id:
+    file: ./secrets/trakt_client_id.txt
+  trakt_client_secret:
+    file: ./secrets/trakt_client_secret.txt
 
 volumes:
   # Production volumes
