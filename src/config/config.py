@@ -4,6 +4,8 @@ from typing import List, Optional
 from piny import PydanticValidator, YamlLoader  # type: ignore
 from pydantic import BaseModel, Field
 
+from src.core.models.scanning import ScanMode
+
 
 class LoggingConfig(BaseModel):
     level: str = Field(default="DEBUG")
@@ -29,8 +31,15 @@ class OutputConfig(BaseModel):
     default_filename: str = Field(default="corruption_scan.json")
 
 
+class TraktConfig(BaseModel):
+    client_id: str = Field(default="")
+    client_secret: str = Field(default="")
+
+
 class ScanConfig(BaseModel):
     recursive: bool = Field(default=True)
+    max_workers: int = Field(default=8)
+    mode: ScanMode = Field(default=ScanMode.QUICK)
     default_input_dir: Path = Field(default=Path("/app/videos"))
     extensions: List[str] = Field(
         default_factory=lambda: [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv"]
@@ -43,6 +52,7 @@ class AppConfig(BaseModel):
     processing: ProcessingConfig
     output: OutputConfig
     scan: ScanConfig
+    trakt: TraktConfig
 
 
 def load_config(config_path: Optional[Path] = None) -> AppConfig:

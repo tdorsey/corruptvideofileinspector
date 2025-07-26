@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TextIO
 
 import yaml
 
@@ -155,7 +155,7 @@ class ScanReport:
 
     def group_by_directory(self) -> Dict[str, List[ScanResult]]:
         """Group results by parent directory."""
-        groups = {}
+        groups: Dict[str, List[ScanResult]] = {}
         for result in self.results:
             parent = str(result.video_file.path.parent)
             if parent not in groups:
@@ -338,7 +338,7 @@ class TextReportGenerator(ReportGenerator):
 
         logger.info(f"Text report saved to: {config.output_path}")
 
-    def _write_header(self, f, report: ScanReport) -> None:
+    def _write_header(self, f: TextIO, report: ScanReport) -> None:
         """Write report header."""
         f.write("=" * 60 + "\n")
         f.write("CORRUPT VIDEO INSPECTOR - SCAN REPORT\n")
@@ -347,11 +347,9 @@ class TextReportGenerator(ReportGenerator):
         f.write(f"Tool Version: {report.metadata.tool_version}\n")
         f.write(f"Total Results: {report.metadata.total_results}\n\n")
 
-    def _write_summary(self, f, report: ScanReport) -> None:
+    def _write_summary(self, f: TextIO, report: ScanReport) -> None:
         """Write scan summary."""
         f.write("SCAN SUMMARY\n")
-        f.write("-" * 20 + "\n")
-        f.write(f"Directory: {report.summary.directory}\n")
         f.write(f"Scan Mode: {report.summary.scan_mode.value.upper()}\n")
         f.write(f"Total Files: {report.summary.total_files}\n")
         f.write(f"Processed: {report.summary.processed_files}\n")
@@ -370,11 +368,9 @@ class TextReportGenerator(ReportGenerator):
 
         f.write("\n")
 
-    def _write_analytics(self, f, report: ScanReport) -> None:
+    def _write_analytics(self, f: TextIO, report: ScanReport) -> None:
         """Write analytics section."""
         f.write("ANALYTICS\n")
-        f.write("-" * 20 + "\n")
-
         # File size analytics
         if "file_sizes" in report.analytics:
             sizes = report.analytics["file_sizes"]
@@ -400,7 +396,7 @@ class TextReportGenerator(ReportGenerator):
 
         f.write("\n")
 
-    def _write_results(self, f, report: ScanReport, config: ReportConfiguration) -> None:
+    def _write_results(self, f: TextIO, report: ScanReport, config: ReportConfiguration) -> None:
         """Write detailed results."""
         # Filter results
         results = report.results
@@ -540,12 +536,12 @@ class ReportService:
             raise OSError(f"Failed to generate report: {e}") from e
 
     def generate_multiple_formats(
-        self,
+        self: "ReportService",
         summary: ScanSummary,
         results: List[ScanResult],
         formats: List[str],
         output_dir: Optional[Path] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Dict[str, Path]:
         """Generate reports in multiple formats.
 

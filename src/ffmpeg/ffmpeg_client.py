@@ -8,7 +8,9 @@ import subprocess
 from typing import Any, Optional
 
 from src.config.config import FFmpegConfig
-from src.core.models import FFmpegError, ScanResult, VideoFile
+from src.core.errors.errors import FFmpegError
+from src.core.models.inspection import VideoFile
+from src.core.models.scanning import ScanResult
 from src.ffmpeg.corruption_detector import CorruptionDetector
 
 logger = logging.getLogger(__name__)
@@ -36,8 +38,8 @@ class FFmpegClient:
         """Find and validate FFmpeg command."""
         if self.config.command:
             # Use configured command
-            if self._validate_ffmpeg_command(self.config.command):
-                self._ffmpeg_path = self.config.command
+            if self._validate_ffmpeg_command(str(self.config.command)):
+                self._ffmpeg_path = str(self.config.command)
                 return
             logger.warning(f"Configured FFmpeg command not found: {self.config.command}")
 
@@ -101,7 +103,7 @@ class FFmpegClient:
                 else "10"
             ),
             "-i",
-            video_file.path,
+            str(video_file.path),
             "-f",
             "null",
             "-",
@@ -187,6 +189,29 @@ class FFmpegClient:
                 error_message=f"Deep scan failed: {e}",
             )
 
+    def _build_deep_scan_command(self, video_file: VideoFile) -> list[str]:
+        """
+        Build FFmpeg command for deep scan (full file scan).
+
+        Args:
+            video_file: Video file to inspect
+
+        Returns:
+            list[str]: FFmpeg command as list
+        """
+        if self._ffmpeg_path is None:
+            raise FFmpegError("FFmpeg path is not set.")
+        return [
+            str(self._ffmpeg_path),
+            "-v",
+            "error",
+            "-i",
+            str(video_file.path),
+            "-f",
+            "null",
+            "-",
+        ]
+
     def test_installation(self) -> dict[str, Any]:
         """Test FFmpeg installation and return diagnostic information.
 
@@ -198,7 +223,7 @@ class FFmpegClient:
                 - version_info: str | None
                 - supported_formats: list[str] | None
         """
-        results = {
+        results: dict[str, bool | str | None | list[str]] = {
             "ffmpeg_available": False,
             "ffprobe_available": False,
             "ffmpeg_path": None,
@@ -285,19 +310,16 @@ class FFmpegClient:
             ScanResult: The scan result object
         """
         error_output: str = result.stderr or ""
-        needs_deep_scan: bool = False
 
         # Use detector to analyze FFmpeg output for corruption
-        corruption_found: bool = self.detector.detect(error_output)
+        analysis = self.detector.analyze_ffmpeg_output(error_output, result.returncode, is_quick)
 
-        error_message: Optional[str] = None
-        if result.returncode != 0 or corruption_found:
+        error_message: Optional[str] = analysis.error_message or None
+        if result.returncode != 0 and not error_message:
             error_message = error_output.strip() or "FFmpeg reported errors"
-            if is_quick:
-                needs_deep_scan = True
 
         return ScanResult(
             video_file=video_file,
-            needs_deep_scan=needs_deep_scan,
-            error_message=error_message,
+            needs_deep_scan=analysis.needs_deep_scan,
+            error_message=error_message or "",
         )

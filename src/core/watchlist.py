@@ -9,14 +9,13 @@ by processing video inspection JSON files and using filename parsing.
 import json
 import logging
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
 
-from trakt import Trakt
+import trakt  # type: ignore
 
-from .config import load_config
-from .trakt_watchlist import interactive_select_item
+from src.config import load_config
+from src.core.models.watchlist import MediaItem, TraktItem
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -25,73 +24,10 @@ logger = logging.getLogger(__name__)
 config = load_config()
 
 # Configure Trakt client using config values
-Trakt.configuration.defaults.client(
-    id=config.secrets.trakt_client_id, secret=config.secrets.trakt_client_secret
-)
-
-
-@dataclass
-class MediaItem:
-    """Represents a parsed media item (movie or TV show)"""
-
-    title: str
-    year: Optional[int] = None
-    media_type: str = "movie"  # "movie" or "show"
-    season: Optional[int] = None
-    episode: Optional[int] = None
-    original_filename: str = ""
-
-    def __post_init__(self) -> None:
-        """Validate and clean up media item data"""
-        # Clean up title (remove dots, underscores, etc.)
-        self.title = re.sub(r"[._]", " ", self.title).strip()
-        self.title = re.sub(r"\s+", " ", self.title)  # Normalize whitespace
-
-        # Ensure media_type is valid
-        if self.media_type not in ["movie", "show"]:
-            self.media_type = "movie"
-
-        logger.debug(f"MediaItem created: {self.title} ({self.year}) - " f"{self.media_type}")
-
-
-@dataclass
-class TraktItem:
-    """Represents an item from Trakt API with identifiers"""
-
-    title: str
-    year: Optional[int]
-    media_type: str
-    trakt_id: Optional[int] = None
-    imdb_id: Optional[str] = None
-    tmdb_id: Optional[int] = None
-    tvdb_id: Optional[int] = None
-
-    @classmethod
-    def from_movie_response(cls, data: Dict[str, Any]) -> "TraktItem":
-        """Create TraktItem from Trakt movie API response"""
-        ids = data.get("ids", {})
-        return cls(
-            title=data.get("title", ""),
-            year=data.get("year"),
-            media_type="movie",
-            trakt_id=ids.get("trakt"),
-            imdb_id=ids.get("imdb"),
-            tmdb_id=ids.get("tmdb"),
-        )
-
-    @classmethod
-    def from_show_response(cls, data: Dict[str, Any]) -> "TraktItem":
-        """Create TraktItem from Trakt show API response"""
-        ids = data.get("ids", {})
-        return cls(
-            title=data.get("title", ""),
-            year=data.get("year"),
-            media_type="show",
-            trakt_id=ids.get("trakt"),
-            imdb_id=ids.get("imdb"),
-            tmdb_id=ids.get("tmdb"),
-            tvdb_id=ids.get("tvdb"),
-        )
+try:
+    trakt.init(client_id=config.trakt.client_id, client_secret=config.trakt.client_secret)
+except Exception as e:
+    logger.exception("Failed to initialize Trakt client")
 
 
 class TraktAPI:
@@ -109,7 +45,7 @@ class TraktAPI:
         self.client_id = client_id
 
         # Set up Trakt authentication
-        Trakt.configuration.defaults.oauth(token=access_token)
+        trakt.configuration.defaults.oauth(token=access_token)
 
         logger.info("TraktAPI client initialized")
 
@@ -132,7 +68,7 @@ class TraktAPI:
         logger.info(f"Searching for movie: {title} ({year})")
 
         try:
-            results = Trakt["search/movie"].get(query=title, year=year, limit=limit)
+            results = trakt["search/movie"].get(query=title, year=year, limit=limit)
             trakt_items = [
                 TraktItem.from_movie_response(result["movie"])
                 for result in results
@@ -161,7 +97,7 @@ class TraktAPI:
         logger.info(f"Searching for TV show: {title} ({year})")
 
         try:
-            results = Trakt["search/show"].get(query=title, year=year, limit=limit)
+            results = trakt["search/show"].get(query=title, year=year, limit=limit)
             trakt_items = [
                 TraktItem.from_show_response(result["show"])
                 for result in results
@@ -190,7 +126,7 @@ class TraktAPI:
         logger.info(f"Adding movie to watchlist: {trakt_item.title}")
 
         try:
-            response = Trakt["sync/watchlist"].post(
+            response = trakt["sync/watchlist"].post(
                 data={
                     "movies": [
                         {
@@ -233,7 +169,7 @@ class TraktAPI:
         logger.info(f"Adding show to watchlist: {trakt_item.title}")
 
         try:
-            response = Trakt["sync/watchlist"].post(
+            response = trakt["sync/watchlist"].post(
                 data={
                     "shows": [
                         {
@@ -260,9 +196,10 @@ class TraktAPI:
             logger.exception("Error adding show to watchlist")
             return False
 
+    @staticmethod
     def interactive_select_item(
-        items: List[TraktItem], media_item: MediaItem
-    ) -> Optional[TraktItem]:
+        items: List["TraktItem"], media_item: "MediaItem"
+    ) -> Optional["TraktItem"]:
         """
         Interactively select the correct item from search results
 
@@ -559,7 +496,7 @@ def sync_to_trakt_watchlist(
                     )
 
                 # Let user select from results
-                trakt_item = interactive_select_item(search_results, media_item)
+                trakt_item = TraktAPI.interactive_select_item(search_results, media_item)
             else:
                 # Automatic mode: get first result only
                 # (backward compatibility)

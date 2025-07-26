@@ -51,7 +51,8 @@ dependencies = [
     "PyYAML>=6.0",
     "requests>=2.28.0",
     "piny>=1.1.0",
-    "pydantic>=2.0.0"
+    "pydantic>=2.0.0",
+    "trakt>=3.4.0"
 ]
 
 [project.optional-dependencies]

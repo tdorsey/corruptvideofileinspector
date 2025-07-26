@@ -31,9 +31,30 @@ FROM base AS dependencies
 
 WORKDIR /app
 
+
 # Upgrade pip and install build tools
 RUN pip install --upgrade pip setuptools wheel hatchling
-RUN pip install click typer PyYAML requests piny pydantic
+
+# Install all runtime dependencies from pyproject.toml
+RUN pip install \
+    typer>=0.16.0 \
+    click>=8.0.0 \
+    PyYAML>=6.0 \
+    requests>=2.28.0 \
+    piny>=1.1.0 \
+    pydantic>=2.0.0 \
+    trakt>=3.4.0
+
+# Install all dev dependencies (optional, for development image)
+RUN pip install \
+    black>=23.0.0 \
+    ruff>=0.1.0 \
+    mypy>=1.0.0 \
+    pytest>=7.0.0 \
+    pytest-cov>=4.0.0 \
+    pre-commit>=3.0.0 \
+    types-requests>=2.28.0 \
+    types-PyYAML>=6.0.0
 
 # Copy project files needed for dependency resolution
 COPY pyproject.toml .
