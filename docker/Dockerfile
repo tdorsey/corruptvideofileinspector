@@ -1,7 +1,7 @@
 # =============================================================================
 # Base stage - Common dependencies and setup
 # =============================================================================
-FROM python:bookworm AS base
+FROM python:3.11-slim-bookworm AS base
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -9,24 +9,22 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set working directory
 WORKDIR /app
 
+# Install system dependencies
 RUN <<EOF
   apt-get update
   apt-get install -y \
-    python3 \
-    python3-pip \
     ffmpeg \
     dumb-init \
-    ca-certificates
+    ca-certificates \
+    --no-install-recommends
   rm -rf /var/lib/apt/lists/*
   apt-get clean
 EOF
 
-RUN <<EOF
-  useradd -m -u 1000 inspector
-  chown -R inspector:inspector /app
-EOF
+# Create non-root user
+RUN useradd -m -u 1000 inspector && chown -R inspector:inspector /app
 
-# Set Python path and user path
+# Set Python path
 ENV PYTHONPATH=/app
 ENV PATH="/home/inspector/.local/bin:$PATH"
 
@@ -35,33 +33,58 @@ ENV PATH="/home/inspector/.local/bin:$PATH"
 # =============================================================================
 FROM base AS dependencies
 
-# Copy requirements first to leverage Docker cache
+# Copy requirements file
 COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip3 install --no-cache-dir --user -r requirements.txt
 
 # =============================================================================
-# Production stage - Minimal production image
+# Development stage - For development with mounted source code
+# =============================================================================
+FROM base AS development
+
+# Copy Python packages from dependencies stage
+COPY --from=dependencies /root/.local /home/inspector/.local
+
+# Switch to non-root user
+USER inspector
+
+# Create directories for volumes
+RUN mkdir -p /app/videos /app/output /app/logs
+
+# Development environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Use dumb-init as PID 1 for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+
+# Default command for development
+CMD ["python3", "src/main.py", "--help"]
+
+# =============================================================================
+# Production stage - Complete production image
 # =============================================================================
 FROM base AS production
 
-# Copy the application files
+# Copy Python packages from dependencies stage
+COPY --from=dependencies /root/.local /home/inspector/.local
+
+# Copy application source code
 COPY --chown=inspector:inspector src/ /app/src/
 
 # Switch to non-root user
 USER inspector
 
-# Create directories for input and output
-RUN mkdir -p /app/videos /app/output
-
-# Declare mount points for config, input, output, and logs
-VOLUME ["/app/config.yaml", "/app/videos", "/app/output", "/app/logs"]
+# Create directories for volumes
+RUN mkdir -p /app/videos /app/output /app/logs
 
 # Production environment variables
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-# Use dumb-init as PID 1 for proper signal handling and process reaping
+# Use dumb-init as PID 1 for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
 # Default command

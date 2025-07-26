@@ -1,8 +1,9 @@
 services:
   video:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: ..  # Build from project root to access src/ directory
+      dockerfile: docker/Dockerfile  # Specify Dockerfile location
+      target: production  # Use production stage by default
     container_name: video
     volumes:
       - ./config.yaml:/app/config.yaml:ro
@@ -18,7 +19,7 @@ services:
       - trakt_client_id
       - trakt_client_secret
     # Command can be overridden at runtime, but Dockerfile provides sensible default
-    command: [ "python3", "src/main.py" ]
+    command: ["python3", "src/main.py"]
 
 # Docker secrets configuration
 secrets:
@@ -28,7 +29,7 @@ secrets:
     file: ./secrets/trakt_client_secret.txt
 
 volumes:
-  # Production volumes
+  # Production volumes - paths relative to project root (since context is ..)
   video_data:
     driver: local
     driver_opts:
@@ -47,7 +48,6 @@ volumes:
       type: none
       o: bind
       device: ${CVI_LOG_DIR:?'CVI_LOG_DIR environment variable not set'}
-
   # Development volumes
   dev_videos:
     driver: local
