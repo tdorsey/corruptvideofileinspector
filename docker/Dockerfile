@@ -10,7 +10,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
 RUN <<EOF
-  set -euxo pipefail
   apt-get update
   apt-get install -y \
     python3 \
@@ -23,7 +22,6 @@ RUN <<EOF
 EOF
 
 RUN <<EOF
-  set -euxo pipefail
   useradd -m -u 1000 inspector
   chown -R inspector:inspector /app
 EOF
