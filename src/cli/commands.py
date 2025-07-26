@@ -9,9 +9,9 @@ from pathlib import Path
 
 import click
 
-from ..config.loader import load_config
+from ..config import load_config
 from ..core.models import ScanMode
-from ..utils.logging import setup_logging
+from ..utils import setup_logging
 from .handlers import ListHandler, ScanHandler, TraktHandler
 
 logger = logging.getLogger(__name__)
@@ -407,7 +407,7 @@ def init_config(ctx, output_format, output, config, verbose, quiet, profile):
     corrupt-video-inspector init-config --format json --output config.json
     """
     try:
-        from ..config.loader import create_example_config
+        from ..config import create_example_config
 
         create_example_config(output, output_format)
         click.echo(f"Configuration file created: {output}")
@@ -524,7 +524,7 @@ def report(
         setup_logging(app_config.logging, verbose, quiet)
 
         # Generate report
-        from ..utils.reporting import ReportGenerator
+        from ..utils import ReportGenerator
 
         generator = ReportGenerator(app_config)
         report_path = generator.generate_report(
