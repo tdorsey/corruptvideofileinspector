@@ -56,6 +56,9 @@ VOLUME ["/app/config.yaml", "/app/videos", "/app/output", "/app/logs"]
 ENV PYTHONPATH=/app
 ENV PATH="/home/inspector/.local/bin:$PATH"
 
+# Copy application code
+COPY src/ /app/src/
+
 # Use dumb-init as PID 1 for proper signal handling and process reaping
 ENTRYPOINT ["dumb-init", "--"]
 
