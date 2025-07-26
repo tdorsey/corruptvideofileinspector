@@ -91,3 +91,4 @@ config.local.yml
 
 # Docker secrets (never commit actual secrets)
 secrets/*
+docker/secrets/*
