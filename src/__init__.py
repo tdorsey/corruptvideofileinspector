@@ -25,6 +25,8 @@ from __future__ import annotations
 import re
 import sys
 
+from src.version import __version__
+
 from .cli.main import main
 from .config.config_loader import load_config
 from .config.config_settings import AppConfig
@@ -50,14 +52,6 @@ from .core.models.scanning import (
 from .core.scanner import VideoScanner
 
 # Version information
-__version__ = "2.0.0"
-
-
-def _parse_version_info(version: str) -> tuple[int, ...]:
-    """Parse version string into a tuple of ints, ignoring non-integer parts."""
-    return tuple(int(part) for part in re.findall(r"\d+", version))
-
-
 __version_info__ = _parse_version_info(__version__)
 
 # Package metadata
@@ -95,6 +89,11 @@ __all__ = [
     "__version_info__",
     "load_config",
 ]
+
+
+def _parse_version_info(version: str) -> tuple[int, ...]:
+    """Parse version string into a tuple of ints, ignoring non-integer parts."""
+    return tuple(int(part) for part in re.findall(r"\d+", version))
 
 
 def get_version() -> str:

@@ -11,10 +11,10 @@ import click
 from rich.console import Console
 from rich.logging import RichHandler
 
-from src import __version__
 from src.cli.commands import scan
 from src.config import load_config
 from src.core.errors.errors import ConfigurationError
+from src.version import __version__
 
 # Setup rich console for beautiful output
 console = Console()
