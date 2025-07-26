@@ -52,7 +52,7 @@ from .core.models.scanning import (
 from .core.scanner import VideoScanner
 
 # Version information
-__version_info__ = _parse_version_info(__version__)
+__version_info__ = _parse_version_info("1.0.0")
 
 # Package metadata
 __title__ = "corrupt-video-inspector"
