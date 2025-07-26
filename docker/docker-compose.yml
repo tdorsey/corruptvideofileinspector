@@ -6,10 +6,11 @@ services:
       target: production
     container_name: video
     volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      # Named volumes (fallback if bind mounts are not present)
       - video_data:/app/videos:ro
       - output:/app/output
-      # Mount configuration file if it exists
-      - ./config.yaml:/app/config.yaml:ro
+      - logs:/app/logs
     environment:
       - TRAKT_CLIENT_ID=test_client_id
       - PYTHONUNBUFFERED=1
@@ -23,6 +24,7 @@ services:
       - trakt_client_id
       - trakt_client_secret
     # Command can be overridden at runtime, but Dockerfile provides sensible default
+    command: [ "python3", "src/main.py" ]
 
   # Development service (dev profile)
   dev:
@@ -62,13 +64,19 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /mnt/srv/media/movies
+      device: ${CVI_VIDEO_DIR:?'CVI_VIDEO_DIR environment variable not set'}
   output:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /home/ubuntu/video/output
+      device: ${CVI_OUTPUT_DIR:?'CVI_OUTPUT_DIR environment variable not set'}
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${CVI_LOG_DIR:?'CVI_LOG_DIR environment variable not set'}
 
   # Development volumes
   dev_videos:
