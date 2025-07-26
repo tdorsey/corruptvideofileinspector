@@ -9,17 +9,13 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN <<EOF
-  apt-get update
-  apt-get install -y \
+# Install system dependencies including dumb-init
+RUN apt-get update && apt-get install -y \
     ffmpeg \
     dumb-init \
     ca-certificates \
-    --no-install-recommends
-  rm -rf /var/lib/apt/lists/*
-  apt-get clean
-EOF
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN useradd -m -u 1000 inspector && chown -R inspector:inspector /app
@@ -33,11 +29,15 @@ ENV PATH="/home/inspector/.local/bin:$PATH"
 # =============================================================================
 FROM base AS dependencies
 
+# Explicitly set working directory here as well
+WORKDIR /app
+
 # Upgrade pip and install build tools
 RUN pip install --upgrade pip setuptools wheel
 
 # Copy project files needed for dependency resolution
 COPY pyproject.toml .
+COPY README.md .
 COPY src/ ./src/
 
 # Install the project and its dependencies

@@ -3,7 +3,6 @@ services:
     build:
       context: ..  # Build from project root to access src/ directory
       dockerfile: docker/Dockerfile  # Specify Dockerfile location
-      target: production  # Use production stage by default
     container_name: video
     volumes:
       - ./config.yaml:/app/config.yaml:ro
