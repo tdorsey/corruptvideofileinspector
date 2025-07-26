@@ -68,8 +68,6 @@ RUN <<EOF
   apt-get clean
 EOF
 
-# Copy Python dependencies from dependencies stage
-COPY --from=dependencies --chown=inspector:inspector /home/inspector/.local /home/inspector/.local
 
 # Switch to non-root user
 USER inspector
