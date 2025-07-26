@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import NoReturn
 
 import click
-from corrupt_video_inspector import __version__
-from corrupt_video_inspector.cli.commands import scan
-from corrupt_video_inspector.core.models import ConfigurationError
 from rich.console import Console
 from rich.logging import RichHandler
 
+from src import __version__
+from src.cli.commands import scan
 from src.config import load_config
+from src.core.errors.errors import ConfigurationError
 
 # Setup rich console for beautiful output
 console = Console()
