@@ -93,9 +93,6 @@ CMD ["python3", "src/main.py"]
 # =============================================================================
 FROM base AS production
 
-# Copy Python dependencies from dependencies stage
-COPY --from=dependencies --chown=inspector:inspector /home/inspector/.local /home/inspector/.local
-
 # Copy the application files
 COPY --chown=inspector:inspector . .
 
