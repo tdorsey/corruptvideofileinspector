@@ -65,7 +65,7 @@ WORKDIR /app
 ENTRYPOINT ["dumb-init", "--"]
 
 # Default command for development
-CMD ["python3", "-m", "src.main", "--help"]
+CMD ["python3", "-m", "src", "--help"]
 
 # =============================================================================
 # Production stage - Complete production image
@@ -75,7 +75,7 @@ FROM base AS production
 # Copy Python packages from dependencies stage
 COPY --from=dependencies /root/.local /home/inspector/.local
 
-# Copy application source code
+# Copy application source code (src/__init__.py already exists)
 COPY --chown=inspector:inspector src/ /app/src/
 
 # Switch to non-root user
@@ -96,4 +96,4 @@ WORKDIR /app
 ENTRYPOINT ["dumb-init", "--"]
 
 # Default command
-CMD ["python3", "-m", "src.main"]
+CMD ["python3", "-m", "src"]
