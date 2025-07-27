@@ -1,9 +1,16 @@
+import logging
 from pathlib import Path
 from typing import List, Optional
 
-from piny import PydanticValidator, YamlLoader  # type: ignore
 from pydantic import BaseModel, Field
 
+try:
+    from piny import PydanticValidator, YamlLoader  # type: ignore
+except ImportError:
+    logging.getLogger(__name__).warning("piny module not available")
+    raise
+
+from src.config.secrets import read_docker_secret
 from src.core.models.scanning import ScanMode
 
 
@@ -66,7 +73,8 @@ def load_config(config_path: Optional[Path] = None) -> AppConfig:
     """
 
     if config_path is None:
-        config_path = Path("config.yaml")
+        # Use the config.yaml in the same directory as this file
+        config_path = Path(__file__).parent / "config.yaml"
 
     loader = YamlLoader(
         path=config_path,
@@ -74,4 +82,13 @@ def load_config(config_path: Optional[Path] = None) -> AppConfig:
         schema=AppConfig,
     )
     config_data = loader.load(many=False)
+
+    # If a Docker secret exists for trakt_client_secret, override config value
+    docker_secret = read_docker_secret("trakt_client_secret")
+    if docker_secret is not None:
+        if "trakt" in config_data:
+            config_data["trakt"]["client_secret"] = docker_secret
+        elif hasattr(config_data, "trakt"):
+            config_data.trakt["client_secret"] = docker_secret
+
     return AppConfig.model_validate(config_data)

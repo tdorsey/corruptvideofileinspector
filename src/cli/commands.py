@@ -10,7 +10,7 @@ from pathlib import Path
 import click
 
 from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
-from src.cli.main import setup_logging
+from src.cli.utils import setup_logging
 from src.config import load_config
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
@@ -447,7 +447,7 @@ def report(
         app_config = load_config()
 
         # Setup logging
-        setup_logging(logging.getLevelName(app_config.logging.level))
+        setup_logging(0)
         # Generate report
         # Load scan results from file
         with scan_file.open("r", encoding="utf-8") as f:

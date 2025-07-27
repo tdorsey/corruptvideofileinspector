@@ -9,48 +9,15 @@ from typing import NoReturn
 
 import click
 from rich.console import Console
-from rich.logging import RichHandler
 
 from src.cli.commands import scan
+from src.cli.utils import setup_logging
 from src.config import load_config
 from src.core.errors.errors import ConfigurationError
 from src.version import __version__
 
 # Setup rich console for beautiful output
 console = Console()
-
-
-def setup_logging(verbose: int) -> None:
-    """Setup logging configuration based on verbosity level.
-
-    Args:
-        verbose: Verbosity level (0=WARNING, 1=INFO, 2=DEBUG).
-    """
-    level_map = {
-        0: logging.WARNING,
-        1: logging.INFO,
-        2: logging.DEBUG,
-    }
-
-    level = level_map.get(verbose, logging.DEBUG)
-
-    logging.basicConfig(
-        level=level,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[
-            RichHandler(
-                console=console,
-                rich_tracebacks=True,
-                show_path=verbose >= 2,
-            )
-        ],
-    )
-
-    # Suppress noisy third-party loggers in production
-    if verbose < 2:
-        logging.getLogger("httpx").setLevel(logging.WARNING)
-        logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 @click.group(invoke_without_command=True)

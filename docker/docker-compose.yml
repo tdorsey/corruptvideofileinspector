@@ -5,7 +5,7 @@ services:
       dockerfile: docker/Dockerfile  # Specify Dockerfile location
     container_name: video
     volumes:
-      - ./config.yaml:/app/config.yaml:ro
+      - ../config.yaml:/app/config.yaml:ro
       # Named volumes (fallback if bind mounts are not present)
       - video_data:/app/videos:ro
       - output:/app/output

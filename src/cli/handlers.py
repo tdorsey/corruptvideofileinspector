@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-import click
+import click # type: ignore
 
 from src.config.config import AppConfig
 from src.core.models.scanning import ScanMode, ScanProgress

@@ -26,7 +26,7 @@ config = load_config()
 # Configure Trakt client using config values
 try:
     trakt.init(client_id=config.trakt.client_id, client_secret=config.trakt.client_secret)
-except Exception as e:
+except Exception:
     logger.exception("Failed to initialize Trakt client")
 
 
