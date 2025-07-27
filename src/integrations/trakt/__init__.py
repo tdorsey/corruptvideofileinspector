@@ -2,8 +2,11 @@
 Trakt.tv integration.
 """
 
-from .client import TraktClient
+from .client import TraktAPI, MediaItem, TraktItem, FilenameParser
 
 __all__ = [
-    "TraktClient",
+    "TraktAPI",
+    "MediaItem", 
+    "TraktItem",
+    "FilenameParser",
 ]

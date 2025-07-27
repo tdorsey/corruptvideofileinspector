@@ -7,5 +7,9 @@ This module allows the package to be executed as:
 
 from .cli.commands import cli
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for CLI application."""
     cli()
+
+if __name__ == "__main__":
+    main()

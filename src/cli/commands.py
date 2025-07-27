@@ -127,6 +127,21 @@ def cli(ctx):
 @click.option(
     "--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True
 )
+@click.option(
+    "--sync-corrupt-to-trakt",
+    is_flag=True,
+    help="Automatically sync corrupted files to Trakt.tv watchlist after scan completion",
+)
+@click.option(
+    "--trakt-token",
+    envvar="TRAKT_ACCESS_TOKEN",
+    help="Trakt.tv access token (can also be set via TRAKT_ACCESS_TOKEN env var)",
+)
+@click.option(
+    "--trakt-interactive",
+    is_flag=True,
+    help="Enable interactive selection when syncing to Trakt.tv",
+)
 @click.pass_context
 def scan(
     ctx,
@@ -139,6 +154,9 @@ def scan(
     output,
     output_format,
     pretty,
+    sync_corrupt_to_trakt,
+    trakt_token,
+    trakt_interactive,
     config,
     verbose,
     quiet,
@@ -193,6 +211,9 @@ def scan(
             output_file=output,
             output_format=output_format,
             pretty_print=pretty,
+            sync_corrupt_to_trakt=sync_corrupt_to_trakt,
+            trakt_token=trakt_token,
+            trakt_interactive=trakt_interactive,
         )
 
     except Exception as e:

@@ -53,6 +53,9 @@ class ScanHandler(BaseHandler):
         output_file: Optional[Path] = None,
         output_format: str = "json",
         pretty_print: bool = True,
+        sync_corrupt_to_trakt: bool = False,
+        trakt_token: Optional[str] = None,
+        trakt_interactive: bool = False,
     ) -> None:
         """
         Run a video corruption scan.
@@ -65,6 +68,9 @@ class ScanHandler(BaseHandler):
             output_file: Optional output file path
             output_format: Output format (json, yaml, csv)
             pretty_print: Whether to pretty-print output
+            sync_corrupt_to_trakt: Whether to sync corrupted files to Trakt.tv after scan
+            trakt_token: Trakt.tv access token for API access
+            trakt_interactive: Whether to use interactive mode for Trakt sync
         """
         try:
             # Show initial information
@@ -99,13 +105,22 @@ class ScanHandler(BaseHandler):
             self._show_scan_results(summary)
 
             # Generate output file if requested
+            actual_output_file = output_file
             if output_file or self.config.output.default_json:
-                self._generate_output(
+                actual_output_file = self._generate_output(
                     summary=summary,
                     directory=directory,
                     output_file=output_file,
                     output_format=output_format,
                     pretty_print=pretty_print,
+                )
+
+            # Sync corrupted files to Trakt.tv if requested
+            if sync_corrupt_to_trakt and summary.corrupt_files > 0:
+                self._sync_corrupt_to_trakt(
+                    output_file=actual_output_file,
+                    trakt_token=trakt_token,
+                    interactive=trakt_interactive,
                 )
 
         except KeyboardInterrupt:
@@ -232,8 +247,8 @@ class ScanHandler(BaseHandler):
         output_file: Optional[Path],
         output_format: str,
         pretty_print: bool,
-    ) -> None:
-        """Generate output file with scan results."""
+    ) -> Path:
+        """Generate output file with scan results and return the actual file path."""
         try:
             if not output_file:
                 output_file = directory / f"scan_results.{output_format}"
@@ -247,10 +262,69 @@ class ScanHandler(BaseHandler):
             )
 
             click.echo(f"\nDetailed results saved to: {output_file}")
+            return output_file
 
         except Exception as e:
             logger.warning(f"Failed to generate output file: {e}")
             click.echo(f"Warning: Could not save results to file: {e}", err=True)
+            # Return a fallback path
+            return directory / f"scan_results.{output_format}"
+
+    def _sync_corrupt_to_trakt(
+        self,
+        output_file: Optional[Path],
+        trakt_token: Optional[str],
+        interactive: bool = False,
+    ) -> None:
+        """Sync corrupted files to Trakt.tv watchlist."""
+        if not output_file or not output_file.exists():
+            click.echo("Warning: Cannot sync to Trakt - no scan results file available", err=True)
+            return
+
+        if not trakt_token:
+            click.echo("Warning: Cannot sync to Trakt - no access token provided", err=True)
+            click.echo("Use --trakt-token option or set TRAKT_ACCESS_TOKEN environment variable")
+            return
+
+        try:
+            # Import TraktSyncService here to avoid circular imports
+            from ..integrations.trakt.sync import TraktSyncService
+            
+            click.echo("\n" + "=" * 50)
+            click.echo("SYNCING CORRUPTED FILES TO TRAKT.TV")
+            click.echo("=" * 50)
+            
+            trakt_service = TraktSyncService(self.config)
+            
+            results = trakt_service.sync_corrupt_files(
+                scan_file=output_file,
+                access_token=trakt_token,
+                interactive=interactive,
+                dry_run=False,
+            )
+            
+            # Show sync results
+            total = results.get("total", 0)
+            movies_added = results.get("movies_added", 0)
+            shows_added = results.get("shows_added", 0)
+            failed = results.get("failed", 0)
+            
+            click.echo(f"Total corrupted files processed: {total}")
+            click.echo(f"Movies added to watchlist: {movies_added}")
+            click.echo(f"Shows added to watchlist: {shows_added}")
+            click.echo(f"Failed/Not found: {failed}")
+            
+            if total > 0:
+                success_rate = ((movies_added + shows_added) / total) * 100
+                click.echo(f"Success rate: {success_rate:.1f}%")
+            
+            click.echo("Trakt.tv sync completed!")
+            
+        except ImportError:
+            click.echo("Warning: Trakt.py not available. Install with: pip install 'corrupt-video-inspector[trakt]'", err=True)
+        except Exception as e:
+            logger.exception("Failed to sync corrupted files to Trakt.tv")
+            click.echo(f"Error syncing to Trakt.tv: {e}", err=True)
 
 
 class ListHandler(BaseHandler):
