@@ -40,8 +40,6 @@ FROM base AS dependencies
 
 WORKDIR /app
 
-# Upgrade pip and install build tools
-RUN pip install --upgrade pip setuptools wheel hatchling
 
 # Install Poetry
 RUN pip install poetry
@@ -50,14 +48,11 @@ RUN pip install poetry
 RUN poetry config virtualenvs.create false
 
 # Copy project files needed for dependency resolution
-COPY pyproject.toml poetry.lock* ./
-COPY README.md ./
+COPY pyproject.toml poetry.lock* README.md ./
+COPY src/ ./src/
 
 # Install dependencies and project with Poetry
 RUN poetry install --no-interaction --no-ansi
-
-# Copy the rest of the source code
-COPY src/ ./src/
 
 # =============================================================================
 # Development stage - For development with mounted source code
