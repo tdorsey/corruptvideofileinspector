@@ -37,8 +37,8 @@ ENV PATH="/home/${APP_USER}/.local/bin:$PATH"
 # =============================================================================
 FROM base AS dependencies
 
-WORKDIR /app
 
+WORKDIR /app
 
 # Upgrade pip and install build tools
 RUN pip install --upgrade pip setuptools wheel hatchling
@@ -49,8 +49,11 @@ RUN pip install poetry
 # Configure Poetry to not use virtualenvs
 RUN poetry config virtualenvs.create false
 
-# Install dependencies and project with Poetry
+# Copy project files needed for dependency resolution
 COPY pyproject.toml poetry.lock* ./
+COPY README.md ./
+
+# Install dependencies and project with Poetry
 RUN poetry install --no-interaction --no-ansi
 
 # Copy the rest of the source code
