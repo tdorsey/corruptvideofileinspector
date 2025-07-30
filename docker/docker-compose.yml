@@ -1,16 +1,19 @@
 services:
   video:
+    image: cvi:${APP_VERSION:-1.0.0}
     build:
-      image: cvi:latest
       context: ..  # Build from project root to access src/ directory
       dockerfile: docker/Dockerfile  # Specify Dockerfile location
+      args:
+        APP_VERSION: "${APP_VERSION:-1.0.0}"
+        APP_TITLE: "corrupt-video-inspector"
+        APP_DESCRIPTION: "A Docker-based tool to detect and report corrupt video files using FFmpeg"
     container_name: video
     volumes:
       - type: bind
         source: ${PWD}/config.yaml
         target: /app/config.yaml
         read_only: true
-      # Named volumes (fallback if bind mounts are not present)
       - video_data:/app/videos:ro
       - output:/app/output
       - logs:/app/logs

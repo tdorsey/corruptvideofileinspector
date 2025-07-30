@@ -24,7 +24,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.8"
 authors = [
-    {name = "tdorsey", email = ""},
+    {name = "tdorsey", email = "tdorsey@users.noreply.github.com"},
 ]
 keywords = ["video", "ffmpeg", "corruption", "inspection", "cli"]
 classifiers = [
@@ -66,7 +66,7 @@ dev = [
     "pytest-cov>=4.0.0",
     "pre-commit>=3.0.0",
     "types-requests>=2.28.0",
-    "types-PyYAML>=6.0.0",
+    "types-PyYAML>=6.0.0; python_version >= '3.9'",
     "types-toml>=0.10.0"
 ]
 
@@ -213,4 +213,13 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
+]
+
+[tool.poetry]
+name = "corrupt-video-inspector"
+version = "1.0.0"
+description = "A Docker-based tool to detect and report corrupt video files using FFmpeg"
+authors = ["tdorsey <tdorsey@users.noreply.github.com>"]
+packages = [
+    { include = "src" }
 ]

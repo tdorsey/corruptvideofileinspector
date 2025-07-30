@@ -17,12 +17,20 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
+# =============================================================================
+# Build arguments
+# =============================================================================
+ARG APP_VERSION=1.0.0
+ARG APP_TITLE="corrupt-video-inspector"
+ARG APP_DESCRIPTION="A Docker-based tool to detect and report corrupt video files using FFmpeg"
+ARG APP_USER=inspector
+
 # Create non-root user
-RUN useradd -m -u 1000 inspector && chown -R inspector:inspector /app
+RUN useradd -m -u 1000 ${APP_USER} && chown -R ${APP_USER}:${APP_USER} /app
 
 # Set Python path
 ENV PYTHONPATH=/app
-ENV PATH="/home/inspector/.local/bin:$PATH"
+ENV PATH="/home/${APP_USER}/.local/bin:$PATH"
 
 # =============================================================================
 # Dependencies stage - Install Python dependencies
@@ -35,41 +43,33 @@ WORKDIR /app
 # Upgrade pip and install build tools
 RUN pip install --upgrade pip setuptools wheel hatchling
 
-# Install all runtime dependencies from pyproject.toml
-RUN pip install \
-    typer>=0.16.0 \
-    click>=8.0.0 \
-    PyYAML>=6.0 \
-    requests>=2.28.0 \
-    piny>=1.1.0 \
-    pydantic>=2.0.0 \
-    trakt>=3.4.0
+# Install Poetry
+RUN pip install poetry
 
-# Install all dev dependencies (optional, for development image)
-RUN pip install \
-    black>=23.0.0 \
-    ruff>=0.1.0 \
-    mypy>=1.0.0 \
-    pytest>=7.0.0 \
-    pytest-cov>=4.0.0 \
-    pre-commit>=3.0.0 \
-    types-requests>=2.28.0 \
-    types-PyYAML>=6.0.0
+# Configure Poetry to not use virtualenvs
+RUN poetry config virtualenvs.create false
 
-# Copy project files needed for dependency resolution
-COPY pyproject.toml .
-COPY README.md .
+# Install dependencies and project with Poetry
+COPY pyproject.toml poetry.lock* ./
+RUN poetry install --no-interaction --no-ansi
+
+# Copy the rest of the source code
 COPY src/ ./src/
-
-# Install the project and its dependencies
-RUN pip install .
 
 # =============================================================================
 # Development stage - For development with mounted source code
 # =============================================================================
 FROM base AS development
 
-USER inspector
+# =============================================================================
+# Build arguments
+# =============================================================================
+ARG APP_VERSION=1.0.0
+ARG APP_TITLE="corrupt-video-inspector"
+ARG APP_DESCRIPTION="A Docker-based tool to detect and report corrupt video files using FFmpeg"
+ARG APP_USER=inspector
+
+USER ${APP_USER}
 
 # Create directories for volumes
 RUN mkdir -p /app/videos /app/output /app/logs
@@ -82,6 +82,10 @@ WORKDIR /app
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["python3", "-m", "src", "--help"]
+
+LABEL org.opencontainers.image.title=${APP_TITLE}
+LABEL org.opencontainers.image.version=${APP_VERSION}
+LABEL org.opencontainers.image.description=${APP_DESCRIPTION}
 
 # =============================================================================
 # Production stage - Complete production image
@@ -99,7 +103,7 @@ COPY --chown=inspector:inspector src/ /app/src/
 RUN mkdir -p /app/videos /app/output /app/logs && chown -R inspector:inspector /app
 
 # Switch to non-root user after directories are created and owned
-USER inspector
+USER ${APP_USER}
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -109,3 +113,7 @@ WORKDIR /app
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["python3", "-m", "src"]
+
+LABEL org.opencontainers.image.title=${APP_TITLE}
+LABEL org.opencontainers.image.version=${APP_VERSION}
+LABEL org.opencontainers.image.description=${APP_DESCRIPTION}
