@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-import click
-from rich.console import Console
+import click  # type: ignore
+from rich.console import Console  # type: ignore
 
 from src.cli.commands import scan
 from src.cli.utils import setup_logging

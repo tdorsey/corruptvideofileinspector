@@ -14,20 +14,25 @@ from typing import Any, ClassVar, Dict, List, Optional
 
 import trakt  # type: ignore
 
-from src.config import load_config
 from src.core.models.watchlist import MediaItem, TraktItem
 
 # Configure module logger
 logger = logging.getLogger(__name__)
 
-# Load configuration
-config = load_config()
+# Do not load config or initialize Trakt client at import time.
+# Instead, require config to be passed explicitly to any function/class that needs it.
 
-# Configure Trakt client using config values
-try:
-    trakt.init(client_id=config.trakt.client_id, client_secret=config.trakt.client_secret)
-except Exception:
-    logger.exception("Failed to initialize Trakt client")
+
+def init_trakt_client(config):
+    """
+    Initialize Trakt client using config values.
+    Args:
+        config: AppConfig instance with trakt credentials
+    """
+    try:
+        trakt.init(client_id=config.trakt.client_id, client_secret=config.trakt.client_secret)
+    except Exception:
+        logger.exception("Failed to initialize Trakt client")
 
 
 class TraktAPI:

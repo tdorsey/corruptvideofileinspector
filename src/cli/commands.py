@@ -7,7 +7,7 @@ import logging
 import sys
 from pathlib import Path
 
-import click
+import click  # type: ignore
 
 from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
 from src.cli.utils import setup_logging

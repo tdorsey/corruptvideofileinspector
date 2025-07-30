@@ -2,8 +2,8 @@
 
 import logging
 
-from rich.console import Console
-from rich.logging import RichHandler
+from rich.console import Console  # type: ignore
+from rich.logging import RichHandler  # type: ignore
 
 # Setup rich console for beautiful output
 console = Console()
