@@ -1,6 +1,7 @@
 services:
   video:
     build:
+      image: cvi:latest
       context: ..  # Build from project root to access src/ directory
       dockerfile: docker/Dockerfile  # Specify Dockerfile location
     container_name: video
