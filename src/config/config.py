@@ -1,7 +1,9 @@
 import logging
+import os
 from pathlib import Path
 from typing import List, Optional
 
+import toml
 from pydantic import BaseModel, Field
 
 try:
@@ -72,10 +74,40 @@ def load_config(config_path: Optional[Path] = None) -> AppConfig:
         AppConfig: Loaded configuration object with validation
     """
 
-    if config_path is None:
-        # Use the config.yaml in the same directory as this file
-        config_path = Path(__file__).parent / "config.yaml"
-
+    if config_path is not None:
+        config_path = Path(config_path)
+    else:
+        # 1. Try config.yaml at the same level as pyproject.toml
+        pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+        if pyproject_path.is_file():
+            project_root = pyproject_path.parent
+            project_config = project_root / "config.yaml"
+            if project_config.is_file():
+                config_path = project_config
+            else:
+                pyproject = toml.load(pyproject_path)
+                app_name = pyproject.get("project", {}).get("name", "corruptvideofileinspector")
+                # 3. Try XDG config home
+                xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
+                if xdg_config_home:
+                    xdg_path = Path(xdg_config_home) / app_name / "config.yaml"
+                    if xdg_path.is_file():
+                        config_path = xdg_path
+                    else:
+                        raise FileNotFoundError(
+                            f"No config file found at /app/config.yaml, {project_config}, or {xdg_path}. "
+                            "Please provide a config file."
+                        )
+                else:
+                    raise FileNotFoundError(
+                        f"No config file found at /app/config.yaml or {project_config}, and XDG_CONFIG_HOME is not set. "
+                        "Please provide a config file."
+                    )
+        else:
+            raise FileNotFoundError(
+                "No config file found at /app/config.yaml and no pyproject.toml found to locate project root. "
+                "Please provide a config file."
+            )
     loader = YamlLoader(
         path=config_path,
         validator=PydanticValidator,

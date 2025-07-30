@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-import click # type: ignore
+import click
 
 from src.config.config import AppConfig
 from src.core.models.scanning import ScanMode, ScanProgress
@@ -150,7 +150,6 @@ class ScanHandler(BaseHandler):
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
         try:
-
             # Use click's progress bar if available
             with click.progressbar(
                 length=progress.total_files,
