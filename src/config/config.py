@@ -1,26 +1,19 @@
-import logging
 import os
 from pathlib import Path
 from typing import List, Optional
 
 import toml
+from piny import PydanticValidator, YamlLoader  # type: ignore
 from pydantic import BaseModel, Field
-
-try:
-    from piny import PydanticValidator, YamlLoader  # type: ignore
-except ImportError:
-    logging.getLogger(__name__).warning("piny module not available")
-    raise
 
 from src.config.secrets import read_docker_secret
 from src.core.models.scanning import ScanMode
 
 
 class LoggingConfig(BaseModel):
-    level: str = Field(default="DEBUG")
-    format: str = Field(default="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    date_format: str = Field(default="%Y-%m-%d %H:%M:%S")
+    level: str = Field(default="WARNING")
     file: Path = Field(default=Path("/app/output/inspector.log"))
+    date_format: str = Field(default="%Y-%m-%dT%H:%M:%S%z")
 
 
 class FFmpegConfig(BaseModel):
@@ -36,7 +29,7 @@ class ProcessingConfig(BaseModel):
 
 class OutputConfig(BaseModel):
     default_json: bool = Field(default=True)
-    default_output_dir: Path = Field(default=Path("/app/output"))
+    default_output_dir: Path = Field(...)
     default_filename: str = Field(default="corruption_scan.json")
 
 
@@ -49,7 +42,7 @@ class ScanConfig(BaseModel):
     recursive: bool = Field(default=True)
     max_workers: int = Field(default=8)
     mode: ScanMode = Field(default=ScanMode.QUICK)
-    default_input_dir: Path = Field(default=Path("/app/videos"))
+    default_input_dir: Path = Field(...)
     extensions: List[str] = Field(
         default_factory=lambda: [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv"]
     )
@@ -64,15 +57,21 @@ class AppConfig(BaseModel):
     trakt: TraktConfig
 
 
+_CONFIG_SINGLETON: Optional[AppConfig] = None
+
 def load_config(config_path: Optional[Path] = None) -> AppConfig:
     """
     Load configuration from a YAML file with Pydantic schema validation.
+    Loads once and caches the result as a singleton.
     Args:
         config_path: Optional path to the configuration file.
                      If None, the default config.yaml will be used.
     Returns:
         AppConfig: Loaded configuration object with validation
     """
+    global _CONFIG_SINGLETON
+    if config_path is None and _CONFIG_SINGLETON is not None:
+        return _CONFIG_SINGLETON
 
     if config_path is not None:
         config_path = Path(config_path)
@@ -123,4 +122,14 @@ def load_config(config_path: Optional[Path] = None) -> AppConfig:
         elif hasattr(config_data, "trakt"):
             config_data.trakt["client_secret"] = docker_secret
 
-    return AppConfig.model_validate(config_data)
+    _CONFIG_SINGLETON = AppConfig.model_validate(config_data)
+    return _CONFIG_SINGLETON
+    docker_secret = read_docker_secret("trakt_client_secret")
+    if docker_secret is not None:
+        if "trakt" in config_data:
+            config_data["trakt"]["client_secret"] = docker_secret
+        elif hasattr(config_data, "trakt"):
+            config_data.trakt["client_secret"] = docker_secret
+
+    _CONFIG_SINGLETON = AppConfig.model_validate(config_data)
+    return _CONFIG_SINGLETON
