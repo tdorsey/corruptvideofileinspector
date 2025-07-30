@@ -20,4 +20,5 @@ if __name__ == "__main__":
         datefmt=config.logging.date_format,
     )
     logging.info("Starting Corrupt Video Inspector...")
-    cli()
+    # Let Click handle CLI entry and parameter passing
+    cli.main(standalone_mode=True)

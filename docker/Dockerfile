@@ -94,6 +94,9 @@ FROM base AS production
 COPY --from=dependencies /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=dependencies /usr/local/bin /usr/local/bin
 
+# Copy pyproject.toml for runtime config discovery
+COPY --chown=inspector:inspector pyproject.toml ./
+
 # Copy application source code (if needed)
 COPY --chown=inspector:inspector src/ /app/src/
 
