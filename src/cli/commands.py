@@ -171,6 +171,7 @@ def cli(ctx, verbose: int | None = None, config: Path | None = None) -> None:
 @click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
 @click.pass_context
 def scan(
+    ctx,
     directory,
     mode,
     max_workers,
@@ -181,6 +182,10 @@ def scan(
     pretty,
     config,
 ):
+    # If no arguments are provided, show the help for the scan subcommand
+    if ctx.args == [] and directory is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Scan a directory for corrupt video files.
 
@@ -256,6 +261,7 @@ def scan(
 )
 @click.pass_context
 def list_files(
+    ctx,
     directory,
     recursive,
     extensions,
@@ -263,6 +269,10 @@ def list_files(
     output_format,
     config,
 ):
+    # If no arguments are provided, show the help for the list-files subcommand
+    if ctx.args == [] and directory is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     List all video files in a directory without scanning.
 
@@ -309,6 +319,10 @@ def list_files(
 @cli.group()
 @click.pass_context
 def trakt(ctx):
+    # If no arguments are provided, show the help for the trakt group
+    if ctx.args == []:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Trakt.tv integration commands.
 
@@ -339,6 +353,7 @@ def trakt(ctx):
 @global_options
 @click.pass_context
 def sync(
+    ctx,
     scan_file,
     token,
     client_id,
@@ -348,6 +363,10 @@ def sync(
     filter_corrupt,
     config,
 ):
+    # If no arguments are provided, show the help for the trakt sync subcommand
+    if ctx.args == [] and scan_file is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Sync scan results to Trakt.tv watchlist.
 
@@ -399,7 +418,11 @@ def sync(
 @cli.command()
 @global_options
 @click.pass_context
-def test_ffmpeg(config):
+def test_ffmpeg(ctx, config):
+    # If no arguments are provided, show the help for the test-ffmpeg subcommand
+    if ctx.args == []:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Test FFmpeg installation and show diagnostic information.
 
@@ -471,10 +494,15 @@ def test_ffmpeg(config):
 )
 @click.pass_context
 def report(
+    ctx,
     scan_file,
     output,
     include_healthy,
 ):
+    # If no arguments are provided, show the help for the report subcommand
+    if ctx.args == [] and scan_file is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Generate a detailed report from scan results.
 
@@ -543,7 +571,11 @@ def report(
 @global_options
 @click.option("--all-configs", is_flag=True, help="Show all configuration sources and values")
 @click.pass_context
-def show_config(all_configs, config):
+def show_config(ctx, all_configs, config):
+    # If no arguments are provided, show the help for the show-config subcommand
+    if ctx.args == []:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Show current configuration settings.
 
