@@ -70,18 +70,52 @@ def global_options(f):
     )(f)
 
 
-@click.group()
-@click.version_option(version="2.0.0", prog_name="corrupt-video-inspector")
+# Main CLI group moved from main.py
+@click.group(invoke_without_command=True)
+@click.version_option(
+    version=None,  # Will be set from src.version.__version__ in main.py
+    prog_name="corrupt-video-inspector",
+    message="%(prog)s %(version)s",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    count=True,
+    help="Increase verbosity (can be used multiple times: -v, -vv)",
+)
+@click.option(
+    "--config",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to configuration file",
+)
 @click.pass_context
-def cli(ctx):
-    """
-    Corrupt Video Inspector - Scan directories for corrupt video files and sync to Trakt.
+def cli(ctx, verbose: int | None) -> None:
+    """Corrupt Video Inspector - Detect and manage corrupted video files.
 
-    A comprehensive tool for detecting corrupted video files using FFmpeg and
-    optionally syncing healthy files to your Trakt.tv watchlist.
+    A comprehensive tool for scanning video directories, detecting corruption
+    using FFmpeg, and optionally syncing healthy files to Trakt.tv.
+
+    Examples:
+        corrupt-video-inspector scan /path/to/videos
+        corrupt-video-inspector scan /movies --mode deep --recursive
+        corrupt-video-inspector scan /tv-shows --trakt-sync
     """
-    # Ensure context object exists
-    ctx.ensure_object(dict)
+    # Setup logging first
+    setup_logging(verbose or 0)
+
+    # Load configuration
+    try:
+        app_config = load_config()
+        ctx.ensure_object(dict)
+        ctx.obj["config"] = app_config
+        ctx.obj["verbose"] = verbose
+    except Exception as e:
+        logging.exception("Configuration error")
+        raise click.Abort() from e
+
+    # If no command specified, show help
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 @cli.command()
@@ -278,7 +312,6 @@ def trakt(ctx):
 
 
 @trakt.command()
-@global_options
 @click.argument("scan_file", type=PathType(exists=True))
 @click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
 @click.option("--client-id", help="Trakt.tv API client ID (can be set via config or env var)")
@@ -297,6 +330,7 @@ def trakt(ctx):
     help="Filter out corrupt files from sync (default: filter out)",
     show_default=True,
 )
+@global_options
 @click.pass_context
 def sync(
     scan_file,

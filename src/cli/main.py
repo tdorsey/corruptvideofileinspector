@@ -4,71 +4,15 @@ from __future__ import annotations
 
 import logging
 import sys
-from pathlib import Path
 from typing import NoReturn
 
 import click  # type: ignore
 from rich.console import Console  # type: ignore
 
-from src.cli.commands import scan
-from src.cli.utils import setup_logging
-from src.config import load_config
-from src.core.errors.errors import ConfigurationError
-from src.version import __version__
+from src.cli.commands import cli
 
 # Setup rich console for beautiful output
 console = Console()
-
-
-@click.group(invoke_without_command=True)
-@click.version_option(
-    version=__version__,
-    prog_name="corrupt-video-inspector",
-    message="%(prog)s %(version)s",
-)
-@click.option(
-    "-v",
-    "--verbose",
-    count=True,
-    help="Increase verbosity (can be used multiple times: -v, -vv)",
-)
-@click.option(
-    "--config",
-    type=click.Path(exists=True, path_type=Path),
-    help="Path to configuration file",
-)
-@click.pass_context
-def cli(ctx: click.Context, verbose: int | None) -> None:
-    """Corrupt Video Inspector - Detect and manage corrupted video files.
-
-    A comprehensive tool for scanning video directories, detecting corruption
-    using FFmpeg, and optionally syncing healthy files to Trakt.tv.
-
-    Examples:
-        corrupt-video-inspector scan /path/to/videos
-        corrupt-video-inspector scan /movies --mode deep --recursive
-        corrupt-video-inspector scan /tv-shows --trakt-sync
-    """
-    # Setup logging first
-    setup_logging(verbose or 0)
-
-    # Load configuration
-    try:
-        app_config = load_config()
-        ctx.ensure_object(dict)
-        ctx.obj["config"] = app_config
-        ctx.obj["verbose"] = verbose
-    except ConfigurationError as e:
-        logging.exception("Configuration error")
-        raise click.Abort() from e
-
-    # If no command specified, show help
-    if ctx.invoked_subcommand is None:
-        click.echo(ctx.get_help())
-
-
-# Register commands
-cli.add_command(scan)
 
 
 def handle_keyboard_interrupt() -> NoReturn:
