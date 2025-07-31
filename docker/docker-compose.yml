@@ -1,14 +1,16 @@
 services:
-  video:
+  scan:
     image: cvi:${APP_VERSION:-1.0.0}
     build:
-      context: ..  # Build from project root to access src/ directory
-      dockerfile: docker/Dockerfile  # Specify Dockerfile location
+      context: ..
+      dockerfile: docker/Dockerfile
       args:
         APP_VERSION: "${APP_VERSION:-1.0.0}"
         APP_TITLE: "corrupt-video-inspector"
         APP_DESCRIPTION: "A Docker-based tool to detect and report corrupt video files using FFmpeg"
-    container_name: video
+    container_name: scan
+    command:
+     - scan
     volumes:
       - type: bind
         source: ${PWD}/config.yaml
@@ -21,7 +23,26 @@ services:
       - TRAKT_CLIENT_ID=test_client_id
       - PYTHONUNBUFFERED=1
     secrets:
-      # Docker secrets for sensitive configuration
+      - trakt_client_id
+      - trakt_client_secret
+
+  report:
+    image: cvi:${APP_VERSION:-1.0.0}
+    container_name: report
+    command:
+     - report
+    volumes:
+      - type: bind
+        source: ${PWD}/config.yaml
+        target: /app/config.yaml
+        read_only: true
+      - video_data:/app/videos:ro
+      - output:/app/output
+      - logs:/app/logs
+    environment:
+      - TRAKT_CLIENT_ID=test_client_id
+      - PYTHONUNBUFFERED=1
+    secrets:
       - trakt_client_id
       - trakt_client_secret
 
@@ -33,7 +54,6 @@ secrets:
     file: ./secrets/trakt_client_secret.txt
 
 volumes:
-  # Production volumes - paths relative to project root (since context is ..)
   video_data:
     driver: local
     driver_opts:
