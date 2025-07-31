@@ -1,7 +1,10 @@
 
+
+.DEFAULT_GOAL := help
 .PHONY: help install install-dev format lint type check test test-integration test-cov clean build \
 	docker-build docker-run docker-dev-build docker-dev-run docker-prod docker-dev \
 	pre-commit-install pre-commit-run docker-scan docker-report docker-all
+
 
 help:             ## Show this help message and list all targets.
 	@echo "Usage: make <target>"
@@ -9,7 +12,6 @@ help:             ## Show this help message and list all targets.
 	@echo "Targets:"
 	@fgrep "##" Makefile | fgrep -v fgrep
 
-...existing code...
 # Installation
 install:          ## Install the package
 	pip install -e .
