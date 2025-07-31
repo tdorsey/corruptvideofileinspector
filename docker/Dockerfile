@@ -78,8 +78,8 @@ ENV PYTHONPATH=/app
 
 WORKDIR /app
 
-ENTRYPOINT ["dumb-init", "--", "python3", "-m", "src"]
-CMD ["--help"]
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["python3", "-m", "src", "--help"]
 
 LABEL org.opencontainers.image.title=${APP_TITLE}
 LABEL org.opencontainers.image.version=${APP_VERSION}
