@@ -89,7 +89,7 @@ def global_options(f):
     help="Path to configuration file",
 )
 @click.pass_context
-def cli(ctx, verbose: int | None) -> None:
+def cli(ctx, verbose: int | None = None, config: Path | None = None) -> None:
     """Corrupt Video Inspector - Detect and manage corrupted video files.
 
     A comprehensive tool for scanning video directories, detecting corruption
@@ -101,11 +101,11 @@ def cli(ctx, verbose: int | None) -> None:
         corrupt-video-inspector scan /tv-shows --trakt-sync
     """
     # Setup logging first
-    setup_logging(verbose or 0)
+    setup_logging(verbose or 0 if verbose is not None else 0)
 
     # Load configuration
     try:
-        app_config = load_config()
+        app_config = load_config(config_path=config) if config else load_config()
         ctx.ensure_object(dict)
         ctx.obj["config"] = app_config
         ctx.obj["verbose"] = verbose
