@@ -9,8 +9,7 @@ services:
         APP_TITLE: "corrupt-video-inspector"
         APP_DESCRIPTION: "A Docker-based tool to detect and report corrupt video files using FFmpeg"
     container_name: scan
-    command:
-     - scan
+    command: ["scan", "--directory", "/app/videos"]
     volumes:
       - type: bind
         source: ${PWD}/config.yaml
@@ -29,8 +28,7 @@ services:
   report:
     image: cvi:${APP_VERSION:-1.0.0}
     container_name: report
-    command:
-     - report
+    command: ["report", "--scan-file", "/app/output/results.json"]
     volumes:
       - type: bind
         source: ${PWD}/config.yaml

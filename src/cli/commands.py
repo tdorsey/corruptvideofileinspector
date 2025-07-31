@@ -120,7 +120,13 @@ def cli(ctx, verbose: int | None = None, config: Path | None = None) -> None:
 
 @cli.command()
 @global_options
-@click.argument("directory", type=PathType(exists=True, file_okay=False))
+@click.option(
+    "--directory",
+    "-d",
+    required=True,
+    type=PathType(exists=True, file_okay=False),
+    help="Directory to scan for video files.",
+)
 @click.option(
     "--mode",
     "-m",
@@ -441,7 +447,13 @@ def test_ffmpeg(config):
 
 @cli.command()
 @global_options
-@click.argument("scan_file", type=PathType(exists=True))
+@click.option(
+    "--scan-file",
+    "-s",
+    required=True,
+    type=PathType(exists=True),
+    help="Path to scan results file (JSON)",
+)
 @click.option("--output", "-o", type=PathType(), help="Output file for the report")
 @click.option(
     "--format",
