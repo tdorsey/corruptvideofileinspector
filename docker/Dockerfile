@@ -78,8 +78,10 @@ ENV PYTHONPATH=/app
 
 WORKDIR /app
 
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["python3", "-m", "src", "--help"]
+
+# Entrypoint runs the CLI root, so docker-compose command can be just the subcommand and args
+ENTRYPOINT ["dumb-init", "--", "python3", "-m", "src"]
+CMD ["--help"]
 
 LABEL org.opencontainers.image.title=${APP_TITLE}
 LABEL org.opencontainers.image.version=${APP_VERSION}
@@ -112,8 +114,10 @@ ENV PYTHONPATH=/app
 
 WORKDIR /app
 
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["python3", "-m", "src", "--help"]
+
+# Entrypoint runs the CLI root, so docker-compose command can be just the subcommand and args
+ENTRYPOINT ["dumb-init", "--", "python3", "-m", "src"]
+CMD ["--help"]
 
 LABEL org.opencontainers.image.title=${APP_TITLE}
 LABEL org.opencontainers.image.version=${APP_VERSION}
