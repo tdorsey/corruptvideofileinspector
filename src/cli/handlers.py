@@ -51,6 +51,7 @@ class ScanHandler(BaseHandler):
         directory: Path,
         scan_mode: ScanMode,
         recursive: bool = True,
+        resume: bool = True,
         output_file: Optional[Path] = None,
         output_format: str = "json",
         pretty_print: bool = True,
@@ -62,6 +63,7 @@ class ScanHandler(BaseHandler):
             directory: Directory to scan
             scan_mode: Type of scan to perform
             recursive: Whether to scan subdirectories
+            resume: Whether to resume from previous scan state
             output_file: Optional output file path
             output_format: Output format (json, yaml, csv)
             pretty_print: Whether to pretty-print output
@@ -71,13 +73,14 @@ class ScanHandler(BaseHandler):
             if self.config.logging.level != "QUIET":
                 self._show_scan_info(directory, scan_mode, recursive)
 
-            # Check if directory has video files
+            # Check if directory has video files (only print message once)
             video_files = self.scanner.get_video_files(directory, recursive=recursive)
             if not video_files:
-                click.echo("No video files found to scan.")
+                msg = "No video files found to scan."
                 if self.config.scan.extensions:
                     ext_list = ", ".join(self.config.scan.extensions)
-                    click.echo(f"Searched for extensions: {ext_list}")
+                    msg += f"\nSearched for extensions: {ext_list}"
+                click.echo(msg)
                 return
 
             click.echo(f"Found {len(video_files)} video files to scan.")
@@ -87,6 +90,7 @@ class ScanHandler(BaseHandler):
                 directory=directory,
                 scan_mode=scan_mode,
                 recursive=recursive,
+                resume=resume,
                 progress_callback=(
                     self._progress_callback if self.config.logging.level != "QUIET" else None
                 ),

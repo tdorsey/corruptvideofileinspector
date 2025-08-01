@@ -5,6 +5,7 @@ CLI command definitions using Click framework.
 import json
 import logging
 import sys
+from enum import Enum
 from pathlib import Path
 
 import click  # type: ignore
@@ -51,22 +52,11 @@ def global_options(f):
         type=PathType(exists=True),
         help="Path to configuration file (JSON or YAML)",
     )(f)
-    f = click.option(
+    return click.option(
         "--verbose",
         "-v",
         is_flag=True,
         help="Enable verbose output",
-    )(f)
-    f = click.option(
-        "--quiet",
-        "-q",
-        is_flag=True,
-        help="Suppress all output except errors",
-    )(f)
-    return click.option(
-        "--profile",
-        type=click.Choice(["default", "development", "production"]),
-        help="Configuration profile to use",
     )(f)
 
 
@@ -89,7 +79,11 @@ def global_options(f):
     help="Path to configuration file",
 )
 @click.pass_context
-def cli(ctx, verbose: int | None = None, config: Path | None = None) -> None:
+def cli(
+    ctx: click.Context,
+    verbose: int | None = None,
+    config: Path | None = None,
+) -> None:
     """Corrupt Video Inspector - Detect and manage corrupted video files.
 
     A comprehensive tool for scanning video directories, detecting corruption
@@ -130,8 +124,8 @@ def cli(ctx, verbose: int | None = None, config: Path | None = None) -> None:
 @click.option(
     "--mode",
     "-m",
-    type=ScanModeChoice(),
-    default=ScanMode.HYBRID,
+    type=click.Choice([e.value for e in ScanMode], case_sensitive=False),
+    default="hybrid",
     help="Scan mode: quick (1min timeout), deep (full scan), hybrid (quick then deep for suspicious)",
     show_default=True,
 )
@@ -177,10 +171,12 @@ def scan(
     max_workers,
     recursive,
     extensions,
+    resume,
     output,
     output_format,
     pretty,
     config,
+    verbose,
 ):
     # If no arguments are provided, show the help for the scan subcommand
     if ctx.args == [] and directory is None:
@@ -222,12 +218,16 @@ def scan(
                 f".{ext}" if not ext.startswith(".") else ext for ext in extensions
             ]
 
+        # Convert mode string to ScanMode enum
+        scan_mode = ScanMode(mode.lower())
+
         # Create and run scan handler
         handler = ScanHandler(app_config)
         handler.run_scan(
             directory=directory,
-            scan_mode=mode,
+            scan_mode=scan_mode,
             recursive=recursive,
+            resume=resume,
             output_file=output,
             output_format=output_format,
             pretty_print=pretty,
@@ -268,6 +268,7 @@ def list_files(
     output,
     output_format,
     config,
+    verbose,
 ):
     # If no arguments are provided, show the help for the list-files subcommand
     if ctx.args == [] and directory is None:
@@ -362,6 +363,7 @@ def sync(
     output,
     filter_corrupt,
     config,
+    verbose,
 ):
     # If no arguments are provided, show the help for the trakt sync subcommand
     if ctx.args == [] and scan_file is None:
@@ -418,7 +420,7 @@ def sync(
 @cli.command()
 @global_options
 @click.pass_context
-def test_ffmpeg(ctx, config):
+def test_ffmpeg(ctx, config, verbose):
     # If no arguments are provided, show the help for the test-ffmpeg subcommand
     if ctx.args == []:
         click.echo(ctx.get_help())
@@ -498,6 +500,8 @@ def report(
     scan_file,
     output,
     include_healthy,
+    config,
+    verbose,
 ):
     # If no arguments are provided, show the help for the report subcommand
     if ctx.args == [] and scan_file is None:

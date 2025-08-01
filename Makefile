@@ -1,3 +1,30 @@
+## Build the development Docker image with source code mapping
+dev-build:
+	docker compose -f docker/docker-compose.dev.yml build
+
+## Start the development container with code mapping (detached)
+dev-up:
+	docker compose -f docker/docker-compose.dev.yml up --remove-orphans
+
+## Stop the development container
+dev-down:
+	docker compose -f docker/docker-compose.dev.yml down
+
+## Open a shell in the development container
+dev-shell:
+	docker compose -f docker/docker-compose.dev.yml run --rm app bash
+APP_VERSION ?= 0.1.0
+# Build Docker image
+docker-build:  ## Build the Docker image for corrupt-video-inspector
+	docker build -f docker/Dockerfile -t cvi:$(APP_VERSION) --build-arg APP_VERSION=$(APP_VERSION) --build-arg APP_TITLE="corrupt-video-inspector" --build-arg APP_DESCRIPTION="A Docker-based tool to detect and report corrupt video files using FFmpeg" .
+
+# Generate docker/.env with required variables
+docker-env:  ## Generate docker/.env with required volume paths
+	@mkdir -p docker
+	echo "CVI_VIDEO_DIR=$(PWD)/videos" > docker/.env
+	echo "CVI_OUTPUT_DIR=$(PWD)/output" >> docker/.env
+	echo "CVI_LOG_DIR=$(PWD)/logs" >> docker/.env
+
 
 
 .DEFAULT_GOAL := help
@@ -67,8 +94,8 @@ build: clean      ## Build the package
 	python -m build
 
 # Docker Compose (compose file inside docker/ folder)
-docker-scan:      ## Run scan service via Docker Compose
-	docker compose -f docker/docker-compose.yml up --build scan
+docker-scan: docker-env ## Run scan service via Docker Compose
+	docker compose --env-file docker/.env -f docker/docker-compose.yml up scan
 
 docker-report:    ## Run report service via Docker Compose
 	docker compose -f docker/docker-compose.yml up --build report

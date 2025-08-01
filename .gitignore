@@ -92,3 +92,4 @@ config.yaml
 # Docker secrets (never commit actual secrets)
 secrets/*
 docker/secrets/*
+videos/

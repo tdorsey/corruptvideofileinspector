@@ -1,10 +1,13 @@
 """Core video scanning service with support for different scan modes."""
 
+
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterator
 
 from src.config import load_config
@@ -25,7 +28,21 @@ logger = logging.getLogger(__name__)
 
 
 class VideoScanner:
-    """Service for locating video files and tracking scan progress."""
+
+    def _get_resume_path(self, directory: Path) -> Path:
+        """Return the path to the resume (WAL) file for a scan directory."""
+        return directory / ".scan_resume.json"
+
+    def _save_resume_state(self, resume_path: Path, processed_files: set[str]) -> None:
+        with resume_path.open("w", encoding="utf-8") as f:
+            json.dump({"processed_files": list(processed_files)}, f)
+
+    def _load_resume_state(self, resume_path: Path) -> set[str]:
+        if not resume_path.exists():
+            return set()
+        with resume_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        return set(data.get("processed_files", []))
 
     def __init__(self, config: AppConfig | None = None) -> None:
         """Initialize the video scanner.
@@ -181,6 +198,7 @@ class VideoScanner:
         directory: Path,
         scan_mode: ScanMode,
         recursive: bool = True,
+        resume: bool = True,
         progress_callback: Callable[[ScanProgress], None] | None = None,
     ) -> ScanSummary:
         """Scan a directory for corrupt video files.
@@ -189,6 +207,7 @@ class VideoScanner:
             directory: Directory to scan
             scan_mode: Type of scan to perform
             recursive: Whether to scan subdirectories
+            resume: Whether to resume from previous scan state
             progress_callback: Optional callback for progress updates
 
         Returns:
@@ -215,6 +234,15 @@ class VideoScanner:
 
         logger.info("Found %d video files to scan", len(video_files))
 
+        resume_path = self._get_resume_path(directory)
+        processed_files: set[str] = set()
+        was_resumed = False
+        if resume and resume_path.exists():
+            processed_files = self._load_resume_state(resume_path)
+            if processed_files:
+                logger.info(f"Resuming scan, skipping {len(processed_files)} files.")
+                was_resumed = True
+
         # Create progress tracker
         progress = ScanProgress(
             total_files=len(video_files),
@@ -223,26 +251,36 @@ class VideoScanner:
             scan_mode=scan_mode.value,
         )
 
-        # For now, we'll create a basic scanner that doesn't actually scan
-        # This is just a placeholder to get the structure working
         start_time = time.time()
+        try:
+            for video_file in video_files:
+                if self._shutdown_requested:
+                    break
 
-        # Simulate scanning (placeholder)
-        for i, video_file in enumerate(video_files):
-            if self._shutdown_requested:
-                break
+                video_file_str = str(video_file.path)
+                if resume and video_file_str in processed_files:
+                    continue
 
-            progress.processed_count = i + 1
-            progress.current_file = str(video_file.path)
+                progress.processed_count += 1
+                progress.current_file = video_file_str
 
-            if progress_callback:
-                progress_callback(progress)
+                if progress_callback:
+                    progress_callback(progress)
 
-            # TODO: Implement actual scanning logic using FFmpegClient
-            # For now, just mark all files as healthy
-            time.sleep(0.01)  # Simulate processing time
+                # TODO: Implement actual scanning logic using FFmpegClient
+                # For now, just mark all files as healthy
+                time.sleep(0.01)  # Simulate processing time
 
-        scan_time = time.time() - start_time
+                processed_files.add(video_file_str)
+                self._save_resume_state(resume_path, processed_files)
+        finally:
+            scan_time = time.time() - start_time
+            # Remove resume file if scan completed or was interrupted
+            if resume_path.exists():
+                try:
+                    resume_path.unlink()
+                except Exception as e:
+                    logger.warning(f"Failed to remove resume file: {e}")
 
         # Create summary
         summary = ScanSummary(
@@ -254,6 +292,8 @@ class VideoScanner:
             scan_mode=scan_mode,
             scan_time=scan_time,
         )
+        # Attach resume info if available
+        summary.was_resumed = was_resumed  # type: ignore[attr-defined]
 
         logger.info(
             "Scan completed: %d files, %d corrupt, %.2fs",
