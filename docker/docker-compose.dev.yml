@@ -1,0 +1,39 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    image: corrupt-video-inspector-dev
+    container_name: cvi-dev
+    volumes:
+      - ../src:/app/src
+      - ../tests:/app/tests
+      - ../pyproject.toml:/app/pyproject.toml
+      - ../poetry.lock:/app/poetry.lock
+      - ../config.yaml:/app/config.yaml
+      - video_data:/app/videos:ro
+      - output:/app/output
+      - logs:/app/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+    tty: true
+    secrets:
+      - trakt_client_id
+      - trakt_client_secret
+volumes:
+  video_data:
+      name: docker_video_data
+      external: true
+  output:
+    name: docker_output
+    external: true
+  logs:
+    name: docker_logs
+    external: true
+
+secrets:
+  trakt_client_id:
+    file: ./secrets/trakt_client_id.txt
+  trakt_client_secret:
+    file: ./secrets/trakt_client_secret.txt
