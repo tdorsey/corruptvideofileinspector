@@ -255,6 +255,23 @@ isort src tests
 mypy src
 ```
 
+### Versioning
+
+This project uses Poetry dynamic versioning based on Git tags:
+
+```bash
+# Check current version
+python -c "from src.version import __version__; print(__version__)"
+
+# Create a new release
+git tag v1.1.0
+git push origin v1.1.0
+
+# Version automatically becomes 1.1.0 when built
+```
+
+See [docs/VERSIONING.md](docs/VERSIONING.md) for detailed information about the versioning system.
+
 ### Project Structure
 
 ```
