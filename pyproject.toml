@@ -22,7 +22,7 @@ dynamic = ["version"]
 description = "A Docker-based tool to detect and report corrupt video files using FFmpeg"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.8"
+requires-python = ">=3.8,<4.0"
 authors = [
     {name = "tdorsey", email = "tdorsey@users.noreply.github.com"},
 ]
