@@ -1,5 +1,4 @@
 import logging
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,7 +7,6 @@ from unittest.mock import patch
 import pytest
 import typer
 
-
 from cli_handler import (
     check_system_requirements,
     list_video_files,
@@ -16,10 +14,6 @@ from cli_handler import (
     setup_logging,
     validate_arguments,
 )
-
-from src.utils import count_all_video_files, format_file_size, get_video_extensions
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 class TestSetupLogging(unittest.TestCase):

@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import ClassVar, Optional
+from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ScanMode(str, Enum):
@@ -22,8 +22,7 @@ class ScanOutputModel(BaseModel):
     deep_scans_needed: Optional[int] = Field(None, description="Files requiring deep scan")
     deep_scans_completed: Optional[int] = Field(None, description="Deep scans completed")
 
-    class Config:
-        use_enum_values = True
-        json_encoders: ClassVar = {
-            ScanMode: lambda v: v.value,
-        }
+    model_config = ConfigDict(
+        use_enum_values=True,
+        json_encoders={ScanMode: lambda v: v.value},
+    )
