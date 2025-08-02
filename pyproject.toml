@@ -230,7 +230,7 @@ no-implicit-optional = "^1.4"
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
-style = "semver"
+style = "pep440"
 pattern = "default-unprefixed"
 format-jinja = """
 {%- if distance == 0 -%}
