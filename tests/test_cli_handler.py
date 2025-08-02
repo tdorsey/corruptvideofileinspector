@@ -1,5 +1,4 @@
 import logging
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,8 +15,6 @@ from cli_handler import (
     validate_arguments,
 )
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 
 class TestSetupLogging(unittest.TestCase):
     """Test setup_logging function"""
@@ -30,19 +27,6 @@ class TestSetupLogging(unittest.TestCase):
         mock_basic_config.assert_called_once()
         args, kwargs = mock_basic_config.call_args
         assert kwargs["level"] == logging.INFO
-
-
-class TestValidateDirectory(unittest.TestCase):
-    """Test validate_directory function"""
-
-    def setUp(self):
-        """Set up test fixtures"""
-        self.temp_dir = tempfile.mkdtemp()
-        self.temp_file = str(Path(self.temp_dir) / "test.txt")
-        Path(self.temp_file).write_text("test")
-
-    def tearDown(self):
-        """Clean up test fixtures"""
 
 
 class TestValidateArguments(unittest.TestCase):
@@ -120,12 +104,14 @@ class TestListVideoFiles(unittest.TestCase):
     @patch("typer.echo")
     def test_list_video_files_found(self, mock_echo, mock_get_files):
         """Test listing video files when files are found"""
+        from pathlib import Path
+
         from video_inspector import VideoFile
 
         # Mock video files
         video_files = [
-            VideoFile(str(self.temp_path / "video1.mp4")),
-            VideoFile(str(self.temp_path / "video2.avi")),
+            VideoFile(path=Path(self.temp_path) / "video1.mp4"),
+            VideoFile(path=Path(self.temp_path) / "video2.avi"),
         ]
         mock_get_files.return_value = video_files
 

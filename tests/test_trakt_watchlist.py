@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from trakt_watchlist import FilenameParser, MediaItem, process_scan_file
+from src.core.watchlist import FilenameParser, MediaItem, process_scan_file
 
 
 class TestFilenameParser(unittest.TestCase):
@@ -195,21 +195,81 @@ class TestSearchResultsHandling(unittest.TestCase):
         """Test that single result searches work like before"""
         # This is a unit test for the method signature changes
         # We can't test the actual API calls without mocking
-        from trakt_watchlist import TraktAPI
+        from src.core.watchlist import TraktAPI
 
-        # Test that the method exists and has correct signature
-        api = TraktAPI("fake_token")
-
-        # These should not raise TypeErrors due to signature changes
-        assert hasattr(api, "search_movie")
-        assert hasattr(api, "search_show")
+        # Test that the methods exist and have correct signature
+        # (without actually instantiating the API to avoid trakt module issues)
+        assert hasattr(TraktAPI, "search_movie")
+        assert hasattr(TraktAPI, "search_show")
+        assert hasattr(TraktAPI, "add_movie_to_watchlist")
+        assert hasattr(TraktAPI, "add_show_to_watchlist")
 
     def test_interactive_select_item_import(self):
         """Test that interactive_select_item function is available"""
-        from trakt_watchlist import interactive_select_item
+        from src.core.watchlist import TraktAPI
 
-        # Function should exist
-        assert callable(interactive_select_item)
+        # Function should exist as a static method
+        assert hasattr(TraktAPI, "interactive_select_item")
+        assert callable(TraktAPI.interactive_select_item)
+
+
+class TestTraktSyncModels(unittest.TestCase):
+    """Test the new Pydantic models for sync results"""
+
+    def test_sync_result_item_creation(self):
+        """Test creating a SyncResultItem"""
+        from src.core.models.watchlist import SyncResultItem
+
+        result = SyncResultItem(
+            title="Test Movie",
+            year=2023,
+            type="movie",
+            status="added",
+            trakt_id=123,
+            filename="/path/to/test.mp4",
+        )
+
+        assert result.title == "Test Movie"
+        assert result.year == 2023
+        assert result.type == "movie"
+        assert result.status == "added"
+        assert result.trakt_id == 123
+        assert result.filename == "/path/to/test.mp4"
+
+    def test_trakt_sync_summary_creation(self):
+        """Test creating a TraktSyncSummary"""
+        from src.core.models.watchlist import SyncResultItem, TraktSyncSummary
+
+        summary = TraktSyncSummary(
+            total=5,
+            movies_added=3,
+            shows_added=1,
+            failed=1,
+            results=[
+                SyncResultItem(title="Movie 1", type="movie", status="added", filename="movie1.mp4")
+            ],
+        )
+
+        assert summary.total == 5
+        assert summary.movies_added == 3
+        assert summary.shows_added == 1
+        assert summary.failed == 1
+        assert summary.success_count == 4
+        assert summary.success_rate == 80.0
+        assert len(summary.results) == 1
+
+    def test_trakt_sync_summary_properties(self):
+        """Test TraktSyncSummary computed properties"""
+        from src.core.models.watchlist import TraktSyncSummary
+
+        # Test with zero total
+        summary = TraktSyncSummary(total=0, movies_added=0, shows_added=0, failed=0)
+        assert summary.success_rate == 0.0
+
+        # Test with normal values
+        summary = TraktSyncSummary(total=10, movies_added=6, shows_added=2, failed=2)
+        assert summary.success_count == 8
+        assert summary.success_rate == 80.0
 
 
 if __name__ == "__main__":

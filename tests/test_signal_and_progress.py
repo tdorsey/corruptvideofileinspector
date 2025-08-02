@@ -9,7 +9,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-import video_inspector
+from src.core import inspector as video_inspector
 
 
 class TestSignalHandling(unittest.TestCase):

@@ -5,7 +5,7 @@ Video corruption detection logic for analyzing FFmpeg output.
 import logging
 import re
 from dataclasses import dataclass
-from typing import List, Pattern
+from typing import List, Optional, Pattern
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class CorruptionAnalysis:
     needs_deep_scan: bool = False
     error_message: str = ""
     confidence: float = 0.0  # 0.0 to 1.0
-    detected_issues: List[str] = None
+    detected_issues: Optional[List[str]] = None
 
     def __post_init__(self):
         if self.detected_issues is None:
@@ -26,6 +26,22 @@ class CorruptionAnalysis:
 
 
 class CorruptionDetector:
+    def _find_pattern_matches(self, patterns: List[Pattern], text: str) -> List[str]:
+        """Find all pattern matches in text."""
+        matches = []
+        for pattern in patterns:
+            match = pattern.search(text)
+            if match:
+                matches.append(match.group(0))
+        return matches
+
+    def _format_corruption_message(self, matches: List[str], is_quick_scan: bool) -> str:
+        """Format corruption message for detected patterns."""
+        base = f"Corruption detected: {', '.join(matches[:3])}"
+        if is_quick_scan:
+            return base + " - needs deep scan"
+        return base
+
     """Analyzes FFmpeg output to detect video corruption."""
 
     def __init__(self):
@@ -126,12 +142,12 @@ class CorruptionDetector:
             return analysis
 
         # Check for definitive corruption patterns
-        corruption_matches = self._find_pattern_matches(
-            self.corruption_patterns, stderr
-        )
+        corruption_matches = self._find_pattern_matches(self.corruption_patterns, stderr)
         if corruption_matches:
             analysis.is_corrupt = True
             analysis.confidence = 0.9
+            if analysis.detected_issues is None:
+                analysis.detected_issues = []
             analysis.detected_issues.extend(corruption_matches)
             analysis.error_message = self._format_corruption_message(
                 corruption_matches, is_quick_scan
@@ -140,24 +156,20 @@ class CorruptionDetector:
             return analysis
 
         # Check for warning patterns
-        warning_matches = self._find_pattern_matches(
-            self.warning_patterns, stderr
-        )
+        warning_matches = self._find_pattern_matches(self.warning_patterns, stderr)
         if warning_matches:
+            if analysis.detected_issues is None:
+                analysis.detected_issues = []
             analysis.detected_issues.extend(warning_matches)
 
             if is_quick_scan:
                 analysis.needs_deep_scan = True
                 analysis.confidence = 0.6
-                analysis.error_message = (
-                    "Potential issues detected - needs deep scan"
-                )
+                analysis.error_message = "Potential issues detected - needs deep scan"
             else:
                 # In deep scan, warnings might indicate minor issues
                 analysis.confidence = 0.3
-                analysis.error_message = (
-                    f"Warnings detected: {', '.join(warning_matches[:3])}"
-                )
+                analysis.error_message = f"Warnings detected: " f"{', '.join(warning_matches[:3])}"
 
             logger.debug(f"Warning patterns detected: {warning_matches}")
 
@@ -166,89 +178,37 @@ class CorruptionDetector:
             if is_quick_scan and not analysis.is_corrupt:
                 analysis.needs_deep_scan = True
                 analysis.confidence = max(analysis.confidence, 0.5)
-                analysis.error_message = (
-                    f"FFmpeg error (code {exit_code}) - needs verification"
-                )
+                analysis.error_message = f"FFmpeg error (code {exit_code}) - " f"needs verification"
             else:
                 # In deep scan, critical exit codes are more concerning
                 analysis.is_corrupt = True
                 analysis.confidence = 0.7
-                analysis.error_message = (
-                    f"Critical FFmpeg error (code {exit_code})"
-                )
+                analysis.error_message = f"Critical FFmpeg error (code {exit_code})"
 
+            if analysis.detected_issues is None:
+                analysis.detected_issues = []
             analysis.detected_issues.append(f"exit_code_{exit_code}")
 
         # Break long lines
-        if sum(
-            1 for keyword in self.suspicious_keywords
-            if keyword in stderr_lower
-        ) > 5:
+        if sum(1 for keyword in self.suspicious_keywords if keyword in stderr_lower) > 5:
             if is_quick_scan and not analysis.is_corrupt:
                 analysis.needs_deep_scan = True
                 analysis.confidence = max(analysis.confidence, 0.4)
                 if not analysis.error_message:
-                    analysis.error_message = (
-                        "Multiple suspicious indicators - needs deep scan"
-                    )
+                    analysis.error_message = "Multiple suspicious indicators - " "needs deep scan"
             else:
                 analysis.confidence = max(analysis.confidence, 0.3)
 
-        if (
-            exit_code != 0
-            and not analysis.is_corrupt
-            and not analysis.needs_deep_scan
-        ):
+        if exit_code != 0 and not analysis.is_corrupt and not analysis.needs_deep_scan:
             if is_quick_scan:
                 analysis.needs_deep_scan = True
                 analysis.confidence = 0.3
                 analysis.error_message = (
-                    f"FFmpeg error (code {exit_code}) - investigation needed"
+                    f"FFmpeg error (code {exit_code}) - " f"investigation needed"
                 )
             else:
-                analysis.error_message = (
-                    f"FFmpeg error (code {exit_code}): {stderr[:200]}"
-                )
+                analysis.error_message = f"FFmpeg error (code {exit_code}): " f"{stderr[:200]}"
 
-        def _find_pattern_matches(
-            self, patterns: List[Pattern], text: str
-        ) -> List[str]:
-            """Find all pattern matches in text."""
-            matches = []
-            for pattern in patterns:
-                match = pattern.search(text)
-                if match:
-                    matches.append(match.group(0))
-            return matches
-
-        analysis.error_message = (
-            "Processing timeout - may indicate corruption"
-        )
-
-        analysis.error_message = (
-            "Deep scan timeout - likely severe corruption"
-        )
-
-        analysis.error_message = (
-            "MP4 container corruption: missing moov atom"
-        )
-
-        streaming_indicators = [
-            "connection", "network", "http", "ssl", "certificate"
-        ]
-        if any(
-            indicator in stderr_lower for indicator in streaming_indicators
-        ):
-            pass
-
-        # Fix long lines
-        """
-        Determine if scan should be retried with different FFmpeg settings.
-        """
-
-        logger.info(
-            "Signal handlers registered for SIGUSR1, SIGUSR2, SIGTERM, "
-            "and SIGINT"
-        )
-
+        # Remove unreachable/duplicate error message assignments
+        # Remove unused inner function and comments
         return analysis

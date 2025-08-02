@@ -1,68 +1,106 @@
-.PHONY: help install install-dev format lint type check test test-integration clean build docker-build docker-run docker-dev docker-dev-build docker-dev-run pre-commit-install pre-commit-run
+# Project setup: install dependencies, create env files, and secrets
+setup: install docker-env secrets-init  ## Set up project: install deps, env, secrets
+	@echo "Project setup complete. Edit docker/secrets/* and docker/.env as needed."
+# Generate required secret files for project setup
+secrets-init:  ## Create required secret files in docker/secrets
+	@mkdir -p docker/secrets
+	touch docker/secrets/trakt_client_id.txt
+	touch docker/secrets/trakt_client_secret.txt
+	@echo "Created docker/secrets/trakt_client_id.txt and trakt_client_secret.txt (edit with your secrets)"
+# Build and run the development Docker container using Dockerfile.dev and docker-compose.dev.yml
+docker-dev:  ## Build and run the development container with dev Dockerfile and Compose
+	docker compose -f docker/docker-compose.dev.yml up --build
+## Build the development Docker image with source code mapping
+dev-build:
+	docker compose -f docker/docker-compose.dev.yml build
 
-help:
-	@echo "Available targets:"
-	@echo "  install             Install the package"
-	@echo "  install-dev         Install package with development dependencies"
-	@echo "  pre-commit-install  Install pre-commit hooks"
-	@echo "  pre-commit-run      Run pre-commit on all files"
-	@echo "  format              Format code with black"
-	@echo "  lint                Lint code with ruff"
-	@echo "  type                Type check with mypy"
-	@echo "  check               Run all checks (format, lint, type)"
-	@echo "  test                Run all tests with pytest"
-	@echo "  test-integration    Run integration tests only"
-	@echo "  test-cov            Run tests with coverage report"
-	@echo "  clean               Clean build artifacts"
-	@echo "  build               Build the package"
-	@echo "  docker-build        Build Docker image"
-	@echo "  docker-run          Run Docker container"
-	@echo "  docker-dev-build    Build development Docker image"
-	@echo "  docker-dev-run      Run development Docker container"
-	@echo "  docker-dev          Start development environment with Docker Compose"
+## Start the development container with code mapping (detached)
+dev-up:
+	docker compose -f docker/docker-compose.dev.yml up --remove-orphans
+
+## Stop the development container
+dev-down:
+	docker compose -f docker/docker-compose.dev.yml down
+
+## Open a shell in the development container
+dev-shell:
+	docker compose -f docker/docker-compose.dev.yml run --rm app bash
+docker-build-clean: ## Build without cache
+
+# Docker image version
+APP_VERSION ?= 0.1.0
+
+
+# Build Docker image with both version and latest tags
+docker-build:  ## Build the Docker image for corrupt-video-inspector
+	docker build -f docker/Dockerfile -t cvi:$(APP_VERSION) -t cvi:latest --build-arg APP_VERSION=$(APP_VERSION) --build-arg APP_TITLE="corrupt-video-inspector" --build-arg APP_DESCRIPTION="A Docker-based tool to detect and report corrupt video files using FFmpeg" .
+
+# Build Docker image without cache, with both version and latest tags
+build-clean: ## Build the Docker image without cache (extends docker-build)
+	docker build -f docker/Dockerfile -t cvi:$(APP_VERSION) -t cvi:latest --build-arg APP_VERSION=$(APP_VERSION) --build-arg APP_TITLE="corrupt-video-inspector" --build-arg APP_DESCRIPTION="A Docker-based tool to detect and report corrupt video files using FFmpeg" --no-cache .
+# Generate docker/.env with required variables
+docker-env:  ## Generate docker/.env with required volume paths
+	@mkdir -p docker
+	echo "CVI_VIDEO_DIR=$(PWD)/videos" > docker/.env
+	echo "CVI_OUTPUT_DIR=$(PWD)/output" >> docker/.env
+	echo "CVI_LOG_DIR=$(PWD)/logs" >> docker/.env
+
+
+
+.DEFAULT_GOAL := help
+.PHONY: help install install-dev format lint type check test test-integration test-cov clean build \
+	docker-build docker-run docker-dev-build docker-dev-run docker-prod docker-dev \
+	pre-commit-install pre-commit-run docker-scan docker-report docker-all
+
+
+help:             ## Show this help message and list all targets.
+	@echo "Usage: make <target>"
+	@echo ""
+	@echo "Targets:"
+	@fgrep "##" Makefile | fgrep -v fgrep
 
 # Installation
-install:
+install:          ## Install the package
 	pip install -e .
 
-install-dev:
+install-dev:      ## Install package with development dependencies
 	pip install -e ".[dev]"
 	@echo "Now run 'make pre-commit-install' to set up pre-commit hooks"
 
 # Pre-commit hooks
-pre-commit-install:
+pre-commit-install: ## Install pre-commit hooks
 	pre-commit install
 	@echo "Pre-commit hooks installed successfully!"
 
-pre-commit-run:
+pre-commit-run:   ## Run pre-commit on all files
 	pre-commit run --all-files
 
 # Code quality
-format:
+format:           ## Format code with black and lint
 	black .
+	$(MAKE) lint
+
+lint:             ## Lint code with ruff
 	ruff check --fix --unsafe-fixes .
 
-lint:
-	ruff check --fix .
-
-type:
+type:             ## Type check with mypy
 	mypy .
 
-check: format lint type
+check: format type ## Run all checks (format, lint, type)
 	@echo "All checks passed!"
 
 # Testing
-test:
+test:             ## Run all tests with pytest
 	pytest tests/ -v
 
-test-integration:
+test-integration: ## Run integration tests only
 	pytest tests/ -v -k "integration"
 
-test-cov:
+test-cov:         ## Run tests with coverage report
 	pytest tests/ --cov=. --cov-report=html --cov-report=term-missing
 
 # Build and clean
-clean:
+clean:            ## Clean build artifacts
 	rm -rf build/
 	rm -rf dist/
 	rm -rf *.egg-info/
@@ -72,42 +110,15 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
-build: clean
+build: clean      ## Build the package
 	python -m build
 
-# Docker
-docker-build:
-	docker build -t corrupt-video-inspector .
+# Docker Compose (compose file inside docker/ folder)
+docker-scan: docker-env ## Run scan service via Docker Compose
+	docker compose --env-file docker/.env -f docker/docker-compose.yml up scan
 
-docker-run:
-	@echo "Usage: make docker-run VIDEO_DIR=/path/to/videos"
-	@if [ -z "$(VIDEO_DIR)" ]; then \
-		echo "Please specify VIDEO_DIR, e.g., make docker-run VIDEO_DIR=/path/to/videos"; \
-		exit 1; \
-	fi
-	docker run --rm \
-		-v "$(VIDEO_DIR):/app/videos:ro" \
-		-v "$(PWD)/output:/app/output" \
-		corrupt-video-inspector \
-		python3 cli_handler.py --verbose --json /app/videos
+docker-report:    ## Run report service via Docker Compose
+	docker compose -f docker/docker-compose.yml up --build report
 
-# Development Docker
-docker-dev-build:
-	docker build -f Dockerfile.dev -t corrupt-video-inspector-dev .
-
-docker-dev-run:
-	docker run --rm -it \
-		-v "$(PWD):/app" \
-		-v dev_videos:/app/videos \
-		-v dev_output:/app/output \
-		corrupt-video-inspector-dev \
-		/bin/bash
-
-docker-dev:
-	@echo "Starting development environment..."
-	docker compose --profile dev up -d dev
-	@echo "Development container started. Connect with:"
-	@echo "  docker exec -it video-dev /bin/bash"
-	@echo "Or use VS Code with the Dev Containers extension."
-	@echo ""
-	@echo "To stop: docker compose --profile dev down"
+docker-all:       ## Run scan and report in sequence via Docker Compose
+	docker compose -f docker/docker-compose.yml up --build scan report

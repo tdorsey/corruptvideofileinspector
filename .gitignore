@@ -83,13 +83,13 @@ output/
 test-larger/
 *.json
 
-# Configuration files (keep default config.yaml but ignore local overrides)
+# Configuration files
 config.local.yaml
 config.local.yml
 *.local.yaml
 *.local.yml
-
+config.yaml
 # Docker secrets (never commit actual secrets)
-secrets/*.txt
-secrets/*.key
-secrets/*.pem
+secrets/*
+docker/secrets/*
+videos/

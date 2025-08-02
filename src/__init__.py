@@ -8,74 +8,91 @@ This package provides functionality to:
 - Sync healthy files to Trakt.tv watchlist
 - Generate detailed reports
 
-Main Components:
-- Scanner: Core video scanning engine
-- FFmpeg Integration: Video analysis and corruption detection
-- Trakt Integration: Watchlist synchronization
-- CLI: Command-line interface
-- Configuration: Flexible configuration management
+Example:
+    >>> from corrupt_video_inspector import VideoScanner, ScanMode
+    >>> from pathlib import Path
+    >>>
+    >>> scanner = VideoScanner()
+    >>> results = scanner.scan_directory(
+    ...     Path("/path/to/videos"),
+    ...     scan_mode=ScanMode.HYBRID
+    ... )
+    >>> print(f"Found {results.corrupt_files} corrupt files")
 """
 
-__version__ = "2.0.0"
-__author__ = "Your Name"
-__email__ = "your.email@example.com"
+from __future__ import annotations
 
-# Public API exports
-from .core.models import (
-    ScanMode,
-    ScanResult,
-    ScanSummary,
-    VideoFile,
+import sys
+
+from src.version import __version__
+
+from .cli.main import main
+from .core.errors.errors import (
+    ConfigurationError,
+    FFmpegError,
+    ScanError,
+    StorageError,
+    TraktError,
+)
+from .core.models.inspection import (
+    CorruptVideoInspectorError,
     MediaInfo,
     MediaType,
+    VideoFile,
+)
+from .core.models.scanning import (
+    ScanMode,
+    ScanProgress,
+    ScanResult,
+    ScanSummary,
 )
 from .core.scanner import VideoScanner
-from .config import load_config
-from .config import AppConfig
-
-# Exception exports
-from .core.models import (
-    CorruptVideoInspectorError,
-    ConfigurationError,
-    ScanError,
-    FFmpegError,
-    TraktError,
-    StorageError,
-)
-
-# Version info
-__version_info__ = tuple(map(int, __version__.split(".")))
 
 # Package metadata
 __title__ = "corrupt-video-inspector"
-__description__ = (
-    "A comprehensive tool for detecting corrupted video files and syncing to Trakt.tv"
-)
-__url__ = "https://github.com/yourusername/corrupt-video-inspector"
+__description__ = "A comprehensive tool for detecting corrupted video files and syncing to Trakt.tv"
+__url__ = "https://github.com/tdorsey/corruptvideoinspector"
+__author__ = "tdorsey"
+__author_email__ = "contact@example.com"
 __license__ = "MIT"
-__copyright__ = "Copyright 2024"
+__copyright__ = "Copyright 2024 tdorsey"
 
-# Public API
+# Explicit public API
 __all__ = [
-    # Core classes
-    "VideoScanner",
     "AppConfig",
-    "load_config",
-    # Models
-    "ScanMode",
-    "ScanResult",
-    "ScanSummary",
-    "VideoFile",
-    "MediaInfo",
-    "MediaType",
+    "ConfigurationError",
     # Exceptions
     "CorruptVideoInspectorError",
-    "ConfigurationError",
-    "ScanError",
     "FFmpegError",
-    "TraktError",
+    "MediaInfo",
+    "MediaType",
+    "ScanError",
+    # Enums
+    "ScanMode",
+    "ScanProgress",
+    "ScanResult",
+    "ScanSummary",
     "StorageError",
+    "TraktError",
+    # Data models
+    "VideoFile",
+    # Core functionality
+    "VideoScanner",
     # Version info
     "__version__",
     "__version_info__",
+    "load_config",
 ]
+
+
+def get_version() -> str:
+    """Get the current version of the package.
+
+    Returns:
+        The version string.
+    """
+    return __version__
+
+
+if __name__ == "__main__":
+    sys.exit(main())

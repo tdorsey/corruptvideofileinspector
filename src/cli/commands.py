@@ -2,17 +2,22 @@
 CLI command definitions using Click framework.
 """
 
+import csv
+import io
 import json
 import logging
 import sys
 from pathlib import Path
 
-import click
+import click  # type: ignore
 
-from ..config.loader import load_config
-from ..core.models import ScanMode
-from ..utils.logging import setup_logging
-from .handlers import ScanHandler, TraktHandler, ListHandler
+from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
+from src.cli.utils import setup_logging
+from src.config import load_config
+from src.core.models.inspection import VideoFile
+from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
+from src.core.reporter import ReportService
+from src.ffmpeg.ffmpeg_client import FFmpegClient
 
 logger = logging.getLogger(__name__)
 
@@ -34,60 +39,80 @@ class PathType(click.Path):
 
     def convert(self, value, param, ctx):
         path_str = super().convert(value, param, ctx)
+        if isinstance(path_str, bytes):
+            path_str = path_str.decode("utf-8")
         return Path(path_str)
 
 
 # Global options that can be shared across commands
 def global_options(f):
     """Decorator to add global options to commands."""
-    f = click.option(
+    return click.option(
         "--config",
         "-c",
         type=PathType(exists=True),
         help="Path to configuration file (JSON or YAML)",
     )(f)
-    f = click.option(
-        "--verbose",
-        "-v",
-        is_flag=True,
-        help="Enable verbose output",
-    )(f)
-    f = click.option(
-        "--quiet",
-        "-q",
-        is_flag=True,
-        help="Suppress all output except errors",
-    )(f)
-    f = click.option(
-        "--profile",
-        type=click.Choice(["default", "development", "production"]),
-        help="Configuration profile to use",
-    )(f)
-    return f
 
 
-@click.group()
-@click.version_option(version="2.0.0", prog_name="corrupt-video-inspector")
+# Main CLI group moved from main.py
+@click.group(invoke_without_command=True)
+@click.version_option(
+    version=None,  # Will be set from src.version.__version__ in main.py
+    prog_name="corrupt-video-inspector",
+    message="%(prog)s %(version)s",
+)
+@click.option(
+    "--config",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to configuration file",
+)
 @click.pass_context
-def cli(ctx):
-    """
-    Corrupt Video Inspector - Scan directories for corrupt video files and sync to Trakt.
+def cli(
+    ctx: click.Context,
+    config: Path | None = None,
+) -> None:
+    """Corrupt Video Inspector - Detect and manage corrupted video files.
 
-    A comprehensive tool for detecting corrupted video files using FFmpeg and
-    optionally syncing healthy files to your Trakt.tv watchlist.
+    A comprehensive tool for scanning video directories, detecting corruption
+    using FFmpeg, and optionally syncing healthy files to Trakt.tv.
+
+    Examples:
+        corrupt-video-inspector scan /path/to/videos
+        corrupt-video-inspector scan /movies --mode deep --recursive
+        corrupt-video-inspector scan /tv-shows --trakt-sync
     """
-    # Ensure context object exists
-    ctx.ensure_object(dict)
+    # Setup logging first
+    setup_logging(0)
+
+    # Load configuration
+    try:
+        app_config = load_config(config_path=config) if config else load_config()
+        ctx.ensure_object(dict)
+        ctx.obj["config"] = app_config
+    except Exception as e:
+        logging.exception("Configuration error")
+        raise click.Abort() from e
+
+    # If no command specified, show help
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 @cli.command()
 @global_options
-@click.argument("directory", type=PathType(exists=True, file_okay=False))
+@click.option(
+    "--directory",
+    "-d",
+    required=True,
+    type=PathType(exists=True, file_okay=False),
+    help="Directory to scan for video files.",
+)
 @click.option(
     "--mode",
     "-m",
-    type=ScanModeChoice(),
-    default=ScanMode.HYBRID,
+    type=click.Choice([e.value for e in ScanMode], case_sensitive=False),
+    default="hybrid",
     help="Scan mode: quick (1min timeout), deep (full scan), hybrid (quick then deep for suspicious)",
     show_default=True,
 )
@@ -124,9 +149,7 @@ def cli(ctx):
     help="Output format",
     show_default=True,
 )
-@click.option(
-    "--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True
-)
+@click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
 @click.pass_context
 def scan(
     ctx,
@@ -140,10 +163,11 @@ def scan(
     output_format,
     pretty,
     config,
-    verbose,
-    quiet,
-    profile,
 ):
+    # If no arguments are provided, show the help for the scan subcommand
+    if ctx.args == [] and directory is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Scan a directory for corrupt video files.
 
@@ -170,30 +194,35 @@ def scan(
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config(config_path=config)
 
         # Override config with CLI options
         if max_workers:
-            app_config.scanner.max_workers = max_workers
+            app_config.scan.max_workers = max_workers
         if extensions:
-            app_config.scanner.extensions = [
+            app_config.scan.extensions = [
                 f".{ext}" if not ext.startswith(".") else ext for ext in extensions
             ]
 
-        # Setup logging
-        setup_logging(app_config.logging, verbose, quiet)
+        # Convert mode string to ScanMode enum
+        scan_mode = ScanMode(mode.lower())
 
         # Create and run scan handler
         handler = ScanHandler(app_config)
-        handler.run_scan(
+        summary = handler.run_scan(
             directory=directory,
-            scan_mode=mode,
+            scan_mode=scan_mode,
             recursive=recursive,
             resume=resume,
             output_file=output,
             output_format=output_format,
             pretty_print=pretty,
         )
+        if summary is not None:
+            click.echo("\nScan Summary:")
+            click.echo(json.dumps(summary.model_dump(), indent=2 if pretty else None))
+        else:
+            click.echo("No video files found to scan.")
 
     except Exception as e:
         logger.exception("Scan command failed")
@@ -230,10 +259,11 @@ def list_files(
     output,
     output_format,
     config,
-    verbose,
-    quiet,
-    profile,
 ):
+    # If no arguments are provided, show the help for the list-files subcommand
+    if ctx.args == [] and directory is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     List all video files in a directory without scanning.
 
@@ -252,25 +282,41 @@ def list_files(
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config(config_path=config)
 
         # Override config with CLI options
         if extensions:
-            app_config.scanner.extensions = [
+            app_config.scan.extensions = [
                 f".{ext}" if not ext.startswith(".") else ext for ext in extensions
             ]
 
         # Setup logging
-        setup_logging(app_config.logging, verbose, quiet)
 
         # Create and run list handler
         handler = ListHandler(app_config)
-        handler.list_files(
+        video_files = handler.list_files(
             directory=directory,
             recursive=recursive,
             output_file=output,
             output_format=output_format,
         )
+        if not video_files:
+            click.echo("No video files found in the specified directory.")
+        elif output_format == "json":
+            click.echo(json.dumps([vf.model_dump() for vf in video_files], indent=2))
+        elif output_format == "csv":
+            output_str = io.StringIO()
+            writer = csv.DictWriter(output_str, fieldnames=video_files[0].model_dump().keys())
+            writer.writeheader()
+            for vf in video_files:
+                writer.writerow(vf.model_dump())
+            click.echo(output_str.getvalue())
+        else:
+            click.echo(f"\nFound {len(video_files)} video files:")
+            for i, vf in enumerate(video_files, 1):
+                rel_path = vf.path.relative_to(directory)
+                size_mb = vf.size / (1024 * 1024) if vf.size > 0 else 0
+                click.echo(f"  {i:3d}: {rel_path} ({size_mb:.1f} MB)")
 
     except Exception as e:
         logger.exception("List command failed")
@@ -281,22 +327,22 @@ def list_files(
 @cli.group()
 @click.pass_context
 def trakt(ctx):
+    # If no arguments are provided, show the help for the trakt group
+    if ctx.args == []:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Trakt.tv integration commands.
 
     Sync scan results to your Trakt.tv watchlist by parsing filenames
     and matching them against Trakt's database.
     """
-    pass
 
 
 @trakt.command()
-@global_options
 @click.argument("scan_file", type=PathType(exists=True))
 @click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
-@click.option(
-    "--client-id", help="Trakt.tv API client ID (can be set via config or env var)"
-)
+@click.option("--client-id", help="Trakt.tv API client ID (can be set via config or env var)")
 @click.option(
     "--interactive/--no-interactive",
     "-i",
@@ -304,9 +350,7 @@ def trakt(ctx):
     help="Enable interactive selection of search results",
     show_default=True,
 )
-@click.option(
-    "--dry-run", is_flag=True, help="Show what would be synced without actually syncing"
-)
+@click.option("--dry-run", is_flag=True, help="Show what would be synced without actually syncing")
 @click.option("--output", "-o", type=PathType(), help="Save sync results to file")
 @click.option(
     "--filter-corrupt/--include-corrupt",
@@ -314,6 +358,7 @@ def trakt(ctx):
     help="Filter out corrupt files from sync (default: filter out)",
     show_default=True,
 )
+@global_options
 @click.pass_context
 def sync(
     ctx,
@@ -321,14 +366,13 @@ def sync(
     token,
     client_id,
     interactive,
-    dry_run,
     output,
-    filter_corrupt,
     config,
-    verbose,
-    quiet,
-    profile,
 ):
+    # If no arguments are provided, show the help for the trakt sync subcommand
+    if ctx.args == [] and scan_file is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Sync scan results to Trakt.tv watchlist.
 
@@ -352,25 +396,24 @@ def sync(
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config(config_path=config)
 
         # Override config with CLI options
         if client_id:
             app_config.trakt.client_id = client_id
 
         # Setup logging
-        setup_logging(app_config.logging, verbose, quiet)
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        handler.sync_to_watchlist(
+        result = handler.sync_to_watchlist(
             scan_file=scan_file,
             access_token=token,
             interactive=interactive,
-            dry_run=dry_run,
-            filter_corrupt=filter_corrupt,
             output_file=output,
         )
+        click.echo("\nTrakt Sync Result:")
+        click.echo(json.dumps(result.model_dump(), indent=2))
 
     except Exception as e:
         logger.exception("Trakt sync command failed")
@@ -380,56 +423,12 @@ def sync(
 
 @cli.command()
 @global_options
-@click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["yaml", "json"], case_sensitive=False),
-    default="yaml",
-    help="Configuration file format",
-    show_default=True,
-)
-@click.option(
-    "--output",
-    "-o",
-    type=PathType(),
-    default="config.yml",
-    help="Output file path",
-    show_default=True,
-)
 @click.pass_context
-def init_config(ctx, output_format, output, config, verbose, quiet, profile):
-    """
-    Generate an example configuration file.
-
-    Creates a configuration file with all available options and their
-    default values, which you can then customize for your needs.
-
-    Examples:
-
-    \b
-    # Generate YAML config
-    corrupt-video-inspector init-config
-
-    \b
-    # Generate JSON config
-    corrupt-video-inspector init-config --format json --output config.json
-    """
-    try:
-        from ..config.loader import create_example_config
-
-        create_example_config(output, output_format)
-        click.echo(f"Configuration file created: {output}")
-
-    except Exception as e:
-        logger.exception("Config init command failed")
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(1)
-
-
-@cli.command()
-@global_options
-@click.pass_context
-def test_ffmpeg(ctx, config, verbose, quiet, profile):
+def test_ffmpeg(ctx, config):
+    # If no arguments are provided, show the help for the test-ffmpeg subcommand
+    if ctx.args == []:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Test FFmpeg installation and show diagnostic information.
 
@@ -438,14 +437,11 @@ def test_ffmpeg(ctx, config, verbose, quiet, profile):
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config(config_path=config)
 
         # Setup logging
-        setup_logging(app_config.logging, verbose, quiet)
-
+        setup_logging(0)
         # Test FFmpeg
-        from ..integrations.ffmpeg.client import FFmpegClient
-
         ffmpeg = FFmpegClient(app_config.ffmpeg)
         test_results = ffmpeg.test_installation()
 
@@ -453,20 +449,14 @@ def test_ffmpeg(ctx, config, verbose, quiet, profile):
         click.echo("=" * 40)
 
         click.echo(f"FFmpeg Path: {test_results['ffmpeg_path'] or 'Not found'}")
-        click.echo(
-            f"FFmpeg Available: {'✓' if test_results['ffmpeg_available'] else '✗'}"
-        )
-        click.echo(
-            f"FFprobe Available: {'✓' if test_results['ffprobe_available'] else '✗'}"
-        )
+        click.echo(f"FFmpeg Available: {'✓' if test_results['ffmpeg_available'] else '✗'}")
+        click.echo(f"FFprobe Available: {'✓' if test_results['ffprobe_available'] else '✗'}")
 
         if test_results["version_info"]:
             click.echo(f"Version: {test_results['version_info']}")
 
         if test_results["supported_formats"]:
-            click.echo(
-                f"Supported Formats: {', '.join(test_results['supported_formats'])}"
-            )
+            click.echo(f"Supported Formats: {', '.join(test_results['supported_formats'])}")
 
         if not test_results["ffmpeg_available"]:
             click.echo("\nFFmpeg is not available. Please install it:")
@@ -486,7 +476,13 @@ def test_ffmpeg(ctx, config, verbose, quiet, profile):
 
 @cli.command()
 @global_options
-@click.argument("scan_file", type=PathType(exists=True))
+@click.option(
+    "--scan-file",
+    "-s",
+    required=True,
+    type=PathType(exists=True),
+    help="Path to scan results file (JSON)",
+)
 @click.option("--output", "-o", type=PathType(), help="Output file for the report")
 @click.option(
     "--format",
@@ -507,13 +503,12 @@ def report(
     ctx,
     scan_file,
     output,
-    output_format,
     include_healthy,
-    config,
-    verbose,
-    quiet,
-    profile,
 ):
+    # If no arguments are provided, show the help for the report subcommand
+    if ctx.args == [] and scan_file is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Generate a detailed report from scan results.
 
@@ -526,25 +521,47 @@ def report(
     # Generate HTML report
     corrupt-video-inspector report results.json
 
-    \b
-    # Generate PDF report with only corrupt files
-    corrupt-video-inspector report results.json --format pdf --corrupt-only
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config()
 
         # Setup logging
-        setup_logging(app_config.logging, verbose, quiet)
-
+        setup_logging(0)
         # Generate report
-        from ..utils.reporting import ReportGenerator
+        # Load scan results from file
+        with scan_file.open("r", encoding="utf-8") as f:
+            scan_data = json.load(f)
 
-        generator = ReportGenerator(app_config)
-        report_path = generator.generate_report(
-            scan_file=scan_file,
-            output_file=output,
-            format=output_format,
+        # Extract summary from scan data
+        summary = ScanSummary(
+            directory=Path(scan_data.get("directory", "/")),
+            total_files=scan_data.get("total_files", 0),
+            processed_files=scan_data.get("processed_files", 0),
+            corrupt_files=scan_data.get("corrupt_files", 0),
+            healthy_files=scan_data.get("healthy_files", 0),
+            scan_mode=ScanMode(scan_data.get("scan_mode", "quick")),
+            scan_time=scan_data.get("scan_time", 0.0),
+        )
+
+        # Extract results
+        results = []
+        for result_data in scan_data.get("results", []):
+            video_file = VideoFile(path=Path(result_data.get("filename", "")))
+            result = ScanResult(
+                video_file=video_file,
+                needs_deep_scan=result_data.get("needs_deep_scan", False),
+                error_message=result_data.get("error_message", ""),
+            )
+            results.append(result)
+
+        # Use ReportService to generate report
+        service = ReportService(app_config)
+        report_path = service.generate_report(
+            summary=summary,
+            results=results,
+            output_path=output,
+            format="text",
             include_healthy=include_healthy,
         )
 
@@ -558,11 +575,13 @@ def report(
 
 @cli.command()
 @global_options
-@click.option(
-    "--all-configs", is_flag=True, help="Show all configuration sources and values"
-)
+@click.option("--all-configs", is_flag=True, help="Show all configuration sources and values")
 @click.pass_context
-def show_config(ctx, all_configs, config, verbose, quiet, profile):
+def show_config(ctx, all_configs, config):
+    # If no arguments are provided, show the help for the show-config subcommand
+    if ctx.args == []:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     """
     Show current configuration settings.
 
@@ -571,21 +590,19 @@ def show_config(ctx, all_configs, config, verbose, quiet, profile):
     """
     try:
         # Load configuration
-        app_config = load_config(config_file=config, profile=profile)
+        app_config = load_config(config_path=config)
 
         if all_configs:
             # Show detailed configuration
-            config_dict = app_config.to_dict()
+            config_dict = app_config.model_dump()
             click.echo(json.dumps(config_dict, indent=2))
         else:
             # Show key settings
             click.echo("Current Configuration")
             click.echo("=" * 30)
-            click.echo(f"Profile: {app_config.profile}")
-            click.echo(f"Debug Mode: {app_config.debug}")
             click.echo(f"Log Level: {app_config.logging.level}")
-            click.echo(f"Max Workers: {app_config.scanner.max_workers}")
-            click.echo(f"Default Scan Mode: {app_config.scanner.default_mode}")
+            click.echo(f"Max Workers: {app_config.scan.max_workers}")
+            click.echo(f"Default Scan Mode: {app_config.scan.mode}")
             click.echo(f"FFmpeg Command: {app_config.ffmpeg.command or 'auto-detect'}")
             click.echo(f"Quick Timeout: {app_config.ffmpeg.quick_timeout}s")
             click.echo(f"Deep Timeout: {app_config.ffmpeg.deep_timeout}s")

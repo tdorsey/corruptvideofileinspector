@@ -13,7 +13,7 @@ from unittest.mock import patch
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import video_inspector
+from src.core import inspector as video_inspector
 
 
 def test_setup_signal_handlers():

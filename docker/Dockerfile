@@ -1,5 +1,7 @@
-# Use Ubuntu as base image for better ffmpeg support
-FROM ubuntu:22.04
+# =============================================================================
+# Base stage - Common dependencies and setup
+# =============================================================================
+FROM python:3.11-slim-bookworm AS base
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -7,42 +9,116 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set working directory
 WORKDIR /app
 
-# Update system and install dependencies including dumb-init for proper signal handling
+# Install system dependencies including dumb-init and ffmpeg
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
     ffmpeg \
     dumb-init \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    ca-certificates \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user for security
-RUN useradd -m -u 1000 inspector && \
-    chown -R inspector:inspector /app
+# =============================================================================
+# Build arguments
+# =============================================================================
+ARG APP_VERSION=1.0.0
+ARG APP_TITLE="corrupt-video-inspector"
+ARG APP_DESCRIPTION="A Docker-based tool to detect and report corrupt video files using FFmpeg"
+ARG APP_USER=inspector
 
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt .
-
-# Install Python dependencies (with SSL workaround for CI environments)
-RUN pip3 install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --no-cache-dir -r requirements.txt
-
-# Copy the application files
-COPY . .
-
-# Ensure all files are owned by the inspector user
-RUN chown -R inspector:inspector /app
-
-# Switch to non-root user
-USER inspector
-
-# Create directories for input and output
-RUN mkdir -p /app/videos /app/output
+# Create non-root user
+RUN useradd -m -u 1000 ${APP_USER} && chown -R ${APP_USER}:${APP_USER} /app
 
 # Set Python path
 ENV PYTHONPATH=/app
+ENV PATH="/home/${APP_USER}/.local/bin:$PATH"
 
-# Use dumb-init as PID 1 for proper signal handling and process reaping
-ENTRYPOINT ["dumb-init", "--"]
+# =============================================================================
+# Dependencies stage - Install Python dependencies
+# =============================================================================
+FROM base AS dependencies
 
-# Default command
-CMD ["python3", "cli_handler.py", "--help"]
+
+WORKDIR /app
+
+
+# Install Poetry
+RUN pip install poetry
+
+# Configure Poetry to not use virtualenvs
+RUN poetry config virtualenvs.create false
+
+# Copy project files needed for dependency resolution
+COPY pyproject.toml poetry.lock* README.md ./
+COPY src/ ./src/
+
+# Install dependencies and project with Poetry
+RUN poetry install --no-interaction --no-ansi
+
+# =============================================================================
+# Development stage - For development with mounted source code
+# =============================================================================
+FROM base AS development
+
+# =============================================================================
+# Build arguments
+# =============================================================================
+ARG APP_VERSION=1.0.0
+ARG APP_TITLE="corrupt-video-inspector"
+ARG APP_DESCRIPTION="A Docker-based tool to detect and report corrupt video files using FFmpeg"
+ARG APP_USER=inspector
+
+USER ${APP_USER}
+
+# Create directories for volumes
+RUN mkdir -p /app/videos /app/output /app/logs
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
+
+WORKDIR /app
+
+
+# Entrypoint runs the CLI root, so docker-compose command can be just the subcommand and args
+ENTRYPOINT ["dumb-init", "--", "python3", "-m", "src"]
+CMD ["--help"]
+
+LABEL org.opencontainers.image.title=${APP_TITLE}
+LABEL org.opencontainers.image.version=${APP_VERSION}
+LABEL org.opencontainers.image.description=${APP_DESCRIPTION}
+
+# =============================================================================
+# Production stage - Complete production image
+# =============================================================================
+FROM base AS production
+
+# Copy installed packages from dependencies stage
+COPY --from=dependencies /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=dependencies /usr/local/bin /usr/local/bin
+
+# Copy pyproject.toml for runtime config discovery
+COPY --chown=inspector:inspector pyproject.toml ./
+
+# Copy application source code (if needed)
+COPY --chown=inspector:inspector src/ /app/src/
+
+# Create directories and set ownership as root
+RUN mkdir -p /app/videos /app/output /app/logs && chown -R inspector:inspector /app
+
+# Switch to non-root user after directories are created and owned
+USER ${APP_USER}
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
+
+WORKDIR /app
+
+
+# Entrypoint runs the CLI root, so docker-compose command can be just the subcommand and args
+ENTRYPOINT ["dumb-init", "--", "python3", "-m", "src"]
+CMD ["--help"]
+
+LABEL org.opencontainers.image.title=${APP_TITLE}
+LABEL org.opencontainers.image.version=${APP_VERSION}
+LABEL org.opencontainers.image.description=${APP_DESCRIPTION}

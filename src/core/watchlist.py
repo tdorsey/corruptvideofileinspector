@@ -9,91 +9,30 @@ by processing video inspection JSON files and using filename parsing.
 import json
 import logging
 import re
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import ClassVar, List, Optional
 
-from trakt import Trakt
+import trakt  # type: ignore
 
-from .config import load_config
-from .trakt_watchlist import interactive_select_item
+from src.core.models.watchlist import MediaItem, SyncResultItem, TraktItem, TraktSyncSummary
 
 # Configure module logger
 logger = logging.getLogger(__name__)
 
-# Load configuration
-config = load_config()
-
-# Configure Trakt client using config values
-Trakt.configuration.defaults.client(
-    id=config.secrets.trakt_client_id, secret=config.secrets.trakt_client_secret
-)
+# Do not load config or initialize Trakt client at import time.
+# Instead, require config to be passed explicitly to any function/class that needs it.
 
 
-@dataclass
-class MediaItem:
-    """Represents a parsed media item (movie or TV show)"""
-
-    title: str
-    year: Optional[int] = None
-    media_type: str = "movie"  # "movie" or "show"
-    season: Optional[int] = None
-    episode: Optional[int] = None
-    original_filename: str = ""
-
-    def __post_init__(self) -> None:
-        """Validate and clean up media item data"""
-        # Clean up title (remove dots, underscores, etc.)
-        self.title = re.sub(r"[._]", " ", self.title).strip()
-        self.title = re.sub(r"\s+", " ", self.title)  # Normalize whitespace
-
-        # Ensure media_type is valid
-        if self.media_type not in ["movie", "show"]:
-            self.media_type = "movie"
-
-        logger.debug(
-            f"MediaItem created: {self.title} ({self.year}) - " f"{self.media_type}"
-        )
-
-
-@dataclass
-class TraktItem:
-    """Represents an item from Trakt API with identifiers"""
-
-    title: str
-    year: Optional[int]
-    media_type: str
-    trakt_id: Optional[int] = None
-    imdb_id: Optional[str] = None
-    tmdb_id: Optional[int] = None
-    tvdb_id: Optional[int] = None
-
-    @classmethod
-    def from_movie_response(cls, data: Dict[str, Any]) -> "TraktItem":
-        """Create TraktItem from Trakt movie API response"""
-        ids = data.get("ids", {})
-        return cls(
-            title=data.get("title", ""),
-            year=data.get("year"),
-            media_type="movie",
-            trakt_id=ids.get("trakt"),
-            imdb_id=ids.get("imdb"),
-            tmdb_id=ids.get("tmdb"),
-        )
-
-    @classmethod
-    def from_show_response(cls, data: Dict[str, Any]) -> "TraktItem":
-        """Create TraktItem from Trakt show API response"""
-        ids = data.get("ids", {})
-        return cls(
-            title=data.get("title", ""),
-            year=data.get("year"),
-            media_type="show",
-            trakt_id=ids.get("trakt"),
-            imdb_id=ids.get("imdb"),
-            tmdb_id=ids.get("tmdb"),
-            tvdb_id=ids.get("tvdb"),
-        )
+def init_trakt_client(config):
+    """
+    Initialize Trakt client using config values.
+    Args:
+        config: AppConfig instance with trakt credentials
+    """
+    try:
+        trakt.init(client_id=config.trakt.client_id, client_secret=config.trakt.client_secret)
+    except Exception:
+        logger.exception("Failed to initialize Trakt client")
 
 
 class TraktAPI:
@@ -111,7 +50,7 @@ class TraktAPI:
         self.client_id = client_id
 
         # Set up Trakt authentication
-        Trakt.configuration.defaults.oauth(token=access_token)
+        trakt.configuration.defaults.oauth(token=access_token)
 
         logger.info("TraktAPI client initialized")
 
@@ -134,7 +73,7 @@ class TraktAPI:
         logger.info(f"Searching for movie: {title} ({year})")
 
         try:
-            results = Trakt["search/movie"].get(query=title, year=year, limit=limit)
+            results = trakt["search/movie"].get(query=title, year=year, limit=limit)
             trakt_items = [
                 TraktItem.from_movie_response(result["movie"])
                 for result in results
@@ -163,7 +102,7 @@ class TraktAPI:
         logger.info(f"Searching for TV show: {title} ({year})")
 
         try:
-            results = Trakt["search/show"].get(query=title, year=year, limit=limit)
+            results = trakt["search/show"].get(query=title, year=year, limit=limit)
             trakt_items = [
                 TraktItem.from_show_response(result["show"])
                 for result in results
@@ -192,7 +131,7 @@ class TraktAPI:
         logger.info(f"Adding movie to watchlist: {trakt_item.title}")
 
         try:
-            response = Trakt["sync/watchlist"].post(
+            response = trakt["sync/watchlist"].post(
                 data={
                     "movies": [
                         {
@@ -209,14 +148,10 @@ class TraktAPI:
             )
 
             if response and response.get("added", {}).get("movies", 0) > 0:
-                logger.info(
-                    f"Successfully added movie to watchlist: {trakt_item.title}"
-                )
+                logger.info(f"Successfully added movie to watchlist: {trakt_item.title}")
                 return True
 
-            logger.warning(
-                f"Movie was not added (may already be in watchlist): {trakt_item.title}"
-            )
+            logger.warning(f"Movie was not added (may already be in watchlist): {trakt_item.title}")
             return True  # Consider this a success
         except Exception:
             logger.exception("Error adding movie to watchlist")
@@ -239,7 +174,7 @@ class TraktAPI:
         logger.info(f"Adding show to watchlist: {trakt_item.title}")
 
         try:
-            response = Trakt["sync/watchlist"].post(
+            response = trakt["sync/watchlist"].post(
                 data={
                     "shows": [
                         {
@@ -260,17 +195,16 @@ class TraktAPI:
                 logger.info(f"Successfully added show to watchlist: {trakt_item.title}")
                 return True
 
-            logger.warning(
-                f"Show was not added (may already be in watchlist): {trakt_item.title}"
-            )
+            logger.warning(f"Show was not added (may already be in watchlist): {trakt_item.title}")
             return True  # Consider this a success
         except Exception:
             logger.exception("Error adding show to watchlist")
             return False
 
+    @staticmethod
     def interactive_select_item(
-        items: List[TraktItem], media_item: MediaItem
-    ) -> Optional[TraktItem]:
+        items: List["TraktItem"], media_item: "MediaItem"
+    ) -> Optional["TraktItem"]:
         """
         Interactively select the correct item from search results
 
@@ -291,9 +225,7 @@ class TraktAPI:
             logger.info(f"Successfully added movie to watchlist: {item.title}")
 
             return item
-        print(
-            f"\nFound {len(items)} matches for '{media_item.title}' ({media_item.year}):"
-        )
+        print(f"\nFound {len(items)} matches for '{media_item.title}' ({media_item.year}):")
         print("  0. Skip (don't add to watchlist)")
 
         for i, item in enumerate(items, 1):
@@ -314,9 +246,7 @@ class TraktAPI:
                     return None
                 if 1 <= choice_num <= len(items):
                     selected_item = items[choice_num - 1]
-                    logger.info(
-                        f"User selected: {selected_item.title} ({selected_item.year})"
-                    )
+                    logger.info(f"User selected: {selected_item.title} ({selected_item.year})")
                     return selected_item
                 print(f"Please enter a number between 0 and {len(items)}.")
 
@@ -397,9 +327,7 @@ class FilenameParser:
                     original_filename=filename,
                 )
 
-                logger.info(
-                    f"Parsed as TV show: {media_item.title} S{season:02d}E{episode:02d}"
-                )
+                logger.info(f"Parsed as TV show: {media_item.title} S{season:02d}E{episode:02d}")
                 return media_item
 
         # Try movie patterns
@@ -430,9 +358,7 @@ class FilenameParser:
                 return media_item
 
         # Fallback: treat as movie with just the filename as title
-        media_item = MediaItem(
-            title=base_name, media_type="movie", original_filename=filename
-        )
+        media_item = MediaItem(title=base_name, media_type="movie", original_filename=filename)
 
         logger.warning(f"Could not parse filename, treating as movie: {base_name}")
         return media_item
@@ -497,7 +423,7 @@ def sync_to_trakt_watchlist(
     client_id: Optional[str] = None,
     verbose: bool = False,
     interactive: bool = False,
-) -> Dict[str, Any]:
+) -> TraktSyncSummary:
     """
     Main function to sync scan results to Trakt watchlist
 
@@ -509,7 +435,7 @@ def sync_to_trakt_watchlist(
         interactive: Enable interactive selection of search results
 
     Returns:
-        Dict[str, Any]: Summary of sync operation with counts and results
+        TraktSyncSummary: Summary of sync operation with counts and results
     """
     logger.info("Starting Trakt watchlist sync")
 
@@ -535,16 +461,16 @@ def sync_to_trakt_watchlist(
         logger.warning("No media items found to sync")
         if verbose:
             print("No media items found to sync")
-        return {"total": 0, "movies_added": 0, "shows_added": 0, "failed": 0}
+        return TraktSyncSummary(total=0, movies_added=0, shows_added=0, failed=0, results=[])
 
     # Sync to watchlist
-    summary: dict[str, Any] = {
-        "total": len(media_items),
-        "movies_added": 0,
-        "shows_added": 0,
-        "failed": 0,
-        "results": [],
-    }
+    summary = TraktSyncSummary(
+        total=len(media_items),
+        movies_added=0,
+        shows_added=0,
+        failed=0,
+        results=[],
+    )
 
     if verbose:
         print(f"Found {len(media_items)} media items to sync")
@@ -575,38 +501,30 @@ def sync_to_trakt_watchlist(
                     )
 
                 # Let user select from results
-                trakt_item = interactive_select_item(search_results, media_item)
+                trakt_item = TraktAPI.interactive_select_item(search_results, media_item)
             else:
                 # Automatic mode: get first result only
                 # (backward compatibility)
                 if media_item.media_type == "movie":
-                    search_results = api.search_movie(
-                        media_item.title, media_item.year, limit=1
-                    )
+                    search_results = api.search_movie(media_item.title, media_item.year, limit=1)
                 else:
-                    search_results = api.search_show(
-                        media_item.title, media_item.year, limit=1
-                    )
+                    search_results = api.search_show(media_item.title, media_item.year, limit=1)
 
                 trakt_item = search_results[0] if search_results else None
 
             if not trakt_item:
                 logger.warning(f"No Trakt match found for: {media_item.title}")
                 if verbose:
-                    print(
-                        "    ❌ Not found on Trakt"
-                        if not interactive
-                        else "    ❌ Skipped"
+                    print("    ❌ Not found on Trakt" if not interactive else "    ❌ Skipped")
+                summary.failed += 1
+                summary.results.append(
+                    SyncResultItem(
+                        title=media_item.title,
+                        year=media_item.year,
+                        type=media_item.media_type,
+                        status=("not_found" if not interactive else "skipped"),
+                        filename=media_item.original_filename,
                     )
-                summary["failed"] += 1
-                summary["results"].append(
-                    {
-                        "title": media_item.title,
-                        "year": media_item.year,
-                        "type": media_item.media_type,
-                        "status": ("not_found" if not interactive else "skipped"),
-                        "filename": media_item.original_filename,
-                    }
                 )
                 continue
 
@@ -618,53 +536,53 @@ def sync_to_trakt_watchlist(
 
             if success:
                 if media_item.media_type == "movie":
-                    summary["movies_added"] += 1
+                    summary.movies_added += 1
                 else:
-                    summary["shows_added"] += 1
+                    summary.shows_added += 1
 
                 if verbose:
                     print("    ✅ Added to watchlist")
 
-                summary["results"].append(
-                    {
-                        "title": trakt_item.title,
-                        "year": trakt_item.year,
-                        "type": trakt_item.media_type,
-                        "status": "added",
-                        "trakt_id": trakt_item.trakt_id,
-                        "filename": media_item.original_filename,
-                    }
+                summary.results.append(
+                    SyncResultItem(
+                        title=trakt_item.title,
+                        year=trakt_item.year,
+                        type=trakt_item.media_type,
+                        status="added",
+                        trakt_id=trakt_item.trakt_id,
+                        filename=media_item.original_filename,
+                    )
                 )
             else:
-                summary["failed"] += 1
+                summary.failed += 1
                 if verbose:
                     print("    ❌ Failed to add")
 
-                summary["results"].append(
-                    {
-                        "title": trakt_item.title,
-                        "year": trakt_item.year,
-                        "type": trakt_item.media_type,
-                        "status": "failed",
-                        "filename": media_item.original_filename,
-                    }
+                summary.results.append(
+                    SyncResultItem(
+                        title=trakt_item.title,
+                        year=trakt_item.year,
+                        type=trakt_item.media_type,
+                        status="failed",
+                        filename=media_item.original_filename,
+                    )
                 )
 
         except Exception as e:
             logger.exception(f"Error processing {media_item.title}")
-            summary["failed"] += 1
+            summary.failed += 1
             if verbose:
                 print(f"    ❌ Error: {e}")
 
-            summary["results"].append(
-                {
-                    "title": media_item.title,
-                    "year": media_item.year,
-                    "type": media_item.media_type,
-                    "status": "error",
-                    "error": str(e),
-                    "filename": media_item.original_filename,
-                }
+            summary.results.append(
+                SyncResultItem(
+                    title=media_item.title,
+                    year=media_item.year,
+                    type=media_item.media_type,
+                    status="error",
+                    error=str(e),
+                    filename=media_item.original_filename,
+                )
             )
 
     # Print summary
@@ -672,19 +590,16 @@ def sync_to_trakt_watchlist(
         print("\n" + "=" * 50)
         print("TRAKT SYNC SUMMARY")
         print("=" * 50)
-        print(f"Total items processed: {summary['total']}")
-        print(f"Movies added: {summary['movies_added']}")
-        print(f"Shows added: {summary['shows_added']}")
-        print(f"Failed/Not found: {summary['failed']}")
-        percent = (
-            (summary["movies_added"] + summary["shows_added"]) / summary["total"] * 100
-        )
-        print("Success rate: " f"{percent:.1f}%")
+        print(f"Total items processed: {summary.total}")
+        print(f"Movies added: {summary.movies_added}")
+        print(f"Shows added: {summary.shows_added}")
+        print(f"Failed/Not found: {summary.failed}")
+        print(f"Success rate: {summary.success_rate:.1f}%")
 
     logger.info(
         "Trakt sync completed: "
-        f"{summary['movies_added']} movies, "
-        f"{summary['shows_added']} shows added"
+        f"{summary.movies_added} movies, "
+        f"{summary.shows_added} shows added"
     )
 
     return summary

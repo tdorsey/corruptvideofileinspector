@@ -24,7 +24,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.8"
 authors = [
-    {name = "tdorsey", email = ""},
+    {name = "tdorsey", email = "tdorsey@users.noreply.github.com"},
 ]
 keywords = ["video", "ffmpeg", "corruption", "inspection", "cli"]
 classifiers = [
@@ -47,8 +47,13 @@ classifiers = [
 
 dependencies = [
     "typer>=0.16.0",
+    "toml",
+    "rich>=12.0.0",
+    "click>=8.0.0",
     "PyYAML>=6.0",
     "requests>=2.28.0",
+    "pydantic>=2.0.0",
+    "trakt>=3.4.0"
 ]
 
 [project.optional-dependencies]
@@ -60,7 +65,8 @@ dev = [
     "pytest-cov>=4.0.0",
     "pre-commit>=3.0.0",
     "types-requests>=2.28.0",
-    "types-PyYAML>=6.0.0"
+    "types-PyYAML>=6.0.0; python_version >= '3.9'",
+    "types-toml>=0.10.0"
 ]
 
 [project.scripts]
@@ -136,7 +142,7 @@ ignore = [
     "TRY300",  # suppress tryceratops warnings for return in try
 ]
 
- [tool.ruff.lint.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "test_*.py" = ["ARG", "PLR2004"]
 "tests/*.py" = [
     "PLC0415", # imports should be top-level (tests often import in funcs)
@@ -153,6 +159,8 @@ known-first-party = ["cli_handler", "video_inspector", "utils"]
 
 # MyPy configuration
 [tool.mypy]
+
+plugins = ['pydantic.mypy']
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
@@ -204,4 +212,13 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
+]
+
+[tool.poetry]
+name = "corrupt-video-inspector"
+version = "1.0.0"
+description = "A Docker-based tool to detect and report corrupt video files using FFmpeg"
+authors = ["tdorsey <tdorsey@users.noreply.github.com>"]
+packages = [
+    { include = "src" }
 ]
