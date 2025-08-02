@@ -113,7 +113,7 @@ def cli(
     "-m",
     type=click.Choice([e.value for e in ScanMode], case_sensitive=False),
     default="hybrid",
-    help="Scan mode: quick (1min timeout), deep (full scan), hybrid (quick then deep for suspicious)",
+    help="Scan mode: quick (1min timeout), deep (full scan), hybrid (quick then deep for suspicious), full (complete scan without timeout)",
     show_default=True,
 )
 @click.option(
@@ -176,12 +176,13 @@ def scan(
     """
     Scan a directory for corrupt video files.
 
-    Uses FFmpeg to analyze video files and detect corruption. Supports three scan modes:
+    Uses FFmpeg to analyze video files and detect corruption. Supports four scan modes:
 
     \b
     - quick: Fast scan with 1-minute timeout per file
     - deep: Full scan with 15-minute timeout per file
     - hybrid: Quick scan first, then deep scan for suspicious files
+    - full: Complete scan of entire video stream without timeout
 
     Examples:
 
@@ -192,6 +193,10 @@ def scan(
     \b
     # Quick scan with custom output
     corrupt-video-inspector scan --mode quick --output results.json /path/to/videos
+
+    \b
+    # Full scan without timeout (for thorough analysis)
+    corrupt-video-inspector scan --mode full /path/to/videos
 
     \b
     # Deep scan with custom extensions
