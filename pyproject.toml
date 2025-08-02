@@ -52,7 +52,7 @@ dependencies = [
     "click>=8.0.0",
     "PyYAML>=6.0",
     "requests>=2.28.0",
-    ,"pydantic>=2.0.0; python_version >= '3.9'"
+    "pydantic>=2.0.0; python_version >= '3.9'",
     "trakt>=3.4.0",
     "importlib_metadata>=1.0.0; python_version < '3.8'",
 ]
@@ -67,7 +67,7 @@ dev = [
     "types-requests>=2.28.0",
     "types-PyYAML>=6.0.0; python_version >= '3.9'",
     "types-toml>=0.10.0",
-    "mypy>=1.0.0"
+    "mypy>=1.0.0",
     "poetry-dynamic-versioning>=1.0.0,<2.0.0",
 ]
 
