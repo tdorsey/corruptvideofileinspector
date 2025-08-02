@@ -1,9 +1,9 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+packages = ["src"]
 exclude = [
     "/.eggs",
     "/.git",
@@ -18,7 +18,7 @@ exclude = [
 
 [project]
 name = "corrupt-video-inspector"
-version = "1.0.0"
+dynamic = ["version"]
 description = "A Docker-based tool to detect and report corrupt video files using FFmpeg"
 readme = "README.md"
 license = "MIT"
@@ -53,7 +53,8 @@ dependencies = [
     "PyYAML>=6.0",
     "requests>=2.28.0",
     "pydantic>=2.0.0",
-    "trakt>=3.4.0"
+    "trakt>=3.4.0",
+    "importlib_metadata>=1.0.0; python_version < '3.8'",
 ]
 
 [project.optional-dependencies]
@@ -66,7 +67,8 @@ dev = [
     "pre-commit>=3.0.0",
     "types-requests>=2.28.0",
     "types-PyYAML>=6.0.0; python_version >= '3.9'",
-    "types-toml>=0.10.0"
+    "types-toml>=0.10.0",
+    "poetry-dynamic-versioning>=1.0.0,<2.0.0",
 ]
 
 [project.scripts]
@@ -216,9 +218,26 @@ exclude_lines = [
 
 [tool.poetry]
 name = "corrupt-video-inspector"
-version = "1.0.0"
+version = "0.0.0"  # placeholder, will be replaced by dynamic versioning
 description = "A Docker-based tool to detect and report corrupt video files using FFmpeg"
 authors = ["tdorsey <tdorsey@users.noreply.github.com>"]
 packages = [
     { include = "src" }
 ]
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "semver"
+pattern = "default-unprefixed"
+format-jinja = """
+{%- if distance == 0 -%}
+{{ serialize_pep440(base, stage, revision) }}
+{%- elif revision is not none -%}
+{{ serialize_pep440(base, stage, revision + 1, dev=distance, metadata=[commit]) }}
+{%- else -%}
+{{ serialize_pep440(bump_version(base), stage, revision, dev=distance, metadata=[commit]) }}
+{%- endif -%}
+"""
+metadata = true
+tagged-metadata = false
