@@ -122,7 +122,7 @@ class MediaInfo(BaseModel):
     @property
     def is_tv_show(self) -> bool:
         """Check if this is a TV show."""
-        return bool(self.media_type == MediaType.TV_SHOW)
+        return self.media_type == MediaType.TV_SHOW
 
     @property
     def is_movie(self) -> bool:
