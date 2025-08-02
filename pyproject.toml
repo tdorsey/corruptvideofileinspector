@@ -222,3 +222,6 @@ authors = ["tdorsey <tdorsey@users.noreply.github.com>"]
 packages = [
     { include = "src" }
 ]
+
+[tool.poetry.group.dev.dependencies]
+no-implicit-optional = "^1.4"
