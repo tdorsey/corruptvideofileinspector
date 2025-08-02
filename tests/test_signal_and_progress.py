@@ -73,7 +73,6 @@ class TestEnhancedWAL(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-#!/usr/bin/env python3
 """
 Tests for new signal handling and progress reporting functionality
 """
