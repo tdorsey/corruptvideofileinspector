@@ -210,7 +210,6 @@ class VideoScanner:
             try:
                 loop = asyncio.get_running_loop()
                 # If already running, create a new loop in a new thread
-                import threading
 
                 result = []
 
@@ -442,9 +441,9 @@ class VideoScanner:
             scan_mode=scan_mode,
             scan_time=time.time() - start_time,
         )
-        summary.was_resumed = was_resumed  # type: ignore[attr-defined]
-        summary.deep_scans_needed = deep_scans_needed  # type: ignore[attr-defined]
-        summary.deep_scans_completed = deep_scans_completed  # type: ignore[attr-defined]
+        summary.was_resumed = was_resumed
+        summary.deep_scans_needed = deep_scans_needed
+        summary.deep_scans_completed = deep_scans_completed
         logger.info(
             "Scan completed: %d files, %d corrupt, %.2fs",
             summary.processed_files,

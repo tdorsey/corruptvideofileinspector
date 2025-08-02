@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tests for new signal handling and progress reporting functionality
+Tests for signal handling and progress reporting functionality
 """
 
 import os
@@ -42,10 +42,6 @@ class TestProgressReporter(unittest.TestCase):
         assert reporter.current_file == "/test/file.mp4"
         assert reporter.processed_count == 25
         assert reporter.corrupt_count == 3
-
-
-class TestEnhancedWAL(unittest.TestCase):
-    """Test enhanced WAL functionality with results file"""
 
 
 class TestGlobalProgressTracking(unittest.TestCase):

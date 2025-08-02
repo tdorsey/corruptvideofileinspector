@@ -31,7 +31,8 @@ class ProcessingConfig(BaseModel):
 class OutputConfig(BaseModel):
     default_json: bool = Field(default=True)
     default_output_dir: Path = Field(...)
-    default_filename: str = Field(default="corruption_scan.json")
+    # Default filename for scan results output
+    default_filename: str = Field(default="scan_results.json")
 
 
 class TraktConfig(BaseModel):
@@ -118,6 +119,16 @@ def load_config(config_path: Optional[Path] = None) -> AppConfig:
     docker_secret = read_docker_secret("trakt_client_secret")
     if docker_secret is not None and "trakt" in config_data:
         config_data["trakt"]["client_secret"] = docker_secret
+
+    # Environment overrides for directories
+    # Allow CVI_OUTPUT_DIR to override output.default_output_dir
+    env_output = os.environ.get("CVI_OUTPUT_DIR")
+    if env_output:
+        config_data.setdefault("output", {})["default_output_dir"] = env_output
+    # Allow CVI_VIDEO_DIR to override scan.default_input_dir
+    env_video = os.environ.get("CVI_VIDEO_DIR")
+    if env_video:
+        config_data.setdefault("scan", {})["default_input_dir"] = env_video
 
     # Validate and create config object using Pydantic
     _CONFIG_SINGLETON = AppConfig.model_validate(config_data)

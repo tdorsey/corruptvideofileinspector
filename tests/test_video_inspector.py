@@ -4,10 +4,10 @@ Unit tests for video_inspector.py module
 
 import os
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Optional
 from unittest.mock import Mock, mock_open, patch
 
 import pytest
@@ -16,14 +16,12 @@ from cli_handler import get_all_video_object_files, get_ffmpeg_command
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import ScanMode
 
-# Stubs for missing functions/classes
-
 
 class VideoInspectionResult:
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, scan_mode: Optional[ScanMode] = None):
         self.filename = filename
         self.file_size = 0
-        self.scan_mode = None
+        self.scan_mode = scan_mode
         self.is_corrupt = False
         self.needs_deep_scan = False
         self.error_message = ""
@@ -32,12 +30,86 @@ class VideoInspectionResult:
 
 
 def inspect_single_video_quick(video_file, ffmpeg_cmd, verbose=False):
-    return VideoInspectionResult(video_file.filename)
+    """Stub function that simulates quick video inspection with subprocess interaction."""
+    import subprocess
+
+    result = VideoInspectionResult(video_file.path.name, ScanMode.QUICK)
+
+    try:
+        # This will be mocked in tests
+        process = subprocess.run(
+            [ffmpeg_cmd, "-v", "error", "-i", str(video_file.path), "-f", "null", "-"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+
+        if process.returncode != 0:
+            stderr = process.stderr.lower()
+            # Check for quick error indicators that suggest corruption
+            quick_error_indicators = [
+                "invalid data found",
+                "header missing",
+                "no video found",
+                "corrupt",
+            ]
+
+            # Check for indicators that need deep scan
+            deep_scan_indicators = [
+                "non-monotonous dts",
+                "non-monotonic timestamps",
+                "frame corruption",
+            ]
+
+            if any(indicator in stderr for indicator in quick_error_indicators):
+                result.is_corrupt = True
+            elif any(indicator in stderr for indicator in deep_scan_indicators):
+                result.needs_deep_scan = True
+            else:
+                result.needs_deep_scan = True  # Default for unknown errors
+
+            result.error_message = process.stderr
+
+    except subprocess.TimeoutExpired:
+        result.needs_deep_scan = True
+        result.error_message = "Quick scan timed out"
+    except Exception as e:
+        result.needs_deep_scan = True
+        result.error_message = f"Quick scan failed: {e}"
+
+    return result
 
 
 def inspect_single_video_deep(video_file, ffmpeg_cmd, verbose=False):
-    result = VideoInspectionResult(video_file.filename)
+    """Stub function that simulates deep video inspection with subprocess interaction."""
+    import subprocess
+
+    result = VideoInspectionResult(video_file.path.name, ScanMode.DEEP)
     result.deep_scan_completed = True
+
+    try:
+        # This will be mocked in tests
+        process = subprocess.run(
+            [ffmpeg_cmd, "-v", "error", "-i", str(video_file.path), "-f", "null", "-"],
+            capture_output=True,
+            text=True,
+            timeout=900,  # 15 minutes for deep scan
+            check=False,
+        )
+
+        if process.returncode != 0:
+            # Deep scan is more thorough, most errors indicate corruption
+            result.is_corrupt = True
+            result.error_message = process.stderr
+
+    except subprocess.TimeoutExpired:
+        result.is_corrupt = True  # Deep scan timeout usually means corruption
+        result.error_message = "Deep scan timed out"
+    except Exception as e:
+        result.is_corrupt = True
+        result.error_message = f"Deep scan failed: {e}"
+
     return result
 
 
@@ -83,9 +155,6 @@ def inspect_video_files_cli(path, scan_mode=None, json_output=False):
             json.dump(results, f)
     # Return results for completeness
     return results
-
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 class TestScanMode(unittest.TestCase):
@@ -136,41 +205,41 @@ class TestGetFfmpegCommand(unittest.TestCase):
 
     """Test get_ffmpeg_command function"""
 
-    @patch("cli_handler.subprocess.run")
-    def test_ffmpeg_found_first_option(self, mock_run):
+    @patch("cli_handler.which")
+    def test_ffmpeg_found_first_option(self, mock_which):
         """Test ffmpeg found with first option"""
-        mock_run.return_value = Mock()
+        mock_which.return_value = "ffmpeg"
         result = get_ffmpeg_command()
         assert result == "ffmpeg"
-        mock_run.assert_called_once()
+        mock_which.assert_called_once_with("ffmpeg")
 
-    @patch("cli_handler.subprocess.run")
-    def test_ffmpeg_found_second_option(self, mock_run):
+    @patch("cli_handler.which")
+    def test_ffmpeg_found_second_option(self, mock_which):
         """Test ffmpeg found with second option"""
 
-        # First call fails, second succeeds
-        mock_run.side_effect = [subprocess.CalledProcessError(1, "ffmpeg"), Mock()]
+        # which() returns the found path
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
         result = get_ffmpeg_command()
         assert result == "/usr/bin/ffmpeg"
 
-    @patch("cli_handler.subprocess.run")
-    def test_ffmpeg_not_found(self, mock_run):
+    @patch("cli_handler.which")
+    def test_ffmpeg_not_found(self, mock_which):
         """Test ffmpeg not found"""
 
-        mock_run.side_effect = subprocess.CalledProcessError(1, "ffmpeg")
+        mock_which.return_value = None
 
         result = get_ffmpeg_command()
         assert result is None
 
-    @patch("cli_handler.subprocess.run")
-    def test_ffmpeg_timeout(self, mock_run):
-        """Test ffmpeg command timeout"""
+    @patch("cli_handler.which")
+    def test_ffmpeg_timeout(self, mock_which):
+        """Test ffmpeg command - this test is now simplified since which() doesn't timeout"""
 
-        mock_run.side_effect = subprocess.TimeoutExpired("ffmpeg", 5)
+        mock_which.return_value = "ffmpeg"
 
         result = get_ffmpeg_command()
-        assert result is None
+        assert result == "ffmpeg"
 
 
 class TestGetAllVideoObjectFiles(unittest.TestCase):
@@ -456,7 +525,7 @@ class TestInspectSingleVideo(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch("test_video_inspector.inspect_single_video_quick")
+    @patch("tests.test_video_inspector.inspect_single_video_quick")
     def test_inspect_quick_mode(self, mock_quick):
         """Test inspect_single_video with quick mode"""
         mock_result = VideoInspectionResult(self.test_file)
@@ -467,7 +536,7 @@ class TestInspectSingleVideo(unittest.TestCase):
         mock_quick.assert_called_once_with(self.video_file, "/usr/bin/ffmpeg", False)
         assert result == mock_result
 
-    @patch("test_video_inspector.inspect_single_video_deep")
+    @patch("tests.test_video_inspector.inspect_single_video_deep")
     def test_inspect_deep_mode(self, mock_deep):
         """Test inspect_single_video with deep mode"""
         mock_result = VideoInspectionResult(self.test_file)
@@ -478,7 +547,7 @@ class TestInspectSingleVideo(unittest.TestCase):
         mock_deep.assert_called_once_with(self.video_file, "/usr/bin/ffmpeg", False)
         assert result == mock_result
 
-    @patch("test_video_inspector.inspect_single_video_quick")
+    @patch("tests.test_video_inspector.inspect_single_video_quick")
     def test_inspect_hybrid_mode(self, mock_quick):
         """Test inspect_single_video with hybrid mode (falls back to quick)"""
         mock_result = VideoInspectionResult(self.test_file)

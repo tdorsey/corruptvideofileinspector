@@ -12,7 +12,6 @@ from cli_handler import (
     list_video_files,
     main,
     setup_logging,
-    validate_arguments,
 )
 
 
@@ -27,58 +26,6 @@ class TestSetupLogging(unittest.TestCase):
         mock_basic_config.assert_called_once()
         args, kwargs = mock_basic_config.call_args
         assert kwargs["level"] == logging.INFO
-
-
-class TestValidateArguments(unittest.TestCase):
-    """Test validate_arguments function"""
-
-    def test_validate_normal_arguments(self):
-        """Test validating normal arguments"""
-        # Should not raise any exception
-        validate_arguments(
-            verbose=False,
-            quiet=False,
-            max_workers=4,
-            json_output=False,
-            output=None,
-        )
-
-    def test_validate_verbose_and_quiet(self):
-        """Test validating conflicting verbose and quiet flags"""
-        with pytest.raises(typer.Exit) as context:
-            validate_arguments(
-                verbose=True,
-                quiet=True,
-                max_workers=4,
-                json_output=False,
-                output=None,
-            )
-
-        assert context.value.exit_code == 1
-
-    def test_validate_zero_workers(self):
-        """Test validating zero max workers"""
-        with pytest.raises(typer.Exit) as context:
-            validate_arguments(
-                verbose=False,
-                quiet=False,
-                max_workers=0,
-                json_output=False,
-                output=None,
-            )
-
-        assert context.value.exit_code == 1
-
-    def test_validate_output_without_json(self):
-        """Test validating output argument without json flag"""
-        # This should not raise an exception, just log a warning
-        validate_arguments(
-            verbose=False,
-            quiet=False,
-            max_workers=4,
-            json_output=False,
-            output="/test/output.json",
-        )
 
 
 class TestListVideoFiles(unittest.TestCase):

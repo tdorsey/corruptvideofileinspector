@@ -76,7 +76,10 @@ class MediaInfo(BaseModel):
     season: Optional[int] = None
     quality: str = ""
     format: str = ""
+    source: str = ""
+    codec: str = ""
     original_filename: str = ""
+    media_type: MediaType = MediaType.MOVIE
 
     # Class constants for validation
     MIN_YEAR: ClassVar[int] = 1888  # First known motion picture

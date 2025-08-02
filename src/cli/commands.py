@@ -9,7 +9,7 @@ import logging
 import sys
 from pathlib import Path
 
-import click  # type: ignore
+import click
 
 from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
 from src.cli.utils import setup_logging
@@ -140,7 +140,12 @@ def cli(
     help="Enable/disable resume functionality",
     show_default=True,
 )
-@click.option("--output", "-o", type=PathType(), help="Output file path for results")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path, dir_okay=False),
+    help="Output file path for results (must be a file, not a directory)",
+)
 @click.option(
     "--format",
     "output_format",
@@ -413,7 +418,10 @@ def sync(
             output_file=output,
         )
         click.echo("\nTrakt Sync Result:")
-        click.echo(json.dumps(result.model_dump(), indent=2))
+        if result is not None:
+            click.echo(json.dumps(result.model_dump(), indent=2))
+        else:
+            click.echo("No sync result returned.")
 
     except Exception as e:
         logger.exception("Trakt sync command failed")

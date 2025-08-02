@@ -26,6 +26,7 @@ dev-down:
 dev-shell:
 	docker compose -f docker/docker-compose.dev.yml run --rm app bash
 docker-build-clean: ## Build without cache
+	docker build --no-cache -f docker/Dockerfile -t cvi:$(APP_VERSION) -t cvi:latest --build-arg APP_VERSION=$(APP_VERSION) --build-arg APP_TITLE="corrupt-video-inspector" --build-arg APP_DESCRIPTION="A Docker-based tool to detect and report corrupt video files using FFmpeg" .
 
 # Docker image version
 APP_VERSION ?= 0.1.0

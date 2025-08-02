@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-import click  # type: ignore
+import click
 from pydantic import BaseModel, Field
 
 from src.config.config import AppConfig
@@ -47,11 +47,26 @@ class BaseHandler:
     ) -> None:
         """Generate output file from scan summary."""
         try:
+            # Determine target output file path
             if output_file:
-                target_file = output_file
+                # If a directory is provided, warn and use default output directory
+                if output_file.is_dir():
+                    logger.warning(
+                        f"Specified output path {output_file} is a directory; "
+                        "using default output directory"
+                    )
+                    target_file = (
+                        self.config.output.default_output_dir / self.config.output.default_filename
+                    )
+                else:
+                    target_file = output_file
             else:
-                target_file = self.config.output.default_output_dir / "scan_results.json"
-                target_file.parent.mkdir(parents=True, exist_ok=True)
+                # Use configured default output directory and filename
+                target_file = (
+                    self.config.output.default_output_dir / self.config.output.default_filename
+                )
+            # Ensure parent directory exists
+            target_file.parent.mkdir(parents=True, exist_ok=True)
 
             if output_format.lower() == "json":
                 with target_file.open("w", encoding="utf-8") as f:
@@ -63,7 +78,30 @@ class BaseHandler:
             else:
                 logger.warning(f"Unsupported output format: {output_format}")
         except Exception as e:
-            logger.warning(f"Failed to save output: {e}")
+            # Initial write failed, log and attempt fallback to configured output dir
+            logger.warning(
+                f"Failed to save output to {target_file}: {e}. "
+                "Attempting to save to default output directory"
+            )
+            try:
+                # Determine fallback file path
+                fallback_file = (
+                    self.config.output.default_output_dir / self.config.output.default_filename
+                )
+                # Ensure fallback directory exists
+                fallback_file.parent.mkdir(parents=True, exist_ok=True)
+                # Write output to fallback file
+                with fallback_file.open("w", encoding="utf-8") as f:
+                    if output_format.lower() == "json":
+                        # Use indent when pretty printing
+                        indent = 2 if pretty_print else None
+                        json.dump(summary.model_dump(), f, indent=indent)
+                    else:
+                        # Unsupported formats not implemented in fallback
+                        logger.warning(f"Unsupported output format in fallback: {output_format}")
+                logger.info(f"Scan results saved to: {fallback_file}")
+            except Exception as fallback_exc:
+                logger.warning(f"Failed to save fallback output to {fallback_file}: {fallback_exc}")
 
 
 class ScanHandler(BaseHandler):
@@ -115,6 +153,7 @@ class ScanHandler(BaseHandler):
             sys.exit(130)
         except Exception as e:
             self._handle_error(e, "Scan failed")
+            return None
 
     def _show_scan_info(self, directory: Path, scan_mode: ScanMode, recursive: bool) -> None:
         """Show initial scan information."""
@@ -154,8 +193,7 @@ class ScanHandler(BaseHandler):
 
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
-        bar: click.types.ProgressBar
-        with click.progressbar(
+        with click.progressbar(  # type: ignore
             length=progress.total_files,
             show_eta=True,
             show_percent=True,
@@ -271,6 +309,7 @@ class ListHandler(BaseHandler):
             return video_file_models
         except Exception as e:
             self._handle_error(e, "Failed to list files")
+            return []
 
     def _show_file_list(self, video_files: list, directory: Path) -> None:
         """Show file list to console."""
@@ -318,27 +357,35 @@ class TraktHandler(BaseHandler):
         access_token: str,
         interactive: bool = False,
         output_file: Optional[Path] = None,
-    ) -> TraktSyncResult:
+    ) -> Optional[TraktSyncResult]:
         """
         Sync scan results to Trakt.tv watchlist and return TraktSyncResult Pydantic model.
         """
         try:
             logger.info(f"Syncing scan results from {scan_file} to Trakt.tv watchlist.")
-            results_dict = sync_to_trakt_watchlist(
+            result_summary = sync_to_trakt_watchlist(
                 scan_file=str(scan_file),
                 access_token=access_token,
-                client_id=None,  # TODO: Add client_id to config if needed
+                client_id=None,
                 interactive=interactive,
             )
-            results = TraktSyncResult(**results_dict)
+            # Convert TraktSyncSummary to TraktSyncResult
+            result = TraktSyncResult(
+                total=getattr(result_summary, "total", 0),
+                movies_added=getattr(result_summary, "movies_added", 0),
+                shows_added=getattr(result_summary, "shows_added", 0),
+                failed=getattr(result_summary, "failed", 0),
+                results=getattr(result_summary, "results", []),
+            )
             logger.info(
-                f"Trakt sync complete. Movies added: {results.movies_added}, Shows added: {results.shows_added}."
+                f"Trakt sync complete. Movies added: {result.movies_added}, Shows added: {result.shows_added}."
             )
             if output_file:
-                self._save_sync_results(results, output_file)
-            return results
+                self._save_sync_results(result, output_file)
+            return result
         except Exception as e:
             self._handle_error(e, "Trakt sync failed")
+            return None
 
     def _show_sync_results(self, results: TraktSyncResult, dry_run: bool = False) -> None:
         """Show sync operation results."""

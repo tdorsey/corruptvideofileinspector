@@ -3,14 +3,9 @@ Integration tests for CLI handler functionality (core functions only)
 """
 
 import contextlib
-import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # We'll test the functions that don't require typer
 # by importing and testing them individually
@@ -40,111 +35,7 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
         with contextlib.suppress(OSError):
             Path(self.test_dir).rmdir()
 
-    # Skipping logging tests as per user request
-
-    def test_validate_arguments_function_exists(self):
-        """Test that validate_arguments function exists"""
-        cli_handler_path = Path(__file__).resolve().parent.parent / "cli_handler.py"
-        content = cli_handler_path.read_text()
-
-        # Check that validate_arguments function exists
-        assert "def validate_arguments" in content
-        assert "verbose and quiet" in content
-        assert "max_workers <= 0" in content
-
-    def test_directory_validation_logic(self):
-        """Test directory validation logic manually"""
-
-        # Test valid directory
-        path = Path(self.test_dir)
-        assert path.exists()
-        assert path.is_dir()
-
-        # Test non-existent directory
-        nonexistent = Path("/nonexistent/directory")
-        assert not nonexistent.exists()
-
-        # Test file instead of directory (create a file)
-        test_file = Path(self.test_dir) / "not_a_directory.txt"
-        test_file.write_text("test")
-        self.test_files.append(str(test_file))
-
-        file_path = test_file
-        assert file_path.exists()
-        assert not file_path.is_dir()
-
-    # Skipping logging configuration tests as per user request
-
-    def test_cli_imports_and_dependencies(self):
-        """Test that CLI module has expected imports"""
-        cli_handler_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "cli_handler.py",
-        )
-        with Path(cli_handler_path).open() as f:
-            content = f.read()
-
-        # Check for expected imports
-        expected_imports = [
-            "import json",
-            "import os",
-            "import sys",
-            "import logging",
-            "from pathlib import Path",
-            "from typing import List, Optional",
-            "from utils import",
-            "from video_inspector import",
-            "from trakt_watchlist import",
-        ]
-
-        for import_line in expected_imports:
-            assert import_line in content
-
-    def test_cli_main_functions_exist(self):
-        """Test that main CLI functions exist"""
-        cli_handler_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "cli_handler.py",
-        )
-        with Path(cli_handler_path).open() as f:
-            content = f.read()
-
-        # Check for main functions
-        expected_functions = [
-            "def setup_logging",
-            "def validate_arguments",
-        ]
-
-        for function in expected_functions:
-            assert function in content
-
-    def test_integration_with_utils_and_video_inspector(self):
-        """
-        Test that CLI handler can integrate with utils and video_inspector
-        """
-        # Test that we can import the required functions from other modules
-        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-        try:
-            from cli_handler import get_all_video_object_files
-            from src.core.models.scanning import ScanMode
-            from src.utils import count_all_video_files, get_video_extensions
-
-            # Test basic functionality
-            count = count_all_video_files(self.test_dir)
-            assert isinstance(count, int)
-
-            extensions = get_video_extensions()
-            assert isinstance(extensions, list)
-
-            video_files = get_all_video_object_files(self.test_dir)
-            assert isinstance(video_files, list)
-
-            # Test ScanMode enum
-            assert ScanMode.QUICK.value == "quick"
-
-        except ImportError as e:
-            self.fail(f"Could not import required modules: {e}")
+    # All validation and function existence tests removed as per user request
 
 
 if __name__ == "__main__":

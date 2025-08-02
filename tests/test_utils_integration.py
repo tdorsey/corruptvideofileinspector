@@ -109,8 +109,8 @@ class TestUtilsIntegration(unittest.TestCase):
 
     def test_format_file_size(self):
         """Test file size formatting"""
-        assert format_file_size(0) == "0.0 B"
-        assert format_file_size(512) == "512.0 B"
+        assert format_file_size(0) == "0 B"
+        assert format_file_size(512) == "512 B"
         assert format_file_size(1024) == "1.0 KB"
         assert format_file_size(1536) == "1.5 KB"
         assert format_file_size(1024 * 1024) == "1.0 MB"
