@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from shutil import which
-from typing import Optional
+from typing import Any, Optional, Sequence
 
 import typer
 
@@ -28,26 +28,6 @@ def setup_logging(verbose: bool) -> None:
     logging.basicConfig(level=level)
 
 
-def validate_arguments(
-    verbose: bool,
-    quiet: bool,
-    max_workers: int,
-    json_output: bool,
-    output,
-) -> None:
-    """
-    Validate CLI arguments for consistency.
-
-    Raises typer.Exit if invalid.
-    """
-    if verbose and quiet:
-        raise typer.Exit(code=1)
-    if max_workers < 1:
-        raise typer.Exit(code=1)
-    if output and not json_output:
-        logging.warning("Output specified without JSON flag; output may not be JSON")
-
-
 def get_ffmpeg_command() -> str | None:
     """
     Detects ffmpeg command in PATH.
@@ -67,9 +47,6 @@ def check_system_requirements() -> str:
         typer.echo("FFmpeg not found")
         raise typer.Exit(code=1)
     return cmd
-
-
-from typing import Any, Sequence
 
 
 def get_all_video_object_files(
@@ -94,7 +71,7 @@ def get_all_video_object_files(
 def list_video_files(
     directory: Path,
     recursive: bool = True,
-    extensions=None,
+    extensions: list[str] | None = None,
 ) -> None:
     """
     List video files in directory and echo results.

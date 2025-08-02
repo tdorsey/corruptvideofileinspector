@@ -24,7 +24,6 @@ Fast, isolated tests that verify individual functions and components:
 - **`test_cli_handler.py`** - Tests for command-line interface in `cli_handler.py`
   - `setup_logging()` - Logging configuration
   - `parse_cli_arguments()` - Argument parsing
-  - `validate_arguments()` - Argument validation
   - `list_video_files()` - File listing functionality
   - `check_system_requirements()` - System dependency checks
   - `main()` - Main CLI entry point

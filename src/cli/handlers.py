@@ -153,6 +153,7 @@ class ScanHandler(BaseHandler):
             sys.exit(130)
         except Exception as e:
             self._handle_error(e, "Scan failed")
+            return None
 
     def _show_scan_info(self, directory: Path, scan_mode: ScanMode, recursive: bool) -> None:
         """Show initial scan information."""
@@ -192,8 +193,7 @@ class ScanHandler(BaseHandler):
 
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
-        # Progress bar created by click
-        with click.progressbar(
+        with click.progressbar(  # type: ignore
             length=progress.total_files,
             show_eta=True,
             show_percent=True,
@@ -309,6 +309,7 @@ class ListHandler(BaseHandler):
             return video_file_models
         except Exception as e:
             self._handle_error(e, "Failed to list files")
+            return []
 
     def _show_file_list(self, video_files: list, directory: Path) -> None:
         """Show file list to console."""
@@ -356,27 +357,35 @@ class TraktHandler(BaseHandler):
         access_token: str,
         interactive: bool = False,
         output_file: Optional[Path] = None,
-    ) -> TraktSyncResult:
+    ) -> Optional[TraktSyncResult]:
         """
         Sync scan results to Trakt.tv watchlist and return TraktSyncResult Pydantic model.
         """
         try:
             logger.info(f"Syncing scan results from {scan_file} to Trakt.tv watchlist.")
-            results_dict = sync_to_trakt_watchlist(
+            result_summary = sync_to_trakt_watchlist(
                 scan_file=str(scan_file),
                 access_token=access_token,
-                client_id=None,  # TODO: Add client_id to config if needed
+                client_id=None,
                 interactive=interactive,
             )
-            results = TraktSyncResult(**results_dict)
+            # Convert TraktSyncSummary to TraktSyncResult
+            result = TraktSyncResult(
+                total=getattr(result_summary, "total", 0),
+                movies_added=getattr(result_summary, "movies_added", 0),
+                shows_added=getattr(result_summary, "shows_added", 0),
+                failed=getattr(result_summary, "failed", 0),
+                results=getattr(result_summary, "results", []),
+            )
             logger.info(
-                f"Trakt sync complete. Movies added: {results.movies_added}, Shows added: {results.shows_added}."
+                f"Trakt sync complete. Movies added: {result.movies_added}, Shows added: {result.shows_added}."
             )
             if output_file:
-                self._save_sync_results(results, output_file)
-            return results
+                self._save_sync_results(result, output_file)
+            return result
         except Exception as e:
             self._handle_error(e, "Trakt sync failed")
+            return None
 
     def _show_sync_results(self, results: TraktSyncResult, dry_run: bool = False) -> None:
         """Show sync operation results."""

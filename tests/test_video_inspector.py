@@ -4,26 +4,21 @@ Unit tests for video_inspector.py module
 
 import os
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Optional
 from unittest.mock import Mock, mock_open, patch
 
 import pytest
-
-# Add the project root to the path so we can import cli_handler
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from cli_handler import get_all_video_object_files, get_ffmpeg_command
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import ScanMode
 
-# Stubs for missing functions/classes
-
 
 class VideoInspectionResult:
-    def __init__(self, filename: str, scan_mode: ScanMode = None):
+    def __init__(self, filename: str, scan_mode: Optional[ScanMode] = None):
         self.filename = filename
         self.file_size = 0
         self.scan_mode = scan_mode

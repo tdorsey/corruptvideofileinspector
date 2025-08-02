@@ -167,7 +167,7 @@ class TestVideoInspectorIntegration(unittest.TestCase):
 
         if test_videos_dir.exists():
             # This should not raise an exception
-            video_files = get_all_video_object_files(str(test_videos_dir))
+            video_files = get_all_video_object_files(test_videos_dir)
 
             # Should return a list
             assert isinstance(video_files, list)

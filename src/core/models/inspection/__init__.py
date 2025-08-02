@@ -76,7 +76,10 @@ class MediaInfo(BaseModel):
     season: Optional[int] = None
     quality: str = ""
     format: str = ""
+    source: str = ""
+    codec: str = ""
     original_filename: str = ""
+    media_type: MediaType = MediaType.MOVIE
 
     # Class constants for validation
     MIN_YEAR: ClassVar[int] = 1888  # First known motion picture
@@ -119,12 +122,12 @@ class MediaInfo(BaseModel):
     @property
     def is_tv_show(self) -> bool:
         """Check if this is a TV show."""
-        return self.media_type == MediaType.TV_SHOW
+        return bool(self.media_type == MediaType.TV_SHOW)
 
     @property
     def is_movie(self) -> bool:
         """Check if this is a movie."""
-        return self.media_type == MediaType.MOVIE
+        return bool(self.media_type == MediaType.MOVIE)
 
     @property
     def season_episode_string(self) -> str | None:

@@ -9,7 +9,7 @@ import logging
 import sys
 from pathlib import Path
 
-import click  # type: ignore
+import click
 
 from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
 from src.cli.utils import setup_logging
@@ -418,7 +418,10 @@ def sync(
             output_file=output,
         )
         click.echo("\nTrakt Sync Result:")
-        click.echo(json.dumps(result.model_dump(), indent=2))
+        if result is not None:
+            click.echo(json.dumps(result.model_dump(), indent=2))
+        else:
+            click.echo("No sync result returned.")
 
     except Exception as e:
         logger.exception("Trakt sync command failed")

@@ -2,20 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from src.cli.handlers import ScanHandler
 from src.config.config import AppConfig
-from src.core.models.scanning import ScanMode
-
-
-class DummySummary:
-    is_complete = True
-    scan_mode = ScanMode.QUICK
-    processed_files = 5
-    corrupt_files = 1
-    healthy_files = 4
-    scan_time = 10.0
-    success_rate = 80.0
-    was_resumed = False
-    deep_scans_needed = 0
-    deep_scans_completed = 0
+from src.core.models.scanning import ScanMode, ScanSummary
 
 
 @patch("src.cli.handlers.click.echo")
@@ -27,7 +14,21 @@ def test_scan_completion_message_once(mock_echo):
     config.processing = MagicMock()  # Add processing attribute
     config.ffmpeg = MagicMock()  # Add ffmpeg attribute
     handler = ScanHandler(config)
-    summary = DummySummary()
+
+    summary = ScanSummary(
+        directory="/tmp",
+        total_files=5,
+        processed_files=5,
+        corrupt_files=1,
+        healthy_files=4,
+        scan_mode=ScanMode.QUICK,
+        scan_time=10.0,
+        deep_scans_needed=0,
+        deep_scans_completed=0,
+        started_at=0.0,
+        completed_at=10.0,
+        was_resumed=False,
+    )
 
     # Call twice, should only print once
     handler._show_scan_results(summary)
