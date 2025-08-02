@@ -44,12 +44,12 @@ A comprehensive, modular tool for detecting corrupted video files using FFmpeg a
 pip install corrupt-video-inspector
 
 # Install from source
-git clone https://github.com/yourusername/corrupt-video-inspector.git
-cd corrupt-video-inspector
+git clone https://github.com/tdorsey/corruptvideofileinspector.git
+cd corruptvideofileinspector
 pip install -e .
 
 # Install with all optional dependencies
-pip install -e ".[all]"
+pip install -e ".[dev]"
 ```
 
 ### Basic Usage
@@ -58,240 +58,147 @@ pip install -e ".[all]"
 # Basic scan with hybrid mode (recommended)
 corrupt-video-inspector scan /path/to/videos
 
-# Quick scan only
-corrupt-video-inspector scan --mode quick /path/to/videos
-
-# Deep scan with custom output
-corrupt-video-inspector scan --mode deep --output results.json /path/to/videos
-
-# List video files without scanning
-corrupt-video-inspector list-files /path/to/videos
+# Quick scan with JSON output
+corrupt-video-inspector scan --mode quick --output results.json /path/to/videos
 
 # Sync scan results to Trakt.tv
 corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
 ```
 
-## 📖 Usage Guide
+**For detailed usage instructions, see [CLI Module Documentation](docs/CLI.md)**
 
-### Scanning Videos
+## 📖 Documentation Overview
 
-The core functionality revolves around three scan modes:
+This project uses a modular documentation structure. Each major component has its own detailed documentation:
 
-#### **Hybrid Mode (Recommended)**
-Combines the speed of quick scanning with the thoroughness of deep scanning:
+### 🔧 Core Components
+- **[CLI Module](docs/CLI.md)** - Command-line interface and user interaction
+- **[Core Engine](docs/CORE.md)** - Video scanning, inspection, and analysis algorithms  
+- **[FFmpeg Integration](docs/FFMPEG.md)** - Video corruption detection engine
+- **[Configuration System](docs/CONFIG.md)** - Flexible configuration management
 
-```bash
-corrupt-video-inspector scan --mode hybrid /path/to/videos
-```
+### 🎯 Features & Integration
+- **[Trakt.tv Integration](docs/trakt.md)** - Watchlist synchronization and media management
+- **[Report Generation](docs/REPORTER.md)** - Multi-format reporting (JSON, CSV, YAML, text)
+- **[Utilities](docs/UTILS.md)** - Shared functions and helper tools
 
-1. **Phase 1**: Quick scan all files (1-minute timeout each)
-2. **Phase 2**: Deep scan only files flagged as suspicious
+### 👨‍💻 Development
+- **[Contributing Guide](docs/CONTRIBUTING.md)** - Setup, code quality, and contribution process
+- **[Version Management](docs/VERSIONING.md)** - Git tag-based dynamic versioning
+- **[Testing](docs/tests.md)** - Test framework and execution
 
-#### **Quick Mode**
-Fast scanning with 1-minute timeout per file:
+### Quick Reference
 
-```bash
-corrupt-video-inspector scan --mode quick /path/to/videos
-```
+#### Scan Modes
+- **Hybrid** (recommended): Quick scan + deep scan of suspicious files
+- **Quick**: Fast 1-minute timeout per file  
+- **Deep**: Thorough 15-minute timeout per file
 
-#### **Deep Mode**
-Thorough scanning with 15-minute timeout per file:
+#### Key Features
+- ✅ **Resume capability** with Write-Ahead Logging (WAL)
+- ✅ **Multi-threaded processing** with configurable workers
+- ✅ **Multiple output formats** (JSON, CSV, YAML, text)
+- ✅ **Trakt.tv synchronization** for watchlist management
+- ✅ **Docker support** for containerized workflows
 
-```bash
-corrupt-video-inspector scan --mode deep /path/to/videos
-```
-
-### Advanced Options
-
-```bash
-# Custom worker threads and extensions
-corrupt-video-inspector scan \
-  --mode hybrid \
-  --max-workers 8 \
-  --extensions mp4 mkv avi \
-  --output detailed_results.json \
-  /path/to/videos
-
-# Non-recursive scan
-corrupt-video-inspector scan --no-recursive /path/to/videos
-
-# Disable resume functionality
-corrupt-video-inspector scan --no-resume /path/to/videos
-```
-
-### Trakt.tv Integration
-
-First, obtain a Trakt.tv API token from [Trakt.tv API settings](https://trakt.tv/oauth/applications).
-
-```bash
-# Basic sync
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
-
-# Interactive mode (manual selection for multiple matches)
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --interactive
-
-# Dry run (see what would be synced)
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --dry-run
-
-# Include corrupt files in sync
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --include-corrupt
-```
+**For complete usage instructions and examples, see the module-specific documentation above.**
 
 ## ⚙️ Configuration
 
-### Configuration File
+The application supports flexible configuration through multiple sources with proper precedence handling:
 
-Generate a sample configuration:
+1. **Command-line arguments** (highest precedence)
+2. **Environment variables** (CVI_ prefix)
+3. **Configuration files** (YAML/JSON)
+4. **Docker secrets** (for containerized deployments)
+5. **Built-in defaults** (lowest precedence)
+
+### Quick Configuration Examples
 
 ```bash
+# Generate sample configuration file
 corrupt-video-inspector init-config --format yaml --output config.yml
-```
 
-Example configuration:
-
-```yaml
-# config.yml
-scanner:
-  max_workers: 4
-  default_mode: "hybrid"
-  recursive: true
-  extensions: [".mp4", ".mkv", ".avi", ".mov", ".wmv"]
-
-ffmpeg:
-  quick_timeout: 60
-  deep_timeout: 900
-  command: "/usr/bin/ffmpeg"  # auto-detect if not specified
-
-trakt:
-  client_id: "your_trakt_client_id"
-  client_secret: "your_trakt_client_secret"
-
-logging:
-  level: "INFO"
-  file: "/var/log/cvi.log"  # optional
-
-output:
-  default_format: "json"
-  pretty_print: true
-```
-
-### Environment Variables
-
-All configuration options can be set via environment variables:
-
-```bash
+# Use environment variables
 export CVI_MAX_WORKERS=8
 export CVI_LOG_LEVEL=DEBUG
-export CVI_FFMPEG_COMMAND=/usr/local/bin/ffmpeg
-export TRAKT_CLIENT_ID=your_client_id
-export TRAKT_CLIENT_SECRET=your_client_secret
+
+# Use custom config file
+corrupt-video-inspector scan --config my-config.yml /path/to/videos
 ```
 
-### Docker Secrets
-
-For containerized deployments, use Docker secrets:
-
-```bash
-# Create secrets
-echo "your_client_id" | docker secret create trakt_client_id -
-echo "your_client_secret" | docker secret create trakt_client_secret -
-
-# Secrets are automatically loaded from /run/secrets/
-```
+**For complete configuration documentation, see [Configuration Guide](docs/CONFIG.md)**
 
 ## 🐳 Docker Usage
 
-```dockerfile
-# Dockerfile
-FROM python:3.11-slim
-
-# Install FFmpeg
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
-
-# Install application
-COPY . /app
-WORKDIR /app
-RUN pip install -e .
-
-ENTRYPOINT ["corrupt-video-inspector"]
-```
+The application is designed to work seamlessly in containerized environments:
 
 ```bash
-# Build and run
+# Build Docker image
 docker build -t corrupt-video-inspector .
 
 # Scan with volume mount
 docker run -v /path/to/videos:/videos corrupt-video-inspector scan /videos
 
 # Use docker-compose for complex setups
+docker-compose up
 ```
+
+**For detailed Docker configuration, see [Configuration Guide](docs/CONFIG.md)**
 
 ## 🔧 Development
 
-### Setup Development Environment
+### Quick Development Setup
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/corrupt-video-inspector.git
-cd corrupt-video-inspector
+git clone https://github.com/tdorsey/corruptvideofileinspector.git
+cd corruptvideofileinspector
 
 # Install in development mode with all dependencies
-pip install -e ".[dev,docs,reporting]"
+pip install -e ".[dev]"
 
-# Install pre-commit hooks
+# Install pre-commit hooks for code quality
 pre-commit install
 
 # Run tests
-pytest
+python3 tests/run_tests.py
 
-# Run tests with coverage
-pytest --cov=corrupt_video_inspector --cov-report=html
-
-# Format code
-black src tests
-isort src tests
-
-# Type checking
-mypy src
+# Run code quality checks
+make check
 ```
+
+**For complete development documentation, see [Contributing Guide](docs/CONTRIBUTING.md)**
 
 ### Project Structure
 
 ```
 corrupt_video_inspector/
-├── src/corrupt_video_inspector/
-│   ├── cli/                    # Command-line interface
-│   ├── core/                   # Core business logic
-│   ├── config/                 # Configuration management
-│   ├── integrations/           # External service integrations
-│   │   ├── ffmpeg/            # FFmpeg integration
-│   │   └── trakt/             # Trakt.tv integration
-│   ├── storage/               # Data persistence layer
-│   └── utils/                 # Shared utilities
-├── tests/                     # Test suite
-├── docs/                      # Documentation
-└── scripts/                   # Utility scripts
+├── src/
+│   ├── cli/                    # Command-line interface → See docs/CLI.md
+│   ├── core/                   # Core business logic → See docs/CORE.md
+│   ├── config/                 # Configuration management → See docs/CONFIG.md
+│   ├── ffmpeg/                 # FFmpeg integration → See docs/FFMPEG.md
+│   └── utils/                  # Shared utilities → See docs/UTILS.md
+├── tests/                      # Test suite → See docs/tests.md
+├── docs/                       # Documentation
+│   ├── CLI.md                  # Command-line interface documentation
+│   ├── CORE.md                 # Core module documentation
+│   ├── CONFIG.md               # Configuration system guide
+│   ├── FFMPEG.md               # FFmpeg integration details
+│   ├── UTILS.md                # Utilities documentation
+│   ├── trakt.md                # Trakt.tv integration guide
+│   ├── CONTRIBUTING.md         # Development setup and guidelines
+│   ├── REPORTER.md             # Report generation system
+│   └── VERSIONING.md           # Version management
+└── pyproject.toml              # Project configuration
 ```
 
-### Running Tests
+## 📊 Output Examples
 
-```bash
-# Run all tests
-pytest
+The application generates comprehensive reports in multiple formats:
 
-# Run specific test categories
-pytest -m "not slow"           # Skip slow tests
-pytest -m "unit"               # Unit tests only
-pytest -m "integration"        # Integration tests only
-
-# Run with specific fixtures
-pytest -m "ffmpeg"             # Tests requiring FFmpeg
-pytest -m "network"            # Tests requiring network access
-```
-
-## 📊 Output Formats
-
-### JSON Output
+### JSON Report Summary
 ```json
 {
   "scan_summary": {
@@ -299,46 +206,41 @@ pytest -m "network"            # Tests requiring network access
     "corrupt_files": 3,
     "healthy_files": 147,
     "scan_mode": "hybrid",
-    "scan_time": 1234.56,
     "success_rate": 98.0
   },
   "results": [
     {
       "filename": "/path/to/video.mp4",
       "is_corrupt": false,
+      "confidence": 0.05,
       "scan_mode": "quick",
-      "inspection_time": 2.3,
-      "file_size": 1073741824
+      "inspection_time": 2.3
     }
   ]
 }
 ```
 
-### CSV Output
-Suitable for spreadsheet analysis and reporting.
+**Supported formats**: JSON, CSV, YAML, Plain Text
 
-### YAML Output
-Human-readable format for configuration and review.
+**For detailed report structure and examples, see [Report Generation Documentation](docs/REPORTER.md)**
 
 ## 🤝 Contributing
 
+We welcome contributions! To get started:
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
+3. Follow our code quality standards (automatic via pre-commit hooks)
 4. Add tests for new functionality
-5. Ensure all tests pass (`pytest`)
-6. Format code (`black src tests && isort src tests`)
-7. Commit changes (`git commit -m 'Add amazing feature'`)
-8. Push to branch (`git push origin feature/amazing-feature`)
-9. Open a Pull Request
+5. Submit a Pull Request
 
-### Code Style
+### Code Quality Standards
+- **Formatting**: Black (100 character line length)
+- **Linting**: Ruff with comprehensive rule set
+- **Type Checking**: MyPy with strict configuration
+- **Testing**: Comprehensive test coverage
 
-- Follow [PEP 8](https://pep8.org/) guidelines
-- Use [Black](https://black.readthedocs.io/) for code formatting
-- Use [isort](https://pycqa.github.io/isort/) for import sorting
-- Add type hints for all public APIs
-- Write docstrings for all public functions and classes
+**For detailed contribution guidelines, see [Contributing Guide](docs/CONTRIBUTING.md)**
 
 ## 📝 License
 
@@ -351,12 +253,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Click](https://click.palletsprojects.com/) for the excellent CLI framework
 - The Python community for the fantastic ecosystem of tools
 
-## 📞 Support
+## 📞 Support & Resources
 
-- 📧 **Email**: your.email@example.com
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yourusername/corrupt-video-inspector/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/corrupt-video-inspector/discussions)
-- 📖 **Documentation**: [Read the Docs](https://corrupt-video-inspector.readthedocs.io/)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/tdorsey/corruptvideofileinspector/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/tdorsey/corruptvideofileinspector/discussions)
+- 📖 **Documentation**: See docs/ directory for detailed guides
+- 🔄 **Contributing**: See [Contributing Guide](docs/CONTRIBUTING.md)
 
 ---
 
@@ -364,9 +266,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 # Documentation
 
-- [Trakt Integration](docs/TRAKT_INTEGRATION.md)
-- [Configuration](docs/CONFIG.md)
-- [Contributing Guidelines](docs/CONTRIBUTING.md)
-- [Secrets Documentation](docs/secrets.md)
-- [Test Videos Documentation](docs/test-videos.md)
-- [Tests Documentation](docs/tests.md)
+## Module Documentation
+
+- **[CLI Module](docs/CLI.md)** - Command-line interface, commands, and handlers
+- **[Core Module](docs/CORE.md)** - Business logic, scanning, inspection, and reporting
+- **[Configuration](docs/CONFIG.md)** - Configuration system, environment variables, and Docker secrets
+- **[FFmpeg Integration](docs/FFMPEG.md)** - Video analysis engine and corruption detection
+- **[Utilities](docs/UTILS.md)** - Shared utilities and helper functions
+
+## Integration and Usage
+
+- **[Trakt.tv Integration](docs/trakt.md)** - Watchlist synchronization and media management
+- **[Report Generation](docs/REPORTER.md)** - Multi-format reporting system
+
+## Development
+
+- **[Contributing Guidelines](docs/CONTRIBUTING.md)** - Development setup, code quality, and submission process
+- **[Version Management](docs/VERSIONING.md)** - Dynamic versioning with Git tags
+- **[Tests Documentation](docs/tests.md)** - Testing framework and test execution
