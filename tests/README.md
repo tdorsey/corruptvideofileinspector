@@ -9,7 +9,7 @@ Fast, isolated tests that verify individual functions and components:
 
 - **`test_utils.py`** - Tests for utility functions in `utils.py`
   - `count_all_video_files()` - File counting with various options
-  - `format_file_size()` - Human-readable file size formatting  
+  - `format_file_size()` - Human-readable file size formatting
   - `get_video_extensions()` - Supported video file extensions
 
 - **`test_video_inspector.py`** - Tests for core video inspection functionality in `video_inspector.py`
@@ -23,7 +23,6 @@ Fast, isolated tests that verify individual functions and components:
 
 - **`test_cli_handler.py`** - Tests for command-line interface in `cli_handler.py`
   - `setup_logging()` - Logging configuration
-  - `validate_directory()` - Directory validation
   - `parse_cli_arguments()` - Argument parsing
   - `validate_arguments()` - Argument validation
   - `list_video_files()` - File listing functionality
@@ -157,7 +156,7 @@ Create test files following the pattern `test_*.py` (without `_integration` suff
 - Use mocking for external dependencies
 - Test edge cases and error conditions
 
-### Integration Tests  
+### Integration Tests
 Create test files following the pattern `test_*_integration.py`:
 - Test complete workflows and component interactions
 - Use real file system operations where appropriate

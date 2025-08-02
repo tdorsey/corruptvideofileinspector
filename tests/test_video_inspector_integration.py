@@ -8,9 +8,10 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+
 from cli_handler import get_all_video_object_files, get_ffmpeg_command
-from src.core.models.scanning import ScanMode
 from src.core.models.inspection import VideoFile
+from src.core.models.scanning import ScanMode
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -20,7 +21,7 @@ class TestVideoInspectorIntegration(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment"""
-        self.test_dir = tempfile.mkdtemp()
+        self.test_dir = Path(tempfile.mkdtemp())
         self.test_files = []
 
     def tearDown(self):
@@ -47,7 +48,7 @@ class TestVideoInspectorIntegration(unittest.TestCase):
         test_file = self.create_test_file("test.mp4", "fake video content")
 
         # Create VideoFile object
-        video_file = VideoFile(test_file)
+        video_file = VideoFile(path=test_file)
 
         # Verify properties
         assert video_file.filename == test_file
@@ -57,7 +58,7 @@ class TestVideoInspectorIntegration(unittest.TestCase):
     def test_video_file_nonexistent(self):
         """Test VideoFile with non-existent file"""
         nonexistent_path = "/nonexistent/file.mp4"
-        video_file = VideoFile(nonexistent_path)
+        video_file = VideoFile(path=nonexistent_path)
 
         assert video_file.filename == nonexistent_path
         assert video_file.size == 0  # No size for non-existent file

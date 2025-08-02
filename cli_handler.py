@@ -1,10 +1,7 @@
-import json
 import logging
-import os
-import sys
 from pathlib import Path
 from shutil import which
-from typing import List, Optional
+from typing import Optional
 
 import typer
 
@@ -72,35 +69,26 @@ def check_system_requirements() -> str:
     return cmd
 
 
+from typing import Any, Sequence
+
+
 def get_all_video_object_files(
-    directory,
+    directory: Path | str,
     recursive: bool = True,
-    extensions=None,
-):
+    extensions: Optional[Sequence[str]] = None,
+) -> list[Any]:
     """
     Return list of video file objects (paths or models).
-    Accepts str or Path for directory.
+    Accepts Path for directory.
     """
-    if isinstance(directory, str):
-        directory = Path(directory)
+    # Ensure directory is a Path
+    directory_path = Path(directory)
     config = load_config()
     scanner = VideoScanner(config)
-    if extensions:
-        scanner.config.scan.extensions = extensions
-    return scanner.get_video_files(directory, recursive=recursive)
-
-
-def validate_directory(directory) -> Path:
-    """
-    Validate that the given directory exists and is a directory.
-    Returns the resolved Path if valid, else raises appropriate error.
-    """
-    path = Path(directory).resolve()
-    if not path.exists():
-        raise FileNotFoundError(f"Directory not found: {directory}")
-    if not path.is_dir():
-        raise NotADirectoryError(f"Not a directory: {directory}")
-    return path
+    # Pass extensions directly to get_video_files instead of mutating config
+    return scanner.get_video_files(
+        directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
+    )
 
 
 def list_video_files(

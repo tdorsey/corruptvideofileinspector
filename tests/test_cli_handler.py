@@ -29,19 +29,6 @@ class TestSetupLogging(unittest.TestCase):
         assert kwargs["level"] == logging.INFO
 
 
-class TestValidateDirectory(unittest.TestCase):
-    """Test validate_directory function"""
-
-    def setUp(self):
-        """Set up test fixtures"""
-        self.temp_dir = tempfile.mkdtemp()
-        self.temp_file = str(Path(self.temp_dir) / "test.txt")
-        Path(self.temp_file).write_text("test")
-
-    def tearDown(self):
-        """Clean up test fixtures"""
-
-
 class TestValidateArguments(unittest.TestCase):
     """Test validate_arguments function"""
 
@@ -117,13 +104,14 @@ class TestListVideoFiles(unittest.TestCase):
     @patch("typer.echo")
     def test_list_video_files_found(self, mock_echo, mock_get_files):
         """Test listing video files when files are found"""
-        from video_inspector import VideoFile
         from pathlib import Path
+
+        from video_inspector import VideoFile
 
         # Mock video files
         video_files = [
-            VideoFile(Path(self.temp_path) / "video1.mp4"),
-            VideoFile(Path(self.temp_path) / "video2.avi"),
+            VideoFile(path=Path(self.temp_path) / "video1.mp4"),
+            VideoFile(path=Path(self.temp_path) / "video2.avi"),
         ]
         mock_get_files.return_value = video_files
 

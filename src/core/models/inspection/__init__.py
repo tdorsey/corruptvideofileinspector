@@ -6,10 +6,11 @@ __all__ = [
     "VideoFile",
 ]
 import re
-from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class MediaType(Enum):
@@ -26,26 +27,24 @@ class MediaType(Enum):
     UNKNOWN = "unknown"
 
 
-@dataclass(frozen=True)
-class VideoFile:
-    """Represents a video file with its properties.
+class VideoFile(BaseModel):
+    """Represents a video file with its properties."""
 
-    Attributes:
-        path: Filesystem path to the video file
-        size: File size in bytes (computed automatically)
-        duration: Video duration in seconds (set by scanner)
-    """
+    path: Path = Field(..., description="Filesystem path to the video file")
+    duration: float = Field(0.0, description="Video duration in seconds (set by scanner)")
+    media_type: MediaType = Field(MediaType.MOVIE, description="Type of media content")
 
-    path: Path
-    size: int = field(init=False)
-    duration: float = 0.0
+    @field_validator("path", mode="before")
+    @classmethod
+    def ensure_path(cls, v):
+        if isinstance(v, str):
+            return Path(v)
+        return v
 
-    def __post_init__(self) -> None:
-        """Initialize file size if file exists."""
-        if self.path.exists():
-            object.__setattr__(self, "size", self.path.stat().st_size)
-        else:
-            object.__setattr__(self, "size", 0)
+    @property
+    def size(self) -> int:
+        """File size in bytes (computed automatically)."""
+        return self.path.stat().st_size if self.path.exists() else 0
 
     @property
     def filename(self) -> str:
@@ -57,8 +56,6 @@ class VideoFile:
         """Get just the filename without path."""
         return self.path.name
 
-    media_type: "MediaType" = MediaType.MOVIE
-
     @property
     def stem(self) -> str:
         """Get filename without extension."""
@@ -69,56 +66,25 @@ class VideoFile:
         """Get file extension."""
         return self.path.suffix
 
-    @property
-    def exists(self) -> bool:
-        """Check if file exists on filesystem."""
-        return self.path.exists()
 
-    def __str__(self) -> str:
-        """String representation showing path and size."""
-        size_mb = self.size / (1024 * 1024) if self.size else 0
-        return f"{self.path} ({size_mb:.1f} MB)"
+class MediaInfo(BaseModel):
+    """Media information extracted from filename or metadata."""
 
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "path": str(self.path),
-            "size": self.size,
-            "duration": self.duration,
-            "name": self.name,
-            "stem": self.stem,
-            "suffix": self.suffix,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "VideoFile":
-        """Create VideoFile from dictionary."""
-        video_file = cls(Path(data["path"]))
-        if "duration" in data:
-            object.__setattr__(video_file, "duration", data["duration"])
-        return video_file
-
-
-@dataclass
-class MediaInfo:
-    """Parsed media information from filename."""
-
-    title: str
-    year: int | None = None
-    media_type: MediaType = MediaType.MOVIE
-    season: int | None = None
-    episode: int | None = None
-    quality: str | None = None
-    source: str | None = None
-    codec: str | None = None
+    title: str = ""
+    year: Optional[int] = None
+    episode: Optional[int] = None
+    season: Optional[int] = None
+    quality: str = ""
+    format: str = ""
     original_filename: str = ""
 
     # Class constants for validation
     MIN_YEAR: ClassVar[int] = 1888  # First known motion picture
     MAX_YEAR: ClassVar[int] = 2030  # Reasonable future limit
 
-    def __post_init__(self) -> None:
-        """Clean up and validate media info."""
+    def __init__(self, **data: Any):
+        """Initialize and validate media info."""
+        super().__init__(**data)
         self.title = self._clean_title(self.title)
         self._validate_year()
 

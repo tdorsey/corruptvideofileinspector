@@ -2,7 +2,6 @@
 CLI command definitions using Click framework.
 """
 
-
 import csv
 import io
 import json
@@ -548,7 +547,7 @@ def report(
         # Extract results
         results = []
         for result_data in scan_data.get("results", []):
-            video_file = VideoFile(Path(result_data.get("filename", "")))
+            video_file = VideoFile(path=Path(result_data.get("filename", "")))
             result = ScanResult(
                 video_file=video_file,
                 needs_deep_scan=result_data.get("needs_deep_scan", False),

@@ -1,8 +1,9 @@
 import time
-from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+from pydantic import BaseModel, Field
 
 from src.core.models.inspection import VideoFile
 
@@ -21,8 +22,7 @@ class ScanMode(Enum):
     HYBRID = "hybrid"
 
 
-@dataclass
-class ScanResult:
+class ScanResult(BaseModel):
     """Results of video file inspection.
 
     Attributes:
@@ -46,7 +46,7 @@ class ScanResult:
     scan_mode: ScanMode = ScanMode.QUICK
     needs_deep_scan: bool = False
     deep_scan_completed: bool = False
-    timestamp: float = field(default_factory=time.time)
+    timestamp: float = Field(default_factory=time.time)
     confidence: float = 0.0
 
     @property
@@ -73,51 +73,25 @@ class ScanResult:
         """Get confidence as percentage."""
         return self.confidence * 100.0
 
-    def to_dict(self) -> dict[str, Any]:
-        """Convert result to dictionary for JSON serialization."""
-        return {
-            "filename": str(self.video_file.path),
-            "is_corrupt": self.is_corrupt,
-            "error_message": self.error_message,
-            "inspection_time": self.inspection_time,
-            "file_size": self.video_file.size,
-            "scan_mode": self.scan_mode.value,
-            "needs_deep_scan": self.needs_deep_scan,
-            "deep_scan_completed": self.deep_scan_completed,
-            "timestamp": self.timestamp,
-            "confidence": self.confidence,
-            "status": self.status,
-            "confidence_percentage": self.confidence_percentage,
-            "video_file": self.video_file.to_dict(),
-        }
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        data = super().model_dump(**kwargs)
+        # Add computed properties for backward compatibility
+        data["filename"] = self.filename
+        data["file_size"] = self.file_size
+        data["status"] = self.status
+        data["confidence_percentage"] = self.confidence_percentage
+        return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ScanResult":
-        """Create ScanResult from dictionary.
-
-        Args:
-            data: Dictionary containing scan result data
-
-        Returns:
-            ScanResult instance
-        """
-        # Handle both old and new data formats
+    def model_validate(cls, data: dict[str, Any]) -> "ScanResult":
+        # Accept both old and new formats
         if "video_file" in data and isinstance(data["video_file"], dict):
-            video_file = VideoFile.from_dict(data["video_file"])
-        else:
-            video_file = VideoFile(Path(data["filename"]))
-
-        return cls(
-            video_file=video_file,
-            is_corrupt=data.get("is_corrupt", False),
-            error_message=data.get("error_message", ""),
-            inspection_time=data.get("inspection_time", 0.0),
-            scan_mode=ScanMode(data.get("scan_mode", "quick")),
-            needs_deep_scan=data.get("needs_deep_scan", False),
-            deep_scan_completed=data.get("deep_scan_completed", False),
-            timestamp=data.get("timestamp", time.time()),
-            confidence=data.get("confidence", 0.0),
-        )
+            data = dict(data)
+            data["video_file"] = VideoFile.model_validate(data["video_file"])
+        elif "filename" in data:
+            data = dict(data)
+            data["video_file"] = VideoFile(path=Path(data["filename"]))
+        return super().model_validate(data)
 
     def is_healthy(self) -> bool:
         """Check if file is healthy (not corrupt and doesn't need deep scan)."""
@@ -136,8 +110,7 @@ class ScanResult:
         return "NONE"
 
 
-@dataclass
-class ScanSummary:
+class ScanSummary(BaseModel):
     """Summary of a complete scan operation.
 
     Attributes:
@@ -164,7 +137,7 @@ class ScanSummary:
     scan_time: float
     deep_scans_needed: int = 0
     deep_scans_completed: int = 0
-    started_at: float = field(default_factory=time.time)
+    started_at: float = Field(default_factory=time.time)
     completed_at: float | None = None
     was_resumed: bool = False
 
@@ -199,52 +172,26 @@ class ScanSummary:
         """Get number of suspicious files (needs deep scan)."""
         return self.deep_scans_needed
 
-    def to_dict(self) -> dict[str, Any]:
-        """Convert summary to dictionary for JSON serialization."""
-        return {
-            "directory": str(self.directory),
-            "total_files": self.total_files,
-            "processed_files": self.processed_files,
-            "corrupt_files": self.corrupt_files,
-            "healthy_files": self.healthy_files,
-            "scan_mode": self.scan_mode.value,
-            "scan_time": self.scan_time,
-            "deep_scans_needed": self.deep_scans_needed,
-            "deep_scans_completed": self.deep_scans_completed,
-            "started_at": self.started_at,
-            "completed_at": self.completed_at,
-            "was_resumed": self.was_resumed,
-            "success_rate": self.success_rate,
-            "corruption_rate": self.corruption_rate,
-            "files_per_second": self.files_per_second,
-            "is_complete": self.is_complete,
-            "suspicious_files": self.suspicious_files,
-        }
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        data = super().model_dump(**kwargs)
+        # Add computed properties for backward compatibility
+        data["success_rate"] = self.success_rate
+        data["corruption_rate"] = self.corruption_rate
+        data["files_per_second"] = self.files_per_second
+        data["is_complete"] = self.is_complete
+        data["suspicious_files"] = self.suspicious_files
+        data["directory"] = str(self.directory)
+        data["scan_mode"] = self.scan_mode.value
+        return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ScanSummary":
-        """Create ScanSummary from dictionary.
-
-        Args:
-            data: Dictionary containing summary data
-
-        Returns:
-            ScanSummary instance
-        """
-        return cls(
-            directory=Path(data["directory"]),
-            total_files=data["total_files"],
-            processed_files=data["processed_files"],
-            corrupt_files=data["corrupt_files"],
-            healthy_files=data["healthy_files"],
-            scan_mode=ScanMode(data["scan_mode"]),
-            scan_time=data["scan_time"],
-            deep_scans_needed=data.get("deep_scans_needed", 0),
-            deep_scans_completed=data.get("deep_scans_completed", 0),
-            started_at=data.get("started_at", time.time()),
-            completed_at=data.get("completed_at"),
-            was_resumed=data.get("was_resumed", False),
-        )
+    def model_validate(cls, data: dict[str, Any]) -> "ScanSummary":
+        data = dict(data)
+        if "directory" in data and not isinstance(data["directory"], Path):
+            data["directory"] = Path(data["directory"])
+        if "scan_mode" in data and not isinstance(data["scan_mode"], ScanMode):
+            data["scan_mode"] = ScanMode(data["scan_mode"])
+        return super().model_validate(data)
 
     def get_status_summary(self) -> str:
         """Get a human-readable status summary.
@@ -298,8 +245,7 @@ class ScanSummary:
         return "\n".join(lines)
 
 
-@dataclass
-class ScanProgress:
+class ScanProgress(BaseModel):
     """Real-time scan progress information.
 
     Attributes:
@@ -318,7 +264,7 @@ class ScanProgress:
     corrupt_count: int = 0
     phase: str = "scanning"
     scan_mode: str = "unknown"
-    start_time: float = field(default_factory=time.time)
+    start_time: float = Field(default_factory=time.time)
 
     @property
     def remaining_count(self) -> int:
@@ -358,42 +304,19 @@ class ScanProgress:
             return 0.0
         return self.processed_count / self.elapsed_time
 
-    def to_dict(self) -> dict[str, Any]:
-        """Convert progress to dictionary for JSON serialization."""
-        return {
-            "current_file": self.current_file,
-            "total_files": self.total_files,
-            "processed_count": self.processed_count,
-            "corrupt_count": self.corrupt_count,
-            "healthy_count": self.healthy_count,
-            "remaining_count": self.remaining_count,
-            "progress_percentage": self.progress_percentage,
-            "phase": self.phase,
-            "scan_mode": self.scan_mode,
-            "elapsed_time": self.elapsed_time,
-            "estimated_remaining_time": self.estimated_remaining_time,
-            "processing_rate": self.processing_rate,
-        }
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        data = super().model_dump(**kwargs)
+        data["healthy_count"] = self.healthy_count
+        data["remaining_count"] = self.remaining_count
+        data["progress_percentage"] = self.progress_percentage
+        data["elapsed_time"] = self.elapsed_time
+        data["estimated_remaining_time"] = self.estimated_remaining_time
+        data["processing_rate"] = self.processing_rate
+        return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ScanProgress":
-        """Create ScanProgress from dictionary.
-
-        Args:
-            data: Dictionary containing progress data
-
-        Returns:
-            ScanProgress instance
-        """
-        return cls(
-            current_file=data.get("current_file"),
-            total_files=data.get("total_files", 0),
-            processed_count=data.get("processed_count", 0),
-            corrupt_count=data.get("corrupt_count", 0),
-            phase=data.get("phase", "scanning"),
-            scan_mode=data.get("scan_mode", "unknown"),
-            start_time=data.get("start_time", time.time()),
-        )
+    def model_validate(cls, data: dict[str, Any]) -> "ScanProgress":
+        return super().model_validate(data)
 
     def get_eta_string(self) -> str:
         """Get estimated time remaining as human-readable string.
@@ -447,8 +370,7 @@ class ScanProgress:
         )
 
 
-@dataclass
-class BatchScanRequest:
+class BatchScanRequest(BaseModel):
     """Request for batch scanning multiple directories.
 
     Attributes:
@@ -467,43 +389,35 @@ class BatchScanRequest:
     max_parallel: int = 2
     output_format: str = "json"
 
-    def __post_init__(self) -> None:
-        """Validate batch scan request."""
+    def __init__(self, **data: Any):
+        super().__init__(**data)
         if not self.directories:
             raise ValueError("At least one directory must be specified")
-
         for directory in self.directories:
             if not directory.exists():
                 raise FileNotFoundError(f"Directory not found: {directory}")
             if not directory.is_dir():
                 raise NotADirectoryError(f"Path is not a directory: {directory}")
 
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "directories": [str(d) for d in self.directories],
-            "scan_mode": self.scan_mode.value,
-            "recursive": self.recursive,
-            "extensions": self.extensions,
-            "max_parallel": self.max_parallel,
-            "output_format": self.output_format,
-        }
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        data = super().model_dump(**kwargs)
+        data["directories"] = [str(d) for d in self.directories]
+        data["scan_mode"] = self.scan_mode.value
+        return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "BatchScanRequest":
-        """Create BatchScanRequest from dictionary."""
-        return cls(
-            directories=[Path(d) for d in data["directories"]],
-            scan_mode=ScanMode(data.get("scan_mode", "hybrid")),
-            recursive=data.get("recursive", True),
-            extensions=data.get("extensions"),
-            max_parallel=data.get("max_parallel", 2),
-            output_format=data.get("output_format", "json"),
-        )
+    def model_validate(cls, data: dict[str, Any]) -> "BatchScanRequest":
+        data = dict(data)
+        if "directories" in data:
+            data["directories"] = [
+                Path(d) if not isinstance(d, Path) else d for d in data["directories"]
+            ]
+        if "scan_mode" in data and not isinstance(data["scan_mode"], ScanMode):
+            data["scan_mode"] = ScanMode(data["scan_mode"])
+        return super().model_validate(data)
 
 
-@dataclass
-class ScanFilter:
+class ScanFilter(BaseModel):
     """Filtering options for scan results.
 
     Attributes:

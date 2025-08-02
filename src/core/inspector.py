@@ -4,12 +4,165 @@ Video corruption detection logic for analyzing FFmpeg output.
 
 from __future__ import annotations
 
+import json
 import logging
+import signal
+import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.core.models.scanning import ScanMode
 
 logger = logging.getLogger(__name__)
+
+# Global progress tracking for signal handlers
+_current_progress: dict[str, Any] = {
+    "current_file": "",
+    "total_files": 0,
+    "processed_count": 0,
+    "corrupt_count": 0,
+    "remaining_count": 0,
+    "scan_mode": "",
+    "start_time": 0.0,
+}
+
+
+def setup_signal_handlers() -> None:
+    """Set up signal handlers for progress reporting."""
+    signal.signal(signal.SIGUSR1, signal_handler)
+
+
+def signal_handler(signum: int, _frame: Any) -> None:
+    """Handle signals for progress reporting."""
+    if signum == signal.SIGUSR1:
+        # Log current progress
+        progress = _current_progress
+        elapsed_time = time.time() - progress.get("start_time", 0)
+
+        logger.info(
+            f"PROGRESS REPORT - File: {progress.get('current_file', 'N/A')} | "
+            f"Progress: {progress.get('processed_count', 0)}/{progress.get('total_files', 0)} | "
+            f"Corrupt: {progress.get('corrupt_count', 0)} | "
+            f"Mode: {progress.get('scan_mode', 'N/A')} | "
+            f"Elapsed: {elapsed_time:.1f}s"
+        )
+
+
+class ProgressReporter:
+    """Progress reporter for video scanning operations."""
+
+    def __init__(self, total_files: int, scan_mode: str) -> None:
+        """Initialize progress reporter.
+
+        Args:
+            total_files: Total number of files to process
+            scan_mode: Scanning mode being used
+        """
+        self.total_files = total_files
+        self.scan_mode = scan_mode
+        self.processed_count = 0
+        self.corrupt_count = 0
+        self.current_file = ""
+        self.start_time = time.time()
+
+        # Initialize global progress
+        _current_progress.update(
+            {
+                "total_files": total_files,
+                "scan_mode": scan_mode,
+                "start_time": self.start_time,
+                "processed_count": 0,
+                "corrupt_count": 0,
+                "current_file": "",
+                "remaining_count": total_files,
+            }
+        )
+
+    def update(
+        self, current_file: str = "", processed_count: int = 0, corrupt_count: int = 0
+    ) -> None:
+        """Update progress information.
+
+        Args:
+            current_file: Currently processing file
+            processed_count: Number of files processed
+            corrupt_count: Number of corrupt files found
+        """
+        if current_file:
+            self.current_file = current_file
+        if processed_count > 0:
+            self.processed_count = processed_count
+        if corrupt_count > 0:
+            self.corrupt_count = corrupt_count
+
+        # Update global progress
+        _current_progress.update(
+            {
+                "current_file": self.current_file,
+                "processed_count": self.processed_count,
+                "corrupt_count": self.corrupt_count,
+                "remaining_count": self.total_files - self.processed_count,
+            }
+        )
+
+    def report_progress(self, force_output: bool = False) -> None:
+        """Report current progress.
+
+        Args:
+            force_output: Force output even if not time for regular update
+        """
+        if force_output:
+            elapsed_time = time.time() - self.start_time
+            logger.info(
+                f"Progress: {self.processed_count}/{self.total_files} files | "
+                f"Corrupt: {self.corrupt_count} | "
+                f"Mode: {self.scan_mode} | "
+                f"Elapsed: {elapsed_time:.1f}s | "
+                f"Current: {self.current_file}"
+            )
+
+
+class WriteAheadLog:
+    """Write-ahead log for scan operations."""
+
+    def __init__(self, directory: str, scan_mode: ScanMode, extensions: list[str]) -> None:
+        """Initialize write-ahead log.
+
+        Args:
+            directory: Directory for log files
+            scan_mode: Scanning mode
+            extensions: File extensions to scan
+        """
+        self.directory = Path(directory)
+        self.scan_mode = scan_mode
+        self.extensions = extensions
+
+        # Create WAL and results file paths
+        timestamp = int(time.time())
+        self.wal_path = self.directory / f"scan_wal_{timestamp}.json"
+        self.results_path = self.directory / f"scan_results_{timestamp}.json"
+
+    def write_entry(self, entry: dict[str, Any]) -> None:
+        """Write an entry to the WAL.
+
+        Args:
+            entry: Log entry to write
+        """
+        with self.wal_path.open("a") as f:
+            json.dump(entry, f)
+            f.write("\n")
+
+    def write_results(self, results: dict[str, Any]) -> None:
+        """Write final results.
+
+        Args:
+            results: Results to write
+        """
+        with self.results_path.open("w") as f:
+            json.dump(results, f, indent=2)
 
 
 class CorruptionSeverity(Enum):
@@ -53,7 +206,7 @@ class CorruptionAnalysis:
         """Determine suggested action based on corruption analysis."""
         if self.is_corrupt:
             if self.severity == CorruptionSeverity.CRITICAL:
-                return "File is severely corrupted and should be deleted or " "restored from backup"
+                return "File is severely corrupted and should be deleted or restored from backup"
             if self.severity == CorruptionSeverity.HIGH:
                 return "File has significant corruption and may be unusable"
             return "File has corruption but may still be playable"

@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -9,7 +9,7 @@ class MediaItem(BaseModel):
 
     title: str
     year: Optional[int] = None
-    media_type: str = Field(default="movie", pattern=r"^(movie|show)$")
+    media_type: str = Field(default="movie")
     season: Optional[int] = Field(default=None, ge=1)
     episode: Optional[int] = Field(default=None, ge=1)
     original_filename: str = ""
@@ -91,3 +91,52 @@ class TraktItem(BaseModel):
     def __str__(self) -> str:
         year_str = f"({self.year})" if self.year else "(no year)"
         return f"{self.title} {year_str} [{self.media_type}]"
+
+
+class SyncResultItem(BaseModel):
+    """Represents the result of syncing a single media item"""
+
+    title: str
+    year: Optional[int] = None
+    type: str = Field(pattern=r"^(movie|show)$")
+    status: str = Field(pattern=r"^(added|failed|not_found|skipped|error)$")
+    trakt_id: Optional[int] = Field(default=None, ge=1)
+    filename: str = ""
+    error: Optional[str] = None
+
+    @field_validator("title")
+    def validate_title(cls, v: str) -> str:
+        """Ensure title is not empty."""
+        if not v or not v.strip():
+            raise ValueError("Title cannot be empty")
+        return v.strip()
+
+
+class TraktSyncSummary(BaseModel):
+    """Summary of Trakt watchlist sync operation"""
+
+    total: int = Field(ge=0, description="Total number of items processed")
+    movies_added: int = Field(ge=0, description="Number of movies added")
+    shows_added: int = Field(ge=0, description="Number of shows added")
+    failed: int = Field(ge=0, description="Number of items that failed")
+    results: List[SyncResultItem] = Field(
+        default_factory=list, description="Detailed results for each item"
+    )
+
+    @property
+    def success_count(self) -> int:
+        """Total number of successfully added items"""
+        return self.movies_added + self.shows_added
+
+    @property
+    def success_rate(self) -> float:
+        """Success rate as a percentage"""
+        if self.total == 0:
+            return 0.0
+        return (self.success_count / self.total) * 100
+
+    def __str__(self) -> str:
+        return (
+            f"Trakt Sync Summary: {self.success_count}/{self.total} items added "
+            f"({self.success_rate:.1f}% success rate)"
+        )

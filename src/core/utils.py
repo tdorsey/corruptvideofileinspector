@@ -18,7 +18,7 @@ def create_video_file_from_path(path: str | Path) -> VideoFile:
         raise FileNotFoundError(f"Video file not found: {path_obj}")
     if not path_obj.is_file():
         raise ValueError(f"Path is not a file: {path_obj}")
-    return VideoFile(path_obj)
+    return VideoFile(path=path_obj)
 
 
 # Removed duplicate definition of merge_scan_summaries

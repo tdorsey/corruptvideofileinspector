@@ -1,6 +1,5 @@
 """Core video scanning service with support for different scan modes."""
 
-
 from __future__ import annotations
 
 import asyncio
@@ -8,6 +7,7 @@ import json
 import logging
 import os
 import subprocess
+import threading
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterator
@@ -87,7 +87,6 @@ class VideoScanner:
             List of found video files
         """
         logger.info("Locating video files in: %s", directory)
-        self._validate_directory(directory)
         video_files = await self._find_video_files_async(directory, recursive, extensions)
         progress = ScanProgress(
             total_files=len(video_files),
@@ -122,22 +121,47 @@ class VideoScanner:
             List of found video files
         """
         try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        try:
-            return loop.run_until_complete(
-                self.locate_video_files_async(
-                    directory,
-                    recursive=recursive,
-                    extensions=extensions,
-                    progress_callback=progress_callback,
-                )
-            )
-        finally:
-            if loop.is_running():
-                loop.close()
+            try:
+                loop = asyncio.get_running_loop()
+                # If already running, create a new loop in a new thread
+                result = []
+
+                def run():
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    result.append(
+                        new_loop.run_until_complete(
+                            self.locate_video_files_async(
+                                directory,
+                                recursive=recursive,
+                                extensions=extensions,
+                                progress_callback=progress_callback,
+                            )
+                        )
+                    )
+                    new_loop.close()
+
+                t = threading.Thread(target=run)
+                t.start()
+                t.join()
+                return result[0]
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    return loop.run_until_complete(
+                        self.locate_video_files_async(
+                            directory,
+                            recursive=recursive,
+                            extensions=extensions,
+                            progress_callback=progress_callback,
+                        )
+                    )
+                finally:
+                    loop.close()
+        except Exception:
+            logger.exception("Error in locate_video_files")
+            raise
 
     async def locate_files_async(
         self,
@@ -153,7 +177,7 @@ class VideoScanner:
         Returns:
             List of found video files
         """
-        video_files = [VideoFile(path) for path in file_paths if path.exists()]
+        video_files = [VideoFile(path=path) for path in file_paths if path.exists()]
         progress = ScanProgress(
             total_files=len(video_files),
             scan_mode="locate",
@@ -183,13 +207,40 @@ class VideoScanner:
             List of video files found
         """
         try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        return loop.run_until_complete(
-            self._find_video_files_async(directory, recursive, extensions)
-        )
+            try:
+                loop = asyncio.get_running_loop()
+                # If already running, create a new loop in a new thread
+                import threading
+
+                result = []
+
+                def run():
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    result.append(
+                        new_loop.run_until_complete(
+                            self._find_video_files_async(directory, recursive, extensions)
+                        )
+                    )
+                    new_loop.close()
+
+                t = threading.Thread(target=run)
+                t.start()
+                t.join()
+                return result[0]
+            except RuntimeError:
+                # No running event loop, create a new one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    return loop.run_until_complete(
+                        self._find_video_files_async(directory, recursive, extensions)
+                    )
+                finally:
+                    loop.close()
+        except Exception:
+            logger.exception("Error in get_video_files")
+            raise
 
     def request_shutdown(self) -> None:
         """Request graceful shutdown of current scan operation."""
@@ -223,8 +274,6 @@ class VideoScanner:
         """
         logger.info("Starting directory scan: %s", directory)
         logger.info("Scan mode: %s, recursive: %s", scan_mode.value, recursive)
-
-        self._validate_directory(directory)
 
         # Get video files
         video_files = self.get_video_files(directory, recursive=recursive)
@@ -406,13 +455,6 @@ class VideoScanner:
 
     # Private methods
 
-    def _validate_directory(self, directory: Path) -> None:
-        """Validate that directory exists and is accessible."""
-        if not directory.exists():
-            raise FileNotFoundError(f"Directory not found: {directory}")
-        if not directory.is_dir():
-            raise NotADirectoryError(f"Path is not a directory: {directory}")
-
     async def _find_video_files_async(
         self,
         directory: Path,
@@ -430,17 +472,21 @@ class VideoScanner:
         # Use asyncio to make file system operations non-blocking
         def _scan_directory() -> Iterator[VideoFile]:
             pattern = "**/*" if recursive else "*"
+            logger.debug(f"Scanning directory: {directory}, pattern: {pattern}")
+            logger.debug(f"Using extensions: {extensions}")
             for file_path in directory.glob(pattern):
+                logger.debug(f"Found file: {file_path} (suffix: {file_path.suffix.lower()})")
                 if file_path.is_file() and file_path.suffix.lower() in extensions:
-                    yield VideoFile(file_path)
+                    logger.debug(f"Accepted as video file: {file_path}")
+                    yield VideoFile(path=file_path)
+                else:
+                    logger.debug(f"Skipped: {file_path}")
 
         # Run in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
         video_files = await loop.run_in_executor(None, lambda: list(_scan_directory()))
 
         return sorted(video_files, key=lambda x: x.path)
-
-    # ...existing code for _validate_directory and _find_video_files_async...
 
 
 def validate_scan_results(results: list[ScanResult]) -> list[str]:

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import toml
-from piny import PydanticValidator, YamlLoader  # type: ignore
+import yaml
 from pydantic import BaseModel, Field
 
 from src.config.secrets import read_docker_secret
@@ -60,6 +60,7 @@ class AppConfig(BaseModel):
 
 _CONFIG_SINGLETON: Optional[AppConfig] = None
 
+
 def load_config(config_path: Optional[Path] = None) -> AppConfig:
     """
     Load configuration from a YAML file with Pydantic schema validation.
@@ -108,29 +109,16 @@ def load_config(config_path: Optional[Path] = None) -> AppConfig:
                 "No config file found at /app/config.yaml and no pyproject.toml found to locate project root. "
                 "Please provide a config file."
             )
-    loader = YamlLoader(
-        path=config_path,
-        validator=PydanticValidator,
-        schema=AppConfig,
-    )
-    config_data = loader.load(many=False)
+
+    # Load YAML configuration file
+    with config_path.open("r", encoding="utf-8") as f:
+        config_data = yaml.safe_load(f)
 
     # If a Docker secret exists for trakt_client_secret, override config value
     docker_secret = read_docker_secret("trakt_client_secret")
-    if docker_secret is not None:
-        if "trakt" in config_data:
-            config_data["trakt"]["client_secret"] = docker_secret
-        elif hasattr(config_data, "trakt"):
-            config_data.trakt["client_secret"] = docker_secret
+    if docker_secret is not None and "trakt" in config_data:
+        config_data["trakt"]["client_secret"] = docker_secret
 
-    _CONFIG_SINGLETON = AppConfig.model_validate(config_data)
-    return _CONFIG_SINGLETON
-    docker_secret = read_docker_secret("trakt_client_secret")
-    if docker_secret is not None:
-        if "trakt" in config_data:
-            config_data["trakt"]["client_secret"] = docker_secret
-        elif hasattr(config_data, "trakt"):
-            config_data.trakt["client_secret"] = docker_secret
-
+    # Validate and create config object using Pydantic
     _CONFIG_SINGLETON = AppConfig.model_validate(config_data)
     return _CONFIG_SINGLETON

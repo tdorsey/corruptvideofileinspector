@@ -7,15 +7,14 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import click  # type: ignore
 from pydantic import BaseModel, Field
 
 from src.config.config import AppConfig
 from src.core.models.inspection import VideoFile
-from src.core.models.reporting.scan_summary import ScanSummary
-from src.core.models.scanning import ScanMode, ScanProgress
+from src.core.models.scanning import ScanMode, ScanProgress, ScanResult, ScanSummary
 from src.core.reporter import ReportService
 from src.core.scanner import VideoScanner
 from src.core.watchlist import sync_to_trakt_watchlist
@@ -32,6 +31,39 @@ class BaseHandler:
         self.config = config
         self.output_formatter = OutputFormatter(config)
         self.report_service = ReportService(config)
+
+    def _handle_error(self, error: Exception, message: str) -> None:
+        """Handle errors consistently across handlers."""
+        logger.error(f"{message}: {error}")
+        click.echo(f"Error: {message}: {error}", err=True)
+        sys.exit(1)
+
+    def _generate_output(
+        self,
+        summary: ScanSummary,
+        output_file: Optional[Path] = None,
+        output_format: str = "json",
+        pretty_print: bool = True,
+    ) -> None:
+        """Generate output file from scan summary."""
+        try:
+            if output_file:
+                target_file = output_file
+            else:
+                target_file = self.config.output.default_output_dir / "scan_results.json"
+                target_file.parent.mkdir(parents=True, exist_ok=True)
+
+            if output_format.lower() == "json":
+                with target_file.open("w", encoding="utf-8") as f:
+                    if pretty_print:
+                        json.dump(summary.model_dump(), f, indent=2)
+                    else:
+                        json.dump(summary.model_dump(), f)
+                logger.info(f"Scan results saved to: {target_file}")
+            else:
+                logger.warning(f"Unsupported output format: {output_format}")
+        except Exception as e:
+            logger.warning(f"Failed to save output: {e}")
 
 
 class ScanHandler(BaseHandler):
@@ -172,8 +204,8 @@ class ScanHandler(BaseHandler):
 
     def generate_comprehensive_report(
         self,
-        summary: Any,
-        results: list,
+        summary: ScanSummary,
+        results: list[ScanResult],
         output_file: Optional[Path] = None,
         output_format: str = "json",
         include_healthy: bool = False,
@@ -292,22 +324,23 @@ class TraktHandler(BaseHandler):
         """
         try:
             logger.info(f"Syncing scan results from {scan_file} to Trakt.tv watchlist.")
-            results = sync_to_trakt_watchlist(
+            results_dict = sync_to_trakt_watchlist(
                 scan_file=str(scan_file),
                 access_token=access_token,
                 client_id=None,  # TODO: Add client_id to config if needed
                 interactive=interactive,
             )
+            results = TraktSyncResult(**results_dict)
             logger.info(
-                f"Trakt sync complete. Movies added: {results.get('movies_added', 0)}, Shows added: {results.get('shows_added', 0)}."
+                f"Trakt sync complete. Movies added: {results.movies_added}, Shows added: {results.shows_added}."
             )
             if output_file:
                 self._save_sync_results(results, output_file)
-            return TraktSyncResult(**results)
+            return results
         except Exception as e:
             self._handle_error(e, "Trakt sync failed")
 
-    def _show_sync_results(self, results: dict, dry_run: bool = False) -> None:
+    def _show_sync_results(self, results: TraktSyncResult, dry_run: bool = False) -> None:
         """Show sync operation results."""
         click.echo("\n" + "=" * 50)
         if dry_run:
@@ -316,33 +349,35 @@ class TraktHandler(BaseHandler):
             click.echo("TRAKT SYNC SUMMARY")
         click.echo("=" * 50)
 
-        click.echo(f"Total items processed: {results['total']}")
-        click.echo(f"Movies {'would be' if dry_run else ''} added: {results['movies_added']}")
-        click.echo(f"Shows {'would be' if dry_run else ''} added: {results['shows_added']}")
-        click.echo(f"Failed/Not found: {results['failed']}")
+        click.echo(f"Total items processed: {results.total}")
+        click.echo(f"Movies {'would be' if dry_run else ''} added: {results.movies_added}")
+        click.echo(f"Shows {'would be' if dry_run else ''} added: {results.shows_added}")
+        click.echo(f"Failed/Not found: {results.failed}")
 
-        if results["total"] > 0:
-            success_count = results["movies_added"] + results["shows_added"]
-            success_rate = (success_count / results["total"]) * 100
+        if results.total > 0:
+            success_count = results.movies_added + results.shows_added
+            success_rate = (success_count / results.total) * 100
             click.echo(f"Success rate: {success_rate:.1f}%")
 
         # Show failed items if any
-        if results.get("results"):
+        if results.results:
             failed_items = [
-                r for r in results["results"] if r["status"] in ["failed", "not_found", "error"]
+                r for r in results.results if r.get("status") in ["failed", "not_found", "error"]
             ]
             if failed_items:
                 click.echo(f"\nFailed items ({len(failed_items)}):")
                 for item in failed_items[:10]:  # Show first 10
-                    click.echo(f"  - {item['title']} ({item.get('year', 'no year')})")
+                    click.echo(
+                        f"  - {item.get('title', 'Unknown')} ({item.get('year', 'no year')})"
+                    )
                 if len(failed_items) > 10:
                     click.echo(f"  ... and {len(failed_items) - 10} more")
 
-    def _save_sync_results(self, results: dict, output_file: Path) -> None:
+    def _save_sync_results(self, results: TraktSyncResult, output_file: Path) -> None:
         """Save sync results to output file."""
         try:
             with output_file.open("w", encoding="utf-8") as f:
-                json.dump(results, f, indent=2)
+                json.dump(results.model_dump(), f, indent=2)
 
             click.echo(f"\nSync results saved to: {output_file}")
 

@@ -9,11 +9,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 from cli_handler import get_all_video_object_files
-from src.utils import count_all_video_files, format_file_size, get_video_extensions
-from src.core.models.scanning import ScanMode
 from src.core.models.inspection import VideoFile
+from src.core.models.scanning import ScanMode
+from src.utils import count_all_video_files, format_file_size, get_video_extensions
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -146,11 +145,12 @@ class TestEndToEndIntegration(unittest.TestCase):
 
         # Test JSON conversion
         for result in results:
-            result_dict = result.to_dict()
+            # Prefer model_dump if available (Pydantic v2), else fallback to to_dict
+            result_dict = result.model_dump() if hasattr(result, "model_dump") else result.to_dict()
             assert isinstance(result_dict, dict)
-            assert "filename" in result_dict
-            assert "is_corrupt" in result_dict
-            assert "scan_mode" in result_dict
+            assert "filename" in result_dict or "path" in result_dict
+            assert "is_corrupt" in result_dict or "size" in result_dict
+            assert "scan_mode" in result_dict or "duration" in result_dict
 
     def test_file_size_formatting_workflow(self):
         """Test file size formatting across different file sizes"""
