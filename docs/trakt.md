@@ -1,6 +1,6 @@
-# Trakt Watchlist Integration
+# Trakt.tv Integration
 
-This document describes how to use the new Trakt.tv watchlist integration feature.
+This document describes how to use the Trakt.tv watchlist integration feature to automatically sync your video collection to your Trakt.tv watchlist.
 
 ## Overview
 
