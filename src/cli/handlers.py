@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-import click  # type: ignore
+import click
 from pydantic import BaseModel, Field
 
 from src.config.config import AppConfig
@@ -47,11 +47,26 @@ class BaseHandler:
     ) -> None:
         """Generate output file from scan summary."""
         try:
+            # Determine target output file path
             if output_file:
-                target_file = output_file
+                # If a directory is provided, warn and use default output directory
+                if output_file.is_dir():
+                    logger.warning(
+                        f"Specified output path {output_file} is a directory; "
+                        "using default output directory"
+                    )
+                    target_file = (
+                        self.config.output.default_output_dir / self.config.output.default_filename
+                    )
+                else:
+                    target_file = output_file
             else:
-                target_file = self.config.output.default_output_dir / "scan_results.json"
-                target_file.parent.mkdir(parents=True, exist_ok=True)
+                # Use configured default output directory and filename
+                target_file = (
+                    self.config.output.default_output_dir / self.config.output.default_filename
+                )
+            # Ensure parent directory exists
+            target_file.parent.mkdir(parents=True, exist_ok=True)
 
             if output_format.lower() == "json":
                 with target_file.open("w", encoding="utf-8") as f:
@@ -63,7 +78,30 @@ class BaseHandler:
             else:
                 logger.warning(f"Unsupported output format: {output_format}")
         except Exception as e:
-            logger.warning(f"Failed to save output: {e}")
+            # Initial write failed, log and attempt fallback to configured output dir
+            logger.warning(
+                f"Failed to save output to {target_file}: {e}. "
+                "Attempting to save to default output directory"
+            )
+            try:
+                # Determine fallback file path
+                fallback_file = (
+                    self.config.output.default_output_dir / self.config.output.default_filename
+                )
+                # Ensure fallback directory exists
+                fallback_file.parent.mkdir(parents=True, exist_ok=True)
+                # Write output to fallback file
+                with fallback_file.open("w", encoding="utf-8") as f:
+                    if output_format.lower() == "json":
+                        # Use indent when pretty printing
+                        indent = 2 if pretty_print else None
+                        json.dump(summary.model_dump(), f, indent=indent)
+                    else:
+                        # Unsupported formats not implemented in fallback
+                        logger.warning(f"Unsupported output format in fallback: {output_format}")
+                logger.info(f"Scan results saved to: {fallback_file}")
+            except Exception as fallback_exc:
+                logger.warning(f"Failed to save fallback output to {fallback_file}: {fallback_exc}")
 
 
 class ScanHandler(BaseHandler):
@@ -154,7 +192,7 @@ class ScanHandler(BaseHandler):
 
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
-        bar: click.types.ProgressBar
+        # Progress bar created by click
         with click.progressbar(
             length=progress.total_files,
             show_eta=True,

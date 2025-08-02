@@ -140,7 +140,12 @@ def cli(
     help="Enable/disable resume functionality",
     show_default=True,
 )
-@click.option("--output", "-o", type=PathType(), help="Output file path for results")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path, dir_okay=False),
+    help="Output file path for results (must be a file, not a directory)",
+)
 @click.option(
     "--format",
     "output_format",

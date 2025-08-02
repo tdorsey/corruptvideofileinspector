@@ -21,7 +21,7 @@ def test_scan_output_model_serialization():
     assert d["corrupt_files"] == 2
     # Test model to JSON
     json_str = model.model_dump_json()
-    assert '"scan_mode": "quick"' in json_str
+    assert '"scan_mode":"quick"' in json_str  # JSON without spaces around :
     # Test round-trip
     loaded = ScanOutputModel.model_validate_json(json_str)
     assert loaded.scan_mode == ScanMode.QUICK
