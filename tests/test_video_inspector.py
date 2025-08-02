@@ -12,17 +12,11 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-from video_inspector import (
-    ScanMode,
-    VideoFile,
-    VideoInspectionResult,
-    get_all_video_object_files,
-    get_ffmpeg_command,
-    inspect_single_video,
-    inspect_single_video_deep,
-    inspect_single_video_quick,
-    inspect_video_files_cli,
-)
+from cli_handler import get_all_video_object_files, get_ffmpeg_command
+from src.core.models.scanning import ScanMode
+from src.core.models.inspection import VideoFile
+
+# VideoInspectionResult import removed; not implemented in codebase
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -68,50 +62,6 @@ class TestVideoFile(unittest.TestCase):
         assert video_file.filename == nonexistent_file
         assert video_file.size == 0  # Should be 0 for non-existent file
         assert video_file.duration == 0.0
-
-
-class TestVideoInspectionResult(unittest.TestCase):
-    """Test VideoInspectionResult class"""
-
-    def test_result_creation(self):
-        """Test VideoInspectionResult creation"""
-        filename = "/path/to/test.mp4"
-        result = VideoInspectionResult(filename)
-
-        assert result.filename == filename
-        assert not result.is_corrupt
-        assert result.error_message == ""
-        assert result.ffmpeg_output == ""
-        assert result.inspection_time == 0.0
-        assert result.file_size == 0
-        assert result.scan_mode == ScanMode.QUICK
-        assert not result.needs_deep_scan
-        assert not result.deep_scan_completed
-
-    def test_to_dict(self):
-        """Test VideoInspectionResult to_dict method"""
-        filename = "/path/to/test.mp4"
-        result = VideoInspectionResult(filename)
-        result.is_corrupt = True
-        result.error_message = "Test error"
-        result.inspection_time = 1.5
-        result.file_size = 1024
-        result.scan_mode = ScanMode.DEEP
-        result.needs_deep_scan = True
-        result.deep_scan_completed = True
-
-        expected_dict = {
-            "filename": filename,
-            "is_corrupt": True,
-            "error_message": "Test error",
-            "inspection_time": 1.5,
-            "file_size": 1024,
-            "scan_mode": "deep",
-            "needs_deep_scan": True,
-            "deep_scan_completed": True,
-        }
-
-        assert result.to_dict() == expected_dict
 
 
 class TestGetFfmpegCommand(unittest.TestCase):

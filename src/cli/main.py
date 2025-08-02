@@ -1,37 +1,36 @@
 """Main CLI entry point for corrupt-video-inspector."""
 
+
 from __future__ import annotations
 
 import logging
 import sys
 from typing import NoReturn
 
-import click  # type: ignore
-from rich.console import Console  # type: ignore
+import click
 
 from src.cli.commands import cli
 
-# Setup rich console for beautiful output
-console = Console()
+logger = logging.getLogger(__name__)
 
 
 def handle_keyboard_interrupt() -> NoReturn:
     """Handle keyboard interrupt gracefully."""
-    console.print("\n[yellow]Operation cancelled by user.[/yellow]")
+    logger.warning("Operation cancelled by user.")
     sys.exit(130)  # Standard exit code for SIGINT
 
 
 def handle_general_error(error: Exception) -> NoReturn:
-    """Handle general errors with rich formatting.
+    """Handle general errors with logging.
 
     Args:
         error: The exception that occurred.
     """
-    console.print(f"[red]Error:[/red] {error}")
+    logger.error(f"Error: {error}")
 
     # Show traceback in verbose mode
     if logging.getLogger().isEnabledFor(logging.DEBUG):
-        console.print_exception()
+        logger.exception("Exception details:")
 
     sys.exit(1)
 

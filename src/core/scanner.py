@@ -1,11 +1,13 @@
 """Core video scanning service with support for different scan modes."""
 
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
 import os
+import subprocess
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterator
@@ -18,6 +20,7 @@ from src.core.models.scanning import (
     ScanResult,
     ScanSummary,
 )
+from src.ffmpeg.corruption_detector import CorruptionDetector
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -238,7 +241,6 @@ class VideoScanner:
             )
 
         logger.info("Found %d video files to scan", len(video_files))
-
         resume_path = self._get_resume_path(directory)
         processed_files: set[str] = set()
         was_resumed = False
@@ -248,65 +250,158 @@ class VideoScanner:
                 logger.info(f"Resuming scan, skipping {len(processed_files)} files.")
                 was_resumed = True
 
-        # Create progress tracker
-        progress = ScanProgress(
+        # Phase 1: Quick scan (for HYBRID or QUICK) using CorruptionDetector
+        suspicious_files: list[VideoFile] = []
+        progress: ScanProgress = ScanProgress(
             total_files=len(video_files),
             processed_count=0,
             corrupt_count=0,
             scan_mode=scan_mode.value,
         )
-
-        start_time = time.time()
-        try:
+        start_time: float = time.time()
+        detector: CorruptionDetector = CorruptionDetector()
+        deep_scans_needed: int = 0
+        deep_scans_completed: int = 0
+        for video_file in video_files:
+            if self._shutdown_requested:
+                break
+            video_file_str: str = str(video_file.path)
+            if resume and video_file_str in processed_files:
+                continue
+            progress.processed_count += 1
+            progress.current_file = video_file_str
+            # Run FFmpeg to analyze file (quick scan)
+            # Only analyze first 10 seconds for quick scan
+            ffmpeg_cmd: list[str] = [
+                "ffmpeg",
+                "-v",
+                "error",
+                "-t",
+                "10",
+                "-i",
+                video_file_str,
+                "-f",
+                "null",
+                "-",
+            ]
+            try:
+                proc = subprocess.run(
+                    ffmpeg_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                stderr = proc.stderr
+                exit_code = proc.returncode
+            except Exception as e:
+                stderr = str(e)
+                exit_code = 1
+            analysis = detector.analyze_ffmpeg_output(stderr, exit_code, is_quick_scan=True)
+            if analysis.is_corrupt:
+                progress.corrupt_count += 1
+            elif analysis.needs_deep_scan and scan_mode in (ScanMode.HYBRID, ScanMode.QUICK):
+                suspicious_files.append(video_file)
+            processed_files.add(video_file_str)
+            self._save_resume_state(resume_path, processed_files)
+            if progress_callback:
+                progress_callback(progress)
+        # Phase 2: Deep scan (for HYBRID or DEEP)
+        if scan_mode == ScanMode.HYBRID and suspicious_files:
+            deep_scans_needed = len(suspicious_files)
+            for video_file in suspicious_files:
+                if self._shutdown_requested:
+                    break
+                video_file_str = str(video_file.path)
+                ffmpeg_cmd = [
+                    "ffmpeg",
+                    "-v",
+                    "error",
+                    "-i",
+                    video_file_str,
+                    "-f",
+                    "null",
+                    "-",
+                ]
+                try:
+                    proc = subprocess.run(
+                        ffmpeg_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        check=False,
+                    )
+                    stderr = proc.stderr
+                    exit_code = proc.returncode
+                except Exception as e:
+                    stderr = str(e)
+                    exit_code = 1
+                analysis = detector.analyze_ffmpeg_output(stderr, exit_code, is_quick_scan=False)
+                deep_scans_completed += 1
+                if analysis.is_corrupt:
+                    progress.corrupt_count += 1
+                if progress_callback:
+                    progress_callback(progress)
+        elif scan_mode == ScanMode.DEEP:
+            deep_scans_needed = len(video_files)
             for video_file in video_files:
                 if self._shutdown_requested:
                     break
-
                 video_file_str = str(video_file.path)
-                if resume and video_file_str in processed_files:
-                    continue
-
-                progress.processed_count += 1
-                progress.current_file = video_file_str
-
+                ffmpeg_cmd = [
+                    "ffmpeg",
+                    "-v",
+                    "error",
+                    "-i",
+                    video_file_str,
+                    "-f",
+                    "null",
+                    "-",
+                ]
+                try:
+                    proc = subprocess.run(
+                        ffmpeg_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        check=False,
+                    )
+                    stderr = proc.stderr
+                    exit_code = proc.returncode
+                except Exception as e:
+                    stderr = str(e)
+                    exit_code = 1
+                analysis = detector.analyze_ffmpeg_output(stderr, exit_code, is_quick_scan=False)
+                deep_scans_completed += 1
+                if analysis.is_corrupt:
+                    progress.corrupt_count += 1
                 if progress_callback:
                     progress_callback(progress)
-
-                # TODO: Implement actual scanning logic using FFmpegClient
-                # For now, just mark all files as healthy
-                time.sleep(0.01)  # Simulate processing time
-
-                processed_files.add(video_file_str)
-                self._save_resume_state(resume_path, processed_files)
-        finally:
-            scan_time = time.time() - start_time
-            # Remove resume file if scan completed or was interrupted
-            if resume_path.exists():
-                try:
-                    resume_path.unlink()
-                except Exception as e:
-                    logger.warning(f"Failed to remove resume file: {e}")
-
+        # Remove resume file if scan completed or was interrupted
+        if resume_path.exists():
+            try:
+                resume_path.unlink()
+            except Exception as e:
+                logger.warning(f"Failed to remove resume file: {e}")
         # Create summary
-        summary = ScanSummary(
+        summary: ScanSummary = ScanSummary(
             directory=directory,
             total_files=len(video_files),
             processed_files=progress.processed_count,
             corrupt_files=progress.corrupt_count,
             healthy_files=progress.processed_count - progress.corrupt_count,
             scan_mode=scan_mode,
-            scan_time=scan_time,
+            scan_time=time.time() - start_time,
         )
-        # Attach resume info if available
         summary.was_resumed = was_resumed  # type: ignore[attr-defined]
-
+        summary.deep_scans_needed = deep_scans_needed  # type: ignore[attr-defined]
+        summary.deep_scans_completed = deep_scans_completed  # type: ignore[attr-defined]
         logger.info(
             "Scan completed: %d files, %d corrupt, %.2fs",
             summary.processed_files,
             summary.corrupt_files,
             summary.scan_time,
         )
-
         return summary
 
     # Private methods

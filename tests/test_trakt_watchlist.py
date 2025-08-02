@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 import pytest
-from trakt_watchlist import FilenameParser, MediaItem, process_scan_file
+from src.core.watchlist import FilenameParser, MediaItem, process_scan_file
 
 
 class TestFilenameParser(unittest.TestCase):

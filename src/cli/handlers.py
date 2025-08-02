@@ -10,8 +10,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 import click  # type: ignore
+from pydantic import BaseModel, Field
 
 from src.config.config import AppConfig
+from src.core.models.inspection import VideoFile
+from src.core.models.reporting.scan_summary import ScanSummary
 from src.core.models.scanning import ScanMode, ScanProgress
 from src.core.reporter import ReportService
 from src.core.scanner import VideoScanner
@@ -29,12 +32,6 @@ class BaseHandler:
         self.config = config
         self.output_formatter = OutputFormatter(config)
         self.report_service = ReportService(config)
-
-    def _handle_error(self, error: Exception, message: str) -> None:
-        """Handle and log errors consistently."""
-        logger.exception(message)
-        click.echo(f"Error: {error}", err=True)
-        sys.exit(1)
 
 
 class ScanHandler(BaseHandler):
@@ -54,37 +51,16 @@ class ScanHandler(BaseHandler):
         output_file: Optional[Path] = None,
         output_format: str = "json",
         pretty_print: bool = True,
-    ) -> None:
+    ) -> Optional[ScanSummary]:
         """
-        Run a video corruption scan.
-
-        Args:
-            directory: Directory to scan
-            scan_mode: Type of scan to perform
-            recursive: Whether to scan subdirectories
-            resume: Whether to resume from previous scan state
-            output_file: Optional output file path
-            output_format: Output format (json, yaml, csv)
-            pretty_print: Whether to pretty-print output
+        Run a video corruption scan and return ScanSummary or None.
         """
         try:
-            # Show initial information
-            if self.config.logging.level != "QUIET":
-                self._show_scan_info(directory, scan_mode, recursive)
-
-            # Check if directory has video files (only print message once)
             video_files = self.scanner.get_video_files(directory, recursive=recursive)
             if not video_files:
-                msg = "No video files found to scan."
-                if self.config.scan.extensions:
-                    ext_list = ", ".join(self.config.scan.extensions)
-                    msg += f"\nSearched for extensions: {ext_list}"
-                click.echo(msg)
-                return
-
-            click.echo(f"Found {len(video_files)} video files to scan.")
-
-            # Run the scan
+                logger.info("No video files found to scan.")
+                return None
+            logger.info(f"Found {len(video_files)} video files to scan.")
             summary = self.scanner.scan_directory(
                 directory=directory,
                 scan_mode=scan_mode,
@@ -94,11 +70,6 @@ class ScanHandler(BaseHandler):
                     self._progress_callback if self.config.logging.level != "QUIET" else None
                 ),
             )
-
-            # Show results
-            self._show_scan_results(summary)
-
-            # Generate output file if requested
             if output_file or self.config.output.default_json:
                 self._generate_output(
                     summary=summary,
@@ -106,9 +77,9 @@ class ScanHandler(BaseHandler):
                     output_format=output_format,
                     pretty_print=pretty_print,
                 )
-
+            return summary
         except KeyboardInterrupt:
-            click.echo("\nScan interrupted by user.", err=True)
+            logger.warning("Scan interrupted by user.")
             sys.exit(130)
         except Exception as e:
             self._handle_error(e, "Scan failed")
@@ -147,43 +118,25 @@ class ScanHandler(BaseHandler):
         self._last_progress_update = current_time
 
         # Show progress (default to text progress)
-        self._show_progress_text(progress)
+        self._show_progress_bar(progress)
 
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
-        try:
-            # Use click's progress bar if available
-            with click.progressbar(
-                length=progress.total_files,
-                show_eta=True,
-                show_percent=True,
-                show_pos=True,
-            ) as bar:
-                bar.update(progress.processed_count)
-        except ImportError:
-            # Fallback to text progress
-            self._show_progress_text(progress)
+        bar: click.types.ProgressBar
+        with click.progressbar(
+            length=progress.total_files,
+            show_eta=True,
+            show_percent=True,
+            show_pos=True,
+        ) as bar:
+            bar.update(progress.processed_count)
 
-    def _show_progress_text(self, progress: ScanProgress) -> None:
-        """Show progress as text."""
-        percent = progress.progress_percentage
+    def _show_scan_results(self, summary: ScanSummary) -> None:
+        """Show scan completion results, only once per scan.
 
-        phase_label = ""
-        if progress.phase:
-            phase_label = f"{progress.phase.replace('_', ' ').title()} - "
-
-        current_file = ""
-        if progress.current_file:
-            current_file = f" | Current: {Path(progress.current_file).name}"
-
-        click.echo(
-            f"\r{phase_label}Progress: {progress.processed_count}/{progress.total_files} "
-            f"({percent:.1f}%) | Corrupt: {progress.corrupt_count}{current_file}",
-            nl=False,
-        )
-
-    def _show_scan_results(self, summary: Any) -> None:
-        """Show scan completion results, only once per scan."""
+        Args:
+            summary: ScanSummary Pydantic model containing scan results.
+        """
         if self._scan_message_printed:
             return
         self._scan_message_printed = True
@@ -216,33 +169,6 @@ class ScanHandler(BaseHandler):
 
         if summary.was_resumed:
             click.echo("(Scan was resumed from previous session)")
-
-    def _generate_output(
-        self,
-        summary: Any,
-        output_file: Optional[Path],
-        output_format: str,
-        pretty_print: bool,
-    ) -> None:
-        """Generate output file with scan results."""
-        try:
-            if not output_file:
-                output_dir = self.config.output.default_output_dir
-                output_dir.mkdir(parents=True, exist_ok=True)
-                output_file = output_dir / f"scan_results.{output_format}"
-
-            self.output_formatter.write_scan_results(
-                summary=summary,
-                output_file=output_file,
-                format=output_format,
-                pretty_print=pretty_print,
-            )
-
-            click.echo(f"\nDetailed results saved to: {output_file}")
-
-        except Exception as e:
-            logger.warning(f"Failed to generate output file: {e}")
-            click.echo(f"Warning: Could not save results to file: {e}", err=True)
 
     def generate_comprehensive_report(
         self,
@@ -294,44 +220,29 @@ class ListHandler(BaseHandler):
         recursive: bool = True,
         output_file: Optional[Path] = None,
         output_format: str = "text",
-    ) -> None:
+    ) -> list[VideoFile]:
         """
-        List all video files in directory.
-
-        Args:
-            directory: Directory to scan
-            recursive: Whether to scan subdirectories
-            output_file: Optional output file
-            output_format: Output format (text, json, csv)
+        List all video files in directory and return list of VideoFile Pydantic models.
         """
         try:
-            click.echo(f"Scanning directory: {directory}")
-            if recursive:
-                click.echo("(including subdirectories)")
-
-            # Get video files
             video_files = self.scanner.get_video_files(directory, recursive=recursive)
-
             if not video_files:
-                click.echo("No video files found in the specified directory.")
-                if self.config.scan.extensions:
-                    ext_list = ", ".join(self.config.scan.extensions)
-                    click.echo(f"Searched for extensions: {ext_list}")
-                return
-
-            # Show or save file list
+                logger.info("No video files found in the specified directory.")
+                return []
+            logger.info(f"Found {len(video_files)} video files in directory {directory}.")
+            # Convert to VideoFile Pydantic models if not already
+            video_file_models = [
+                vf if isinstance(vf, VideoFile) else VideoFile(path=vf) for vf in video_files
+            ]
             if output_file:
-                self._save_file_list(video_files, directory, output_file, output_format)
-            else:
-                self._show_file_list(video_files, directory)
-
+                self._save_file_list(video_file_models, directory, output_file, output_format)
+            return video_file_models
         except Exception as e:
             self._handle_error(e, "Failed to list files")
 
     def _show_file_list(self, video_files: list, directory: Path) -> None:
         """Show file list to console."""
         click.echo(f"\nFound {len(video_files)} video files:")
-
         for i, video_file in enumerate(video_files, 1):
             rel_path = video_file.path.relative_to(directory)
             size_mb = video_file.size / (1024 * 1024) if video_file.size > 0 else 0
@@ -351,8 +262,15 @@ class ListHandler(BaseHandler):
             output_file=output_file,
             format=output_format,
         )
-
         click.echo(f"File list saved to: {output_file}")
+
+
+class TraktSyncResult(BaseModel):
+    total: int = Field(...)
+    movies_added: int = Field(...)
+    shows_added: int = Field(...)
+    failed: int = Field(...)
+    results: list = Field(default_factory=list)
 
 
 class TraktHandler(BaseHandler):
@@ -367,56 +285,25 @@ class TraktHandler(BaseHandler):
         scan_file: Path,
         access_token: str,
         interactive: bool = False,
-        dry_run: bool = False,
-        filter_corrupt: bool = True,
         output_file: Optional[Path] = None,
-    ) -> None:
+    ) -> TraktSyncResult:
         """
-        Sync scan results to Trakt.tv watchlist.
-
-        Args:
-            scan_file: Path to JSON scan results file
-            access_token: Trakt API access token
-            interactive: Enable interactive selection
-            dry_run: Show what would be synced without syncing
-            filter_corrupt: Filter out corrupt files
-            output_file: Optional output file for sync results
+        Sync scan results to Trakt.tv watchlist and return TraktSyncResult Pydantic model.
         """
         try:
-            if not dry_run:
-                click.echo("Syncing scan results to Trakt.tv watchlist...")
-            else:
-                click.echo("DRY RUN: Showing what would be synced to Trakt.tv...")
-
-            click.echo(f"Scan file: {scan_file}")
-
-            if interactive:
-                click.echo("Interactive mode: You will be prompted to select matches")
-
-            if filter_corrupt:
-                click.echo("Filtering out corrupt files from sync")
-
-            if dry_run:
-                click.echo("Note: Dry run mode not implemented in watchlist sync function")
-
-            # Perform the sync using the watchlist function
-            # Note: The sync_to_trakt_watchlist function doesn't support dry_run or filter_corrupt
-            # so we'll need to pass what's available
+            logger.info(f"Syncing scan results from {scan_file} to Trakt.tv watchlist.")
             results = sync_to_trakt_watchlist(
                 scan_file=str(scan_file),
                 access_token=access_token,
                 client_id=None,  # TODO: Add client_id to config if needed
-                verbose=self.config.logging.level != "QUIET",
                 interactive=interactive,
             )
-
-            # Show results
-            self._show_sync_results(results, dry_run)
-
-            # Save results if requested
+            logger.info(
+                f"Trakt sync complete. Movies added: {results.get('movies_added', 0)}, Shows added: {results.get('shows_added', 0)}."
+            )
             if output_file:
                 self._save_sync_results(results, output_file)
-
+            return TraktSyncResult(**results)
         except Exception as e:
             self._handle_error(e, "Trakt sync failed")
 

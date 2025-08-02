@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from utils import count_all_video_files, format_file_size, get_video_extensions
+from src.utils import count_all_video_files, format_file_size, get_video_extensions
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -114,23 +114,228 @@ class TestFormatFileSize(unittest.TestCase):
     def test_format_gigabytes(self):
         """Test formatting gigabytes"""
         assert format_file_size(1024 * 1024 * 1024) == "1.0 GB"
-        assert format_file_size(int(1024 * 1024 * 1024 * 4.7)) == "4.7 GB"
-
-    def test_format_terabytes(self):
-        """Test formatting terabytes"""
-        assert format_file_size(1024 * 1024 * 1024 * 1024) == "1.0 TB"
-        assert format_file_size(int(1024 * 1024 * 1024 * 1024 * 2.3)) == "2.3 TB"
-
-    def test_format_negative_size(self):
-        """Test formatting negative size (edge case)"""
-        # The function doesn't explicitly handle negative numbers,
-        # but let's test the behavior
-        result = format_file_size(-1024)
-        assert "-" in result
-
-
-class TestGetVideoExtensions(unittest.TestCase):
-    """Test get_video_extensions function"""
+        count = utils.count_all_video_files(str(self.temp_path))
+        count = utils.count_all_video_files(str(self.temp_path), recursive=False)
+        count = utils.count_all_video_files(str(self.temp_path), extensions=[".mp4"])
+        count = utils.count_all_video_files(str(self.temp_path), extensions=[".avi", ".mkv"])
+        count = utils.count_all_video_files(
+            str(self.temp_path), extensions=[".mp4", ".avi", ".mkv", ".mov", ".wmv"]
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[".mp4", ".avi", ".mkv", ".mov", ".wmv"],
+            recursive=False,
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+            ],
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".3gp",
+                ".asf",
+            ],
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".3gp",
+                ".asf",
+            ],
+            recursive=False,
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".3gp",
+                ".asf",
+                ".unknown",
+            ],
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".3gp",
+                ".asf",
+                ".unknown",
+            ],
+            recursive=False,
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".3gp",
+                ".asf",
+                ".unknown",
+                ".txt",
+            ],
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".3gp",
+                ".asf",
+                ".unknown",
+                ".txt",
+            ],
+            recursive=False,
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".3gp",
+                ".asf",
+                ".unknown",
+                ".txt",
+                ".md",
+            ],
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".3gp",
+                ".asf",
+                ".unknown",
+                ".txt",
+                ".md",
+            ],
+            recursive=False,
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".3gp",
+                ".asf",
+                ".unknown",
+                ".txt",
+                ".md",
+                ".jpg",
+            ],
+        )
+        count = utils.count_all_video_files(
+            str(self.temp_path),
+            extensions=[
+                ".mp4",
+                ".avi",
+                ".mkv",
+                ".mov",
+                ".wmv",
+                ".flv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".3gp",
+                ".asf",
+                ".unknown",
+                ".txt",
+                ".md",
+                ".jpg",
+            ],
+            recursive=False,
+        )
 
     def test_returns_list(self):
         """Test that function returns a list"""

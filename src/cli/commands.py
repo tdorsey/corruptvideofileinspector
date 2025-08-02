@@ -2,10 +2,12 @@
 CLI command definitions using Click framework.
 """
 
+
+import csv
+import io
 import json
 import logging
 import sys
-from enum import Enum
 from pathlib import Path
 
 import click  # type: ignore
@@ -46,17 +48,11 @@ class PathType(click.Path):
 # Global options that can be shared across commands
 def global_options(f):
     """Decorator to add global options to commands."""
-    f = click.option(
+    return click.option(
         "--config",
         "-c",
         type=PathType(exists=True),
         help="Path to configuration file (JSON or YAML)",
-    )(f)
-    return click.option(
-        "--verbose",
-        "-v",
-        is_flag=True,
-        help="Enable verbose output",
     )(f)
 
 
@@ -68,12 +64,6 @@ def global_options(f):
     message="%(prog)s %(version)s",
 )
 @click.option(
-    "-v",
-    "--verbose",
-    count=True,
-    help="Increase verbosity (can be used multiple times: -v, -vv)",
-)
-@click.option(
     "--config",
     type=click.Path(exists=True, path_type=Path),
     help="Path to configuration file",
@@ -81,7 +71,6 @@ def global_options(f):
 @click.pass_context
 def cli(
     ctx: click.Context,
-    verbose: int | None = None,
     config: Path | None = None,
 ) -> None:
     """Corrupt Video Inspector - Detect and manage corrupted video files.
@@ -95,14 +84,13 @@ def cli(
         corrupt-video-inspector scan /tv-shows --trakt-sync
     """
     # Setup logging first
-    setup_logging(verbose or 0 if verbose is not None else 0)
+    setup_logging(0)
 
     # Load configuration
     try:
         app_config = load_config(config_path=config) if config else load_config()
         ctx.ensure_object(dict)
         ctx.obj["config"] = app_config
-        ctx.obj["verbose"] = verbose
     except Exception as e:
         logging.exception("Configuration error")
         raise click.Abort() from e
@@ -176,7 +164,6 @@ def scan(
     output_format,
     pretty,
     config,
-    verbose,
 ):
     # If no arguments are provided, show the help for the scan subcommand
     if ctx.args == [] and directory is None:
@@ -223,7 +210,7 @@ def scan(
 
         # Create and run scan handler
         handler = ScanHandler(app_config)
-        handler.run_scan(
+        summary = handler.run_scan(
             directory=directory,
             scan_mode=scan_mode,
             recursive=recursive,
@@ -232,6 +219,11 @@ def scan(
             output_format=output_format,
             pretty_print=pretty,
         )
+        if summary is not None:
+            click.echo("\nScan Summary:")
+            click.echo(json.dumps(summary.model_dump(), indent=2 if pretty else None))
+        else:
+            click.echo("No video files found to scan.")
 
     except Exception as e:
         logger.exception("Scan command failed")
@@ -268,7 +260,6 @@ def list_files(
     output,
     output_format,
     config,
-    verbose,
 ):
     # If no arguments are provided, show the help for the list-files subcommand
     if ctx.args == [] and directory is None:
@@ -304,12 +295,29 @@ def list_files(
 
         # Create and run list handler
         handler = ListHandler(app_config)
-        handler.list_files(
+        video_files = handler.list_files(
             directory=directory,
             recursive=recursive,
             output_file=output,
             output_format=output_format,
         )
+        if not video_files:
+            click.echo("No video files found in the specified directory.")
+        elif output_format == "json":
+            click.echo(json.dumps([vf.model_dump() for vf in video_files], indent=2))
+        elif output_format == "csv":
+            output_str = io.StringIO()
+            writer = csv.DictWriter(output_str, fieldnames=video_files[0].model_dump().keys())
+            writer.writeheader()
+            for vf in video_files:
+                writer.writerow(vf.model_dump())
+            click.echo(output_str.getvalue())
+        else:
+            click.echo(f"\nFound {len(video_files)} video files:")
+            for i, vf in enumerate(video_files, 1):
+                rel_path = vf.path.relative_to(directory)
+                size_mb = vf.size / (1024 * 1024) if vf.size > 0 else 0
+                click.echo(f"  {i:3d}: {rel_path} ({size_mb:.1f} MB)")
 
     except Exception as e:
         logger.exception("List command failed")
@@ -359,11 +367,8 @@ def sync(
     token,
     client_id,
     interactive,
-    dry_run,
     output,
-    filter_corrupt,
     config,
-    verbose,
 ):
     # If no arguments are provided, show the help for the trakt sync subcommand
     if ctx.args == [] and scan_file is None:
@@ -402,14 +407,14 @@ def sync(
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        handler.sync_to_watchlist(
+        result = handler.sync_to_watchlist(
             scan_file=scan_file,
             access_token=token,
             interactive=interactive,
-            dry_run=dry_run,
-            filter_corrupt=filter_corrupt,
             output_file=output,
         )
+        click.echo("\nTrakt Sync Result:")
+        click.echo(json.dumps(result.model_dump(), indent=2))
 
     except Exception as e:
         logger.exception("Trakt sync command failed")
@@ -420,7 +425,7 @@ def sync(
 @cli.command()
 @global_options
 @click.pass_context
-def test_ffmpeg(ctx, config, verbose):
+def test_ffmpeg(ctx, config):
     # If no arguments are provided, show the help for the test-ffmpeg subcommand
     if ctx.args == []:
         click.echo(ctx.get_help())
@@ -500,8 +505,6 @@ def report(
     scan_file,
     output,
     include_healthy,
-    config,
-    verbose,
 ):
     # If no arguments are provided, show the help for the report subcommand
     if ctx.args == [] and scan_file is None:

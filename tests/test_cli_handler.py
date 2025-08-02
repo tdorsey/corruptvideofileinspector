@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 import typer
 
+
 from cli_handler import (
     check_system_requirements,
     list_video_files,
@@ -15,6 +16,8 @@ from cli_handler import (
     setup_logging,
     validate_arguments,
 )
+
+from src.utils import count_all_video_files, format_file_size, get_video_extensions
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -121,11 +124,12 @@ class TestListVideoFiles(unittest.TestCase):
     def test_list_video_files_found(self, mock_echo, mock_get_files):
         """Test listing video files when files are found"""
         from video_inspector import VideoFile
+        from pathlib import Path
 
         # Mock video files
         video_files = [
-            VideoFile(str(self.temp_path / "video1.mp4")),
-            VideoFile(str(self.temp_path / "video2.avi")),
+            VideoFile(Path(self.temp_path) / "video1.mp4"),
+            VideoFile(Path(self.temp_path) / "video2.avi"),
         ]
         mock_get_files.return_value = video_files
 

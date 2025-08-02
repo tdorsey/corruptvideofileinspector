@@ -14,6 +14,7 @@ class LoggingConfig(BaseModel):
     level: str = Field(default="WARNING")
     file: Path = Field(default=Path("/app/output/inspector.log"))
     date_format: str = Field(default="%Y-%m-%dT%H:%M:%S%z")
+    format: str = Field(default="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 
 class FFmpegConfig(BaseModel):

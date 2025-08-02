@@ -175,8 +175,9 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
         sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
         try:
-            from utils import count_all_video_files, get_video_extensions
-            from video_inspector import ScanMode, get_all_video_object_files
+            from src.utils import count_all_video_files, get_video_extensions
+            from cli_handler import get_all_video_object_files
+            from src.core.models.scanning import ScanMode
 
             # Test basic functionality
             count = count_all_video_files(self.test_dir)
