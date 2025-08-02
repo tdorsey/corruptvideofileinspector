@@ -43,15 +43,7 @@ class ScanHandler(BaseHandler):
         super().__init__(config)
         self.scanner = VideoScanner(config)
         self._last_progress_update = 0.0
-        self._scan_message_printed = False
-
-    """Handler for scan-related commands."""
-
-    def __init__(self, config: AppConfig):
-        """Initialize scan handler."""
-        super().__init__(config)
-        self.scanner = VideoScanner(config)
-        self._last_progress_update = 0.0
+        self._scan_message_printed: bool = False
 
     def run_scan(
         self,
