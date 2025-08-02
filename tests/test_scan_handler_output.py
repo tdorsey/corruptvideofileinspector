@@ -8,9 +8,9 @@ from src.core.models.scanning import ScanMode, ScanSummary
 @patch("src.cli.handlers.click.echo")
 def test_scan_completion_message_once(mock_echo):
     config = MagicMock(spec=AppConfig)
-    config.logging = MagicMock()
-    config.logging.level = "INFO"
+    config.logging = MagicMock(level="INFO")
     config.scan = MagicMock()  # Add scan attribute
+    config.processing = MagicMock()  # Add processing attribute
     config.processing = MagicMock()  # Add processing attribute
     config.ffmpeg = MagicMock()  # Add ffmpeg attribute
     handler = ScanHandler(config)
