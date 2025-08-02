@@ -569,27 +569,6 @@ files = [
 ]
 
 [[package]]
-name = "piny"
-version = "1.1.0"
-description = "Load YAML configs with environment variables interpolation"
-optional = false
-python-versions = ">=3.7"
-groups = ["main"]
-files = [
-    {file = "piny-1.1.0-py3-none-any.whl", hash = "sha256:adc6873192dead13118e588901348cbb94c8163b128a34ed277694a875e05993"},
-    {file = "piny-1.1.0.tar.gz", hash = "sha256:18a005aeccb2af6f55790e539698865be4ab546661c27f410ec6871afe10118a"},
-]
-
-[package.dependencies]
-Click = ">=8,<9"
-PyYAML = ">=6,<7"
-
-[package.extras]
-marshmallow = ["marshmallow (>=3)"]
-pydantic = ["pydantic (>=0.28)"]
-trafaret = ["trafaret (>=1.2.0)"]
-
-[[package]]
 name = "platformdirs"
 version = "4.3.6"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
@@ -1190,4 +1169,4 @@ dev = ["black", "mypy", "pre-commit", "pytest", "pytest-cov", "ruff", "types-PyY
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.8"
-content-hash = "e8ea377f3af15716dd86f604aff7d978eb52652c1892f34d1a5c485ab1d3efaf"
+content-hash = "079512726cf5b121fb83ac44b461423869cf53985488bf80937b1ace363aac6a"
