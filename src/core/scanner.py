@@ -1,11 +1,11 @@
 """Core video scanning service with support for different scan modes."""
 
-
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import os
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterator
@@ -28,10 +28,15 @@ logger = logging.getLogger(__name__)
 
 
 class VideoScanner:
-
     def _get_resume_path(self, directory: Path) -> Path:
-        """Return the path to the resume (WAL) file for a scan directory."""
-        return directory / ".scan_resume.json"
+        """Return the path to the resume (WAL) file for a scan directory, always in the output directory."""
+        output_dir = self.config.output.default_output_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        if not os.access(output_dir, os.W_OK):
+            raise OSError(f"Output directory is not writable: {output_dir}")
+        # Use a unique name for each scan directory
+        safe_dir = directory.resolve().as_posix().replace("/", "_").lstrip("_")
+        return output_dir / f".scan_resume_{safe_dir}.json"
 
     def _save_resume_state(self, resume_path: Path, processed_files: set[str]) -> None:
         with resume_path.open("w", encoding="utf-8") as f:

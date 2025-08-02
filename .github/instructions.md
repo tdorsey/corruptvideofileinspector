@@ -88,6 +88,7 @@ All commands support the global `--config` option for specifying a config file.
 - Document new environment variables in `.env.example`
 - Update documentation for any configuration or CLI changes
 - Always develop and test in containers
+- Always fix lint issues when they are reported
 
 ---
 

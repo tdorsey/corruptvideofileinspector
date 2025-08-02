@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, List
 
 from src.config.config import AppConfig
+from src.core.models.reporting.scan_output import ScanMode, ScanOutputModel
 
 logger = logging.getLogger(__name__)
 
@@ -72,24 +73,28 @@ class OutputFormatter:
             raise
 
     def _write_json_results(self, summary: Any, output_file: Path, pretty_print: bool) -> None:
-        """Write scan results as JSON."""
-        # Convert summary to dict (this is a placeholder - would need actual summary structure)
-        results_data = {
-            "scan_mode": getattr(summary, "scan_mode", "unknown"),
-            "total_files": getattr(summary, "total_files", 0),
-            "processed_files": getattr(summary, "processed_files", 0),
-            "corrupt_files": getattr(summary, "corrupt_files", 0),
-            "healthy_files": getattr(summary, "healthy_files", 0),
-            "scan_time": getattr(summary, "scan_time", 0.0),
-        }
+        """Write scan results as JSON using ScanOutputModel."""
+        # Convert summary to ScanOutputModel
+        model = ScanOutputModel(
+            scan_mode=getattr(summary, "scan_mode", ScanMode.QUICK),
+            total_files=getattr(summary, "total_files", 0),
+            processed_files=getattr(summary, "processed_files", 0),
+            corrupt_files=getattr(summary, "corrupt_files", 0),
+            healthy_files=getattr(summary, "healthy_files", 0),
+            scan_time=getattr(summary, "scan_time", 0.0),
+            success_rate=getattr(summary, "success_rate", None),
+            was_resumed=getattr(summary, "was_resumed", None),
+            deep_scans_needed=getattr(summary, "deep_scans_needed", None),
+            deep_scans_completed=getattr(summary, "deep_scans_completed", None),
+        )
 
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         with output_file.open("w", encoding="utf-8") as f:
             if pretty_print:
-                json.dump(results_data, f, indent=2)
+                f.write(model.model_dump_json(indent=2))
             else:
-                json.dump(results_data, f)
+                f.write(model.model_dump_json())
 
         logger.info(f"Scan results written to {output_file}")
 

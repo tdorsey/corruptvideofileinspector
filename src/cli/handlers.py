@@ -38,6 +38,13 @@ class BaseHandler:
 
 
 class ScanHandler(BaseHandler):
+    def __init__(self, config: AppConfig):
+        """Initialize scan handler."""
+        super().__init__(config)
+        self.scanner = VideoScanner(config)
+        self._last_progress_update = 0.0
+        self._scan_message_printed = False
+
     """Handler for scan-related commands."""
 
     def __init__(self, config: AppConfig):
@@ -103,7 +110,6 @@ class ScanHandler(BaseHandler):
             if output_file or self.config.output.default_json:
                 self._generate_output(
                     summary=summary,
-                    directory=directory,
                     output_file=output_file,
                     output_format=output_format,
                     pretty_print=pretty_print,
@@ -185,7 +191,10 @@ class ScanHandler(BaseHandler):
         )
 
     def _show_scan_results(self, summary: Any) -> None:
-        """Show scan completion results."""
+        """Show scan completion results, only once per scan."""
+        if self._scan_message_printed:
+            return
+        self._scan_message_printed = True
         if self.config.logging.level != "QUIET":
             click.echo()  # New line after progress
 
@@ -219,7 +228,6 @@ class ScanHandler(BaseHandler):
     def _generate_output(
         self,
         summary: Any,
-        directory: Path,
         output_file: Optional[Path],
         output_format: str,
         pretty_print: bool,
@@ -227,11 +235,10 @@ class ScanHandler(BaseHandler):
         """Generate output file with scan results."""
         try:
             if not output_file:
-                output_file = directory / f"scan_results.{output_format}"
+                output_dir = self.config.output.default_output_dir
+                output_dir.mkdir(parents=True, exist_ok=True)
+                output_file = output_dir / f"scan_results.{output_format}"
 
-            # Use the new ReportService to generate comprehensive reports
-            # Note: We would need to get the actual results list to use the full reporter
-            # For now, fall back to the output formatter for compatibility
             self.output_formatter.write_scan_results(
                 summary=summary,
                 output_file=output_file,

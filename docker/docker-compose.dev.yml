@@ -5,6 +5,8 @@ services:
       dockerfile: docker/Dockerfile.dev
     image: corrupt-video-inspector-dev
     container_name: cvi-dev
+    entrypoint: ["python", "-m", "src"]
+    command: [ "scan", "--directory", "/app/videos" ]
     volumes:
       - ../src:/app/src
       - ../tests:/app/tests
