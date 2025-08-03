@@ -33,7 +33,12 @@ services:
   report:
     extends: scan
     container_name: report
-    command: ["report", "--scan-file", "/app/output/scan_results.json"]
+    command:
+      - report
+      - --scan-file
+      - /app/output/scan_results.json
+      - --format
+      - text
 
   trakt:
     extends: scan
