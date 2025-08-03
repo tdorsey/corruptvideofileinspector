@@ -8,7 +8,7 @@ __all__ = [
 import re
 from enum import Enum
 from pathlib import Path
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -71,9 +71,9 @@ class MediaInfo(BaseModel):
     """Media information extracted from filename or metadata."""
 
     title: str = ""
-    year: Optional[int] = None
-    episode: Optional[int] = None
-    season: Optional[int] = None
+    year: int | None = None
+    episode: int | None = None
+    season: int | None = None
     quality: str = ""
     format: str = ""
     source: str = ""

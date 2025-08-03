@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import List, Optional
 
 import toml
 import yaml
@@ -38,7 +37,7 @@ class OutputConfig(BaseModel):
 class TraktConfig(BaseModel):
     client_id: str = Field(default="")
     client_secret: str = Field(default="")
-    include_statuses: List[FileStatus] = Field(
+    include_statuses: list[FileStatus] = Field(
         default_factory=lambda: [FileStatus.CORRUPT, FileStatus.SUSPICIOUS]
     )
 
@@ -48,7 +47,7 @@ class ScanConfig(BaseModel):
     max_workers: int = Field(default=8)
     mode: ScanMode = Field(default=ScanMode.QUICK)
     default_input_dir: Path = Field(...)
-    extensions: List[str] = Field(
+    extensions: list[str] = Field(
         default_factory=lambda: [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv"]
     )
 
@@ -62,10 +61,10 @@ class AppConfig(BaseModel):
     trakt: TraktConfig
 
 
-_CONFIG_SINGLETON: Optional[AppConfig] = None
+_CONFIG_SINGLETON: AppConfig | None = None
 
 
-def load_config(config_path: Optional[Path] = None) -> AppConfig:
+def load_config(config_path: Path | None = None) -> AppConfig:
     """
     Load configuration from a YAML file with Pydantic schema validation.
     Loads once and caches the result as a singleton.

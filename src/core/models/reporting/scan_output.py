@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -17,10 +16,10 @@ class ScanOutputModel(BaseModel):
     corrupt_files: int = Field(..., description="Number of corrupt files found")
     healthy_files: int = Field(..., description="Number of healthy files")
     scan_time: float = Field(..., description="Total scan time in seconds")
-    success_rate: Optional[float] = Field(None, description="Success rate in percent")
-    was_resumed: Optional[bool] = Field(None, description="Whether scan was resumed")
-    deep_scans_needed: Optional[int] = Field(None, description="Files requiring deep scan")
-    deep_scans_completed: Optional[int] = Field(None, description="Deep scans completed")
+    success_rate: float | None = Field(None, description="Success rate in percent")
+    was_resumed: bool | None = Field(None, description="Whether scan was resumed")
+    deep_scans_needed: int | None = Field(None, description="Files requiring deep scan")
+    deep_scans_completed: int | None = Field(None, description="Deep scans completed")
 
     model_config = ConfigDict(
         use_enum_values=True,

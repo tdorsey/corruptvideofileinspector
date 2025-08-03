@@ -10,10 +10,11 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import ClassVar, List, Optional
+from typing import Any, ClassVar, Optional
 
 import trakt  # type: ignore[import-untyped]
 
+from src.config import AppConfig
 from src.core.models.scanning import FileStatus
 from src.core.models.watchlist import MediaItem, SyncResultItem, TraktItem, TraktSyncSummary
 
@@ -24,9 +25,10 @@ logger = logging.getLogger(__name__)
 # Instead, require config to be passed explicitly to any function/class that needs it.
 
 
-def init_trakt_client(config):
+def init_trakt_client(config: AppConfig) -> None:
     """
     Initialize Trakt client using config values.
+
     Args:
         config: AppConfig instance with trakt credentials
     """
@@ -53,9 +55,7 @@ class TraktAPI:
         trakt.configuration.defaults.client(id=self.client_id, secret=self.client_secret)
         logger.info("TraktAPI client initialized with client credentials")
 
-    def search_movie(
-        self, title: str, year: Optional[int] = None, limit: int = 1
-    ) -> List[TraktItem]:
+    def search_movie(self, title: str, year: int | None = None, limit: int = 1) -> list[TraktItem]:
         """
         Search for a movie on Trakt
 
@@ -84,9 +84,7 @@ class TraktAPI:
             logger.exception("Error searching for movie")
             return []
 
-    def search_show(
-        self, title: str, year: Optional[int] = None, limit: int = 1
-    ) -> List[TraktItem]:
+    def search_show(self, title: str, year: int | None = None, limit: int = 1) -> list[TraktItem]:
         """
         Search for a TV show on Trakt
 
@@ -202,7 +200,7 @@ class TraktAPI:
 
     @staticmethod
     def interactive_select_item(
-        items: List["TraktItem"], media_item: "MediaItem"
+        items: list["TraktItem"], media_item: "MediaItem"
     ) -> Optional["TraktItem"]:
         """
         Interactively select the correct item from search results
@@ -364,8 +362,8 @@ class FilenameParser:
 
 
 def process_scan_file(
-    file_path: str, include_statuses: Optional[List["FileStatus"]] = None
-) -> List[MediaItem]:
+    file_path: str, include_statuses: list["FileStatus"] | None = None
+) -> list[MediaItem]:
     """
     Process a JSON scan file to extract media items
 
@@ -440,10 +438,10 @@ def process_scan_file(
 
 def sync_to_trakt_watchlist(
     scan_file: str,
-    config,
+    config: Any,  # Replace 'Any' with 'AppConfig' if AppConfig is importable
     verbose: bool = False,
     interactive: bool = False,
-    include_statuses: Optional[List[FileStatus]] = None,
+    include_statuses: list[FileStatus] | None = None,
 ) -> TraktSyncSummary:
     """
     Main function to sync scan results to Trakt watchlist

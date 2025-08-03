@@ -6,12 +6,15 @@ import json
 import logging
 import sys
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional
+from shutil import which
 
 import click
+import typer
 from pydantic import BaseModel, Field
 
+from src.config import load_config
 from src.config.config import AppConfig
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import FileStatus, ScanMode, ScanProgress, ScanResult, ScanSummary
@@ -41,7 +44,7 @@ class BaseHandler:
     def _generate_output(
         self,
         summary: ScanSummary,
-        output_file: Optional[Path] = None,
+        output_file: Path | None = None,
         output_format: str = "json",
         pretty_print: bool = True,
     ) -> None:
@@ -118,10 +121,10 @@ class ScanHandler(BaseHandler):
         scan_mode: ScanMode,
         recursive: bool = True,
         resume: bool = True,
-        output_file: Optional[Path] = None,
+        output_file: Path | None = None,
         output_format: str = "json",
         pretty_print: bool = True,
-    ) -> Optional[ScanSummary]:
+    ) -> ScanSummary | None:
         """
         Run a video corruption scan and return ScanSummary or None.
         """
@@ -245,7 +248,7 @@ class ScanHandler(BaseHandler):
         self,
         summary: ScanSummary,
         results: list[ScanResult],
-        output_file: Optional[Path] = None,
+        output_file: Path | None = None,
         output_format: str = "json",
         include_healthy: bool = False,
         include_metadata: bool = True,
@@ -289,7 +292,7 @@ class ListHandler(BaseHandler):
         self,
         directory: Path,
         recursive: bool = True,
-        output_file: Optional[Path] = None,
+        output_file: Path | None = None,
         output_format: str = "text",
     ) -> list[VideoFile]:
         """
@@ -356,9 +359,9 @@ class TraktHandler(BaseHandler):
         self,
         scan_file: Path,
         interactive: bool = False,
-        output_file: Optional[Path] = None,
-        include_statuses: Optional[list[FileStatus]] = None,
-    ) -> Optional[TraktSyncResult]:
+        output_file: Path | None = None,
+        include_statuses: list[FileStatus] | None = None,
+    ) -> TraktSyncResult | None:
         """
         Sync scan results to Trakt.tv watchlist and return TraktSyncResult Pydantic model.
         """
@@ -437,3 +440,167 @@ class TraktHandler(BaseHandler):
         except Exception as e:
             logger.warning(f"Failed to save sync results: {e}")
             click.echo(f"Warning: Could not save sync results: {e}", err=True)
+
+
+class UtilityHandler(BaseHandler):
+    """Handler for utility CLI operations."""
+
+    def __init__(self, config: AppConfig):
+        """Initialize utility handler."""
+        super().__init__(config)
+        self.scanner = VideoScanner(config)
+
+    def get_ffmpeg_command(self) -> str | None:
+        """
+        Detects ffmpeg command in PATH.
+
+        Returns path or None.
+        """
+        return which("ffmpeg")
+
+    def check_system_requirements(self) -> str:
+        """
+        Ensure FFmpeg is available, returning its command or exiting.
+        """
+        cmd = self.get_ffmpeg_command()
+        if not cmd:
+            click.echo("FFmpeg not found", err=True)
+            sys.exit(1)
+        return cmd
+
+    def get_all_video_object_files(
+        self,
+        directory: Path | str,
+        recursive: bool = True,
+        extensions: Sequence[str] | None = None,
+    ) -> list[Path]:
+        """
+        Return list of video file objects (paths or models).
+        Accepts Path for directory.
+        """
+        # Ensure directory is a Path
+        directory_path = Path(directory)
+        # Pass extensions directly to get_video_files instead of mutating config
+        video_files = self.scanner.get_video_files(
+            directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
+        )
+        result: list[Path] = []
+        for vf in video_files:
+            if hasattr(vf, "path") and vf.path is not None:
+                result.append(vf.path if isinstance(vf.path, Path) else Path(vf.path))
+            else:
+                # Handle case where vf might be a Path already
+                result.append(vf if isinstance(vf, Path) else Path(str(vf)))
+        return result
+
+    def list_video_files_simple(
+        self,
+        directory: Path,
+        recursive: bool = True,
+        extensions: list[str] | None = None,
+    ) -> None:
+        """
+        List video files in directory and echo results.
+
+        Exits on errors.
+        """
+        try:
+            files = self.get_all_video_object_files(directory, recursive, extensions)
+            if files:
+                for f in files:
+                    click.echo(f)
+            else:
+                click.echo("No video files found")
+        except Exception:
+            logger.exception("Error listing video files")
+            sys.exit(1)
+
+
+# Typer app for CLI entry point
+app = typer.Typer()
+
+
+def main() -> None:
+    """Main entry point: invokes the Typer app."""
+    app()
+
+
+def setup_logging(verbose: bool) -> None:
+    """
+    Configure basic logging.
+
+    Args:
+        verbose: verbosity flag (False=INFO, True=DEBUG)
+    """
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(level=level)
+
+
+# Legacy standalone functions for backward compatibility
+def get_ffmpeg_command() -> str | None:
+    """
+    Detects ffmpeg command in PATH.
+
+    Returns path or None.
+    """
+    return which("ffmpeg")
+
+
+def check_system_requirements() -> str:
+    """
+    Ensure FFmpeg is available, returning its command or exiting.
+    """
+    cmd = get_ffmpeg_command()
+    if not cmd:
+        click.echo("FFmpeg not found", err=True)
+        sys.exit(1)
+    return cmd
+
+
+def get_all_video_object_files(
+    directory: Path | str,
+    recursive: bool = True,
+    extensions: Sequence[str] | None = None,
+) -> list[Path]:
+    """
+    Return list of video file objects (paths or models).
+    Accepts Path for directory.
+    """
+    # Ensure directory is a Path
+    directory_path = Path(directory)
+    config = load_config()
+    scanner = VideoScanner(config)
+    # Pass extensions directly to get_video_files instead of mutating config
+    video_files = scanner.get_video_files(
+        directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
+    )
+    result: list[Path] = []
+    for vf in video_files:
+        if hasattr(vf, "path") and vf.path is not None:
+            result.append(vf.path if isinstance(vf.path, Path) else Path(vf.path))
+        else:
+            # Handle case where vf might be a Path already
+            result.append(vf if isinstance(vf, Path) else Path(str(vf)))
+    return result
+
+
+def list_video_files(
+    directory: Path,
+    recursive: bool = True,
+    extensions: list[str] | None = None,
+) -> None:
+    """
+    List video files in directory and echo results.
+
+    Exits on errors.
+    """
+    try:
+        files = get_all_video_object_files(directory, recursive, extensions)
+        if files:
+            for f in files:
+                click.echo(f)
+        else:
+            click.echo("No video files found")
+    except Exception:
+        logger.exception("Error listing video files")
+        sys.exit(1)

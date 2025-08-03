@@ -9,7 +9,7 @@ This project is a containerized Python application for scanning directories for 
 
 ### Prerequisites
 - Docker and Docker Compose installed
-- Python 3.9+ (for local development outside containers)
+- Python 3.13+ (for local development outside containers)
 - (Optional) Trakt.tv API credentials for Trakt integration
 
 ### Setup

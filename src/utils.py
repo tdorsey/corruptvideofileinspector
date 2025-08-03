@@ -4,14 +4,13 @@ Utility functions for Corrupt Video Inspector
 
 import logging
 from pathlib import Path
-from typing import List, Optional
 
 # Configure module logger
 logger = logging.getLogger(__name__)
 
 
 def count_all_video_files(
-    directory: str, recursive: bool = True, extensions: Optional[List[str]] = None
+    directory: str, recursive: bool = True, extensions: list[str] | None = None
 ) -> int:
     """
     Count all video files in a directory.
@@ -91,7 +90,7 @@ def format_file_size(size_bytes: int) -> str:
     return formatted
 
 
-def get_video_extensions() -> List[str]:
+def get_video_extensions() -> list[str]:
     """
     Get list of supported video file extensions.
 

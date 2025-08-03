@@ -78,8 +78,7 @@ class TestFullScanMode:
 
         # Verify the inspect_full call used timeout=None
         # Skip the validation calls and find the actual scan call
-        scan_calls = [call for call in mock_run.call_args_list
-                      if "-version" not in str(call)]
+        scan_calls = [call for call in mock_run.call_args_list if "-version" not in str(call)]
 
         assert len(scan_calls) >= 1
         args, kwargs = scan_calls[0]
@@ -221,6 +220,7 @@ class TestFullScanMode:
     def teardown_method(self):
         """Clean up test files."""
         import shutil
+
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir)
 
@@ -278,8 +278,7 @@ class TestFullScanModeIntegration:
             )
 
             # Verify that subprocess calls for scanning used timeout=None
-            scan_calls = [call for call in mock_run.call_args_list
-                         if "-version" not in str(call)]
+            scan_calls = [call for call in mock_run.call_args_list if "-version" not in str(call)]
 
             for call in scan_calls:
                 args, kwargs = call
@@ -292,5 +291,6 @@ class TestFullScanModeIntegration:
     def teardown_method(self):
         """Clean up test files."""
         import shutil
+
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir)

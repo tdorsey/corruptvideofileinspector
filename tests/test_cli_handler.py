@@ -5,14 +5,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-import typer
 
-from cli_handler import (
+from src.cli.handlers import (
     check_system_requirements,
     list_video_files,
     main,
     setup_logging,
 )
+from src.core.models.inspection import VideoFile
 
 
 class TestSetupLogging(unittest.TestCase):
@@ -47,13 +47,11 @@ class TestListVideoFiles(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch("cli_handler.get_all_video_object_files")
-    @patch("typer.echo")
+    @patch("src.cli.handlers.get_all_video_object_files")
+    @patch("click.echo")
     def test_list_video_files_found(self, mock_echo, mock_get_files):
         """Test listing video files when files are found"""
         from pathlib import Path
-
-        from video_inspector import VideoFile
 
         # Mock video files
         video_files = [
@@ -68,8 +66,8 @@ class TestListVideoFiles(unittest.TestCase):
         mock_get_files.assert_called_once()
         mock_echo.assert_called()
 
-    @patch("cli_handler.get_all_video_object_files")
-    @patch("typer.echo")
+    @patch("src.cli.handlers.get_all_video_object_files")
+    @patch("click.echo")
     def test_list_video_files_none_found(self, mock_echo, mock_get_files):
         """Test listing video files when no files are found"""
         mock_get_files.return_value = []
@@ -80,22 +78,22 @@ class TestListVideoFiles(unittest.TestCase):
         mock_get_files.assert_called_once()
         mock_echo.assert_called()
 
-    @patch("cli_handler.get_all_video_object_files")
-    @patch("logging.error")
-    def test_list_video_files_exception(self, mock_log_error, mock_get_files):
+    @patch("src.cli.handlers.get_all_video_object_files")
+    @patch("src.cli.handlers.logger")
+    def test_list_video_files_exception(self, mock_logger, mock_get_files):
         """Test listing video files when exception occurs"""
         mock_get_files.side_effect = Exception("Test exception")
 
         with pytest.raises(SystemExit):
             list_video_files(self.temp_path)
 
-        mock_log_error.assert_called()
+        mock_logger.exception.assert_called()
 
 
 class TestCheckSystemRequirements(unittest.TestCase):
     """Test check_system_requirements function"""
 
-    @patch("cli_handler.get_ffmpeg_command")
+    @patch("src.cli.handlers.get_ffmpeg_command")
     def test_ffmpeg_found(self, mock_get_ffmpeg):
         """Test when ffmpeg is found"""
         mock_get_ffmpeg.return_value = "/usr/bin/ffmpeg"
@@ -104,16 +102,16 @@ class TestCheckSystemRequirements(unittest.TestCase):
 
         assert result == "/usr/bin/ffmpeg"
 
-    @patch("cli_handler.get_ffmpeg_command")
-    @patch("typer.echo")
+    @patch("src.cli.handlers.get_ffmpeg_command")
+    @patch("click.echo")
     def test_ffmpeg_not_found(self, mock_echo, mock_get_ffmpeg):
         """Test when ffmpeg is not found"""
         mock_get_ffmpeg.return_value = None
 
-        with pytest.raises(typer.Exit) as context:
+        with pytest.raises(SystemExit) as context:
             check_system_requirements()
 
-        assert context.value.exit_code == 1
+        assert context.value.code == 1
         mock_echo.assert_called()
 
 
@@ -124,6 +122,6 @@ class TestMain(unittest.TestCase):
         """Test that main function exists and is callable"""
         assert callable(main)
 
-    @patch("cli_handler.app")
+    @patch("src.cli.handlers.app")
     def test_main_calls_app(self, mock_app):
         """Test that main function calls the typer app"""

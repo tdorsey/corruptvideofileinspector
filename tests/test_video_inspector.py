@@ -8,21 +8,20 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Optional
 from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-# Add the project root to the path so we can import cli_handler
+# Add the project root to the path so we can import handlers
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from cli_handler import get_all_video_object_files, get_ffmpeg_command
+from src.cli.handlers import get_all_video_object_files, get_ffmpeg_command
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import ScanMode
 
 
 class VideoInspectionResult:
-    def __init__(self, filename: str, scan_mode: Optional[ScanMode] = None):
+    def __init__(self, filename: str, scan_mode: ScanMode | None = None):
         self.filename = filename
         self.file_size = 0
         self.scan_mode = scan_mode
@@ -209,7 +208,7 @@ class TestGetFfmpegCommand(unittest.TestCase):
 
     """Test get_ffmpeg_command function"""
 
-    @patch("cli_handler.which")
+    @patch("src.cli.handlers.which")
     def test_ffmpeg_found_first_option(self, mock_which):
         """Test ffmpeg found with first option"""
         mock_which.return_value = "ffmpeg"
@@ -217,7 +216,7 @@ class TestGetFfmpegCommand(unittest.TestCase):
         assert result == "ffmpeg"
         mock_which.assert_called_once_with("ffmpeg")
 
-    @patch("cli_handler.which")
+    @patch("src.cli.handlers.which")
     def test_ffmpeg_found_second_option(self, mock_which):
         """Test ffmpeg found with second option"""
 
@@ -227,7 +226,7 @@ class TestGetFfmpegCommand(unittest.TestCase):
         result = get_ffmpeg_command()
         assert result == "/usr/bin/ffmpeg"
 
-    @patch("cli_handler.which")
+    @patch("src.cli.handlers.which")
     def test_ffmpeg_not_found(self, mock_which):
         """Test ffmpeg not found"""
 
@@ -236,7 +235,7 @@ class TestGetFfmpegCommand(unittest.TestCase):
         result = get_ffmpeg_command()
         assert result is None
 
-    @patch("cli_handler.which")
+    @patch("src.cli.handlers.which")
     def test_ffmpeg_timeout(self, mock_which):
         """Test ffmpeg command - this test is now simplified since which() doesn't timeout"""
 
@@ -279,7 +278,7 @@ class TestGetAllVideoObjectFiles(unittest.TestCase):
         video_files = get_all_video_object_files(self.temp_path, recursive=True)
 
         assert len(video_files) == 5
-        filenames = [Path(vf.filename).name for vf in video_files]
+        filenames = [Path(vf.name).name for vf in video_files]
         expected_files = [
             "video1.mp4",
             "video2.avi",
@@ -296,7 +295,7 @@ class TestGetAllVideoObjectFiles(unittest.TestCase):
         video_files = get_all_video_object_files(self.temp_path, recursive=False)
 
         assert len(video_files) == 3
-        filenames = [os.path.basename(vf.filename) for vf in video_files]
+        filenames = [os.path.basename(vf.name) for vf in video_files]
         expected_files = ["video1.mp4", "video2.avi", "video3.mkv"]
 
         for expected in expected_files:
@@ -310,7 +309,7 @@ class TestGetAllVideoObjectFiles(unittest.TestCase):
         )
 
         assert len(video_files) == 2
-        filenames = [os.path.basename(vf.filename) for vf in video_files]
+        filenames = [os.path.basename(vf.name) for vf in video_files]
         expected_files = ["video1.mp4", "video2.avi"]
 
         for expected in expected_files:
@@ -319,7 +318,7 @@ class TestGetAllVideoObjectFiles(unittest.TestCase):
     def test_get_video_files_sorted(self):
         """Test that video files are returned sorted"""
         video_files = get_all_video_object_files(self.temp_path, recursive=False)
-        filenames = [vf.filename for vf in video_files]
+        filenames = [vf.name for vf in video_files]
 
         # Check if sorted
         assert filenames == sorted(filenames)

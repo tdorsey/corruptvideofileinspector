@@ -1,6 +1,6 @@
 # Development Dockerfile for corrupt-video-inspector
 
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Install system dependencies and build tools for Poetry and C extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \

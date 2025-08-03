@@ -8,9 +8,9 @@ import csv
 import json
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TextIO
+from typing import Any, TextIO
 
 import yaml
 from pydantic import BaseModel, Field
@@ -33,13 +33,13 @@ class ReportMetadata(BaseModel):
         total_results: Total number of scan results included
     """
 
-    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     tool_version: str = "2.0.0"
-    config_snapshot: Dict[str, Any] = Field(default_factory=dict)
+    config_snapshot: dict[str, Any] = Field(default_factory=dict)
     report_format: str = "json"
     total_results: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metadata to dictionary."""
         return {
             "generated_at": self.generated_at.isoformat(),
@@ -61,9 +61,9 @@ class ScanReport(BaseModel):
     """
 
     summary: ScanSummary
-    results: List[ScanResult]
+    results: list[ScanResult]
     metadata: ReportMetadata = Field(default_factory=ReportMetadata)
-    analytics: Dict[str, Any] = Field(default_factory=dict)
+    analytics: dict[str, Any] = Field(default_factory=dict)
 
     def model_post_init(self, __context: Any) -> None:
         """Initialize analytics and metadata after model creation."""
@@ -135,25 +135,25 @@ class ScanReport(BaseModel):
 
         self.analytics["directories"] = directories
 
-    def get_corrupt_files(self) -> List[ScanResult]:
+    def get_corrupt_files(self) -> list[ScanResult]:
         """Get only corrupt files from results."""
         return [result for result in self.results if result.is_corrupt]
 
-    def get_healthy_files(self) -> List[ScanResult]:
+    def get_healthy_files(self) -> list[ScanResult]:
         """Get only healthy files from results."""
         return [result for result in self.results if not result.is_corrupt]
 
-    def get_suspicious_files(self) -> List[ScanResult]:
+    def get_suspicious_files(self) -> list[ScanResult]:
         """Get files that need deep scanning."""
         return [result for result in self.results if result.needs_deep_scan]
 
-    def filter_by_confidence(self, min_confidence: float = 0.0) -> List[ScanResult]:
+    def filter_by_confidence(self, min_confidence: float = 0.0) -> list[ScanResult]:
         """Filter results by minimum confidence level."""
         return [result for result in self.results if result.confidence >= min_confidence]
 
-    def group_by_directory(self) -> Dict[str, List[ScanResult]]:
+    def group_by_directory(self) -> dict[str, list[ScanResult]]:
         """Group results by parent directory."""
-        groups: Dict[str, List[ScanResult]] = {}
+        groups: dict[str, list[ScanResult]] = {}
         for result in self.results:
             parent = str(result.video_file.path.parent)
             if parent not in groups:
@@ -161,7 +161,7 @@ class ScanReport(BaseModel):
             groups[parent].append(result)
         return groups
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert report to dictionary for serialization."""
         return {
             "metadata": self.metadata.model_dump(),
@@ -452,7 +452,7 @@ class ReportService:
             config: Application configuration
         """
         self.config = config
-        self._generators: Dict[str, ReportGenerator] = {
+        self._generators: dict[str, ReportGenerator] = {
             "json": JSONReportGenerator(),
             "csv": CSVReportGenerator(),
             "yaml": YAMLReportGenerator(),
@@ -462,8 +462,8 @@ class ReportService:
     def generate_report(
         self,
         summary: ScanSummary,
-        results: List[ScanResult],
-        output_path: Optional[Path] = None,
+        results: list[ScanResult],
+        output_path: Path | None = None,
         format: str = "json",
         include_healthy: bool = False,
         include_metadata: bool = True,
@@ -536,11 +536,11 @@ class ReportService:
     def generate_multiple_formats(
         self: "ReportService",
         summary: ScanSummary,
-        results: List[ScanResult],
-        formats: List[str],
-        output_dir: Optional[Path] = None,
+        results: list[ScanResult],
+        formats: list[str],
+        output_dir: Path | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Path]:
+    ) -> dict[str, Path]:
         """Generate reports in multiple formats.
 
         Args:
@@ -585,7 +585,7 @@ class ReportService:
 
         return generated_reports
 
-    def _get_config_snapshot(self) -> Dict[str, Any]:
+    def _get_config_snapshot(self) -> dict[str, Any]:
         """Get a snapshot of relevant configuration for the report."""
         return {
             "ffmpeg_command": str(self.config.ffmpeg.command),
@@ -597,7 +597,7 @@ class ReportService:
             "recursive": self.config.scan.recursive,
         }
 
-    def get_supported_formats(self) -> List[str]:
+    def get_supported_formats(self) -> list[str]:
         """Get list of supported report formats."""
         return list(self._generators.keys())
 
@@ -611,7 +611,7 @@ class ReportService:
 
 def generate_json_report(
     summary: ScanSummary,
-    results: List[ScanResult],
+    results: list[ScanResult],
     output_path: Path,
     include_healthy: bool = False,
 ) -> None:
@@ -638,7 +638,7 @@ def generate_json_report(
 
 def generate_csv_summary(
     summary: ScanSummary,
-    results: List[ScanResult],
+    results: list[ScanResult],
     output_path: Path,
 ) -> None:
     """Generate a CSV summary report (corrupt files only).

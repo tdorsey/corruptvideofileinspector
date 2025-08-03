@@ -50,7 +50,7 @@ repos:
       - id: python-use-type-annotations
 
 default_language_version:
-  python: python3.11
+  python: python3.13
 
 ci:
   autofix_commit_msg: |

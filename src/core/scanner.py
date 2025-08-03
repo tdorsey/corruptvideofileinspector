@@ -10,7 +10,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Iterator
+from typing import TYPE_CHECKING
 
 from src.config import load_config
 from src.core.models.inspection import VideoFile
@@ -23,6 +23,7 @@ from src.core.models.scanning import (
 from src.ffmpeg.corruption_detector import CorruptionDetector
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
     from pathlib import Path
 
     from src.config.config import AppConfig

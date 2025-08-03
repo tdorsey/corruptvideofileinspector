@@ -5,7 +5,7 @@ FFmpeg client for video file inspection and corruption detection.
 import logging
 import shutil
 import subprocess
-from typing import Any, Optional
+from typing import Any
 
 from src.config.config import FFmpegConfig
 from src.core.errors.errors import FFmpegError
@@ -21,7 +21,7 @@ class FFmpegClient:
 
     config: FFmpegConfig
     detector: CorruptionDetector
-    _ffmpeg_path: Optional[str]
+    _ffmpeg_path: str | None
 
     def __init__(self, config: FFmpegConfig) -> None:
         """Initialize FFmpeg client."""
@@ -150,7 +150,7 @@ class FFmpegClient:
                 error_message=f"Quick scan failed: {e}",
             )
 
-    def inspect_deep(self, video_file: VideoFile, timeout: Optional[int] = None) -> ScanResult:
+    def inspect_deep(self, video_file: VideoFile, timeout: int | None = None) -> ScanResult:
         """
         Perform deep inspection of video file (full scan).
 
@@ -352,7 +352,7 @@ class FFmpegClient:
         # Use detector to analyze FFmpeg output for corruption
         analysis = self.detector.analyze_ffmpeg_output(error_output, result.returncode, is_quick)
 
-        error_message: Optional[str] = analysis.error_message or None
+        error_message: str | None = analysis.error_message or None
         if result.returncode != 0 and not error_message:
             error_message = error_output.strip() or "FFmpeg reported errors"
 

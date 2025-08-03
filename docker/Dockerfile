@@ -1,7 +1,7 @@
 # =============================================================================
 # Base stage - Common dependencies and setup
 # =============================================================================
-FROM python:3.11-slim-bookworm AS base
+FROM python:3.13-slim-bookworm AS base
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -93,7 +93,7 @@ LABEL org.opencontainers.image.description=${APP_DESCRIPTION}
 FROM base AS production
 
 # Copy installed packages from dependencies stage
-COPY --from=dependencies /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=dependencies /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=dependencies /usr/local/bin /usr/local/bin
 
 # Copy pyproject.toml for runtime config discovery

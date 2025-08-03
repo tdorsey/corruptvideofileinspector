@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from cli_handler import get_all_video_object_files, get_ffmpeg_command
+from src.cli.handlers import get_all_video_object_files, get_ffmpeg_command
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import ScanMode
 
@@ -109,7 +109,7 @@ class TestVideoInspectorIntegration(unittest.TestCase):
             assert isinstance(vf, VideoFile)
 
         # Should be sorted by filename
-        filenames = [vf.filename for vf in video_files]
+        filenames = [vf.name for vf in video_files]
         assert filenames == sorted(filenames)
 
     def test_get_all_video_object_files_recursive(self):
@@ -146,7 +146,7 @@ class TestVideoInspectorIntegration(unittest.TestCase):
         # Custom extensions (should find only mp4)
         video_files = get_all_video_object_files(self.test_dir, extensions=[".mp4"])
         assert len(video_files) == 1
-        assert video_files[0].filename.endswith(".mp4")
+        assert video_files[0].name.endswith(".mp4")
 
         # Include custom extension
         video_files = get_all_video_object_files(self.test_dir, extensions=[".mp4", ".custom"])

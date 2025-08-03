@@ -1,9 +1,8 @@
 import logging
 from pathlib import Path
-from typing import Optional
 
 
-def read_docker_secret(secret_name: str, secrets_dir: str = "/run/secrets") -> Optional[str]:
+def read_docker_secret(secret_name: str, secrets_dir: str = "/run/secrets") -> str | None:
     """
     Read a Docker secret from the specified secrets directory.
 
