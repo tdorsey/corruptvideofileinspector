@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from src.config.config import AppConfig
 from src.core.models.inspection import VideoFile
-from src.core.models.scanning import ScanMode, ScanProgress, ScanResult, ScanSummary
+from src.core.models.scanning import FileStatus, ScanMode, ScanProgress, ScanResult, ScanSummary
 from src.core.reporter import ReportService
 from src.core.scanner import VideoScanner
 from src.core.watchlist import sync_to_trakt_watchlist
@@ -355,20 +355,25 @@ class TraktHandler(BaseHandler):
     def sync_to_watchlist(
         self,
         scan_file: Path,
-        access_token: str,
         interactive: bool = False,
         output_file: Optional[Path] = None,
+        include_statuses: Optional[list[FileStatus]] = None,
     ) -> Optional[TraktSyncResult]:
         """
         Sync scan results to Trakt.tv watchlist and return TraktSyncResult Pydantic model.
         """
         try:
             logger.info(f"Syncing scan results from {scan_file} to Trakt.tv watchlist.")
+
+            # Use config default include_statuses if not provided
+            if include_statuses is None:
+                include_statuses = self.config.trakt.include_statuses
+
             result_summary = sync_to_trakt_watchlist(
                 scan_file=str(scan_file),
-                access_token=access_token,
-                client_id=None,
+                config=self.config,
                 interactive=interactive,
+                include_statuses=include_statuses,
             )
             # Convert TraktSyncSummary to TraktSyncResult
             result = TraktSyncResult(

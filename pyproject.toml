@@ -61,6 +61,7 @@ dependencies = [
 dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
+    "mypy>=1.0.0",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pre-commit>=3.0.0",
@@ -160,9 +161,8 @@ known-first-party = ["cli_handler", "video_inspector", "utils"]
 
 # MyPy configuration
 [tool.mypy]
-
-plugins = ['pydantic.mypy']
-python_version = ">=3.9"
+python_version = "3.9"
+plugins = ["pydantic.mypy"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

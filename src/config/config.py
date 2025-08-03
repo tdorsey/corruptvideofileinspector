@@ -7,7 +7,7 @@ import yaml
 from pydantic import BaseModel, Field
 
 from src.config.secrets import read_docker_secret
-from src.core.models.scanning import ScanMode
+from src.core.models.scanning import FileStatus, ScanMode
 
 
 class LoggingConfig(BaseModel):
@@ -38,6 +38,9 @@ class OutputConfig(BaseModel):
 class TraktConfig(BaseModel):
     client_id: str = Field(default="")
     client_secret: str = Field(default="")
+    include_statuses: List[FileStatus] = Field(
+        default_factory=lambda: [FileStatus.CORRUPT, FileStatus.SUSPICIOUS]
+    )
 
 
 class ScanConfig(BaseModel):

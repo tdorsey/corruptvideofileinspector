@@ -8,12 +8,12 @@ import csv
 import json
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TextIO
 
 import yaml
+from pydantic import BaseModel, Field
 
 from src.config.config import AppConfig
 from src.core.models.reporting import ReportConfiguration
@@ -22,8 +22,7 @@ from src.core.models.scanning import ScanResult, ScanSummary
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ReportMetadata:
+class ReportMetadata(BaseModel):
     """Metadata for generated reports.
 
     Attributes:
@@ -34,9 +33,9 @@ class ReportMetadata:
         total_results: Total number of scan results included
     """
 
-    generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     tool_version: str = "2.0.0"
-    config_snapshot: Dict[str, Any] = field(default_factory=dict)
+    config_snapshot: Dict[str, Any] = Field(default_factory=dict)
     report_format: str = "json"
     total_results: int = 0
 
@@ -51,8 +50,7 @@ class ReportMetadata:
         }
 
 
-@dataclass
-class ScanReport:
+class ScanReport(BaseModel):
     """Complete scan report with results and analytics.
 
     Attributes:
@@ -64,11 +62,11 @@ class ScanReport:
 
     summary: ScanSummary
     results: List[ScanResult]
-    metadata: ReportMetadata = field(default_factory=ReportMetadata)
-    analytics: Dict[str, Any] = field(default_factory=dict)
+    metadata: ReportMetadata = Field(default_factory=ReportMetadata)
+    analytics: Dict[str, Any] = Field(default_factory=dict)
 
-    def __post_init__(self) -> None:
-        """Initialize analytics and metadata."""
+    def model_post_init(self, __context: Any) -> None:
+        """Initialize analytics and metadata after model creation."""
         self.metadata.total_results = len(self.results)
         self._calculate_analytics()
 
@@ -166,10 +164,10 @@ class ScanReport:
     def to_dict(self) -> Dict[str, Any]:
         """Convert report to dictionary for serialization."""
         return {
-            "metadata": self.metadata.to_dict(),
-            "summary": self.summary.to_dict(),
+            "metadata": self.metadata.model_dump(),
+            "summary": self.summary.model_dump(),
             "analytics": self.analytics,
-            "results": [result.to_dict() for result in self.results],
+            "results": [result.model_dump() for result in self.results],
         }
 
 

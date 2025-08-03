@@ -34,6 +34,21 @@ services:
     container_name: report
     command: ["report", "--scan-file", "/app/output/results.json"]
 
+  trakt:
+    extends: scan
+    container_name: trakt-sync
+    command:
+      - trakt
+      - sync
+      - /app/output/scan_results.json
+    environment:
+      - TRAKT_CLIENT_ID=${TRAKT_CLIENT_ID:-}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - scan
+    profiles:
+      - trakt
+
 # Docker secrets configuration
 secrets:
   trakt_client_id:

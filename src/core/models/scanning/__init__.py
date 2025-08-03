@@ -24,6 +24,20 @@ class ScanMode(Enum):
     FULL = "full"
 
 
+class FileStatus(Enum):
+    """File health status based on scan results.
+
+    Attributes:
+        HEALTHY: File is healthy (not corrupt and doesn't need deep scan)
+        CORRUPT: File has been identified as corrupt
+        SUSPICIOUS: File needs deep scan (may be corrupt)
+    """
+
+    HEALTHY = "healthy"
+    CORRUPT = "corrupt"
+    SUSPICIOUS = "suspicious"
+
+
 class ScanResult(BaseModel):
     """Results of video file inspection.
 
@@ -98,6 +112,14 @@ class ScanResult(BaseModel):
     def is_healthy(self) -> bool:
         """Check if file is healthy (not corrupt and doesn't need deep scan)."""
         return not self.is_corrupt and not self.needs_deep_scan
+
+    def get_status(self) -> FileStatus:
+        """Get file status based on scan results."""
+        if self.is_corrupt:
+            return FileStatus.CORRUPT
+        if self.needs_deep_scan:
+            return FileStatus.SUSPICIOUS
+        return FileStatus.HEALTHY
 
     def get_severity_level(self) -> str:
         """Get severity level as string."""

@@ -73,7 +73,7 @@ This project uses a modular documentation structure. Each major component has it
 
 ### 🔧 Core Components
 - **[CLI Module](docs/CLI.md)** - Command-line interface and user interaction
-- **[Core Engine](docs/CORE.md)** - Video scanning, inspection, and analysis algorithms  
+- **[Core Engine](docs/CORE.md)** - Video scanning, inspection, and analysis algorithms
 - **[FFmpeg Integration](docs/FFMPEG.md)** - Video corruption detection engine
 - **[Configuration System](docs/CONFIG.md)** - Flexible configuration management
 
@@ -91,7 +91,7 @@ This project uses a modular documentation structure. Each major component has it
 
 #### Scan Modes
 - **Hybrid** (recommended): Quick scan + deep scan of suspicious files
-- **Quick**: Fast 1-minute timeout per file  
+- **Quick**: Fast 1-minute timeout per file
 - **Deep**: Thorough 15-minute timeout per file
 
 #### Key Features
@@ -131,7 +131,7 @@ corrupt-video-inspector scan --config my-config.yml /path/to/videos
 
 ## 🐳 Docker Usage
 
-The application is designed to work seamlessly in containerized environments:
+The application is designed to work seamlessly in containerized environments with full support for Trakt.tv integration:
 
 ```bash
 # Build Docker image
@@ -140,11 +140,34 @@ docker build -t corrupt-video-inspector .
 # Scan with volume mount
 docker run -v /path/to/videos:/videos corrupt-video-inspector scan /videos
 
-# Use docker-compose for complex setups
-docker-compose up
+# Use docker-compose for complex workflows
+docker-compose up scan report
+
+# Include Trakt sync with docker-compose profiles
+docker-compose --profile trakt up scan trakt
 ```
 
-**For detailed Docker configuration, see [Configuration Guide](docs/CONFIG.md)**
+### Trakt.tv Integration with Docker
+
+The Docker setup includes dedicated containers for Trakt.tv watchlist synchronization:
+
+```bash
+# Set required environment variables
+export TRAKT_ACCESS_TOKEN="your_oauth_token"
+export TRAKT_CLIENT_ID="your_client_id"
+export CVI_VIDEO_DIR="/path/to/videos"
+export CVI_OUTPUT_DIR="/path/to/output"
+
+# Run complete workflow: scan + sync to Trakt
+docker-compose --profile trakt up scan trakt
+
+# Development mode with interactive Trakt sync
+docker-compose -f docker/docker-compose.dev.yml --profile trakt up app trakt-dev
+```
+
+**For detailed Docker and Trakt container documentation, see:**
+- **[Configuration Guide](docs/CONFIG.md)** - Docker secrets and environment setup
+- **[Docker Trakt Guide](docs/DOCKER_TRAKT.md)** - Complete Trakt container documentation
 
 ## 🔧 Development
 
@@ -277,6 +300,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Integration and Usage
 
 - **[Trakt.tv Integration](docs/trakt.md)** - Watchlist synchronization and media management
+- **[Docker Trakt Integration](docs/DOCKER_TRAKT.md)** - Containerized Trakt.tv workflows and setup
 - **[Report Generation](docs/REPORTER.md)** - Multi-format reporting system
 
 ## Development

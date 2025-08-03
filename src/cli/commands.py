@@ -351,8 +351,7 @@ def trakt(ctx):
 
 @trakt.command()
 @click.argument("scan_file", type=PathType(exists=True))
-@click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
-@click.option("--client-id", help="Trakt.tv API client ID (can be set via config or env var)")
+@click.option("--client-id", help="Trakt.tv API client ID (overrides config setting)")
 @click.option(
     "--interactive/--no-interactive",
     "-i",
@@ -373,7 +372,6 @@ def trakt(ctx):
 def sync(
     ctx,
     scan_file,
-    token,
     client_id,
     interactive,
     output,
@@ -418,7 +416,6 @@ def sync(
         handler = TraktHandler(app_config)
         result = handler.sync_to_watchlist(
             scan_file=scan_file,
-            access_token=token,
             interactive=interactive,
             output_file=output,
         )
