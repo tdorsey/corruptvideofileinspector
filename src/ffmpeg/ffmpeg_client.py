@@ -167,7 +167,7 @@ class FFmpegClient:
         cmd = self._build_deep_scan_command(video_file)
 
         # Use configured timeout if none provided
-        if timeout is _UNSET:
+        if timeout is None:
             timeout = self.config.deep_timeout
 
         try:
