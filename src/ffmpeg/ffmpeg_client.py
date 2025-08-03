@@ -150,12 +150,13 @@ class FFmpegClient:
                 error_message=f"Quick scan failed: {e}",
             )
 
-    def inspect_deep(self, video_file: VideoFile) -> ScanResult:
+    def inspect_deep(self, video_file: VideoFile, timeout: Optional[int] = None) -> ScanResult:
         """
         Perform deep inspection of video file (full scan).
 
         Args:
             video_file: Video file to inspect
+            timeout: Timeout in seconds. If None, no timeout is applied.
 
         Returns:
             ScanResult: Deep inspection results
@@ -165,12 +166,16 @@ class FFmpegClient:
         # Build FFmpeg command for deep scan
         cmd = self._build_deep_scan_command(video_file)
 
+        # Use configured timeout if none provided
+        if timeout is None:
+            timeout = self.config.deep_timeout
+
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=self.config.deep_timeout,
+                timeout=timeout,
                 check=False,
             )
             return self._process_ffmpeg_result(video_file, result, is_quick=False)
@@ -211,6 +216,39 @@ class FFmpegClient:
             "null",
             "-",
         ]
+
+    def inspect_full(self, video_file: VideoFile) -> ScanResult:
+        """
+        Perform full inspection of video file without timeout.
+
+        Args:
+            video_file: Video file to inspect
+
+        Returns:
+            ScanResult: Full inspection results
+        """
+        logger.debug(f"Full scan (no timeout): {video_file.path}")
+
+        # Build FFmpeg command for full scan (same as deep scan)
+        cmd = self._build_deep_scan_command(video_file)
+
+        try:
+            # Run without timeout
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=None,
+                check=False,
+            )
+            return self._process_ffmpeg_result(video_file, result, is_quick=False)
+        except Exception as e:
+            logger.exception(f"Full scan failed: {video_file.path}")
+            return ScanResult(
+                video_file=video_file,
+                needs_deep_scan=False,
+                error_message=f"Full scan failed: {e}",
+            )
 
     def test_installation(self) -> dict[str, Any]:
         """Test FFmpeg installation and return diagnostic information.

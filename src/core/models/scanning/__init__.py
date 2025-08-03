@@ -15,11 +15,13 @@ class ScanMode(Enum):
         QUICK: Fast scan using basic FFmpeg checks
         DEEP: Thorough scan analyzing entire video stream
         HYBRID: Smart scan - quick first, then deep for suspicious files
+        FULL: Complete scan of entire video stream without timeout
     """
 
     QUICK = "quick"
     DEEP = "deep"
     HYBRID = "hybrid"
+    FULL = "full"
 
 
 class ScanResult(BaseModel):

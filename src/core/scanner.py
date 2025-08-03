@@ -298,7 +298,7 @@ class VideoScanner:
                 logger.info(f"Resuming scan, skipping {len(processed_files)} files.")
                 was_resumed = True
 
-        # Phase 1: Quick scan (for HYBRID or QUICK) using CorruptionDetector
+        # Initialize tracking variables
         suspicious_files: list[VideoFile] = []
         progress: ScanProgress = ScanProgress(
             total_files=len(video_files),
@@ -310,51 +310,55 @@ class VideoScanner:
         detector: CorruptionDetector = CorruptionDetector()
         deep_scans_needed: int = 0
         deep_scans_completed: int = 0
-        for video_file in video_files:
-            if self._shutdown_requested:
-                break
-            video_file_str: str = str(video_file.path)
-            if resume and video_file_str in processed_files:
-                continue
-            progress.processed_count += 1
-            progress.current_file = video_file_str
-            # Run FFmpeg to analyze file (quick scan)
-            # Only analyze first 10 seconds for quick scan
-            ffmpeg_cmd: list[str] = [
-                "ffmpeg",
-                "-v",
-                "error",
-                "-t",
-                "10",
-                "-i",
-                video_file_str,
-                "-f",
-                "null",
-                "-",
-            ]
-            try:
-                proc = subprocess.run(
-                    ffmpeg_cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                    check=False,
-                )
-                stderr = proc.stderr
-                exit_code = proc.returncode
-            except Exception as e:
-                stderr = str(e)
-                exit_code = 1
-            analysis = detector.analyze_ffmpeg_output(stderr, exit_code, is_quick_scan=True)
-            if analysis.is_corrupt:
-                progress.corrupt_count += 1
-            elif analysis.needs_deep_scan and scan_mode in (ScanMode.HYBRID, ScanMode.QUICK):
-                suspicious_files.append(video_file)
-            processed_files.add(video_file_str)
-            self._save_resume_state(resume_path, processed_files)
-            if progress_callback:
-                progress_callback(progress)
-        # Phase 2: Deep scan (for HYBRID or DEEP)
+
+        # Phase 1: Quick scan (for HYBRID or QUICK modes only)
+        if scan_mode in (ScanMode.QUICK, ScanMode.HYBRID):
+            for video_file in video_files:
+                if self._shutdown_requested:
+                    break
+                video_file_str: str = str(video_file.path)
+                if resume and video_file_str in processed_files:
+                    continue
+                progress.processed_count += 1
+                progress.current_file = video_file_str
+                # Run FFmpeg to analyze file (quick scan)
+                # Only analyze first 10 seconds for quick scan
+                ffmpeg_cmd: list[str] = [
+                    "ffmpeg",
+                    "-v",
+                    "error",
+                    "-t",
+                    "10",
+                    "-i",
+                    video_file_str,
+                    "-f",
+                    "null",
+                    "-",
+                ]
+                try:
+                    proc = subprocess.run(
+                        ffmpeg_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        check=False,
+                    )
+                    stderr = proc.stderr
+                    exit_code = proc.returncode
+                except Exception as e:
+                    stderr = str(e)
+                    exit_code = 1
+                analysis = detector.analyze_ffmpeg_output(stderr, exit_code, is_quick_scan=True)
+                if analysis.is_corrupt:
+                    progress.corrupt_count += 1
+                elif analysis.needs_deep_scan and scan_mode == ScanMode.HYBRID:
+                    suspicious_files.append(video_file)
+                processed_files.add(video_file_str)
+                self._save_resume_state(resume_path, processed_files)
+                if progress_callback:
+                    progress_callback(progress)
+
+        # Phase 2: Deep/Full scan (for HYBRID, DEEP, or FULL modes)
         if scan_mode == ScanMode.HYBRID and suspicious_files:
             deep_scans_needed = len(suspicious_files)
             for video_file in suspicious_files:
@@ -396,6 +400,10 @@ class VideoScanner:
                 if self._shutdown_requested:
                     break
                 video_file_str = str(video_file.path)
+                if resume and video_file_str in processed_files:
+                    continue
+                progress.processed_count += 1
+                progress.current_file = video_file_str
                 ffmpeg_cmd = [
                     "ffmpeg",
                     "-v",
@@ -423,6 +431,50 @@ class VideoScanner:
                 deep_scans_completed += 1
                 if analysis.is_corrupt:
                     progress.corrupt_count += 1
+                processed_files.add(video_file_str)
+                self._save_resume_state(resume_path, processed_files)
+                if progress_callback:
+                    progress_callback(progress)
+        elif scan_mode == ScanMode.FULL:
+            deep_scans_needed = len(video_files)
+            for video_file in video_files:
+                if self._shutdown_requested:
+                    break
+                video_file_str = str(video_file.path)
+                if resume and video_file_str in processed_files:
+                    continue
+                progress.processed_count += 1
+                progress.current_file = video_file_str
+                ffmpeg_cmd = [
+                    "ffmpeg",
+                    "-v",
+                    "error",
+                    "-i",
+                    video_file_str,
+                    "-f",
+                    "null",
+                    "-",
+                ]
+                try:
+                    # No timeout for FULL scan mode
+                    proc = subprocess.run(
+                        ffmpeg_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=None,
+                        check=False,
+                    )
+                    stderr = proc.stderr
+                    exit_code = proc.returncode
+                except Exception as e:
+                    stderr = str(e)
+                    exit_code = 1
+                analysis = detector.analyze_ffmpeg_output(stderr, exit_code, is_quick_scan=False)
+                deep_scans_completed += 1
+                if analysis.is_corrupt:
+                    progress.corrupt_count += 1
+                processed_files.add(video_file_str)
+                self._save_resume_state(resume_path, processed_files)
                 if progress_callback:
                     progress_callback(progress)
         # Remove resume file if scan completed or was interrupted
