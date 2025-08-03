@@ -38,7 +38,7 @@ services:
       - --scan-file
       - /app/output/scan_results.json
       - --format
-      - text
+      - json
 
   trakt:
     extends: scan
