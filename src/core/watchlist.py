@@ -591,6 +591,32 @@ def process_scan_file(file_path: str) -> List[MediaItem]:
     return media_items
 
 
+def _add_item_to_watchlist_or_list(
+    api: "TraktAPI", trakt_item: "TraktItem", media_type: str, watchlist: Optional[str]
+) -> bool:
+    """
+    Helper function to add a Trakt item to either the main watchlist or a custom list.
+
+    Args:
+        api: TraktAPI instance
+        trakt_item: The TraktItem to add
+        media_type: Type of media ("movie" or "show")
+        watchlist: Watchlist name/slug. If None or "watchlist", adds to main watchlist.
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    if not watchlist or watchlist == "watchlist":
+        # Add to main watchlist
+        if media_type == "movie":
+            return api.add_movie_to_watchlist(trakt_item)
+        return api.add_show_to_watchlist(trakt_item)
+    # Add to custom list
+    if media_type == "movie":
+        return api.add_movie_to_list(trakt_item, watchlist)
+    return api.add_show_to_list(trakt_item, watchlist)
+
+
 def sync_to_trakt_watchlist(
     scan_file: str,
     access_token: str,
@@ -717,18 +743,8 @@ def sync_to_trakt_watchlist(
                 )
                 continue
 
-            # Add to watchlist
-            if not watchlist or watchlist == "watchlist":
-                # Add to main watchlist
-                if media_item.media_type == "movie":
-                    success = api.add_movie_to_watchlist(trakt_item)
-                else:
-                    success = api.add_show_to_watchlist(trakt_item)
-            # Add to custom list
-            elif media_item.media_type == "movie":
-                success = api.add_movie_to_list(trakt_item, watchlist)
-            else:
-                success = api.add_show_to_list(trakt_item, watchlist)
+            # Add to watchlist or custom list using helper
+            success = _add_item_to_watchlist_or_list(api, trakt_item, media_item.media_type, watchlist)
 
             if success:
                 if media_item.media_type == "movie":

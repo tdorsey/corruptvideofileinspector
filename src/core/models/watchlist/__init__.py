@@ -1,9 +1,11 @@
+import logging
 import re
-from contextlib import suppress
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+logger = logging.getLogger(__name__)
 
 
 class MediaItem(BaseModel):
@@ -139,12 +141,16 @@ class WatchlistInfo(BaseModel):
 
         # Parse datetime strings if present
         if data.get("created_at"):
-            with suppress(ValueError):
+            try:
                 created_at = datetime.fromisoformat(data["created_at"].replace('Z', '+00:00'))
+            except ValueError as e:
+                logger.warning(f"Failed to parse created_at datetime: {data['created_at']!r} ({e})")
 
         if data.get("updated_at"):
-            with suppress(ValueError):
+            try:
                 updated_at = datetime.fromisoformat(data["updated_at"].replace('Z', '+00:00'))
+            except ValueError as e:
+                logger.warning(f"Failed to parse updated_at datetime: {data['updated_at']!r} ({e})")
 
         return cls(
             name=data.get("name", ""),
@@ -183,8 +189,13 @@ class WatchlistItem(BaseModel):
         """Create WatchlistItem from Trakt API response"""
         listed_at = None
         if data.get("listed_at"):
-            with suppress(ValueError):
+            try:
                 listed_at = datetime.fromisoformat(data["listed_at"].replace('Z', '+00:00'))
+            except ValueError as e:
+                logger.warning(
+                    "Failed to parse listed_at datetime from value '%s': %s",
+                    data["listed_at"], e
+                )
 
         # Determine type and extract media data
         if "movie" in data:
