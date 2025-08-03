@@ -39,16 +39,6 @@ class ReportMetadata(BaseModel):
     report_format: str = "json"
     total_results: int = 0
 
-    def to_dict(self) -> dict[str, Any]:
-        """Convert metadata to dictionary."""
-        return {
-            "generated_at": self.generated_at.isoformat(),
-            "tool_version": self.tool_version,
-            "config_snapshot": self.config_snapshot,
-            "report_format": self.report_format,
-            "total_results": self.total_results,
-        }
-
 
 class ScanReport(BaseModel):
     """Complete scan report with results and analytics.
@@ -164,7 +154,7 @@ class ScanReport(BaseModel):
     def to_dict(self) -> dict[str, Any]:
         """Convert report to dictionary for serialization."""
         return {
-            "metadata": self.metadata.model_dump(),
+            "metadata": self.metadata.model_dump(mode="json"),
             "summary": self.summary.model_dump(),
             "analytics": self.analytics,
             "results": [result.model_dump() for result in self.results],
