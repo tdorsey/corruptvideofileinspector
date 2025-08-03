@@ -10,7 +10,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, ClassVar, Optional
+from typing import ClassVar, Optional
 
 import trakt  # type: ignore[import-untyped]
 
@@ -41,7 +41,7 @@ def init_trakt_client(config: AppConfig) -> None:
 class TraktAPI:
     """Trakt.tv API client for watchlist management"""
 
-    def __init__(self, config):
+    def __init__(self, config: AppConfig) -> None:
         """
         Initialize Trakt API client
 
@@ -438,7 +438,7 @@ def process_scan_file(
 
 def sync_to_trakt_watchlist(
     scan_file: str,
-    config: Any,  # Replace 'Any' with 'AppConfig' if AppConfig is importable
+    config: AppConfig,
     verbose: bool = False,
     interactive: bool = False,
     include_statuses: list[FileStatus] | None = None,

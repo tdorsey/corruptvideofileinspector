@@ -531,6 +531,7 @@ def report(
     scan_file,
     output,
     include_healthy,
+    config,
 ):
     # If no arguments are provided, show the help for the report subcommand
     if ctx.args == [] and scan_file is None:
@@ -551,7 +552,7 @@ def report(
     """
     try:
         # Load configuration
-        app_config = load_config()
+        app_config = load_config(config_path=config) if config else load_config()
 
         # Setup logging
         setup_logging(0)
