@@ -385,10 +385,6 @@ def sync(
     watchlist,
     config,
 ):
-    # If no arguments are provided, show the help for the trakt sync subcommand
-    if ctx.args == [] and scan_file is None:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     Sync scan results to Trakt.tv watchlist.
 
@@ -415,6 +411,10 @@ def sync(
     # Dry run to see what would be synced
     corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --dry-run
     """
+    # If no arguments are provided, show the help for the trakt sync subcommand
+    if ctx.args == [] and scan_file is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     try:
         # Load configuration
         app_config = load_config(config_path=config)

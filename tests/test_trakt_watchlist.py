@@ -392,8 +392,9 @@ class TestWatchlistSyncFunction(unittest.TestCase):
 
     def test_sync_function_accepts_watchlist_parameter(self):
         """Test that sync function accepts watchlist parameter"""
-        from src.core.watchlist import sync_to_trakt_watchlist
         import inspect
+
+        from src.core.watchlist import sync_to_trakt_watchlist
 
         # Get function signature
         sig = inspect.signature(sync_to_trakt_watchlist)
