@@ -51,7 +51,7 @@ docker-env:  ## Generate docker/.env with required volume paths
 .DEFAULT_GOAL := help
 .PHONY: help install install-dev format lint type check test test-integration test-cov clean build \
 	docker-build docker-run docker-dev-build docker-dev-run docker-prod docker-dev \
-	pre-commit-install pre-commit-run docker-scan docker-report docker-all
+	pre-commit-install pre-commit-run docker-scan docker-report docker-trakt docker-all
 
 
 help:             ## Show this help message and list all targets.
@@ -120,6 +120,9 @@ docker-scan: docker-env ## Run scan service via Docker Compose
 
 docker-report:    ## Run report service via Docker Compose
 	docker compose -f docker/docker-compose.yml up --build report
+
+docker-trakt: docker-env ## Run trakt sync service via Docker Compose
+	docker compose --env-file docker/.env -f docker/docker-compose.yml --profile trakt up trakt
 
 docker-all:       ## Run scan and report in sequence via Docker Compose
 	docker compose -f docker/docker-compose.yml up --build scan report
