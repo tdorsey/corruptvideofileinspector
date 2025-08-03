@@ -514,8 +514,8 @@ def test_ffmpeg(ctx, config):
 @click.option(
     "--format",
     "output_format",
-    type=click.Choice(["html", "pdf", "json"], case_sensitive=False),
-    default="html",
+    type=click.Choice(["json", "csv", "yaml", "text"], case_sensitive=False),
+    default="text",
     help="Report format",
     show_default=True,
 )
@@ -530,6 +530,7 @@ def report(
     ctx,
     scan_file,
     output,
+    output_format,
     include_healthy,
     config,
 ):
@@ -546,8 +547,16 @@ def report(
     Examples:
 
     \b
-    # Generate HTML report
+    # Generate text report
     corrupt-video-inspector report results.json
+
+    \b
+    # Generate JSON report
+    corrupt-video-inspector report --format json results.json
+
+    \b
+    # Generate CSV report with output file
+    corrupt-video-inspector report --format csv --output report.csv results.json
 
     """
     try:
@@ -589,7 +598,7 @@ def report(
             summary=summary,
             results=results,
             output_path=output,
-            format="text",
+            format=output_format,
             include_healthy=include_healthy,
         )
 

@@ -7,21 +7,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     build-essential \
     python3-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Rust for packages that need Rust compilation (dev dependencies)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Set workdir
 WORKDIR /app
 
-# Install Poetry
-RUN pip install poetry
-
-
+# Install Poetry and upgrade pip
+RUN pip install --upgrade pip && pip install poetry
 
 # Copy pyproject.toml, poetry.lock, README.md, and src for editable install
 COPY pyproject.toml poetry.lock README.md ./
 COPY src ./src
 
-# Install dependencies (no root user for dev)
+# Install all dependencies including dev dependencies
 RUN poetry config virtualenvs.create false \
     && poetry install --no-interaction --no-ansi
 
