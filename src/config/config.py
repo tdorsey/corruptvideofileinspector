@@ -38,6 +38,10 @@ class OutputConfig(BaseModel):
 class TraktConfig(BaseModel):
     client_id: str = Field(default="")
     client_secret: str = Field(default="")
+    default_watchlist: Optional[str] = Field(
+        default=None,
+        description="Default watchlist name or slug for sync operations. If None, uses main watchlist."
+    )
 
 
 class ScanConfig(BaseModel):
