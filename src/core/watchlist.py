@@ -12,11 +12,10 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import trakt  # type: ignore[import-untyped]
 
-from src.config import AppConfig
 from src.core.models.scanning import FileStatus
 from src.core.models.watchlist import (
     MediaItem,
@@ -26,6 +25,9 @@ from src.core.models.watchlist import (
     WatchlistInfo,
     WatchlistItem,
 )
+
+if TYPE_CHECKING:
+    from src.config import AppConfig
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -323,7 +325,9 @@ class TraktAPI:
                 logger.info(f"Successfully added movie to list '{list_slug}': {trakt_item.title}")
                 return True
 
-            logger.warning(f"Movie was not added to list '{list_slug}' (may already be there): {trakt_item.title}")
+            logger.warning(
+                f"Movie was not added to list '{list_slug}' (may already be there): {trakt_item.title}"
+            )
             return True  # Consider this a success
         except Exception:
             logger.exception(f"Error adding movie to list '{list_slug}'")
@@ -368,7 +372,9 @@ class TraktAPI:
                 logger.info(f"Successfully added show to list '{list_slug}': {trakt_item.title}")
                 return True
 
-            logger.warning(f"Show was not added to list '{list_slug}' (may already be there): {trakt_item.title}")
+            logger.warning(
+                f"Show was not added to list '{list_slug}' (may already be there): {trakt_item.title}"
+            )
             return True  # Consider this a success
         except Exception:
             logger.exception(f"Error adding show to list '{list_slug}'")
@@ -376,8 +382,8 @@ class TraktAPI:
 
     @staticmethod
     def interactive_select_item(
-        items: list["TraktItem"], media_item: "MediaItem"
-    ) -> "TraktItem" | None:
+        items: list[TraktItem], media_item: MediaItem
+    ) -> TraktItem | None:
         """
         Interactively select the correct item from search results
 
@@ -538,7 +544,7 @@ class FilenameParser:
 
 
 def process_scan_file(
-    file_path: str, include_statuses: list["FileStatus"] | None = None
+    file_path: str, include_statuses: list[FileStatus] | None = None
 ) -> list[MediaItem]:
     """
     Process a JSON scan file to extract media items
@@ -613,7 +619,7 @@ def process_scan_file(
 
 
 def _add_item_to_watchlist_or_list(
-    api: "TraktAPI", trakt_item: "TraktItem", media_type: str, watchlist: str | None
+    api: TraktAPI, trakt_item: TraktItem, media_type: str, watchlist: str | None
 ) -> bool:
     """
     Helper function to add a Trakt item to either the main watchlist or a custom list.
@@ -693,12 +699,7 @@ def sync_to_trakt_watchlist(
         if verbose:
             print("No media items found to sync")
         return TraktSyncSummary(
-            total=0,
-            movies_added=0,
-            shows_added=0,
-            failed=0,
-            watchlist=watchlist,
-            results=[]
+            total=0, movies_added=0, shows_added=0, failed=0, watchlist=watchlist, results=[]
         )
 
     # Sync to watchlist
@@ -769,7 +770,9 @@ def sync_to_trakt_watchlist(
                 continue
 
             # Add to watchlist or custom list using helper
-            success = _add_item_to_watchlist_or_list(api, trakt_item, media_item.media_type, watchlist)
+            success = _add_item_to_watchlist_or_list(
+                api, trakt_item, media_item.media_type, watchlist
+            )
 
             if success:
                 if media_item.media_type == "movie":
