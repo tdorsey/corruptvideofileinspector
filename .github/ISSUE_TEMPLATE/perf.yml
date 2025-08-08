@@ -9,7 +9,7 @@ body:
       value: |
         Thanks for helping improve performance! Please provide details about the performance issue or optimization request.
         
-        **After submitting this issue, please add a component label** based on your selection above:
+        **After submitting this issue, please add a component label** based on your selection below:
         - `component:cli` for CLI issues
         - `component:scanner` for Scanner issues  
         - `component:trakt` for Trakt Integration issues
