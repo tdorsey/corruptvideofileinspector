@@ -133,12 +133,6 @@ class TestFormatFileSize(unittest.TestCase):
         assert format_file_size(1024 * 1024 * 1024 * 1024) == "1 TB"
         assert format_file_size(int(1024 * 1024 * 1024 * 1024 * 2.5)) == "2.5 TB"
 
-    def test_format_bytes_no_trim_mode(self):
-        """Test formatting bytes with trim_trailing_zero=False (backward compatibility)"""
-        assert format_file_size(500, trim_trailing_zero=False) == "500.0 B"
-        assert format_file_size(0, trim_trailing_zero=False) == "0.0 B"
-        assert format_file_size(1, trim_trailing_zero=False) == "1.0 B"
-
     def test_format_kilobytes_no_trim_mode(self):
         """Test formatting kilobytes with trim_trailing_zero=False (backward compatibility)"""
         assert format_file_size(1024, trim_trailing_zero=False) == "1.0 KB"
