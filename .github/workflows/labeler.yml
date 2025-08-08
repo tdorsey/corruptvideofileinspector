@@ -80,24 +80,25 @@ jobs:
             
             // Extract stakeholder type
             const stakeholderSection = body.match(/### Stakeholder Type[\s\S]*?(?=###|$)/i);
-            if (!stakeholderSection) return;
-            
-            const stakeholderText = stakeholderSection[0];
-            const stakeholderMatches = {
-              'Project Maintainer': /Project Maintainer/i.test(stakeholderText),
-              'Contributor': /Contributor/i.test(stakeholderText),
-              'End User': /End User/i.test(stakeholderText)
-            };
-            
-            // Add stakeholder labels
-            if (stakeholderMatches['Project Maintainer'] && !labels.includes('stakeholder:maintainer')) {
-              labels.push('stakeholder:maintainer');
-            }
-            if (stakeholderMatches['Contributor'] && !labels.includes('stakeholder:contributor')) {
-              labels.push('stakeholder:contributor');
-            }
-            if (stakeholderMatches['End User'] && !labels.includes('stakeholder:user')) {
-              labels.push('stakeholder:user');
+            if (stakeholderSection) {
+              
+              const stakeholderText = stakeholderSection[0];
+              const stakeholderMatches = {
+                'Project Maintainer': /Project Maintainer/i.test(stakeholderText),
+                'Contributor': /Contributor/i.test(stakeholderText),
+                'End User': /End User/i.test(stakeholderText)
+              };
+              
+              // Add stakeholder labels
+              if (stakeholderMatches['Project Maintainer'] && !labels.includes('stakeholder:maintainer')) {
+                labels.push('stakeholder:maintainer');
+              }
+              if (stakeholderMatches['Contributor'] && !labels.includes('stakeholder:contributor')) {
+                labels.push('stakeholder:contributor');
+              }
+              if (stakeholderMatches['End User'] && !labels.includes('stakeholder:user')) {
+                labels.push('stakeholder:user');
+              }
             }
             
             // Set labels on the issue
