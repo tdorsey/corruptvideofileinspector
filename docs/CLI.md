@@ -77,11 +77,21 @@ corrupt-video-inspector scan --mode hybrid --max-workers 8 /path/to/videos
 ### Trakt Integration
 
 ```bash
+# Set up Trakt credentials first
+make secrets-init  # Create secret files
+# Edit docker/secrets/trakt_client_id.txt and trakt_client_secret.txt
+
 # Sync scan results to Trakt
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
+corrupt-video-inspector trakt sync results.json
 
 # Interactive mode for manual selection
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --interactive
+corrupt-video-inspector trakt sync results.json --interactive
+
+# List available watchlists
+corrupt-video-inspector trakt list-watchlists
+
+# View watchlist contents
+corrupt-video-inspector trakt view --watchlist "my-movies"
 ```
 
 ### Configuration Management

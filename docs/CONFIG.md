@@ -68,9 +68,69 @@ scan:
     - ".mkv"
     # ... more extensions
 
+# Trakt.tv integration configuration
+trakt:
+  client_id: ""  # Trakt API client ID
+  client_secret: ""  # Trakt API client secret  
+  default_watchlist: null  # Default watchlist name/slug for sync operations
+  include_statuses: ["healthy"]  # File statuses to sync (default: healthy only)
+
 # Secrets configuration
 secrets:
   docker_secrets_path: "/run/secrets"
+```
+
+## Trakt.tv Configuration
+
+The Trakt.tv integration supports flexible authentication and sync behavior configuration.
+
+### File Status Filtering
+
+The `include_statuses` option controls which files are included in Trakt sync operations:
+
+```yaml
+trakt:
+  include_statuses: ["healthy"]  # Default: only sync healthy files
+  # include_statuses: ["healthy", "suspicious"]  # Include healthy and suspicious
+  # include_statuses: ["healthy", "corrupt", "suspicious"]  # Include all files
+```
+
+**Default Behavior Change**: The default `include_statuses` is now `["healthy"]` (previously included all statuses). This change was made to:
+- Avoid adding potentially corrupted videos to watchlists by default
+- Provide safer default behavior for automatic syncing
+- Allow explicit configuration for users who want to include other statuses
+
+To override and include all file statuses (legacy behavior):
+```yaml
+trakt:
+  include_statuses: ["healthy", "corrupt", "suspicious"]
+```
+
+### Authentication Setup
+
+Trakt credentials can be configured through multiple methods:
+
+#### Method 1: Docker Secrets (Recommended)
+```bash
+# Initialize secret files
+make secrets-init
+
+# Add your credentials
+echo "your-client-id" > docker/secrets/trakt_client_id.txt
+echo "your-client-secret" > docker/secrets/trakt_client_secret.txt
+```
+
+#### Method 2: Configuration File
+```yaml
+trakt:
+  client_id: "your-client-id"
+  client_secret: "your-client-secret"
+```
+
+#### Method 3: Environment Variables
+```bash
+export CVI_TRAKT_CLIENT_ID="your-client-id"
+export CVI_TRAKT_CLIENT_SECRET="your-client-secret"
 ```
 
 ## Environment Variables
@@ -98,6 +158,14 @@ All configuration options can be overridden using environment variables with the
 
 ### Scanning
 - `CVI_RECURSIVE` - Scan recursively (true/false)
+- `CVI_INPUT_DIR` - Default input directory to scan
+- `CVI_EXTENSIONS` - Comma-separated list of extensions (.mp4,.mkv,.avi)
+
+### Trakt.tv Integration
+- `CVI_TRAKT_CLIENT_ID` - Trakt API client ID
+- `CVI_TRAKT_CLIENT_SECRET` - Trakt API client secret
+- `CVI_TRAKT_DEFAULT_WATCHLIST` - Default watchlist name or slug
+- `CVI_TRAKT_INCLUDE_STATUSES` - Comma-separated list of statuses (healthy,corrupt,suspicious)
 - `CVI_INPUT_DIR` - Default input directory to scan
 - `CVI_EXTENSIONS` - Comma-separated list of extensions (.mp4,.mkv,.avi)
 
