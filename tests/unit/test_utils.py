@@ -99,8 +99,8 @@ class TestCountAllVideoFiles(unittest.TestCase):
 class TestFormatFileSize(unittest.TestCase):
     """Test format_file_size function"""
 
-    def test_format_bytes_trim_mode(self):
-        """Test formatting bytes with trim_trailing_zero=True (default)"""
+    def test_format_bytes(self):
+        """Test formatting bytes with default trim_trailing_zero=True"""
         assert format_file_size(500) == "500 B"
         assert format_file_size(0) == "0 B"
         assert format_file_size(1) == "1 B"
