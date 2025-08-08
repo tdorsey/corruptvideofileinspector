@@ -174,23 +174,34 @@ class TestTraktIncludeStatuses:
     @patch("src.cli.handlers.sync_to_trakt_watchlist")
     def test_trakt_handler_passes_include_statuses(self, mock_sync, mock_config, temp_scan_file):
         """Test that TraktHandler correctly passes include_statuses parameter."""
+        # Create a proper mock that returns the expected attributes
         mock_result = MagicMock()
-        mock_result.model_dump.return_value = {"test": "result"}
+        mock_result.total = 1
+        mock_result.movies_added = 1
+        mock_result.shows_added = 0
+        mock_result.failed = 0
+        mock_result.watchlist = "test_watchlist"
+        mock_result.results = []
         mock_sync.return_value = mock_result
 
         handler = TraktHandler(mock_config)
 
         # Test with default statuses (corrupt and suspicious)
-        handler.sync_to_watchlist(
+        result = handler.sync_to_watchlist(
             scan_file=temp_scan_file,
         )
 
+        # Verify the sync was called with correct parameters
         mock_sync.assert_called_with(
             scan_file=str(temp_scan_file),
             config=mock_config,
             interactive=False,
+            watchlist=None,
             include_statuses=[FileStatus.CORRUPT, FileStatus.SUSPICIOUS],
         )
+
+        # Verify result is returned
+        assert result is not None
 
         # Test with custom statuses
         custom_statuses = [FileStatus.HEALTHY, FileStatus.CORRUPT]
@@ -200,13 +211,14 @@ class TestTraktIncludeStatuses:
             scan_file=str(temp_scan_file),
             config=mock_config,
             interactive=False,
+            watchlist=None,
             include_statuses=custom_statuses,
         )
 
     def test_config_include_statuses_default(self):
-        """Test that TraktConfig has include_statuses defaulting to [CORRUPT, SUSPICIOUS]."""
+        """Test that TraktConfig has include_statuses defaulting to [HEALTHY]."""
         config = TraktConfig()
-        assert config.include_statuses == [FileStatus.CORRUPT, FileStatus.SUSPICIOUS]
+        assert config.include_statuses == [FileStatus.HEALTHY]
 
     def test_config_include_statuses_can_be_set(self):
         """Test that TraktConfig include_statuses can be customized."""
