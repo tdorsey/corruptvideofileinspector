@@ -325,7 +325,9 @@ class TraktAPI:
                 logger.info(f"Successfully added movie to list '{list_slug}': {trakt_item.title}")
                 return True
 
-            logger.warning(f"Movie was not added to list '{list_slug}' (may already be there): {trakt_item.title}")
+            logger.warning(
+                f"Movie was not added to list '{list_slug}' (may already be there): {trakt_item.title}"
+            )
             return True  # Consider this a success
         except Exception:
             logger.exception(f"Error adding movie to list '{list_slug}'")
@@ -370,16 +372,16 @@ class TraktAPI:
                 logger.info(f"Successfully added show to list '{list_slug}': {trakt_item.title}")
                 return True
 
-            logger.warning(f"Show was not added to list '{list_slug}' (may already be there): {trakt_item.title}")
+            logger.warning(
+                f"Show was not added to list '{list_slug}' (may already be there): {trakt_item.title}"
+            )
             return True  # Consider this a success
         except Exception:
             logger.exception(f"Error adding show to list '{list_slug}'")
             return False
 
     @staticmethod
-    def interactive_select_item(
-        items: list[TraktItem], media_item: MediaItem
-    ) -> TraktItem | None:
+    def interactive_select_item(items: list[TraktItem], media_item: MediaItem) -> TraktItem | None:
         """
         Interactively select the correct item from search results
 
@@ -695,12 +697,7 @@ def sync_to_trakt_watchlist(
         if verbose:
             print("No media items found to sync")
         return TraktSyncSummary(
-            total=0,
-            movies_added=0,
-            shows_added=0,
-            failed=0,
-            watchlist=watchlist,
-            results=[]
+            total=0, movies_added=0, shows_added=0, failed=0, watchlist=watchlist, results=[]
         )
 
     # Sync to watchlist
@@ -771,7 +768,9 @@ def sync_to_trakt_watchlist(
                 continue
 
             # Add to watchlist or custom list using helper
-            success = _add_item_to_watchlist_or_list(api, trakt_item, media_item.media_type, watchlist)
+            success = _add_item_to_watchlist_or_list(
+                api, trakt_item, media_item.media_type, watchlist
+            )
 
             if success:
                 if media_item.media_type == "movie":
