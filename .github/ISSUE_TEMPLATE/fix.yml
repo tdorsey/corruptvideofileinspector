@@ -1,6 +1,6 @@
 name: 🐛 Bug Report
 description: Report a bug or issue with the application
-title: "[BUG]: "
+title: "[FIX]: "
 labels: ["bug"]
 assignees: []
 body:
