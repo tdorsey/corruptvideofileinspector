@@ -1,0 +1,172 @@
+name: 🔧 Chore/Maintenance Task
+description: Request maintenance tasks, dependency updates, or project improvements
+title: "[CHORE]: "
+labels: ["chore"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping with project maintenance! Please describe the chore or maintenance task needed.
+        
+        **After submitting this issue, please add a component label** based on your selection below:
+        - `component:cli` for CLI issues
+        - `component:scanner` for Scanner issues  
+        - `component:trakt` for Trakt Integration issues
+        - `component:config` for Config issues
+        - `component:reporter` for Reporter issues
+        - `component:output` for Output issues
+        - `component:docker` for Docker issues
+
+  - type: dropdown
+    id: stakeholder
+    attributes:
+      label: Stakeholder Type
+      description: What type of stakeholder are you?
+      options:
+        - Project Maintainer
+        - Contributor
+        - End User
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/Domain
+      description: Which component or domain does this maintenance task affect?
+      options:
+        - CLI
+        - Scanner
+        - Trakt Integration
+        - Config
+        - Reporter
+        - Output
+        - Docker
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-as
+    attributes:
+      label: "As a"
+      description: "Complete this sentence: As a..."
+      placeholder: "As a [stakeholder type], I..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-want
+    attributes:
+      label: "I want to"
+      description: "Describe the maintenance task or improvement needed"
+      placeholder: "I want to update dependencies to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-but
+    attributes:
+      label: "But"
+      description: "Describe the current maintenance issue or need"
+      placeholder: "But currently the project has outdated..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-helps
+    attributes:
+      label: "This helps by"
+      description: "Explain how this maintenance task would help"
+      placeholder: "This helps by keeping the project secure and..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-unlike
+    attributes:
+      label: "Unlike"
+      description: "Describe how this differs from the current state"
+      placeholder: "Unlike the current outdated setup which..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: chore-type
+    attributes:
+      label: Maintenance Task Type
+      description: What type of maintenance task is this?
+      options:
+        - Dependency updates
+        - Build system improvements
+        - CI/CD pipeline updates
+        - Documentation updates
+        - Code cleanup
+        - File organization
+        - Configuration updates
+        - Security updates
+        - Development tooling
+        - Release preparation
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: specific-tasks
+    attributes:
+      label: Specific Tasks
+      description: What specific tasks need to be completed?
+      placeholder: |
+        Examples:
+        - Update Python dependencies in pyproject.toml
+        - Upgrade Docker base image to latest stable
+        - Update GitHub Actions workflows
+        - Clean up unused imports
+        - Reorganize test files
+    validations:
+      required: true
+
+  - type: textarea
+    id: urgency-reason
+    attributes:
+      label: Urgency/Reason
+      description: Why is this maintenance task needed now?
+      placeholder: |
+        Examples:
+        - Security vulnerability in current dependency
+        - New feature requires updated tools
+        - Improved developer experience
+        - Preparation for upcoming release
+
+  - type: textarea
+    id: potential-impact
+    attributes:
+      label: Potential Impact
+      description: What impact might this maintenance task have?
+      placeholder: |
+        Examples:
+        - Breaking changes requiring migration
+        - Improved build performance
+        - Enhanced security
+        - Better developer experience
+        - No user-facing changes
+
+  - type: checkboxes
+    id: breaking-changes
+    attributes:
+      label: Breaking Changes
+      description: Please check if this applies
+      options:
+        - label: This maintenance task may introduce breaking changes
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

@@ -1,0 +1,148 @@
+name: 🎨 Code Style Issue
+description: Report code style, formatting, or consistency issues
+title: "[STYLE]: "
+labels: ["style"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping maintain code quality! Please describe the style or formatting issue you've identified.
+        
+        **After submitting this issue, please add a component label** based on your selection below:
+        - `component:cli` for CLI issues
+        - `component:scanner` for Scanner issues  
+        - `component:trakt` for Trakt Integration issues
+        - `component:config` for Config issues
+        - `component:reporter` for Reporter issues
+        - `component:output` for Output issues
+        - `component:docker` for Docker issues
+
+  - type: dropdown
+    id: stakeholder
+    attributes:
+      label: Stakeholder Type
+      description: What type of stakeholder are you?
+      options:
+        - Project Maintainer
+        - Contributor
+        - End User
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/Domain
+      description: Which component or domain does this style issue affect?
+      options:
+        - CLI
+        - Scanner
+        - Trakt Integration
+        - Config
+        - Reporter
+        - Output
+        - Docker
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-as
+    attributes:
+      label: "As a"
+      description: "Complete this sentence: As a..."
+      placeholder: "As a [stakeholder type], I..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-want
+    attributes:
+      label: "I want to"
+      description: "Describe the code style improvement you want"
+      placeholder: "I want the code to follow consistent..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-but
+    attributes:
+      label: "But"
+      description: "Describe the current style issue or inconsistency"
+      placeholder: "But currently the code has inconsistent..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-helps
+    attributes:
+      label: "This helps by"
+      description: "Explain how fixing this style issue would help"
+      placeholder: "This helps by improving code readability and..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-unlike
+    attributes:
+      label: "Unlike"
+      description: "Describe how this differs from the current style"
+      placeholder: "Unlike the current inconsistent style which..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: style-category
+    attributes:
+      label: Style Category
+      description: What type of style issue is this?
+      options:
+        - Code formatting (spacing, indentation)
+        - Naming conventions
+        - Import organization
+        - Documentation style
+        - Comment style
+        - Type hints
+        - File organization
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected-files
+    attributes:
+      label: Affected Files/Locations
+      description: Which files or code sections are affected?
+      placeholder: |
+        Examples:
+        - src/cli/commands.py (lines 45-60)
+        - All files in src/core/
+        - Import statements throughout project
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-style
+    attributes:
+      label: Current Style (Example)
+      description: Show an example of the current problematic style
+      render: python
+
+  - type: textarea
+    id: proposed-style
+    attributes:
+      label: Proposed Style (Example)
+      description: Show an example of how it should be styled
+      render: python
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
