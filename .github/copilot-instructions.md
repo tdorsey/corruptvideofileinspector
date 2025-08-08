@@ -1,6 +1,31 @@
 # Corrupt Video Inspector Development Instructions
 
+A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support.
+
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
+
+## Quick Reference
+
+### Essential Setup (Network Required)
+```bash
+sudo apt-get install -y ffmpeg    # Install FFmpeg dependency
+make install-dev                  # Install all dependencies (2-5 min, timeout 10+ min)
+make pre-commit-install          # Setup code quality hooks
+```
+
+### Development Workflow
+```bash
+make check                       # Format, lint, type check (1-3 min, timeout 10+ min)
+make test                        # Run all tests (1-15 min, timeout 30+ min)
+make docker-build               # Build container (5-15 min, timeout 30+ min)
+```
+
+### CLI Usage Examples
+```bash
+corrupt-video-inspector --help
+corrupt-video-inspector scan /path/to/videos --mode hybrid --output results.json
+corrupt-video-inspector init-config --format yaml --output config.yml
+```
 
 ## Working Effectively
 
@@ -178,6 +203,12 @@ make check    # Format, lint, and type check
 make test     # Run all tests
 ```
 
+**Note**: The CI pipeline (.github/workflows/ci.yml) references some Makefile targets that don't exist:
+- `make docker-test` - Referenced in CI but not defined in Makefile
+- `make security-scan` - Referenced in CI but not defined in Makefile
+
+These targets should be added to the Makefile or removed from CI configuration.
+
 ## Repository Structure and Key Files
 
 ### Project Root
@@ -234,19 +265,46 @@ tests/
 
 ## Troubleshooting Common Issues
 
+### Network Connectivity Issues
+**Symptoms**: SSL certificate errors, connection timeouts to PyPI, "certificate verify failed" errors
+- **Root Cause**: Network environment blocking or filtering access to PyPI
+- **Commands Affected**: `make install-dev`, `make install`, `pip install`, Docker builds with Poetry
+- **Workarounds**: 
+  - Use `pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org`
+  - Use pre-built Docker images if available
+  - Install dependencies manually from local wheels
+
 ### Installation Failures
 - **Network timeouts**: Increase pip timeout: `pip install --timeout 300`
 - **SSL errors**: May indicate firewall/proxy issues - use Docker as fallback
 - **Poetry conflicts**: Clear cache: `pip cache purge` and retry
+- **Build system failures**: Ensure build-essential is installed: `sudo apt-get install build-essential`
 
 ### Development Issues  
 - **Import errors**: Ensure PYTHONPATH includes src: `export PYTHONPATH=/path/to/repo/src`
 - **FFmpeg not found**: Install system package: `sudo apt-get install ffmpeg`
 - **Permission errors**: Check file/directory permissions for video processing
+- **Missing targets**: Some CI-referenced Makefile targets (docker-test, security-scan) don't exist
 
 ### Testing Failures
 - **Missing test videos**: Some integration tests require actual video files
 - **Timeout errors**: Video processing can be slow - use appropriate timeouts
 - **Docker issues**: Ensure Docker service is running and accessible
+- **Import errors in tests**: Set PYTHONPATH before running tests manually
+
+### Commands by Network Requirement
+
+**Network-Independent Commands** (Always work):
+```bash
+make help, make clean, make docker-env, make secrets-init
+PYTHONPATH=src python3 -c "from cli.main import main"  # Basic import test
+```
+
+**Network-Dependent Commands** (Require PyPI access):
+```bash
+make install-dev, make install, make docker-build, make test
+make format, make lint, make type  # Require installed dependencies
+make pre-commit-install  # Downloads pre-commit hooks
+```
 
 Remember: This is a video processing application that requires actual video files for complete testing. Always validate with real video scanning workflows when possible.
