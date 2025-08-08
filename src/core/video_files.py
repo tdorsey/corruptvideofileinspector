@@ -1,5 +1,5 @@
 """
-Utility functions for Corrupt Video Inspector
+Video file operations and utilities.
 """
 
 import logging
@@ -62,54 +62,3 @@ def count_all_video_files(
     except Exception:
         logger.exception(f"Error counting video files in {directory}")
         raise
-
-
-def format_file_size(size_bytes: int) -> str:
-    """
-    Format file size in human readable format.
-
-    Args:
-        size_bytes: File size in bytes
-
-    Returns:
-        str: Formatted size string (e.g., "1.5 MB")
-    """
-    logger.debug(f"Formatting file size: {size_bytes} bytes")
-
-    size_float = float(size_bytes)  # Convert to float for calculations
-
-    for unit in ["B", "KB", "MB", "GB"]:
-        if size_float < 1024:
-            formatted = f"{size_float:.1f} {unit}"
-            logger.debug(f"Formatted size: {formatted}")
-            return formatted
-        size_float /= 1024
-
-    formatted = f"{size_float:.1f} TB"
-    logger.debug(f"Formatted size: {formatted}")
-    return formatted
-
-
-def get_video_extensions() -> list[str]:
-    """
-    Get list of supported video file extensions.
-
-    Returns:
-        List[str]: List of video file extensions including the dot
-    """
-    extensions = [
-        ".mp4",
-        ".avi",
-        ".mkv",
-        ".mov",
-        ".wmv",
-        ".flv",
-        ".webm",
-        ".m4v",
-        ".mpg",
-        ".mpeg",
-        ".3gp",
-        ".asf",
-    ]
-    logger.debug(f"Returning {len(extensions)} supported video extensions")
-    return extensions

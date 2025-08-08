@@ -1,4 +1,6 @@
-"""CLI utilities and helper functions."""
+"""
+CLI logging configuration and setup utilities.
+"""
 
 import logging
 

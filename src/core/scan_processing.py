@@ -1,4 +1,6 @@
-"""Utility/model helper functions for Corrupt Video Inspector."""
+"""
+Scan result processing and analysis utilities.
+"""
 
 from pathlib import Path
 from typing import Any
@@ -13,6 +15,7 @@ from src.core.models.scanning import (
 
 
 def create_video_file_from_path(path: str | Path) -> VideoFile:
+    """Create a VideoFile instance from a file path."""
     path_obj = Path(path) if isinstance(path, str) else path
     if not path_obj.exists():
         raise FileNotFoundError(f"Video file not found: {path_obj}")
@@ -21,17 +24,13 @@ def create_video_file_from_path(path: str | Path) -> VideoFile:
     return VideoFile(path=path_obj)
 
 
-# Removed duplicate definition of merge_scan_summaries
-
-
 def filter_scan_results(results: list[ScanResult], scan_filter: ScanFilter) -> list[ScanResult]:
+    """Filter scan results based on the provided filter criteria."""
     return [result for result in results if scan_filter.matches(result)]
 
 
-# Removed duplicate definition of sort_scan_results
-
-
 def group_scan_results_by_directory(results: list[ScanResult]) -> dict[Path, list[ScanResult]]:
+    """Group scan results by their parent directory."""
     groups: dict[Path, list[ScanResult]] = {}
     for result in results:
         directory = result.video_file.path.parent
@@ -39,12 +38,6 @@ def group_scan_results_by_directory(results: list[ScanResult]) -> dict[Path, lis
             groups[directory] = []
         groups[directory].append(result)
     return groups
-
-
-# Removed duplicate definition of calculate_scan_statistics
-
-
-# Utility functions for working with models
 
 
 def merge_scan_summaries(summaries: list[ScanSummary]) -> ScanSummary:
@@ -108,9 +101,6 @@ def merge_scan_summaries(summaries: list[ScanSummary]) -> ScanSummary:
     )
 
 
-# Removed duplicate definition of filter_scan_results
-
-
 def sort_scan_results(
     results: list[ScanResult], sort_by: str = "path", reverse: bool = False
 ) -> list[ScanResult]:
@@ -162,9 +152,6 @@ def sort_scan_results(
             return str(r.video_file.path)  # fallback
 
     return sorted(results, key=key_func, reverse=reverse)
-
-
-# Removed duplicate definition of group_scan_results_by_directory
 
 
 def calculate_scan_statistics(results: list[ScanResult]) -> dict[str, Any]:
