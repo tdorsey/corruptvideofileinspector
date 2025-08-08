@@ -1,7 +1,7 @@
 # =============================================================================
 # Base stage - Common dependencies and setup
 # =============================================================================
-FROM python:3.11-slim-bookworm AS base
+FROM python:3.13-slim-bookworm AS base
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     dumb-init \
     ca-certificates \
+    build-essential \
+    curl \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
@@ -37,12 +39,10 @@ ENV PATH="/home/${APP_USER}/.local/bin:$PATH"
 # =============================================================================
 FROM base AS dependencies
 
-
 WORKDIR /app
 
-
-# Install Poetry
-RUN pip install poetry
+# Install Poetry and upgrade pip to get better wheel support
+RUN pip install --upgrade pip && pip install poetry
 
 # Configure Poetry to not use virtualenvs
 RUN poetry config virtualenvs.create false
@@ -51,8 +51,8 @@ RUN poetry config virtualenvs.create false
 COPY pyproject.toml poetry.lock* README.md ./
 COPY src/ ./src/
 
-# Install dependencies and project with Poetry
-RUN poetry install --no-interaction --no-ansi
+# Install only main dependencies (no dev dependencies)
+RUN poetry install --no-interaction --no-ansi --only=main
 
 # =============================================================================
 # Development stage - For development with mounted source code
@@ -93,7 +93,7 @@ LABEL org.opencontainers.image.description=${APP_DESCRIPTION}
 FROM base AS production
 
 # Copy installed packages from dependencies stage
-COPY --from=dependencies /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=dependencies /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=dependencies /usr/local/bin /usr/local/bin
 
 # Copy pyproject.toml for runtime config discovery

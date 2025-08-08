@@ -10,10 +10,12 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import ClassVar, List, Optional
+from typing import ClassVar, Optional
 
-import trakt  # type: ignore
+import trakt  # type: ignore[import-untyped]
 
+from src.config import AppConfig
+from src.core.models.scanning import FileStatus
 from src.core.models.watchlist import MediaItem, SyncResultItem, TraktItem, TraktSyncSummary
 
 # Configure module logger
@@ -23,9 +25,10 @@ logger = logging.getLogger(__name__)
 # Instead, require config to be passed explicitly to any function/class that needs it.
 
 
-def init_trakt_client(config):
+def init_trakt_client(config: AppConfig) -> None:
     """
     Initialize Trakt client using config values.
+
     Args:
         config: AppConfig instance with trakt credentials
     """
@@ -38,25 +41,21 @@ def init_trakt_client(config):
 class TraktAPI:
     """Trakt.tv API client for watchlist management"""
 
-    def __init__(self, access_token: str, client_id: Optional[str] = None):
+    def __init__(self, config: AppConfig) -> None:
         """
         Initialize Trakt API client
 
         Args:
-            access_token: OAuth 2.0 access token for API authentication
-            client_id: Optional client ID for API requests
+            config: AppConfig instance with trakt credentials containing client_id and client_secret
         """
-        self.access_token = access_token
-        self.client_id = client_id
+        self.client_id = config.trakt.client_id
+        self.client_secret = config.trakt.client_secret
 
-        # Set up Trakt authentication
-        trakt.configuration.defaults.oauth(token=access_token)
+        # Set up Trakt authentication using client credentials
+        trakt.configuration.defaults.client(id=self.client_id, secret=self.client_secret)
+        logger.info("TraktAPI client initialized with client credentials")
 
-        logger.info("TraktAPI client initialized")
-
-    def search_movie(
-        self, title: str, year: Optional[int] = None, limit: int = 1
-    ) -> List[TraktItem]:
+    def search_movie(self, title: str, year: int | None = None, limit: int = 1) -> list[TraktItem]:
         """
         Search for a movie on Trakt
 
@@ -85,9 +84,7 @@ class TraktAPI:
             logger.exception("Error searching for movie")
             return []
 
-    def search_show(
-        self, title: str, year: Optional[int] = None, limit: int = 1
-    ) -> List[TraktItem]:
+    def search_show(self, title: str, year: int | None = None, limit: int = 1) -> list[TraktItem]:
         """
         Search for a TV show on Trakt
 
@@ -203,7 +200,7 @@ class TraktAPI:
 
     @staticmethod
     def interactive_select_item(
-        items: List["TraktItem"], media_item: "MediaItem"
+        items: list["TraktItem"], media_item: "MediaItem"
     ) -> Optional["TraktItem"]:
         """
         Interactively select the correct item from search results
@@ -364,15 +361,18 @@ class FilenameParser:
         return media_item
 
 
-def process_scan_file(file_path: str) -> List[MediaItem]:
+def process_scan_file(
+    file_path: str, include_statuses: list["FileStatus"] | None = None
+) -> list[MediaItem]:
     """
     Process a JSON scan file to extract media items
 
     Args:
         file_path: Path to JSON file containing scan results
+        include_statuses: List of FileStatus values to include (default: all statuses)
 
     Returns:
-        List[MediaItem]: List of parsed media items from all files
+        List[MediaItem]: List of parsed media items from filtered files
 
     Raises:
         FileNotFoundError: If scan file doesn't exist
@@ -403,8 +403,27 @@ def process_scan_file(file_path: str) -> List[MediaItem]:
             logger.warning("Skipping result with missing filename")
             continue
 
-        # Parse filename regardless of corruption status
-        # (as per requirements: process all files)
+        # Filter by file status if include_statuses is specified
+        if include_statuses is not None:
+            # Determine file status
+            is_corrupt = result.get("is_corrupt", False)
+            needs_deep_scan = result.get("needs_deep_scan", False)
+
+            if is_corrupt:
+                file_status = FileStatus.CORRUPT
+            elif needs_deep_scan:
+                file_status = FileStatus.SUSPICIOUS
+            else:
+                file_status = FileStatus.HEALTHY
+
+            # Skip if this status is not in the include list
+            if file_status not in include_statuses:
+                logger.debug(
+                    f"Skipping {filename} - status {file_status.value} not in include list"
+                )
+                continue
+
+        # Parse filename
         try:
             media_item = FilenameParser.parse_filename(filename)
             media_items.append(media_item)
@@ -419,20 +438,20 @@ def process_scan_file(file_path: str) -> List[MediaItem]:
 
 def sync_to_trakt_watchlist(
     scan_file: str,
-    access_token: str,
-    client_id: Optional[str] = None,
+    config: AppConfig,
     verbose: bool = False,
     interactive: bool = False,
+    include_statuses: list[FileStatus] | None = None,
 ) -> TraktSyncSummary:
     """
     Main function to sync scan results to Trakt watchlist
 
     Args:
         scan_file: Path to JSON scan file
-        access_token: Trakt API access token
-        client_id: Optional Trakt API client ID
+        config: AppConfig instance with trakt credentials
         verbose: Enable verbose output
         interactive: Enable interactive selection of search results
+        include_statuses: List of FileStatus values to sync (default: from config)
 
     Returns:
         TraktSyncSummary: Summary of sync operation with counts and results
@@ -445,14 +464,18 @@ def sync_to_trakt_watchlist(
 
     # Initialize API client
     try:
-        api = TraktAPI(access_token, client_id)
+        api = TraktAPI(config)
     except Exception:
         logger.exception("Failed to initialize Trakt API")
         raise
 
+    # Use config default include_statuses if not provided
+    if include_statuses is None:
+        include_statuses = config.trakt.include_statuses
+
     # Process scan file
     try:
-        media_items = process_scan_file(scan_file)
+        media_items = process_scan_file(scan_file, include_statuses=include_statuses)
     except Exception:
         logger.exception("Failed to process scan file")
         raise

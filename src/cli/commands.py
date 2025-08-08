@@ -15,7 +15,7 @@ from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
 from src.cli.utils import setup_logging
 from src.config import load_config
 from src.core.models.inspection import VideoFile
-from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
+from src.core.models.scanning import FileStatus, ScanMode, ScanResult, ScanSummary
 from src.core.reporter import ReportService
 from src.ffmpeg.ffmpeg_client import FFmpegClient
 
@@ -351,8 +351,7 @@ def trakt(ctx):
 
 @trakt.command()
 @click.argument("scan_file", type=PathType(exists=True))
-@click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
-@click.option("--client-id", help="Trakt.tv API client ID (can be set via config or env var)")
+@click.option("--client-id", help="Trakt.tv API client ID (overrides config setting)")
 @click.option(
     "--interactive/--no-interactive",
     "-i",
@@ -363,9 +362,11 @@ def trakt(ctx):
 @click.option("--dry-run", is_flag=True, help="Show what would be synced without actually syncing")
 @click.option("--output", "-o", type=PathType(), help="Save sync results to file")
 @click.option(
-    "--filter-corrupt/--include-corrupt",
-    default=True,
-    help="Filter out corrupt files from sync (default: filter out)",
+    "--include-status",
+    multiple=True,
+    type=click.Choice(["healthy", "corrupt", "suspicious"], case_sensitive=False),
+    default=["healthy"],
+    help="Include files with these statuses (default: healthy only)",
     show_default=True,
 )
 @global_options
@@ -373,10 +374,11 @@ def trakt(ctx):
 def sync(
     ctx,
     scan_file,
-    token,
     client_id,
     interactive,
+    dry_run,
     output,
+    include_status,
     config,
 ):
     # If no arguments are provided, show the help for the trakt sync subcommand
@@ -416,12 +418,24 @@ def sync(
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
+
+        # Convert status strings to FileStatus enums
+        include_statuses = [FileStatus(status) for status in include_status]
+
+        # Handle dry-run mode
+        if dry_run:
+            click.echo("DRY RUN MODE: No actual syncing will be performed")
+
         result = handler.sync_to_watchlist(
             scan_file=scan_file,
-            access_token=token,
             interactive=interactive,
             output_file=output,
+            include_statuses=include_statuses,
         )
+
+        if dry_run:
+            click.echo("DRY RUN COMPLETE")
+
         click.echo("\nTrakt Sync Result:")
         if result is not None:
             click.echo(json.dumps(result.model_dump(), indent=2))
@@ -516,7 +530,9 @@ def report(
     ctx,
     scan_file,
     output,
+    output_format,
     include_healthy,
+    config,
 ):
     # If no arguments are provided, show the help for the report subcommand
     if ctx.args == [] and scan_file is None:
@@ -537,7 +553,7 @@ def report(
     """
     try:
         # Load configuration
-        app_config = load_config()
+        app_config = load_config(config_path=config) if config else load_config()
 
         # Setup logging
         setup_logging(0)
@@ -574,7 +590,7 @@ def report(
             summary=summary,
             results=results,
             output_path=output,
-            format="text",
+            format=output_format.lower(),
             include_healthy=include_healthy,
         )
 

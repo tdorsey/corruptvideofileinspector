@@ -9,11 +9,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from cli_handler import get_all_video_object_files
+import pytest
+
+from src.cli.handlers import get_all_video_object_files
 from src.core.models.inspection import VideoFile
 from src.utils import count_all_video_files, format_file_size, get_video_extensions
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+pytestmark = pytest.mark.integration
 
 
 class TestEndToEndIntegration(unittest.TestCase):
@@ -107,7 +111,7 @@ class TestEndToEndIntegration(unittest.TestCase):
         extensions = get_video_extensions()
         found_extensions = set()
         for vf in video_files:
-            ext = Path(vf.filename).suffix.lower()
+            ext = Path(vf.name).suffix.lower()
             found_extensions.add(ext)
             assert ext in extensions
 
@@ -120,7 +124,8 @@ class TestEndToEndIntegration(unittest.TestCase):
         video_files = get_all_video_object_files(str(self.test_dir))
 
         for vf in video_files:
-            formatted_size = format_file_size(vf.size)
+            size = vf.stat().st_size
+            formatted_size = format_file_size(size)
 
             # Should be a valid format
             assert isinstance(formatted_size, str)
@@ -149,8 +154,8 @@ class TestEndToEndIntegration(unittest.TestCase):
         assert len(all_recursive_objects) > len(root_objects)
 
         # All root files should be included in recursive results
-        root_filenames = {vf.filename for vf in root_objects}
-        all_filenames = {vf.filename for vf in all_recursive_objects}
+        root_filenames = {vf.name for vf in root_objects}
+        all_filenames = {vf.name for vf in all_recursive_objects}
 
         assert root_filenames.issubset(all_filenames)
 
@@ -165,7 +170,7 @@ class TestEndToEndIntegration(unittest.TestCase):
 
         # Verify all found files are MP4
         for vf in mp4_objects:
-            assert vf.filename.lower().endswith(".mp4")
+            assert vf.name.lower().endswith(".mp4")
 
         # Test with multiple extensions
 

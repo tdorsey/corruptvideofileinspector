@@ -163,4 +163,4 @@ Create test files following the pattern `test_*_integration.py`:
 
 ## Continuous Integration
 
-These tests are designed to run in any Python 3.8+ environment and can be easily integrated into CI/CD pipelines. The tests will exit with code 0 on success and non-zero on failure, making them suitable for automated testing environments.
+These tests are designed to run in any Python 3.13+ environment and can be easily integrated into CI/CD pipelines. The tests will exit with code 0 on success and non-zero on failure, making them suitable for automated testing environments.

@@ -1,6 +1,5 @@
 """Main CLI entry point for corrupt-video-inspector."""
 
-
 from __future__ import annotations
 
 import logging

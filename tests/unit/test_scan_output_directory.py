@@ -8,6 +8,8 @@ from pydantic import BaseModel
 from src.cli.handlers import BaseHandler
 from src.config.config import AppConfig
 
+pytestmark = pytest.mark.unit
+
 
 class DummySummary(BaseModel):
     """

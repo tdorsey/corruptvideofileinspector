@@ -5,7 +5,7 @@ Video corruption detection logic for analyzing FFmpeg output.
 import logging
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Pattern
+from re import Pattern
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class CorruptionAnalysis:
     needs_deep_scan: bool = False
     error_message: str = ""
     confidence: float = 0.0  # 0.0 to 1.0
-    detected_issues: Optional[List[str]] = None
+    detected_issues: list[str] | None = None
 
     def __post_init__(self):
         if self.detected_issues is None:
@@ -26,7 +26,7 @@ class CorruptionAnalysis:
 
 
 class CorruptionDetector:
-    def _find_pattern_matches(self, patterns: List[Pattern], text: str) -> List[str]:
+    def _find_pattern_matches(self, patterns: list[Pattern], text: str) -> list[str]:
         """Find all pattern matches in text."""
         matches = []
         for pattern in patterns:
@@ -35,7 +35,7 @@ class CorruptionDetector:
                 matches.append(match.group(0))
         return matches
 
-    def _format_corruption_message(self, matches: List[str], is_quick_scan: bool) -> str:
+    def _format_corruption_message(self, matches: list[str], is_quick_scan: bool) -> str:
         """Format corruption message for detected patterns."""
         base = f"Corruption detected: {', '.join(matches[:3])}"
         if is_quick_scan:
@@ -113,7 +113,7 @@ class CorruptionDetector:
 
         logger.debug("CorruptionDetector initialized")
 
-    def _compile_patterns(self, patterns: List[str]) -> List[Pattern]:
+    def _compile_patterns(self, patterns: list[str]) -> list[Pattern]:
         """Compile regex patterns for efficient matching."""
         return [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 

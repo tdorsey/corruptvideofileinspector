@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -8,10 +8,10 @@ class MediaItem(BaseModel):
     """Represents a parsed media item (movie or TV show)"""
 
     title: str
-    year: Optional[int] = None
+    year: int | None = None
     media_type: str = Field(default="movie")
-    season: Optional[int] = Field(default=None, ge=1)
-    episode: Optional[int] = Field(default=None, ge=1)
+    season: int | None = Field(default=None, ge=1)
+    episode: int | None = Field(default=None, ge=1)
     original_filename: str = ""
 
     @field_validator("title")
@@ -40,12 +40,12 @@ class TraktItem(BaseModel):
     """Represents an item from Trakt API with identifiers"""
 
     title: str
-    year: Optional[int] = Field(default=None, ge=1800, le=2100)
+    year: int | None = Field(default=None, ge=1800, le=2100)
     media_type: str = Field(default="movie", pattern=r"^(movie|show)$")
-    trakt_id: Optional[int] = Field(default=None, ge=1)
-    imdb_id: Optional[str] = Field(default=None, pattern=r"^tt\d+$")
-    tmdb_id: Optional[int] = Field(default=None, ge=1)
-    tvdb_id: Optional[int] = Field(default=None, ge=1)
+    trakt_id: int | None = Field(default=None, ge=1)
+    imdb_id: str | None = Field(default=None, pattern=r"^tt\d+$")
+    tmdb_id: int | None = Field(default=None, ge=1)
+    tvdb_id: int | None = Field(default=None, ge=1)
 
     @field_validator("title")
     def validate_title(cls, v):
@@ -55,14 +55,14 @@ class TraktItem(BaseModel):
         return v.strip()
 
     @field_validator("imdb_id")
-    def validate_imdb_id(cls, v: Optional[str]) -> Optional[str]:
+    def validate_imdb_id(cls, v: str | None) -> str | None:
         """Validate imdb_id format if present."""
         if v is not None and not re.match(r"^tt\d+$", v):
             raise ValueError("imdb_id must match the pattern ^tt\\d+$")
         return v
 
     @classmethod
-    def from_movie_response(cls, data: Dict[str, Any]) -> "TraktItem":
+    def from_movie_response(cls, data: dict[str, Any]) -> "TraktItem":
         """Create TraktItem from Trakt movie API response"""
         ids = data.get("ids", {})
         return cls(
@@ -75,7 +75,7 @@ class TraktItem(BaseModel):
         )
 
     @classmethod
-    def from_show_response(cls, data: Dict[str, Any]) -> "TraktItem":
+    def from_show_response(cls, data: dict[str, Any]) -> "TraktItem":
         """Create TraktItem from Trakt show API response"""
         ids = data.get("ids", {})
         return cls(
@@ -97,12 +97,12 @@ class SyncResultItem(BaseModel):
     """Represents the result of syncing a single media item"""
 
     title: str
-    year: Optional[int] = None
+    year: int | None = None
     type: str = Field(pattern=r"^(movie|show)$")
     status: str = Field(pattern=r"^(added|failed|not_found|skipped|error)$")
-    trakt_id: Optional[int] = Field(default=None, ge=1)
+    trakt_id: int | None = Field(default=None, ge=1)
     filename: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
     @field_validator("title")
     def validate_title(cls, v: str) -> str:
@@ -119,7 +119,7 @@ class TraktSyncSummary(BaseModel):
     movies_added: int = Field(ge=0, description="Number of movies added")
     shows_added: int = Field(ge=0, description="Number of shows added")
     failed: int = Field(ge=0, description="Number of items that failed")
-    results: List[SyncResultItem] = Field(
+    results: list[SyncResultItem] = Field(
         default_factory=list, description="Detailed results for each item"
     )
 
