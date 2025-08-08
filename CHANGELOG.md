@@ -34,9 +34,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING CHANGE**: Removed `--token` CLI option from `trakt list-watchlists` and `trakt view` commands
 - Trakt commands now use configuration-based authentication (client_id/client_secret from config file, environment variables, or Docker secrets)
 
+- **BREAKING**: `get_all_video_object_files()` now returns `list[VideoFile]` instead of `list[Path]` by default
+  - **Migration**: Use the `.path` property to access the file path from VideoFile objects
+  - **Backward Compatibility**: Use `as_paths=True` parameter to get the old behavior (deprecated)
+  - **Timeline**: The `as_paths` parameter will be removed in v0.6.0
+
 ### Added
 - Enhanced error messages for missing Trakt credentials with configuration guidance
 - Runtime validation for Trakt credentials in CLI commands
+- Added `as_paths` parameter to `get_all_video_object_files()` for backward compatibility
+- Added deprecation warning when `as_paths=True` is used
+- Enhanced VideoFile objects returned by `get_all_video_object_files()` with rich metadata
 
 ### Fixed
 - Updated test expectations to match new Trakt sync default behavior
@@ -50,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added migration instructions for users requiring previous behavior
 
 ### Migration Guide
+
+#### Trakt Authentication Changes
+
 **For users who previously used `--token` with Trakt commands:**
 
 **Before:**
@@ -88,3 +99,39 @@ corrupt-video-inspector trakt view --watchlist "my-list"
 ```
 
 **Note:** This change improves security by removing the need to pass tokens as command-line arguments and provides a more consistent configuration experience across all application features.
+
+#### get_all_video_object_files API Change
+
+**Before (v0.5.x and earlier):**
+```python
+from src.cli.handlers import get_all_video_object_files
+
+# Returned list[Path]
+video_paths = get_all_video_object_files("/path/to/videos")
+for path in video_paths:
+    print(f"Video: {path}")
+    print(f"Size: {path.stat().st_size}")
+```
+
+**After (v0.6.x and later):**
+```python
+from src.cli.handlers import get_all_video_object_files
+
+# Now returns list[VideoFile] by default
+video_files = get_all_video_object_files("/path/to/videos")
+for video_file in video_files:
+    print(f"Video: {video_file.path}")
+    print(f"Size: {video_file.size}")
+    print(f"Duration: {video_file.duration}")
+    print(f"Name: {video_file.name}")
+```
+
+**Temporary compatibility (deprecated, will be removed in v0.6.0):**
+```python
+# Use as_paths=True for old behavior (with deprecation warning)
+video_paths = get_all_video_object_files("/path/to/videos", as_paths=True)
+```
+
+## Previous Versions
+
+*No previous changelog entries - this is the first version with a changelog.*

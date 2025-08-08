@@ -638,7 +638,7 @@ class UtilityHandler(BaseHandler):
             files = self.get_all_video_object_files(directory, recursive, extensions)
             if files:
                 for f in files:
-                    click.echo(f)
+                    click.echo(f.path)
             else:
                 click.echo("No video files found")
         except Exception:
@@ -764,7 +764,7 @@ def list_video_files(
         files = get_all_video_object_files(directory, recursive, extensions)
         if files:
             for f in files:
-                click.echo(f)
+                click.echo(f.path)
         else:
             click.echo("No video files found")
     except Exception:
