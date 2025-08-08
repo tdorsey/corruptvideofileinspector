@@ -9,7 +9,7 @@ body:
       value: |
         Thanks for helping improve our documentation! Please provide details about what needs to be updated or improved.
         
-        **After submitting this issue, please add a component label** based on your selection above:
+        **After submitting this issue, please add a component label** based on your selection below:
         - `component:cli` for CLI issues
         - `component:scanner` for Scanner issues  
         - `component:trakt` for Trakt Integration issues
