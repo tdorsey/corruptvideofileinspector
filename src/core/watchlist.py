@@ -12,11 +12,13 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import trakt  # type: ignore[import-untyped]
 
-from src.config import AppConfig
+if TYPE_CHECKING:
+    from src.config import AppConfig
+
 from src.core.models.scanning import FileStatus
 from src.core.models.watchlist import (
     MediaItem,
@@ -376,8 +378,8 @@ class TraktAPI:
 
     @staticmethod
     def interactive_select_item(
-        items: list["TraktItem"], media_item: "MediaItem"
-    ) -> "TraktItem" | None:
+        items: list[TraktItem], media_item: MediaItem
+    ) -> TraktItem | None:
         """
         Interactively select the correct item from search results
 
@@ -538,7 +540,7 @@ class FilenameParser:
 
 
 def process_scan_file(
-    file_path: str, include_statuses: list["FileStatus"] | None = None
+    file_path: str, include_statuses: list[FileStatus] | None = None
 ) -> list[MediaItem]:
     """
     Process a JSON scan file to extract media items
@@ -613,7 +615,7 @@ def process_scan_file(
 
 
 def _add_item_to_watchlist_or_list(
-    api: "TraktAPI", trakt_item: "TraktItem", media_type: str, watchlist: str | None
+    api: TraktAPI, trakt_item: TraktItem, media_type: str, watchlist: str | None
 ) -> bool:
     """
     Helper function to add a Trakt item to either the main watchlist or a custom list.
