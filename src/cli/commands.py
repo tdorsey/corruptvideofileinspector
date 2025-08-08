@@ -392,26 +392,25 @@ def sync(
 
     Processes a JSON scan results file and adds discovered movies and TV shows
     to your Trakt.tv watchlist using filename parsing and search matching.
+    Authentication is handled through configuration (config file, environment variables, or Docker secrets).
 
     Examples:
 
     \b
     # Basic sync to main watchlist
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
+    corrupt-video-inspector trakt sync results.json
 
     \b
     # Sync to a specific watchlist
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN \\
-        --watchlist "my-custom-list"
+    corrupt-video-inspector trakt sync results.json --watchlist "my-custom-list"
 
     \b
     # Interactive sync with output
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN \\
-        --interactive --output sync_results.json
+    corrupt-video-inspector trakt sync results.json --interactive --output sync_results.json
 
     \b
     # Dry run to see what would be synced
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --dry-run
+    corrupt-video-inspector trakt sync results.json --dry-run
     """
     # If no arguments are provided, show the help for the trakt sync subcommand
     if ctx.args == [] and scan_file is None:
@@ -461,7 +460,6 @@ def sync(
 
 
 @trakt.command()
-@click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
 @click.option("--output", "-o", type=PathType(), help="Save watchlist info to file")
 @click.option(
     "--format",
@@ -472,21 +470,22 @@ def sync(
     show_default=True,
 )
 @global_options
-def list_watchlists(token, output, output_format, config):
+def list_watchlists(output, output_format, config):
     """
     List all available watchlists for the authenticated user.
 
     Shows all custom lists and the main watchlist that the user has access to.
+    Authentication is handled through configuration (config file, environment variables, or Docker secrets).
 
     Examples:
 
     \b
     # List watchlists in table format
-    corrupt-video-inspector trakt list-watchlists --token YOUR_TOKEN
+    corrupt-video-inspector trakt list-watchlists
 
     \b
     # List watchlists in JSON format
-    corrupt-video-inspector trakt list-watchlists --token YOUR_TOKEN --format json
+    corrupt-video-inspector trakt list-watchlists --format json
     """
     try:
         # Load configuration
@@ -494,7 +493,8 @@ def list_watchlists(token, output, output_format, config):
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        watchlists = handler.list_watchlists(access_token=token)
+        # Note: access_token will be obtained from config/secrets in TraktHandler
+        watchlists = handler.list_watchlists(access_token=None)  # Will use config-based auth
 
         if not watchlists:
             click.echo("No watchlists found or failed to fetch watchlists.")
@@ -527,7 +527,6 @@ def list_watchlists(token, output, output_format, config):
 
 
 @trakt.command()
-@click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
 @click.option(
     "--watchlist",
     "-w",
@@ -543,26 +542,27 @@ def list_watchlists(token, output, output_format, config):
     show_default=True,
 )
 @global_options
-def view(token, watchlist, output, output_format, config):
+def view(watchlist, output, output_format, config):
     """
     View items in a specific watchlist.
 
     Shows all movies and TV shows in the specified watchlist.
     If no watchlist is specified, shows items from the main watchlist.
+    Authentication is handled through configuration (config file, environment variables, or Docker secrets).
 
     Examples:
 
     \b
     # View main watchlist
-    corrupt-video-inspector trakt view --token YOUR_TOKEN
+    corrupt-video-inspector trakt view
 
     \b
     # View a specific custom list
-    corrupt-video-inspector trakt view --token YOUR_TOKEN --watchlist "my-list"
+    corrupt-video-inspector trakt view --watchlist "my-list"
 
     \b
     # View watchlist in JSON format
-    corrupt-video-inspector trakt view --token YOUR_TOKEN --format json
+    corrupt-video-inspector trakt view --format json
     """
     try:
         # Load configuration
@@ -570,7 +570,8 @@ def view(token, watchlist, output, output_format, config):
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        items = handler.view_watchlist(access_token=token, watchlist=watchlist)
+        # Note: access_token will be obtained from config/secrets in TraktHandler
+        items = handler.view_watchlist(access_token=None, watchlist=watchlist)  # Will use config-based auth
 
         if not items:
             watchlist_name = watchlist or "Main Watchlist"

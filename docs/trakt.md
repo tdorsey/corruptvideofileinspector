@@ -9,15 +9,50 @@ The Trakt watchlist integration allows you to automatically sync your video coll
 ## Prerequisites
 
 1. **Trakt.tv Account**: You need a Trakt.tv account
-2. **API Access Token**: Generate an OAuth 2.0 access token from your Trakt.tv account
+2. **API Application**: Create a Trakt.tv API application to get client credentials
 3. **JSON Scan Results**: Video inspection results in JSON format
 
-## Getting a Trakt API Token
+## Authentication Setup
+
+The application now uses config-based authentication with Docker secrets support instead of CLI tokens.
+
+### Getting Trakt API Credentials
 
 1. Visit [Trakt.tv API Apps](https://trakt.tv/oauth/applications)
 2. Create a new application or use an existing one
-3. Generate an access token for your application
-4. Keep your token secure and never commit it to source code
+3. Note your **Client ID** and **Client Secret**
+4. Keep your credentials secure and never commit them to source code
+
+### Setting up Authentication
+
+#### Option 1: Docker Secrets (Recommended)
+
+```bash
+# Initialize secret files
+make secrets-init
+
+# Add your credentials to the secret files
+echo "your-client-id" > docker/secrets/trakt_client_id.txt
+echo "your-client-secret" > docker/secrets/trakt_client_secret.txt
+```
+
+#### Option 2: Configuration File
+
+```yaml
+# config.yaml
+trakt:
+  client_id: "your-client-id"
+  client_secret: "your-client-secret"
+  default_watchlist: "my-default-list"  # Optional
+  include_statuses: ["healthy"]  # Default: only sync healthy files
+```
+
+#### Option 3: Environment Variables
+
+```bash
+export CVI_TRAKT_CLIENT_ID="your-client-id"
+export CVI_TRAKT_CLIENT_SECRET="your-client-secret"
+```
 
 ## Usage
 
@@ -25,27 +60,49 @@ The Trakt watchlist integration allows you to automatically sync your video coll
 
 ```bash
 # Sync scan results to Trakt watchlist
-python3 cli_handler.py trakt scan_results.json --token YOUR_ACCESS_TOKEN
+corrupt-video-inspector trakt sync scan_results.json
 ```
 
 ### Advanced Options
 
 ```bash
-# With verbose output and result saving
-python3 cli_handler.py trakt scan_results.json \
-  --token YOUR_ACCESS_TOKEN \
-  --client-id YOUR_CLIENT_ID \
-  --verbose \
+# Sync to a specific watchlist with interactive mode
+corrupt-video-inspector trakt sync scan_results.json \
+  --watchlist "my-movies" \
+  --interactive \
   --output sync_results.json
+```
+
+### List and View Commands
+
+```bash
+# List all your watchlists
+corrupt-video-inspector trakt list-watchlists
+
+# View contents of a specific watchlist
+corrupt-video-inspector trakt view --watchlist "my-collection"
+
+# Save watchlist data to file
+corrupt-video-inspector trakt view --watchlist "favorites" --output watchlist.json
 ```
 
 ### Command Options
 
-- `--token` / `-t`: **Required** - Your Trakt.tv OAuth access token
-- `--client-id` / `-c`: Optional - Your Trakt.tv API client ID
-- `--verbose` / `-v`: Enable detailed progress output
+#### For `trakt sync`:
+- `--watchlist` / `-w`: Target watchlist name or slug (default: main watchlist)
 - `--interactive` / `-i`: Enable interactive selection of search results
+- `--dry-run`: Show what would be synced without actually syncing
+- `--include-status`: File statuses to include (default: healthy only)
 - `--output` / `-o`: Save sync results to JSON file
+
+#### For `trakt list-watchlists`:
+- `--format`: Output format (table or json)
+- `--output` / `-o`: Save results to file
+
+#### For `trakt view`:
+- `--watchlist` / `-w`: Watchlist to view (default: main watchlist)
+- `--format`: Output format (table or json)
+- `--output` / `-o`: Save results to file
 
 ### Interactive Mode
 
@@ -53,10 +110,9 @@ When using the `--interactive` flag, the tool will prompt you to manually select
 
 ```bash
 # Enable interactive selection for ambiguous matches
-python3 cli_handler.py trakt scan_results.json \
-  --token YOUR_ACCESS_TOKEN \
+corrupt-video-inspector trakt sync scan_results.json \
   --interactive \
-  --verbose
+  --watchlist "to-review"
 ```
 
 **Interactive mode features:**
