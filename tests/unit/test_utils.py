@@ -99,28 +99,73 @@ class TestCountAllVideoFiles(unittest.TestCase):
 class TestFormatFileSize(unittest.TestCase):
     """Test format_file_size function"""
 
-    def test_format_bytes(self):
-        """Test formatting bytes"""
+    def test_format_bytes_trim_mode(self):
+        """Test formatting bytes with trim_trailing_zero=True (default)"""
         assert format_file_size(500) == "500 B"
         assert format_file_size(0) == "0 B"
         assert format_file_size(1) == "1 B"
 
-    def test_format_kilobytes(self):
-        """Test formatting kilobytes"""
-        assert format_file_size(1024) == "1.0 KB"
+    def test_format_kilobytes_trim_mode(self):
+        """Test formatting kilobytes with trim_trailing_zero=True (default)"""
+        assert format_file_size(1024) == "1 KB"
         assert format_file_size(1536) == "1.5 KB"
-        assert format_file_size(2048) == "2.0 KB"
+        assert format_file_size(2048) == "2 KB"
 
-    def test_format_megabytes(self):
-        """Test formatting megabytes"""
-        assert format_file_size(1024 * 1024) == "1.0 MB"
+    def test_format_megabytes_trim_mode(self):
+        """Test formatting megabytes with trim_trailing_zero=True (default)"""
+        assert format_file_size(1024 * 1024) == "1 MB"
         assert format_file_size(int(1024 * 1024 * 2.5)) == "2.5 MB"
-        assert format_file_size(1024 * 1024 * 100) == "100.0 MB"
+        assert format_file_size(1024 * 1024 * 100) == "100 MB"
 
-    def test_format_gigabytes(self):
-        """Test formatting gigabytes"""
-        assert format_file_size(1024 * 1024 * 1024) == "1.0 GB"
+    def test_format_gigabytes_trim_mode(self):
+        """Test formatting gigabytes with trim_trailing_zero=True (default)"""
+        assert format_file_size(1024 * 1024 * 1024) == "1 GB"
         assert format_file_size(int(1024 * 1024 * 1024 * 2.5)) == "2.5 GB"
+
+    def test_format_terabytes_trim_mode(self):
+        """Test formatting terabytes with trim_trailing_zero=True (default)"""
+        assert format_file_size(1024 * 1024 * 1024 * 1024) == "1 TB"
+        assert format_file_size(int(1024 * 1024 * 1024 * 1024 * 2.5)) == "2.5 TB"
+
+    def test_format_bytes_no_trim_mode(self):
+        """Test formatting bytes with trim_trailing_zero=False (backward compatibility)"""
+        assert format_file_size(500, trim_trailing_zero=False) == "500.0 B"
+        assert format_file_size(0, trim_trailing_zero=False) == "0.0 B"
+        assert format_file_size(1, trim_trailing_zero=False) == "1.0 B"
+
+    def test_format_kilobytes_no_trim_mode(self):
+        """Test formatting kilobytes with trim_trailing_zero=False (backward compatibility)"""
+        assert format_file_size(1024, trim_trailing_zero=False) == "1.0 KB"
+        assert format_file_size(1536, trim_trailing_zero=False) == "1.5 KB"
+        assert format_file_size(2048, trim_trailing_zero=False) == "2.0 KB"
+
+    def test_format_megabytes_no_trim_mode(self):
+        """Test formatting megabytes with trim_trailing_zero=False (backward compatibility)"""
+        assert format_file_size(1024 * 1024, trim_trailing_zero=False) == "1.0 MB"
+        assert format_file_size(int(1024 * 1024 * 2.5), trim_trailing_zero=False) == "2.5 MB"
+        assert format_file_size(1024 * 1024 * 100, trim_trailing_zero=False) == "100.0 MB"
+
+    def test_format_gigabytes_no_trim_mode(self):
+        """Test formatting gigabytes with trim_trailing_zero=False (backward compatibility)"""
+        assert format_file_size(1024 * 1024 * 1024, trim_trailing_zero=False) == "1.0 GB"
+        assert format_file_size(int(1024 * 1024 * 1024 * 2.5), trim_trailing_zero=False) == "2.5 GB"
+
+    def test_format_terabytes_no_trim_mode(self):
+        """Test formatting terabytes with trim_trailing_zero=False (backward compatibility)"""
+        assert format_file_size(1024 * 1024 * 1024 * 1024, trim_trailing_zero=False) == "1.0 TB"
+        assert format_file_size(int(1024 * 1024 * 1024 * 1024 * 2.5), trim_trailing_zero=False) == "2.5 TB"
+
+    def test_fractional_values_unchanged(self):
+        """Test that non-zero fractional values are unchanged in both modes"""
+        # With trim_trailing_zero=True (default)
+        assert format_file_size(1536) == "1.5 KB"
+        assert format_file_size(int(1024 * 1024 * 2.5)) == "2.5 MB"
+        assert format_file_size(int(1024 * 1024 * 1024 * 1.7)) == "1.7 GB"
+        
+        # With trim_trailing_zero=False
+        assert format_file_size(1536, trim_trailing_zero=False) == "1.5 KB"
+        assert format_file_size(int(1024 * 1024 * 2.5), trim_trailing_zero=False) == "2.5 MB"
+        assert format_file_size(int(1024 * 1024 * 1024 * 1.7), trim_trailing_zero=False) == "1.7 GB"
 
 
 class TestGetVideoExtensions(unittest.TestCase):
