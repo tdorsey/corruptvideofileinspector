@@ -216,6 +216,18 @@ All tool configurations are centralized in `pyproject.toml`:
 - Ruff configuration under `[tool.ruff]`
 - MyPy configuration under `[tool.mypy]`
 
+## Automation
+
+This repository uses several automated workflows to streamline development and issue management:
+
+### Issue Management
+- **Auto-Assignment**: Newly created issues are automatically assigned to Copilot for initial triage and automated assistance. This helps ensure no issues go unnoticed and provides immediate automated support.
+
+### Continuous Integration
+- **PR Title Validation**: Pull request titles must follow [Conventional Commits](https://www.conventionalcommits.org/) format
+- **Code Quality Checks**: Automated formatting, linting, and type checking on all PRs
+- **Testing**: Comprehensive test suite runs on every push and PR
+
 ## Questions or Issues?
 
 If you have questions about contributing or encounter issues with the development setup, please:
