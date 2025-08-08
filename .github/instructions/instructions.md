@@ -63,6 +63,7 @@ All commands support the global `--config` option for specifying a config file.
   - Use f-strings for formatting.
   - Line length ≤ 79 characters.
   - Imports must be sorted and grouped (standard library, third-party, local).
+  - Prefer Makefile commands for all code quality tasks (e.g., run `make format` instead of `black`, `make lint` instead of `ruff`).
   - Run `make lint-fix` to auto-fix style issues.
 - **Testing:**
   - Run tests in the container:
