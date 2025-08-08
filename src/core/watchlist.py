@@ -16,6 +16,9 @@ from typing import TYPE_CHECKING, ClassVar
 
 import trakt  # type: ignore[import-untyped]
 
+if TYPE_CHECKING:
+    from src.config import AppConfig
+
 from src.core.models.scanning import FileStatus
 from src.core.models.watchlist import (
     MediaItem,
@@ -381,7 +384,9 @@ class TraktAPI:
             return False
 
     @staticmethod
-    def interactive_select_item(items: list[TraktItem], media_item: MediaItem) -> TraktItem | None:
+    def interactive_select_item(
+        items: list[TraktItem], media_item: MediaItem
+    ) -> TraktItem | None:
         """
         Interactively select the correct item from search results
 
