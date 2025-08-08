@@ -491,10 +491,14 @@ def list_watchlists(token, output, output_format, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
+        
+        # Note: Token parameter is currently ignored - using config credentials
+        if token:
+            click.echo("Warning: --token parameter is ignored. Using client credentials from config.", err=True)
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        watchlists = handler.list_watchlists(access_token=token)
+        watchlists = handler.list_watchlists()
 
         if not watchlists:
             click.echo("No watchlists found or failed to fetch watchlists.")
@@ -567,10 +571,14 @@ def view(token, watchlist, output, output_format, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
+        
+        # Note: Token parameter is currently ignored - using config credentials
+        if token:
+            click.echo("Warning: --token parameter is ignored. Using client credentials from config.", err=True)
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        items = handler.view_watchlist(access_token=token, watchlist=watchlist)
+        items = handler.view_watchlist(watchlist=watchlist)
 
         if not items:
             watchlist_name = watchlist or "Main Watchlist"

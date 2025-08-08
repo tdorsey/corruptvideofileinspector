@@ -196,7 +196,7 @@ class ScanHandler(BaseHandler):
 
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
-        with click.progressbar(  # type: ignore
+        with click.progressbar(
             length=progress.total_files,
             show_eta=True,
             show_percent=True,
@@ -451,19 +451,16 @@ class TraktHandler(BaseHandler):
             logger.warning(f"Failed to save sync results: {e}")
             click.echo(f"Warning: Could not save sync results: {e}", err=True)
 
-    def list_watchlists(self, access_token: str) -> list | None:
+    def list_watchlists(self) -> list | None:
         """
         List all available watchlists for the authenticated user.
-
-        Args:
-            access_token: Trakt API access token
 
         Returns:
             List of watchlist information or None if failed
         """
         try:
             logger.info("Fetching user's watchlists from Trakt")
-            api = TraktAPI(access_token)
+            api = TraktAPI(self.config)
             watchlists = api.list_watchlists()
 
             return [w.model_dump() for w in watchlists]
@@ -472,12 +469,11 @@ class TraktHandler(BaseHandler):
             self._handle_error(e, "Failed to fetch watchlists")
             return None
 
-    def view_watchlist(self, access_token: str, watchlist: str | None = None) -> list | None:
+    def view_watchlist(self, watchlist: str | None = None) -> list | None:
         """
         View items in a specific watchlist.
 
         Args:
-            access_token: Trakt API access token
             watchlist: Watchlist name/slug to view (None for main watchlist)
 
         Returns:
@@ -487,7 +483,7 @@ class TraktHandler(BaseHandler):
             watchlist_name = watchlist or "Main Watchlist"
             logger.info(f"Fetching items from watchlist: {watchlist_name}")
 
-            api = TraktAPI(access_token)
+            api = TraktAPI(self.config)
             items = api.get_watchlist_items(watchlist)
 
             return [item.model_dump() for item in items]
