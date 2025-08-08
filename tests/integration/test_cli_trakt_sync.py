@@ -6,11 +6,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from click.testing import CliRunner
 
 from src.cli.commands import sync as trakt_sync_command
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
+
+pytestmark = pytest.mark.integration
 
 
 class TestTraktSyncScanFileRequirement(unittest.TestCase):

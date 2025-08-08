@@ -6,6 +6,8 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
+
 from src.config.config import (
     AppConfig,
     FFmpegConfig,
@@ -19,6 +21,8 @@ from src.core.models.inspection import VideoFile
 from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
 from src.core.scanner import VideoScanner
 from src.ffmpeg.ffmpeg_client import FFmpegClient
+
+pytestmark = pytest.mark.unit
 
 
 class TestFullScanMode:
@@ -242,6 +246,7 @@ class TestFullScanModeIntegration:
 
     @patch("shutil.which")
     @patch("subprocess.run")
+    @pytest.mark.integration
     def test_full_scan_integration_with_timeout_none(self, mock_run, mock_which):
         """Integration test to ensure FULL scan mode works end-to-end."""
         # Mock ffmpeg availability

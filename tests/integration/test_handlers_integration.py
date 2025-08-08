@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from src.cli.handlers import (
     UtilityHandler,
     get_ffmpeg_command,
@@ -14,6 +16,8 @@ from src.cli.handlers import (
     setup_logging,
 )
 from src.config import load_config
+
+pytestmark = pytest.mark.integration
 
 
 class TestHandlersIntegration(unittest.TestCase):

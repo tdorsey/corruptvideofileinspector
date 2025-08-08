@@ -30,8 +30,14 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies:
+          - pydantic>=2.0.0
+          - pytest>=7.0.0
+          - click>=8.0.0
+          - typer>=0.16.0
+          - trakt>=3.4.0
           - types-requests
           - types-PyYAML
+          - types-toml
         args: [--install-types, --non-interactive]
 
   - repo: https://github.com/codespell-project/codespell

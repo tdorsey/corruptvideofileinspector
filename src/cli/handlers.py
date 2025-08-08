@@ -21,7 +21,7 @@ from src.core.models.scanning import FileStatus, ScanMode, ScanProgress, ScanRes
 from src.core.reporter import ReportService
 from src.core.scanner import VideoScanner
 from src.core.watchlist import sync_to_trakt_watchlist
-from src.utils.output import OutputFormatter
+from src.output import OutputFormatter
 
 logger = logging.getLogger(__name__)
 

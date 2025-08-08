@@ -186,6 +186,10 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "unit: Unit tests that test individual functions or classes in isolation",
+    "integration: Integration tests that test multiple components working together",
+]
 
 # Coverage configuration
 [tool.coverage.run]

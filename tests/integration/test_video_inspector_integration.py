@@ -9,11 +9,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 from src.cli.handlers import get_all_video_object_files, get_ffmpeg_command
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import ScanMode
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+pytestmark = pytest.mark.integration
 
 
 class TestVideoInspectorIntegration(unittest.TestCase):

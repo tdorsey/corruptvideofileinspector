@@ -10,20 +10,17 @@ secrets-init:  ## Create required secret files in docker/secrets
 # Build and run the development Docker container using Dockerfile.dev and docker-compose.dev.yml
 docker-dev:  ## Build and run the development container with dev Dockerfile and Compose
 	docker compose -f docker/docker-compose.dev.yml up --build
-## Build the development Docker image with source code mapping
-dev-build:
+
+dev-build:        ## Build the development Docker image with source code mapping
 	docker compose -f docker/docker-compose.dev.yml build
 
-## Start the development container with code mapping (detached)
-dev-up:
+dev-up:           ## Start the development container with code mapping (detached)
 	docker compose -f docker/docker-compose.dev.yml up --remove-orphans
 
-## Stop the development container
-dev-down:
+dev-down:         ## Stop the development container
 	docker compose -f docker/docker-compose.dev.yml down
 
-## Open a shell in the development container
-dev-shell:
+dev-shell:        ## Open a shell in the development container
 	docker compose -f docker/docker-compose.dev.yml run --rm app bash
 docker-build-clean: ## Build without cache
 	docker build --no-cache -f docker/Dockerfile -t cvi:$(APP_VERSION) -t cvi:latest --build-arg APP_VERSION=$(APP_VERSION) --build-arg APP_TITLE="corrupt-video-inspector" --build-arg APP_DESCRIPTION="A Docker-based tool to detect and report corrupt video files using FFmpeg" .
@@ -50,8 +47,9 @@ docker-env:  ## Generate docker/.env with required volume paths
 
 .DEFAULT_GOAL := help
 .PHONY: help install install-dev format lint type check test test-integration test-cov clean build \
-	docker-build docker-run docker-dev-build docker-dev-run docker-prod docker-dev \
-	pre-commit-install pre-commit-run docker-scan docker-report docker-trakt docker-all
+	docker-build docker-build-clean build-clean docker-dev dev-build dev-up dev-down dev-shell \
+	pre-commit-install pre-commit-run docker-scan docker-report docker-trakt docker-all \
+	setup secrets-init docker-env
 
 
 help:             ## Show this help message and list all targets.
@@ -75,6 +73,9 @@ pre-commit-install: ## Install pre-commit hooks
 
 pre-commit-run:   ## Run pre-commit on all files
 	pre-commit run --all-files
+	pytest tests/ -v -m "unit"
+
+# NOTE: Mark all unit tests with @pytest.mark.unit in your test files.
 
 # Code quality
 format:           ## Format code with black and lint
