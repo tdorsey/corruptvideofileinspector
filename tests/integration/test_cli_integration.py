@@ -7,8 +7,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 # We'll test the functions that don't require typer
 # by importing and testing them individually
+
+pytestmark = pytest.mark.integration
 
 
 class TestCLIHandlerCoreIntegration(unittest.TestCase):
@@ -34,8 +38,6 @@ class TestCLIHandlerCoreIntegration(unittest.TestCase):
         # Remove test directory
         with contextlib.suppress(OSError):
             Path(self.test_dir).rmdir()
-
-    # All validation and function existence tests removed as per user request
 
 
 if __name__ == "__main__":

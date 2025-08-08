@@ -4,7 +4,7 @@ import contextlib
 import json
 import logging
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 from src.config.config import AppConfig
 from src.core.models.reporting.scan_output import ScanMode, ScanOutputModel
@@ -48,7 +48,7 @@ class OutputFormatter:
 
     def write_file_list(
         self,
-        video_files: List[Any],
+        video_files: list[Any],
         directory: Path,
         output_file: Path,
         format: str = "text",
@@ -99,7 +99,7 @@ class OutputFormatter:
         logger.info(f"Scan results written to {output_file}")
 
     def _write_json_file_list(
-        self, video_files: List[Any], directory: Path, output_file: Path
+        self, video_files: list[Any], directory: Path, output_file: Path
     ) -> None:
         """Write file list as JSON."""
         file_data = []
@@ -122,7 +122,7 @@ class OutputFormatter:
         logger.info(f"File list written to {output_file}")
 
     def _write_text_file_list(
-        self, video_files: List[Any], directory: Path, output_file: Path
+        self, video_files: list[Any], directory: Path, output_file: Path
     ) -> None:
         """Write file list as text."""
         output_file.parent.mkdir(parents=True, exist_ok=True)

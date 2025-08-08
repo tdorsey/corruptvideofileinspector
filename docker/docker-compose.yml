@@ -4,6 +4,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+      target: production
       args:
         APP_VERSION: "${APP_VERSION:-1.0.0}"
         APP_TITLE: "corrupt-video-inspector"
@@ -32,7 +33,27 @@ services:
   report:
     extends: scan
     container_name: report
-    command: ["report", "--scan-file", "/app/output/results.json"]
+    command:
+      - report
+      - --scan-file
+      - /app/output/scan_results.json
+      - --format
+      - json
+
+  trakt:
+    extends: scan
+    container_name: trakt-sync
+    command:
+      - trakt
+      - sync
+      - /app/output/scan_results.json
+    environment:
+      - TRAKT_CLIENT_ID=${TRAKT_CLIENT_ID:-}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - scan
+    profiles:
+      - trakt
 
 # Docker secrets configuration
 secrets:

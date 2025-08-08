@@ -6,7 +6,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 from src.utils import count_all_video_files, format_file_size, get_video_extensions
+
+pytestmark = pytest.mark.unit
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

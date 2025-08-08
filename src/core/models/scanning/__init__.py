@@ -24,6 +24,52 @@ class ScanMode(Enum):
     FULL = "full"
 
 
+class OutputFormat(Enum):
+    """Output formats for scan results.
+
+    Attributes:
+        JSON: JSON format
+        CSV: CSV format
+        XML: XML format
+        YAML: YAML format
+    """
+
+    JSON = "json"
+    CSV = "csv"
+    XML = "xml"
+    YAML = "yaml"
+
+
+class ScanPhase(Enum):
+    """Scan phases for progress tracking.
+
+    Attributes:
+        SCANNING: Initial scanning phase
+        DEEP_SCAN: Deep scanning phase for suspicious files
+        COMPLETED: Scan has completed
+        FAILED: Scan has failed
+    """
+
+    SCANNING = "scanning"
+    DEEP_SCAN = "deep_scan"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class FileStatus(Enum):
+    """File health status based on scan results.
+
+    Attributes:
+        HEALTHY: File is healthy (not corrupt and doesn't need deep scan)
+        CORRUPT: File has been identified as corrupt
+        SUSPICIOUS: File needs deep scan (may be corrupt)
+    """
+
+    HEALTHY = "healthy"
+    CORRUPT = "corrupt"
+    SUSPICIOUS = "suspicious"
+
+
 class ScanResult(BaseModel):
     """Results of video file inspection.
 
@@ -75,7 +121,7 @@ class ScanResult(BaseModel):
         """Get confidence as percentage."""
         return self.confidence * 100.0
 
-    def model_dump(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         data = super().model_dump(**kwargs)
         # Add computed properties for backward compatibility
         data["filename"] = self.filename
@@ -85,19 +131,37 @@ class ScanResult(BaseModel):
         return data
 
     @classmethod
-    def model_validate(cls, data: dict[str, Any]) -> "ScanResult":
+    def model_validate(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        from_attributes: bool | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> "ScanResult":
         # Accept both old and new formats
-        if "video_file" in data and isinstance(data["video_file"], dict):
-            data = dict(data)
-            data["video_file"] = VideoFile.model_validate(data["video_file"])
-        elif "filename" in data:
-            data = dict(data)
-            data["video_file"] = VideoFile(path=Path(data["filename"]))
-        return super().model_validate(data)
+        if isinstance(obj, dict):
+            data = dict(obj)
+            if "video_file" in data and isinstance(data["video_file"], dict):
+                data["video_file"] = VideoFile.model_validate(data["video_file"])
+            elif "filename" in data:
+                data["video_file"] = VideoFile(path=Path(data["filename"]))
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
     def is_healthy(self) -> bool:
         """Check if file is healthy (not corrupt and doesn't need deep scan)."""
         return not self.is_corrupt and not self.needs_deep_scan
+
+    def get_status(self) -> FileStatus:
+        """Get file status based on scan results."""
+        if self.is_corrupt:
+            return FileStatus.CORRUPT
+        if self.needs_deep_scan:
+            return FileStatus.SUSPICIOUS
+        return FileStatus.HEALTHY
 
     def get_severity_level(self) -> str:
         """Get severity level as string."""
@@ -174,7 +238,7 @@ class ScanSummary(BaseModel):
         """Get number of suspicious files (needs deep scan)."""
         return self.deep_scans_needed
 
-    def model_dump(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         data = super().model_dump(**kwargs)
         # Add computed properties for backward compatibility
         data["success_rate"] = self.success_rate
@@ -187,13 +251,24 @@ class ScanSummary(BaseModel):
         return data
 
     @classmethod
-    def model_validate(cls, data: dict[str, Any]) -> "ScanSummary":
-        data = dict(data)
-        if "directory" in data and not isinstance(data["directory"], Path):
-            data["directory"] = Path(data["directory"])
-        if "scan_mode" in data and not isinstance(data["scan_mode"], ScanMode):
-            data["scan_mode"] = ScanMode(data["scan_mode"])
-        return super().model_validate(data)
+    def model_validate(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        from_attributes: bool | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> "ScanSummary":
+        if isinstance(obj, dict):
+            data = dict(obj)
+            if "directory" in data and not isinstance(data["directory"], Path):
+                data["directory"] = Path(data["directory"])
+            if "scan_mode" in data and not isinstance(data["scan_mode"], ScanMode):
+                data["scan_mode"] = ScanMode(data["scan_mode"])
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
     def get_status_summary(self) -> str:
         """Get a human-readable status summary.
@@ -264,8 +339,8 @@ class ScanProgress(BaseModel):
     total_files: int = 0
     processed_count: int = 0
     corrupt_count: int = 0
-    phase: str = "scanning"
-    scan_mode: str = "unknown"
+    phase: ScanPhase = ScanPhase.SCANNING
+    scan_mode: ScanMode = ScanMode.QUICK
     start_time: float = Field(default_factory=time.time)
 
     @property
@@ -306,7 +381,7 @@ class ScanProgress(BaseModel):
             return 0.0
         return self.processed_count / self.elapsed_time
 
-    def model_dump(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         data = super().model_dump(**kwargs)
         data["healthy_count"] = self.healthy_count
         data["remaining_count"] = self.remaining_count
@@ -314,11 +389,37 @@ class ScanProgress(BaseModel):
         data["elapsed_time"] = self.elapsed_time
         data["estimated_remaining_time"] = self.estimated_remaining_time
         data["processing_rate"] = self.processing_rate
+        data["phase"] = self.phase.value
+        data["scan_mode"] = self.scan_mode.value
         return data
 
     @classmethod
-    def model_validate(cls, data: dict[str, Any]) -> "ScanProgress":
-        return super().model_validate(data)
+    def model_validate(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        from_attributes: bool | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> "ScanProgress":
+        if isinstance(obj, dict):
+            data = dict(obj)
+            if (
+                "phase" in data
+                and not isinstance(data["phase"], ScanPhase)
+                and isinstance(data["phase"], str)
+            ):
+                data["phase"] = ScanPhase(data["phase"])
+            if (
+                "scan_mode" in data
+                and not isinstance(data["scan_mode"], ScanMode)
+                and isinstance(data["scan_mode"], str)
+            ):
+                data["scan_mode"] = ScanMode(data["scan_mode"])
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
     def get_eta_string(self) -> str:
         """Get estimated time remaining as human-readable string.
@@ -364,7 +465,7 @@ class ScanProgress(BaseModel):
             Status line string
         """
         return (
-            f"[{self.phase.upper()}] {self.processed_count}/"
+            f"[{self.phase.value.upper()}] {self.processed_count}/"
             f"{self.total_files} ({self.progress_percentage:.1f}%) - "
             f"{self.corrupt_count} corrupt, "
             f"{self.healthy_count} healthy - "
@@ -389,7 +490,7 @@ class BatchScanRequest(BaseModel):
     recursive: bool = True
     extensions: list[str] | None = None
     max_parallel: int = 2
-    output_format: str = "json"
+    output_format: OutputFormat = OutputFormat.JSON
 
     def __init__(self, **data: Any):
         super().__init__(**data)
@@ -401,22 +502,44 @@ class BatchScanRequest(BaseModel):
             if not directory.is_dir():
                 raise NotADirectoryError(f"Path is not a directory: {directory}")
 
-    def model_dump(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         data = super().model_dump(**kwargs)
         data["directories"] = [str(d) for d in self.directories]
         data["scan_mode"] = self.scan_mode.value
+        data["output_format"] = self.output_format.value
         return data
 
     @classmethod
-    def model_validate(cls, data: dict[str, Any]) -> "BatchScanRequest":
-        data = dict(data)
-        if "directories" in data:
-            data["directories"] = [
-                Path(d) if not isinstance(d, Path) else d for d in data["directories"]
-            ]
-        if "scan_mode" in data and not isinstance(data["scan_mode"], ScanMode):
-            data["scan_mode"] = ScanMode(data["scan_mode"])
-        return super().model_validate(data)
+    def model_validate(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        from_attributes: bool | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> "BatchScanRequest":
+        if isinstance(obj, dict):
+            data = dict(obj)
+            if "directories" in data:
+                data["directories"] = [
+                    Path(d) if not isinstance(d, Path) else d for d in data["directories"]
+                ]
+            if (
+                "scan_mode" in data
+                and not isinstance(data["scan_mode"], ScanMode)
+                and isinstance(data["scan_mode"], str)
+            ):
+                data["scan_mode"] = ScanMode(data["scan_mode"])
+            if (
+                "output_format" in data
+                and not isinstance(data["output_format"], OutputFormat)
+                and isinstance(data["output_format"], str)
+            ):
+                data["output_format"] = OutputFormat(data["output_format"])
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
 
 class ScanFilter(BaseModel):
