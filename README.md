@@ -255,7 +255,14 @@ We welcome contributions! To get started:
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Follow our code quality standards (automatic via pre-commit hooks)
 4. Add tests for new functionality
-5. Submit a Pull Request
+5. Submit a Pull Request with a properly formatted title
+
+### Pull Request Requirements
+**All PR titles must follow conventional commit format and reference an issue:**
+```
+type: description (#issue-number)
+```
+Examples: `feat: add progress bar (#123)`, `fix: resolve timeout issue (#456)`
 
 ### Code Quality Standards
 - **Formatting**: Black (100 character line length)

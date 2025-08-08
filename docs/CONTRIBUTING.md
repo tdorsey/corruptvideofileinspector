@@ -105,6 +105,42 @@ python3 tests/run_tests.py
 - **Docstrings**: Use clear, concise docstrings for modules, classes, and functions
 - **Variable Names**: Use descriptive variable names that clearly indicate purpose
 
+## Pull Request Requirements
+
+### PR Title Format
+
+All pull request titles must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification and include an issue number reference.
+
+**Required Format:**
+```
+type(optional-scope): description (#issue-number)
+```
+
+**Allowed Types:**
+- `feat`: New features
+- `fix`: Bug fixes  
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, etc.)
+- `refactor`: Code changes that neither fix bugs nor add features
+- `perf`: Performance improvements
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks, dependency updates, etc.
+
+**Examples:**
+- `feat: add video scanning progress bar (#123)`
+- `fix: resolve FFmpeg timeout issues (#456)`
+- `docs: update installation instructions (#789)`
+- `refactor(scanner): improve error handling (#111)`
+- `chore: update dependencies (#222)`
+
+**Requirements:**
+- Title must start with one of the allowed conventional commit types
+- Subject line must start with lowercase letter
+- Must reference an issue number either in the title or PR body (e.g., `#123`)
+- Optional scope can be included in parentheses after the type
+
+The PR title validation will automatically check these requirements when you create or update a pull request.
+
 ## Submitting Changes
 
 1. **Create a feature branch:**
@@ -126,7 +162,7 @@ python3 tests/run_tests.py
    git commit -m "Description of your changes"
    ```
 
-5. **Push to your fork and create a pull request:**
+5. **Push to your fork and create a pull request** with a properly formatted title:
    ```bash
    git push origin feature/your-feature-name
    ```
