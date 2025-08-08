@@ -1,0 +1,95 @@
+name: 🏷️ Auto Label Issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  label-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label based on issue template
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const labels = [...(issue.labels || []).map(label => label.name)];
+            
+            // Extract component from issue body
+            const componentMatch = body.match(/### Component\/Domain[\s\S]*?(?:- CLI|CLI)/i);
+            const scannerMatch = body.match(/### Component\/Domain[\s\S]*?(?:- Scanner|Scanner)/i);
+            const traktMatch = body.match(/### Component\/Domain[\s\S]*?(?:- Trakt|Trakt Integration)/i);
+            const configMatch = body.match(/### Component\/Domain[\s\S]*?(?:- Config|Config)/i);
+            const reporterMatch = body.match(/### Component\/Domain[\s\S]*?(?:- Reporter|Reporter)/i);
+            const outputMatch = body.match(/### Component\/Domain[\s\S]*?(?:- Output|Output)/i);
+            const dockerMatch = body.match(/### Component\/Domain[\s\S]*?(?:- Docker|Docker)/i);
+            const cicdMatch = body.match(/### Component\/Domain[\s\S]*?(?:- CI\/CD|CI\/CD|GitHub Actions)/i);
+            const testsMatch = body.match(/### Component\/Domain[\s\S]*?(?:- Tests|Tests)/i);
+            const docsMatch = body.match(/### Component\/Domain[\s\S]*?(?:- Documentation|Documentation)/i);
+            const otherMatch = body.match(/### Component\/Domain[\s\S]*?(?:- Other|Other)/i);
+            
+            // Add component labels
+            if (componentMatch && !labels.includes('component:cli')) {
+              labels.push('component:cli');
+            }
+            if (scannerMatch && !labels.includes('component:scanner')) {
+              labels.push('component:scanner');
+            }
+            if (traktMatch && !labels.includes('component:trakt')) {
+              labels.push('component:trakt');
+            }
+            if (configMatch && !labels.includes('component:config')) {
+              labels.push('component:config');
+            }
+            if (reporterMatch && !labels.includes('component:reporter')) {
+              labels.push('component:reporter');
+            }
+            if (outputMatch && !labels.includes('component:output')) {
+              labels.push('component:output');
+            }
+            if (dockerMatch && !labels.includes('component:docker')) {
+              labels.push('component:docker');
+            }
+            if (cicdMatch && !labels.includes('component:cicd')) {
+              labels.push('component:cicd');
+            }
+            if (testsMatch && !labels.includes('component:tests')) {
+              labels.push('component:tests');
+            }
+            if (docsMatch && !labels.includes('component:docs')) {
+              labels.push('component:docs');
+            }
+            if (otherMatch && !labels.includes('component:other')) {
+              labels.push('component:other');
+            }
+            
+            // Extract stakeholder type
+            const maintainerMatch = body.match(/### Stakeholder Type[\s\S]*?(?:- Project Maintainer|Project Maintainer)/i);
+            const contributorMatch = body.match(/### Stakeholder Type[\s\S]*?(?:- Contributor|Contributor)/i);
+            const userMatch = body.match(/### Stakeholder Type[\s\S]*?(?:- End User|End User)/i);
+            
+            // Add stakeholder labels
+            if (maintainerMatch && !labels.includes('stakeholder:maintainer')) {
+              labels.push('stakeholder:maintainer');
+            }
+            if (contributorMatch && !labels.includes('stakeholder:contributor')) {
+              labels.push('stakeholder:contributor');
+            }
+            if (userMatch && !labels.includes('stakeholder:user')) {
+              labels.push('stakeholder:user');
+            }
+            
+            // Set labels on the issue
+            if (labels.length > 0) {
+              await github.rest.issues.setLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+            }

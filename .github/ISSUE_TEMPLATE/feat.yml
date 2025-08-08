@@ -9,14 +9,7 @@ body:
       value: |
         Thanks for taking the time to fill out this feature request! Please provide as much detail as possible to help us understand your needs.
         
-        **After submitting this issue, please add a component label** based on your selection below:
-        - `component:cli` for CLI issues
-        - `component:scanner` for Scanner issues  
-        - `component:trakt` for Trakt Integration issues
-        - `component:config` for Config issues
-        - `component:reporter` for Reporter issues
-        - `component:output` for Output issues
-        - `component:docker` for Docker issues
+        **Component labels will be automatically applied** based on your selection below.
 
   - type: dropdown
     id: stakeholder
@@ -44,16 +37,12 @@ body:
         - Reporter
         - Output
         - Docker
+        - CI/CD
+        - GitHub Actions
+        - Tests
+        - Documentation
+        - Other
       default: 0
-    validations:
-      required: true
-
-  - type: textarea
-    id: user-story-as
-    attributes:
-      label: "As a"
-      description: "Complete this sentence: As a..."
-      placeholder: "As a [stakeholder type], I..."
     validations:
       required: true
 
