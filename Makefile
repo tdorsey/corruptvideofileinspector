@@ -99,7 +99,7 @@ test-integration: ## Run integration tests only
 	pytest tests/ -v -k "integration"
 
 test-cov:         ## Run tests with coverage report
-	pytest tests/ --cov=. --cov-report=html --cov-report=term-missing
+	pytest tests/ --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml
 
 # Build and clean
 clean:            ## Clean build artifacts

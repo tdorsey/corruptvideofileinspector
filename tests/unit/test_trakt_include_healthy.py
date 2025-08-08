@@ -204,9 +204,9 @@ class TestTraktIncludeStatuses:
         )
 
     def test_config_include_statuses_default(self):
-        """Test that TraktConfig has include_statuses defaulting to [CORRUPT, SUSPICIOUS]."""
+        """Test that TraktConfig has include_statuses defaulting to [HEALTHY]."""
         config = TraktConfig()
-        assert config.include_statuses == [FileStatus.CORRUPT, FileStatus.SUSPICIOUS]
+        assert config.include_statuses == [FileStatus.HEALTHY]
 
     def test_config_include_statuses_can_be_set(self):
         """Test that TraktConfig include_statuses can be customized."""
