@@ -1,0 +1,49 @@
+# Configuration for github/issue-labeler action
+# This file defines patterns to match in issue content and apply corresponding labels
+
+# Component Labels - based on Component/Domain dropdown selection
+'component:cli':
+  - '*CLI*'
+
+'component:scanner':
+  - '*Scanner*'
+
+'component:trakt':
+  - '*Trakt Integration*'
+
+'component:config':
+  - '*Config*'
+
+'component:reporter':
+  - '*Reporter*'
+
+'component:output':
+  - '*Output*'
+
+'component:docker':
+  - '*Docker*'
+
+'component:cicd':
+  - '*CI/CD*'
+
+'component:github-actions':
+  - '*GitHub Actions*'
+
+'component:tests':
+  - '*Tests*'
+
+'component:docs':
+  - '*Documentation*'
+
+'component:other':
+  - '*Other*'
+
+# Stakeholder Labels - based on Stakeholder Type dropdown selection
+'stakeholder:maintainer':
+  - '*Project Maintainer*'
+
+'stakeholder:contributor':
+  - '*Contributor*'
+
+'stakeholder:user':
+  - '*End User*'
