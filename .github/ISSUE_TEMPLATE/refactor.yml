@@ -9,7 +9,7 @@ body:
       value: |
         Thanks for helping improve the codebase! Please describe the refactoring you'd like to see.
         
-        **After submitting this issue, please add a component label** based on your selection above:
+        **After submitting this issue, please add a component label** based on your selection below:
         - `component:cli` for CLI issues
         - `component:scanner` for Scanner issues  
         - `component:trakt` for Trakt Integration issues
