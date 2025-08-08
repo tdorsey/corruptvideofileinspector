@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `as_paths` parameter to `get_all_video_object_files()` for backward compatibility
 - Added deprecation warning when `as_paths=True` is used
 - Enhanced VideoFile objects returned by `get_all_video_object_files()` with rich metadata
+- Initial changelog setup with automated generation from conventional commits
 
 ### Fixed
 - Updated test expectations to match new Trakt sync default behavior
