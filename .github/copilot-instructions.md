@@ -240,7 +240,7 @@ sudo apt-get update && sudo apt-get install -y ffmpeg build-essential
 
 # Basic functionality testing (no pip install required)
 make clean && make docker-env && make secrets-init
-export PYTHONPATH=/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/src
+export PYTHONPATH=/path/to/repo/src
 
 # Create minimal config (copy from Application Validation section above)
 # Then test CLI functionality
