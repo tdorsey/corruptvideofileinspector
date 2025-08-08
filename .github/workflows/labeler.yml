@@ -12,101 +12,12 @@ jobs:
   label-issues:
     runs-on: ubuntu-latest
     steps:
-      - name: Label based on issue template
-        uses: actions/github-script@v7
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Auto label issues
+        uses: github/issue-labeler@v3.4
         with:
-          script: |
-            const issue = context.payload.issue;
-            const body = issue.body || '';
-            const labels = [...(issue.labels || []).map(label => label.name)];
-            
-            // Extract component from issue body - look for the selected option after Component/Domain
-            const componentSection = body.match(/### Component\/Domain[\s\S]*?(?=###|$)/i);
-            if (!componentSection) return;
-            
-            const componentText = componentSection[0];
-            const componentMatches = {
-              'CLI': /CLI/i.test(componentText),
-              'Scanner': /Scanner/i.test(componentText),
-              'Trakt Integration': /Trakt Integration/i.test(componentText),
-              'Config': /Config/i.test(componentText),
-              'Reporter': /Reporter/i.test(componentText),
-              'Output': /Output/i.test(componentText),
-              'Docker': /Docker/i.test(componentText),
-              'CI/CD': /CI\/CD/i.test(componentText),
-              'GitHub Actions': /GitHub Actions/i.test(componentText),
-              'Tests': /Tests/i.test(componentText),
-              'Documentation': /Documentation/i.test(componentText),
-              'Other': /Other/i.test(componentText)
-            };
-            
-            // Add component labels
-            if (componentMatches['CLI'] && !labels.includes('component:cli')) {
-              labels.push('component:cli');
-            }
-            if (componentMatches['Scanner'] && !labels.includes('component:scanner')) {
-              labels.push('component:scanner');
-            }
-            if (componentMatches['Trakt Integration'] && !labels.includes('component:trakt')) {
-              labels.push('component:trakt');
-            }
-            if (componentMatches['Config'] && !labels.includes('component:config')) {
-              labels.push('component:config');
-            }
-            if (componentMatches['Reporter'] && !labels.includes('component:reporter')) {
-              labels.push('component:reporter');
-            }
-            if (componentMatches['Output'] && !labels.includes('component:output')) {
-              labels.push('component:output');
-            }
-            if (componentMatches['Docker'] && !labels.includes('component:docker')) {
-              labels.push('component:docker');
-            }
-            if (componentMatches['CI/CD'] && !labels.includes('component:cicd')) {
-              labels.push('component:cicd');
-            }
-            if (componentMatches['GitHub Actions'] && !labels.includes('component:github-actions')) {
-              labels.push('component:github-actions');
-            }
-            if (componentMatches['Tests'] && !labels.includes('component:tests')) {
-              labels.push('component:tests');
-            }
-            if (componentMatches['Documentation'] && !labels.includes('component:docs')) {
-              labels.push('component:docs');
-            }
-            if (componentMatches['Other'] && !labels.includes('component:other')) {
-              labels.push('component:other');
-            }
-            
-            // Extract stakeholder type
-            const stakeholderSection = body.match(/### Stakeholder Type[\s\S]*?(?=###|$)/i);
-            if (stakeholderSection) {
-              
-              const stakeholderText = stakeholderSection[0];
-              const stakeholderMatches = {
-                'Project Maintainer': /Project Maintainer/i.test(stakeholderText),
-                'Contributor': /Contributor/i.test(stakeholderText),
-                'End User': /End User/i.test(stakeholderText)
-              };
-              
-              // Add stakeholder labels
-              if (stakeholderMatches['Project Maintainer'] && !labels.includes('stakeholder:maintainer')) {
-                labels.push('stakeholder:maintainer');
-              }
-              if (stakeholderMatches['Contributor'] && !labels.includes('stakeholder:contributor')) {
-                labels.push('stakeholder:contributor');
-              }
-              if (stakeholderMatches['End User'] && !labels.includes('stakeholder:user')) {
-                labels.push('stakeholder:user');
-              }
-            }
-            
-            // Set labels on the issue
-            if (labels.length > 0) {
-              await github.rest.issues.setLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                labels: labels
-              });
-            }
+          repository-token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-path: .github/issue-labeler.yml
+          include-title: false
