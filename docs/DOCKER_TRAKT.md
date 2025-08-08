@@ -8,18 +8,32 @@ The Trakt container extends the main application container and provides dedicate
 
 ## Setup
 
-### 1. Environment Variables
+### 1. Authentication Setup
 
-Create a `.env` file in the `docker/` directory (copy from `.env.example`):
+The Trakt container uses config-based authentication via Docker secrets (recommended) or environment variables:
+
+**Method 1: Docker Secrets (Recommended)**
+```bash
+# Initialize secret files
+make secrets-init
+
+# Add your credentials to the secret files
+echo "your_api_client_id" > docker/secrets/trakt_client_id.txt
+echo "your_api_client_secret" > docker/secrets/trakt_client_secret.txt
+```
+
+**Method 2: Environment Variables**
+Create a `.env` file in the `docker/` directory:
 
 ```bash
-# Required for Trakt functionality
-TRAKT_CLIENT_ID=your_api_client_id
-
 # Required for volume mounts
 CVI_VIDEO_DIR=/path/to/your/videos
 CVI_OUTPUT_DIR=/path/to/output
 CVI_LOG_DIR=/path/to/logs
+
+# Optional: Trakt credentials via environment (Docker secrets preferred)
+CVI_TRAKT_CLIENT_ID=your_api_client_id
+CVI_TRAKT_CLIENT_SECRET=your_api_client_secret
 ```
 
 ### 2. Get Trakt API Credentials
@@ -66,8 +80,6 @@ trakt:
     - trakt
     - sync
     - /app/output/scan_results.json
-    - --token
-    - ${TRAKT_ACCESS_TOKEN}
   depends_on:
     - scan
   profiles:
@@ -77,7 +89,7 @@ trakt:
 **Features:**
 - Extends the main scan container
 - Automatically syncs results after scan completes
-- Uses environment variables for authentication
+- Uses Docker secrets for authentication (no need for tokens in command)
 - Only runs when `trakt` profile is enabled
 
 ### Development Container (`trakt-dev`)
@@ -90,8 +102,6 @@ trakt-dev:
     - trakt
     - sync
     - /app/output/scan_results.json
-    - --token
-    - ${TRAKT_ACCESS_TOKEN}
     - --interactive
   profiles:
     - trakt
@@ -101,6 +111,7 @@ trakt-dev:
 - Includes `--interactive` flag for manual selection
 - Hot-reloaded source code from volumes
 - Better for development and testing
+- Uses config-based authentication (Docker secrets)
 
 ## Workflow Examples
 
@@ -186,8 +197,6 @@ command:
   - trakt
   - sync
   - /app/output/scan_results.json
-  - --token
-  - ${TRAKT_ACCESS_TOKEN}
   - --verbose
 ```
 

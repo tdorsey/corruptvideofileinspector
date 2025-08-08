@@ -152,17 +152,24 @@ The tool processes **all files** from the scan results, regardless of their corr
 
 ## Example Workflow
 
-1. **Scan your video collection**:
+1. **Set up authentication** (one-time setup):
    ```bash
-   python3 cli_handler.py --json /path/to/videos
+   make secrets-init
+   echo "your-client-id" > docker/secrets/trakt_client_id.txt
+   echo "your-client-secret" > docker/secrets/trakt_client_secret.txt
    ```
 
-2. **Sync to Trakt watchlist**:
+2. **Scan your video collection**:
    ```bash
-   python3 cli_handler.py trakt corruption_scan_results.json --token YOUR_TOKEN --verbose
+   corrupt-video-inspector scan /path/to/videos --output scan_results.json
    ```
 
-3. **Review results**:
+3. **Sync to Trakt watchlist**:
+   ```bash
+   corrupt-video-inspector trakt sync scan_results.json --verbose
+   ```
+
+4. **Review results**:
    ```
    ==================================================
    TRAKT SYNC SUMMARY
@@ -245,15 +252,23 @@ Success rate: 66.7%
 
 ## Security Best Practices
 
-1. **Environment Variables**: Store your token in environment variables
+1. **Docker Secrets** (Recommended): Use Docker secrets for secure credential storage
    ```bash
-   export TRAKT_TOKEN="your_access_token_here"
-   python3 cli_handler.py trakt scan.json --token "$TRAKT_TOKEN"
+   make secrets-init
+   echo "your-client-id" > docker/secrets/trakt_client_id.txt
+   echo "your-client-secret" > docker/secrets/trakt_client_secret.txt
    ```
 
-2. **Never Commit Tokens**: Add tokens to your `.gitignore`
+2. **Environment Variables**: Alternative method for credential storage
+   ```bash
+   export CVI_TRAKT_CLIENT_ID="your_client_id"
+   export CVI_TRAKT_CLIENT_SECRET="your_client_secret"
+   corrupt-video-inspector trakt sync scan.json
+   ```
 
-3. **Token Rotation**: Regularly rotate your API tokens
+3. **Never Commit Credentials**: Add credential files to your `.gitignore`
+
+4. **Credential Rotation**: Regularly rotate your API credentials
 
 ## Troubleshooting
 
@@ -269,7 +284,7 @@ Success rate: 66.7%
 Use `--verbose` flag for detailed logging to help diagnose issues:
 
 ```bash
-python3 cli_handler.py trakt scan.json --token YOUR_TOKEN --verbose
+corrupt-video-inspector trakt sync scan.json --verbose
 ```
 
 ## API Rate Limits
@@ -285,6 +300,6 @@ This tool is designed to work seamlessly with the existing video inspector:
 
 ```bash
 # Complete workflow: scan and sync
-python3 cli_handler.py --json /videos && \
-python3 cli_handler.py trakt corruption_scan_results.json --token $TRAKT_TOKEN
+corrupt-video-inspector scan /videos --output scan_results.json && \
+corrupt-video-inspector trakt sync scan_results.json
 ```
