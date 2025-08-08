@@ -170,7 +170,7 @@ Always manually validate changes by running these complete scenarios:
 1. **Basic CLI functionality**:
    ```bash
    # First create a minimal config file (required for CLI operation)
-   cat > config.yaml << 'EOF'
+   cat > /tmp/config.yaml << 'EOF'
    logging:
      level: INFO
      file: /tmp/inspector.log
