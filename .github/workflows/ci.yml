@@ -28,7 +28,7 @@ jobs:
         make lint
 
   test:
-    name: Run Tests
+    name: Run Tests with Coverage
     runs-on: ubuntu-latest
 
     steps:
@@ -39,13 +39,42 @@ jobs:
       with:
         python-version: '3.13'
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+
     - name: Install dependencies
       run: |
         make install-dev
 
-    - name: Run Tests
+    - name: Create config file
       run: |
-        make test
+        cp config.yaml config.yaml || echo "Config already exists"
+
+    - name: Run Tests with Coverage
+      run: |
+        make test-cov
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+        verbose: true
+
+    - name: Upload coverage HTML report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-html-report
+        path: htmlcov/
+        retention-days: 30
+
+    - name: Coverage summary
+      run: |
+        echo "Coverage report generated and uploaded as artifact"
+        echo "See 'coverage-html-report' artifact for detailed HTML report"
 
   docker:
     name: Build and Test Docker Image
