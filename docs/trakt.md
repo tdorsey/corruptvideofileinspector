@@ -9,15 +9,45 @@ The Trakt watchlist integration allows you to automatically sync your video coll
 ## Prerequisites
 
 1. **Trakt.tv Account**: You need a Trakt.tv account
-2. **API Access Token**: Generate an OAuth 2.0 access token from your Trakt.tv account
+2. **API Credentials**: Client ID and Client Secret from your Trakt.tv application  
 3. **JSON Scan Results**: Video inspection results in JSON format
 
-## Getting a Trakt API Token
+## Getting Trakt API Credentials
 
 1. Visit [Trakt.tv API Apps](https://trakt.tv/oauth/applications)
 2. Create a new application or use an existing one
-3. Generate an access token for your application
-4. Keep your token secure and never commit it to source code
+3. Note your **Client ID** and **Client Secret** (not access token)
+4. Configure these credentials in your application (see Configuration section below)
+
+## Configuration
+
+The application uses **configuration-based authentication** with Client ID and Client Secret instead of access tokens. You can configure Trakt credentials using any of these methods:
+
+### Method 1: Configuration File
+
+Create or edit your `config.yaml` file:
+
+```yaml
+trakt:
+  client_id: your_client_id_here
+  client_secret: your_client_secret_here
+```
+
+### Method 2: Environment Variables
+
+```bash
+export CVI_TRAKT_CLIENT_ID="your_client_id_here"
+export CVI_TRAKT_CLIENT_SECRET="your_client_secret_here"
+```
+
+### Method 3: Docker Secrets
+
+For containerized deployments:
+
+```bash
+echo "your_client_id_here" > docker/secrets/trakt_client_id.txt
+echo "your_client_secret_here" > docker/secrets/trakt_client_secret.txt
+```
 
 ## Usage
 
@@ -25,36 +55,55 @@ The Trakt watchlist integration allows you to automatically sync your video coll
 
 ```bash
 # Sync scan results to Trakt watchlist
-python3 cli_handler.py trakt scan_results.json --token YOUR_ACCESS_TOKEN
+corrupt-video-inspector trakt sync scan_results.json
 ```
 
 ### Advanced Options
 
 ```bash
 # With verbose output and result saving
-python3 cli_handler.py trakt scan_results.json \
-  --token YOUR_ACCESS_TOKEN \
-  --client-id YOUR_CLIENT_ID \
+corrupt-video-inspector trakt sync scan_results.json \
   --verbose \
   --output sync_results.json
 ```
 
-### Command Options
+### List Watchlists Command
 
-- `--token` / `-t`: **Required** - Your Trakt.tv OAuth access token
-- `--client-id` / `-c`: Optional - Your Trakt.tv API client ID
+```bash
+# List all available watchlists
+corrupt-video-inspector trakt list-watchlists
+
+# List in JSON format
+corrupt-video-inspector trakt list-watchlists --format json
+```
+
+### View Watchlist Command
+
+```bash
+# View main watchlist
+corrupt-video-inspector trakt view
+
+# View specific watchlist
+corrupt-video-inspector trakt view --watchlist "my-custom-list"
+
+# View in JSON format
+corrupt-video-inspector trakt view --format json
+```
+
+### Command Options for Sync
+
+- `--client-id`: Optional - Override client ID from config
 - `--verbose` / `-v`: Enable detailed progress output
 - `--interactive` / `-i`: Enable interactive selection of search results
 - `--output` / `-o`: Save sync results to JSON file
 
 ### Interactive Mode
 
-When using the `--interactive` flag, the tool will prompt you to manually select the correct match when multiple search results are found:
+When using the `--interactive` flag with the sync command, the tool will prompt you to manually select the correct match when multiple search results are found:
 
 ```bash
 # Enable interactive selection for ambiguous matches
-python3 cli_handler.py trakt scan_results.json \
-  --token YOUR_ACCESS_TOKEN \
+corrupt-video-inspector trakt sync scan_results.json \
   --interactive \
   --verbose
 ```
@@ -96,17 +145,23 @@ The tool processes **all files** from the scan results, regardless of their corr
 
 ## Example Workflow
 
-1. **Scan your video collection**:
+1. **Configure Trakt credentials** (one-time setup):
    ```bash
-   python3 cli_handler.py --json /path/to/videos
+   export CVI_TRAKT_CLIENT_ID="your_client_id"
+   export CVI_TRAKT_CLIENT_SECRET="your_client_secret"
    ```
 
-2. **Sync to Trakt watchlist**:
+2. **Scan your video collection**:
    ```bash
-   python3 cli_handler.py trakt corruption_scan_results.json --token YOUR_TOKEN --verbose
+   corrupt-video-inspector scan /path/to/videos --output scan_results.json
    ```
 
-3. **Review results**:
+3. **Sync to Trakt watchlist**:
+   ```bash
+   corrupt-video-inspector trakt sync scan_results.json --verbose
+   ```
+
+4. **Review results**:
    ```
    ==================================================
    TRAKT SYNC SUMMARY
@@ -189,31 +244,44 @@ Success rate: 66.7%
 
 ## Security Best Practices
 
-1. **Environment Variables**: Store your token in environment variables
+1. **Environment Variables**: Store your credentials in environment variables
    ```bash
-   export TRAKT_TOKEN="your_access_token_here"
-   python3 cli_handler.py trakt scan.json --token "$TRAKT_TOKEN"
+   export CVI_TRAKT_CLIENT_ID="your_client_id"
+   export CVI_TRAKT_CLIENT_SECRET="your_client_secret"
    ```
 
-2. **Never Commit Tokens**: Add tokens to your `.gitignore`
+2. **Configuration Files**: Use config files for permanent setup
+   ```yaml
+   # config.yaml
+   trakt:
+     client_id: your_client_id
+     client_secret: your_client_secret
+   ```
 
-3. **Token Rotation**: Regularly rotate your API tokens
+3. **Never Commit Credentials**: Add credentials to your `.gitignore`
+
+4. **Credential Rotation**: Regularly rotate your API credentials
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"No media items found"**: Check that your JSON file contains valid scan results
-2. **"Authentication failed"**: Verify your access token is valid and not expired
-3. **"Rate limited"**: The tool automatically handles rate limits, but you may need to wait
-4. **"Not found on Trakt"**: Some obscure titles may not be in Trakt's database
+1. **"Trakt credentials not configured"**: 
+   - Ensure you've set client_id and client_secret in your configuration
+   - Check environment variables: `CVI_TRAKT_CLIENT_ID` and `CVI_TRAKT_CLIENT_SECRET`
+   - Verify Docker secrets if using containers
+
+2. **"No media items found"**: Check that your JSON file contains valid scan results
+3. **"Authentication failed"**: Verify your client ID and secret are correct
+4. **"Rate limited"**: The tool automatically handles rate limits, but you may need to wait
+5. **"Not found on Trakt"**: Some obscure titles may not be in Trakt's database
 
 ### Debug Mode
 
 Use `--verbose` flag for detailed logging to help diagnose issues:
 
 ```bash
-python3 cli_handler.py trakt scan.json --token YOUR_TOKEN --verbose
+corrupt-video-inspector trakt sync scan_results.json --verbose
 ```
 
 ## API Rate Limits
@@ -229,6 +297,6 @@ This tool is designed to work seamlessly with the existing video inspector:
 
 ```bash
 # Complete workflow: scan and sync
-python3 cli_handler.py --json /videos && \
-python3 cli_handler.py trakt corruption_scan_results.json --token $TRAKT_TOKEN
+corrupt-video-inspector scan /videos --output scan_results.json && \
+corrupt-video-inspector trakt sync scan_results.json
 ```

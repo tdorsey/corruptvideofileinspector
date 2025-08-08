@@ -78,10 +78,10 @@ corrupt-video-inspector scan --mode hybrid --max-workers 8 /path/to/videos
 
 ```bash
 # Sync scan results to Trakt
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
+corrupt-video-inspector trakt sync results.json
 
 # Interactive mode for manual selection
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --interactive
+corrupt-video-inspector trakt sync results.json --interactive
 ```
 
 ### Configuration Management
