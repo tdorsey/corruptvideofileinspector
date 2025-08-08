@@ -4,6 +4,32 @@ A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
+## GitHub Actions and Automation Guidelines
+
+### Prefer Marketplace Actions
+**ALWAYS** use well-known marketplace actions before creating custom workflows:
+- Search the [GitHub Actions Marketplace](https://github.com/marketplace?type=actions) first
+- Use official GitHub actions (e.g., `actions/checkout`, `actions/setup-node`) when available
+- Use popular community actions with good maintenance and star ratings
+- Only create custom workflows when marketplace actions don't meet specific requirements
+- Document the reason for custom solutions in comments
+
+### Common Recommended Actions
+- **Code checkout**: `actions/checkout@v4`
+- **Language setup**: `actions/setup-python@v4`, `actions/setup-node@v4`
+- **Caching**: `actions/cache@v3`
+- **Issue/PR labeling**: `github/issue-labeler@v3.4`
+- **File-based labeling**: `actions/labeler@v5`
+- **Release automation**: `actions/create-release@v1`
+- **Docker**: `docker/build-push-action@v5`
+
+### Custom Workflow Guidelines
+When marketplace actions are insufficient:
+- Keep custom logic minimal and focused
+- Use `actions/github-script@v7` for simple API operations
+- Document complex workflows thoroughly
+- Consider contributing useful patterns back to the community
+
 ## Quick Reference
 
 ### Essential Setup (Network Required)
