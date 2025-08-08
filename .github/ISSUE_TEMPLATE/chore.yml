@@ -9,7 +9,7 @@ body:
       value: |
         Thanks for helping with project maintenance! Please describe the chore or maintenance task needed.
         
-        **After submitting this issue, please add a component label** based on your selection above:
+        **After submitting this issue, please add a component label** based on your selection below:
         - `component:cli` for CLI issues
         - `component:scanner` for Scanner issues  
         - `component:trakt` for Trakt Integration issues
