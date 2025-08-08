@@ -472,7 +472,7 @@ def sync(
     show_default=True,
 )
 @global_options
-def list_watchlists(token, output, output_format, config):
+def list_watchlists(output, output_format, config):
     """
     List all available watchlists for the authenticated user.
 
@@ -494,7 +494,7 @@ def list_watchlists(token, output, output_format, config):
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        watchlists = handler.list_watchlists(access_token=token)
+        watchlists = handler.list_watchlists(config=app_config)
 
         if not watchlists:
             click.echo("No watchlists found or failed to fetch watchlists.")
@@ -543,7 +543,7 @@ def list_watchlists(token, output, output_format, config):
     show_default=True,
 )
 @global_options
-def view(token, watchlist, output, output_format, config):
+def view(watchlist, output, output_format, config):
     """
     View items in a specific watchlist.
 
@@ -570,7 +570,7 @@ def view(token, watchlist, output, output_format, config):
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        items = handler.view_watchlist(access_token=token, watchlist=watchlist)
+        items = handler.view_watchlist(config=app_config, watchlist=watchlist)
 
         if not items:
             watchlist_name = watchlist or "Main Watchlist"
