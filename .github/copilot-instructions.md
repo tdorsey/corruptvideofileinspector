@@ -284,7 +284,7 @@ tests/
 - **Import errors**: Ensure PYTHONPATH includes src: `export PYTHONPATH=/path/to/repo/src`
 - **FFmpeg not found**: Install system package: `sudo apt-get install ffmpeg`
 - **Permission errors**: Check file/directory permissions for video processing
-- **Missing targets**: Some CI-referenced Makefile targets (docker-test, security-scan) don't exist
+- **Missing targets**: See "Missing Makefile Targets" above (lines 206-210) for details.
 
 ### Testing Failures
 - **Missing test videos**: Some integration tests require actual video files
