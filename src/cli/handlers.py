@@ -457,12 +457,9 @@ class TraktHandler(BaseHandler):
             logger.warning(f"Failed to save sync results: {e}")
             click.echo(f"Warning: Could not save sync results: {e}", err=True)
 
-    def list_watchlists(self, access_token: str | None = None) -> list | None:
+    def list_watchlists(self) -> list | None:
         """
         List all available watchlists for the authenticated user.
-
-        Args:
-            access_token: Trakt.tv OAuth access token
 
         Returns:
             List of watchlist information or None if failed
@@ -486,7 +483,7 @@ class TraktHandler(BaseHandler):
             self._handle_error(e, "Failed to fetch watchlists")
             return None
 
-    def view_watchlist(self, watchlist: str | None = None, access_token: str | None = None) -> list | None:
+    def view_watchlist(self, watchlist: str | None = None) -> list | None:
         """
         View items in a specific watchlist.
 

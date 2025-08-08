@@ -384,9 +384,7 @@ class TraktAPI:
             return False
 
     @staticmethod
-    def interactive_select_item(
-        items: list[TraktItem], media_item: MediaItem
-    ) -> TraktItem | None:
+    def interactive_select_item(items: list[TraktItem], media_item: MediaItem) -> TraktItem | None:
         """
         Interactively select the correct item from search results
 
