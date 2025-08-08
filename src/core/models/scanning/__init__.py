@@ -137,8 +137,12 @@ class ScanResult(BaseModel):
         *,
         strict: bool | None = None,
         from_attributes: bool | None = None,
-        context: dict[str, Any] | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
     ) -> "ScanResult":
+        # Unused parameters to match pydantic signature
+        _ = by_alias, by_name
         # Accept both old and new formats
         if isinstance(obj, dict):
             data = dict(obj)
@@ -257,8 +261,12 @@ class ScanSummary(BaseModel):
         *,
         strict: bool | None = None,
         from_attributes: bool | None = None,
-        context: dict[str, Any] | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
     ) -> "ScanSummary":
+        # Unused parameters to match pydantic signature
+        _ = by_alias, by_name
         if isinstance(obj, dict):
             data = dict(obj)
             if "directory" in data and not isinstance(data["directory"], Path):
@@ -400,8 +408,12 @@ class ScanProgress(BaseModel):
         *,
         strict: bool | None = None,
         from_attributes: bool | None = None,
-        context: dict[str, Any] | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
     ) -> "ScanProgress":
+        # Unused parameters to match pydantic signature
+        _ = by_alias, by_name
         if isinstance(obj, dict):
             data = dict(obj)
             if (
@@ -516,8 +528,12 @@ class BatchScanRequest(BaseModel):
         *,
         strict: bool | None = None,
         from_attributes: bool | None = None,
-        context: dict[str, Any] | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
     ) -> "BatchScanRequest":
+        # Unused parameters to match pydantic signature
+        _ = by_alias, by_name
         if isinstance(obj, dict):
             data = dict(obj)
             if "directories" in data:

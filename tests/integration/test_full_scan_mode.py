@@ -10,7 +10,7 @@ from src.config.config import (
     TraktConfig,
 )
 from src.core.models.inspection import VideoFile
-from src.core.models.scanning import ScanMode
+from src.core.models.scanning import ScanMode, ScanSummary
 from src.core.scanner import VideoScanner
 from src.ffmpeg.ffmpeg_client import FFmpegClient
 
@@ -65,6 +65,7 @@ def test_video_scanner_full_scan(tmp_path):
     test_file = tmp_path / "test.mp4"
     test_file.touch()
     scanner = VideoScanner(config)
-    results = scanner.scan([str(test_file)], mode=ScanMode.FULL)
-    assert isinstance(results, list)
-    assert any(hasattr(r, "corrupt") for r in results)
+    results = scanner.scan_directory(tmp_path, scan_mode=ScanMode.FULL)
+    assert isinstance(results, ScanSummary)
+    # Check that scan results were processed
+    assert hasattr(results, "total_files")

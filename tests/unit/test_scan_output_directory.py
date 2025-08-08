@@ -1,25 +1,39 @@
 import json
 import logging
+from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic import BaseModel
 
 from src.cli.handlers import BaseHandler
 from src.config.config import AppConfig
+from src.core.models.scanning import ScanMode, ScanSummary
 
 pytestmark = pytest.mark.unit
 
 
-class DummySummary(BaseModel):
+class DummySummary(ScanSummary):
     """
-    Dummy summary object that inherits from BaseModel for type compatibility.
+    Dummy summary object that inherits from ScanSummary for type compatibility.
     """
+
+    # Override with test defaults
+    total_files: int = 1
+    processed_files: int = 1
+    healthy_files: int = 0
+    corrupt_files: int = 0
+    suspicious_files: int = 0
+    directory: Path = Path("/test")
+    scan_mode: ScanMode = ScanMode.QUICK
+    scan_time: float = 1.0
 
     result: str = "default"
 
-    def model_dump(self):
-        return {"result": self.result}
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        data = super().model_dump(**kwargs)
+        data["result"] = self.result
+        return data
 
 
 @pytest.fixture
