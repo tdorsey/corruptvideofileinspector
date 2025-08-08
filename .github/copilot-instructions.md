@@ -198,7 +198,7 @@ Always manually validate changes by running these complete scenarios:
    EOF
    
    # Test CLI with PYTHONPATH (works without full installation)
-   export PYTHONPATH=/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/src
+   export PYTHONPATH=$(pwd)/src
    python3 cli_handler.py --config config.yaml --help
    python3 cli_handler.py --config config.yaml scan --help
    ```
