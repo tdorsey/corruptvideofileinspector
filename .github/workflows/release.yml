@@ -56,15 +56,48 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         platforms: linux/amd64,linux/arm64
 
+    - name: Extract release notes from changelog
+      id: changelog
+      run: |
+        # Extract the version from the tag
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+        # Extract release notes from changelog if it exists
+        if [ -f "CHANGELOG.md" ]; then
+          # Get the section for this version
+          RELEASE_NOTES=$(awk -v version="$VERSION" '
+            /^## \[/ {
+              if ($0 ~ "\\[" version "\\]") {
+                found=1; next
+              } else if (found) {
+                exit
+              }
+            }
+            found && /^## \[/ { exit }
+            found && !/^## \[/ { print }
+          ' CHANGELOG.md | sed '/^$/d')
+          
+          if [ -n "$RELEASE_NOTES" ]; then
+            echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+            echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "release_notes=Release $VERSION" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "release_notes=Release $VERSION" >> $GITHUB_OUTPUT
+        fi
+
     - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ steps.changelog.outputs.version }}
+        body: ${{ steps.changelog.outputs.release_notes }}
         draft: false
         prerelease: false
+        generate_release_notes: true
 
     - name: Upload Python package to PyPI
       env:
