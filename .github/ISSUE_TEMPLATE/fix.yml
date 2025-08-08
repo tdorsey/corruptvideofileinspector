@@ -1,0 +1,134 @@
+name: 🐛 Bug Report
+description: Report a bug or issue with the application
+title: "[BUG]: "
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! Please provide as much detail as possible to help us reproduce and fix the issue.
+        
+        **After submitting this issue, please add a component label** based on your selection above:
+        - `component:cli` for CLI issues
+        - `component:scanner` for Scanner issues  
+        - `component:trakt` for Trakt Integration issues
+        - `component:config` for Config issues
+        - `component:reporter` for Reporter issues
+        - `component:output` for Output issues
+        - `component:docker` for Docker issues
+
+  - type: dropdown
+    id: stakeholder
+    attributes:
+      label: Stakeholder Type
+      description: What type of stakeholder are you?
+      options:
+        - Project Maintainer
+        - Contributor
+        - End User
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/Domain
+      description: Which component or domain does this bug affect?
+      options:
+        - CLI
+        - Scanner
+        - Trakt Integration
+        - Config
+        - Reporter
+        - Output
+        - Docker
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-as
+    attributes:
+      label: "As a"
+      description: "Complete this sentence: As a..."
+      placeholder: "As a [stakeholder type], I..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-want
+    attributes:
+      label: "I want to"
+      description: "Describe what you expected to happen"
+      placeholder: "I want to be able to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-but
+    attributes:
+      label: "But"
+      description: "Describe the actual problem or bug you encountered"
+      placeholder: "But instead I encounter..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-helps
+    attributes:
+      label: "This helps by"
+      description: "Explain how fixing this bug would help"
+      placeholder: "Fixing this helps by..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-unlike
+    attributes:
+      label: "Unlike"
+      description: "Describe how this differs from expected behavior"
+      placeholder: "Unlike the expected behavior which should..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Please provide step-by-step instructions to reproduce the bug
+      placeholder: |
+        1. Step one
+        2. Step two
+        3. Step three
+        4. Bug occurs
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Information
+      description: Please provide details about your environment
+      placeholder: |
+        - OS: [e.g., Ubuntu 22.04, Windows 11, macOS 13]
+        - Python version: [e.g., 3.13.0]
+        - Application version: [e.g., 2.0.0]
+        - Docker version (if applicable): [e.g., 24.0.0]
+
+  - type: textarea
+    id: logs-output
+    attributes:
+      label: Error Logs/Output
+      description: Please paste any relevant error messages or logs
+      render: shell
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

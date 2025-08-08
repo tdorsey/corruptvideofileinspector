@@ -1,0 +1,138 @@
+name: 📚 Documentation Update
+description: Request improvements or updates to documentation
+title: "[DOCS]: "
+labels: ["docs"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! Please provide details about what needs to be updated or improved.
+        
+        **After submitting this issue, please add a component label** based on your selection above:
+        - `component:cli` for CLI issues
+        - `component:scanner` for Scanner issues  
+        - `component:trakt` for Trakt Integration issues
+        - `component:config` for Config issues
+        - `component:reporter` for Reporter issues
+        - `component:output` for Output issues
+        - `component:docker` for Docker issues
+
+  - type: dropdown
+    id: stakeholder
+    attributes:
+      label: Stakeholder Type
+      description: What type of stakeholder are you?
+      options:
+        - Project Maintainer
+        - Contributor
+        - End User
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/Domain
+      description: Which component or domain does this documentation affect?
+      options:
+        - CLI
+        - Scanner
+        - Trakt Integration
+        - Config
+        - Reporter
+        - Output
+        - Docker
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-as
+    attributes:
+      label: "As a"
+      description: "Complete this sentence: As a..."
+      placeholder: "As a [stakeholder type], I..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-want
+    attributes:
+      label: "I want to"
+      description: "Describe what documentation you need"
+      placeholder: "I want to understand how to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-but
+    attributes:
+      label: "But"
+      description: "Describe what's missing or unclear in current documentation"
+      placeholder: "But the current documentation doesn't explain..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-helps
+    attributes:
+      label: "This helps by"
+      description: "Explain how better documentation would help"
+      placeholder: "This helps by making it easier to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-unlike
+    attributes:
+      label: "Unlike"
+      description: "Describe how this differs from current documentation"
+      placeholder: "Unlike the current docs which..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: documentation-type
+    attributes:
+      label: Type of Documentation
+      description: What type of documentation update is needed?
+      placeholder: |
+        Examples:
+        - API documentation
+        - User guide/tutorial
+        - Installation instructions
+        - Configuration examples
+        - Troubleshooting guide
+        - Code comments
+    validations:
+      required: true
+
+  - type: textarea
+    id: specific-sections
+    attributes:
+      label: Specific Sections/Files
+      description: Which specific documentation files or sections need updates?
+      placeholder: |
+        Examples:
+        - README.md
+        - docs/CLI.md
+        - docs/CONFIG.md
+        - Inline code comments in src/scanner.py
+
+  - type: textarea
+    id: suggested-content
+    attributes:
+      label: Suggested Content
+      description: If you have ideas for what the documentation should include, please share them
+      placeholder: Describe what you think should be documented...
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

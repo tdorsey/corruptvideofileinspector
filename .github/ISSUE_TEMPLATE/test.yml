@@ -1,0 +1,172 @@
+name: 🧪 Testing Issue
+description: Report testing gaps or request new tests
+title: "[TEST]: "
+labels: ["test"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve test coverage! Please describe what testing needs to be added or improved.
+        
+        **After submitting this issue, please add a component label** based on your selection above:
+        - `component:cli` for CLI issues
+        - `component:scanner` for Scanner issues  
+        - `component:trakt` for Trakt Integration issues
+        - `component:config` for Config issues
+        - `component:reporter` for Reporter issues
+        - `component:output` for Output issues
+        - `component:docker` for Docker issues
+
+  - type: dropdown
+    id: stakeholder
+    attributes:
+      label: Stakeholder Type
+      description: What type of stakeholder are you?
+      options:
+        - Project Maintainer
+        - Contributor
+        - End User
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/Domain
+      description: Which component or domain needs testing improvements?
+      options:
+        - CLI
+        - Scanner
+        - Trakt Integration
+        - Config
+        - Reporter
+        - Output
+        - Docker
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-as
+    attributes:
+      label: "As a"
+      description: "Complete this sentence: As a..."
+      placeholder: "As a [stakeholder type], I..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-want
+    attributes:
+      label: "I want to"
+      description: "Describe what testing improvements you need"
+      placeholder: "I want to ensure that the code is properly tested for..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-but
+    attributes:
+      label: "But"
+      description: "Describe the current testing gaps or issues"
+      placeholder: "But currently there are no tests covering..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-helps
+    attributes:
+      label: "This helps by"
+      description: "Explain how better testing would help"
+      placeholder: "This helps by preventing bugs and ensuring..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-unlike
+    attributes:
+      label: "Unlike"
+      description: "Describe how this differs from current testing"
+      placeholder: "Unlike the current limited test coverage which..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: test-type
+    attributes:
+      label: Test Type Needed
+      description: What type of testing is needed?
+      options:
+        - Unit tests
+        - Integration tests
+        - End-to-end tests
+        - Performance tests
+        - Security tests
+        - API tests
+        - CLI tests
+        - Error handling tests
+        - Mock/fixture improvements
+        - Test infrastructure
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: specific-functionality
+    attributes:
+      label: Specific Functionality to Test
+      description: What specific functions, methods, or features need testing?
+      placeholder: |
+        Examples:
+        - Video scanning logic in src/core/scanner.py
+        - Error handling in CLI commands
+        - Configuration loading and validation
+        - Trakt API integration
+    validations:
+      required: true
+
+  - type: textarea
+    id: test-scenarios
+    attributes:
+      label: Test Scenarios
+      description: What scenarios or edge cases should be tested?
+      placeholder: |
+        Examples:
+        - Valid video files are correctly identified as healthy
+        - Corrupted files are properly detected
+        - Network errors are handled gracefully
+        - Invalid configuration triggers appropriate errors
+
+  - type: textarea
+    id: current-coverage
+    attributes:
+      label: Current Test Coverage
+      description: If known, describe what testing currently exists
+      placeholder: |
+        Examples:
+        - Basic unit tests exist for utils module
+        - No integration tests for scanner
+        - CLI commands are not tested
+
+  - type: textarea
+    id: suggested-approach
+    attributes:
+      label: Suggested Testing Approach
+      description: If you have ideas for how to implement the tests, please share
+      placeholder: |
+        Examples:
+        - Use pytest fixtures for test video files
+        - Mock FFmpeg calls to avoid dependencies
+        - Create test configuration files
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

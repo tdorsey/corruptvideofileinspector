@@ -1,0 +1,163 @@
+name: ⚡ Performance Issue
+description: Report performance problems or request optimizations
+title: "[PERF]: "
+labels: ["performance"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve performance! Please provide details about the performance issue or optimization request.
+        
+        **After submitting this issue, please add a component label** based on your selection above:
+        - `component:cli` for CLI issues
+        - `component:scanner` for Scanner issues  
+        - `component:trakt` for Trakt Integration issues
+        - `component:config` for Config issues
+        - `component:reporter` for Reporter issues
+        - `component:output` for Output issues
+        - `component:docker` for Docker issues
+
+  - type: dropdown
+    id: stakeholder
+    attributes:
+      label: Stakeholder Type
+      description: What type of stakeholder are you?
+      options:
+        - Project Maintainer
+        - Contributor
+        - End User
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/Domain
+      description: Which component or domain has performance issues?
+      options:
+        - CLI
+        - Scanner
+        - Trakt Integration
+        - Config
+        - Reporter
+        - Output
+        - Docker
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-as
+    attributes:
+      label: "As a"
+      description: "Complete this sentence: As a..."
+      placeholder: "As a [stakeholder type], I..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-want
+    attributes:
+      label: "I want to"
+      description: "Describe the performance improvement you need"
+      placeholder: "I want the application to run faster when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-but
+    attributes:
+      label: "But"
+      description: "Describe the current performance problem"
+      placeholder: "But currently it takes too long to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-helps
+    attributes:
+      label: "This helps by"
+      description: "Explain how better performance would help"
+      placeholder: "This helps by reducing wait time and..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-unlike
+    attributes:
+      label: "Unlike"
+      description: "Describe how this differs from current performance"
+      placeholder: "Unlike the current slow processing which..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: performance-type
+    attributes:
+      label: Performance Issue Type
+      description: What type of performance issue is this?
+      options:
+        - Slow execution/processing
+        - High memory usage
+        - High CPU usage
+        - Slow startup time
+        - Network latency
+        - File I/O bottleneck
+        - Database/API calls
+        - Algorithm inefficiency
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-performance
+    attributes:
+      label: Current Performance
+      description: Describe the current performance metrics or timings
+      placeholder: |
+        Examples:
+        - Scanning 100 files takes 15 minutes
+        - Memory usage reaches 2GB during processing
+        - Application startup takes 30 seconds
+        - API calls timeout frequently
+
+  - type: textarea
+    id: expected-performance
+    attributes:
+      label: Expected Performance
+      description: What performance would you expect or need?
+      placeholder: |
+        Examples:
+        - Should scan 100 files in under 5 minutes
+        - Memory usage should stay under 500MB
+        - Startup should take less than 5 seconds
+
+  - type: textarea
+    id: test-environment
+    attributes:
+      label: Test Environment
+      description: Describe your testing environment and conditions
+      placeholder: |
+        - Hardware: [e.g., 4 CPU cores, 8GB RAM]
+        - OS: [e.g., Ubuntu 22.04]
+        - File count/size: [e.g., 1000 video files, 500MB each]
+        - Other relevant conditions
+
+  - type: textarea
+    id: profiling-data
+    attributes:
+      label: Profiling Data (Optional)
+      description: If you have any profiling data or performance measurements, please share
+      render: text
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

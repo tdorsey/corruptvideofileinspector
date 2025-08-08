@@ -1,0 +1,154 @@
+name: ♻️ Refactor Request
+description: Request code refactoring for better structure or maintainability
+title: "[REFACTOR]: "
+labels: ["refactor"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the codebase! Please describe the refactoring you'd like to see.
+        
+        **After submitting this issue, please add a component label** based on your selection above:
+        - `component:cli` for CLI issues
+        - `component:scanner` for Scanner issues  
+        - `component:trakt` for Trakt Integration issues
+        - `component:config` for Config issues
+        - `component:reporter` for Reporter issues
+        - `component:output` for Output issues
+        - `component:docker` for Docker issues
+
+  - type: dropdown
+    id: stakeholder
+    attributes:
+      label: Stakeholder Type
+      description: What type of stakeholder are you?
+      options:
+        - Project Maintainer
+        - Contributor
+        - End User
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/Domain
+      description: Which component or domain needs refactoring?
+      options:
+        - CLI
+        - Scanner
+        - Trakt Integration
+        - Config
+        - Reporter
+        - Output
+        - Docker
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-as
+    attributes:
+      label: "As a"
+      description: "Complete this sentence: As a..."
+      placeholder: "As a [stakeholder type], I..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-want
+    attributes:
+      label: "I want to"
+      description: "Describe the refactoring goal"
+      placeholder: "I want to improve the code structure by..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-but
+    attributes:
+      label: "But"
+      description: "Describe the current code issues or limitations"
+      placeholder: "But currently the code is difficult to maintain because..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-helps
+    attributes:
+      label: "This helps by"
+      description: "Explain how this refactoring would help"
+      placeholder: "This helps by making the code more maintainable and..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-unlike
+    attributes:
+      label: "Unlike"
+      description: "Describe how this differs from the current structure"
+      placeholder: "Unlike the current tightly coupled code which..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: refactor-type
+    attributes:
+      label: Refactoring Type
+      description: What type of refactoring is needed?
+      options:
+        - Extract method/function
+        - Extract class
+        - Move method/class
+        - Rename for clarity
+        - Reduce code duplication
+        - Simplify complex logic
+        - Improve error handling
+        - Reorganize modules
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected-code
+    attributes:
+      label: Affected Code/Files
+      description: Which files or code sections need refactoring?
+      placeholder: |
+        Examples:
+        - src/core/scanner.py (method scan_video)
+        - src/cli/handlers.py (entire file)
+        - Duplicate logic in src/core/ and src/utils/
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-issues
+    attributes:
+      label: Current Issues
+      description: What specific problems exist with the current code?
+      placeholder: |
+        Examples:
+        - Methods are too long (>50 lines)
+        - Code duplication between multiple files
+        - Hard to test due to tight coupling
+        - Unclear responsibilities
+
+  - type: textarea
+    id: proposed-structure
+    attributes:
+      label: Proposed Structure
+      description: Describe your proposed refactoring approach
+      placeholder: Describe how you think the code should be restructured...
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
