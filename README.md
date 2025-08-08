@@ -67,6 +67,28 @@ corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
 
 **For detailed usage instructions, see [CLI Module Documentation](docs/CLI.md)**
 
+## ⚠️ API Changes & Migration
+
+### get_all_video_object_files() Breaking Change (v0.6.0)
+
+If you're programmatically using the `get_all_video_object_files()` function, note this breaking change:
+
+- **Before**: Returns `list[Path]`
+- **After**: Returns `list[VideoFile]` (provides richer metadata)
+- **Migration**: Use `.path` property to access file paths, or temporarily use `as_paths=True` (deprecated)
+
+```python
+# New API (recommended)
+video_files = get_all_video_object_files("/path/to/videos")
+for video in video_files:
+    print(f"Path: {video.path}, Size: {video.size}")
+
+# Temporary compatibility (deprecated)
+video_paths = get_all_video_object_files("/path/to/videos", as_paths=True)
+```
+
+See [CHANGELOG.md](CHANGELOG.md) and [CLI Documentation](docs/CLI.md) for full migration details.
+
 ## 📖 Documentation Overview
 
 This project uses a modular documentation structure. Each major component has its own detailed documentation:
