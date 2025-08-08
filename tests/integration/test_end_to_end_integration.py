@@ -13,7 +13,9 @@ import pytest
 
 from src.cli.handlers import get_all_video_object_files
 from src.core.models.inspection import VideoFile
-from src.utils import count_all_video_files, format_file_size, get_video_extensions
+from src.core.video_files import count_all_video_files
+from src.core.formatting import format_file_size
+from src.config.video_formats import get_video_extensions
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 

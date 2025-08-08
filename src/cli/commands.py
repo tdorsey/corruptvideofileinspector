@@ -12,7 +12,7 @@ from pathlib import Path
 import click
 
 from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
-from src.cli.utils import setup_logging
+from src.cli.logging import setup_logging
 from src.config import load_config
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import FileStatus, ScanMode, ScanResult, ScanSummary
