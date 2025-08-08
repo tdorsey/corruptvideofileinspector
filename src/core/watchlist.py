@@ -6,6 +6,8 @@ by processing video inspection JSON files and using filename parsing.
 
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import re
@@ -72,7 +74,7 @@ class TraktAPI:
             limit: Maximum number of results to return
 
         Returns:
-            List[TraktItem]: List of matching movie results,
+            list[TraktItem]: List of matching movie results,
             empty if none found
 
         """
@@ -101,7 +103,7 @@ class TraktAPI:
             limit: Maximum number of results to return
 
         Returns:
-            List[TraktItem]: List of matching show results, empty if none found
+            list[TraktItem]: List of matching show results, empty if none found
         """
         logger.info(f"Searching for TV show: {title} ({year})")
 
@@ -205,12 +207,12 @@ class TraktAPI:
             logger.exception("Error adding show to watchlist")
             return False
 
-    def list_watchlists(self) -> List[WatchlistInfo]:
+    def list_watchlists(self) -> list[WatchlistInfo]:
         """
         Get all custom lists/watchlists for the authenticated user
 
         Returns:
-            List[WatchlistInfo]: List of user's watchlists
+            list[WatchlistInfo]: List of user's watchlists
         """
         logger.info("Fetching user's watchlists")
 
@@ -245,7 +247,7 @@ class TraktAPI:
             logger.exception("Error fetching watchlists")
             return []
 
-    def get_watchlist_items(self, watchlist_slug: Optional[str] = None) -> List[WatchlistItem]:
+    def get_watchlist_items(self, watchlist_slug: str | None = None) -> list[WatchlistItem]:
         """
         Get items from a specific watchlist
 
@@ -254,7 +256,7 @@ class TraktAPI:
                           If None or "watchlist", fetches from main watchlist.
 
         Returns:
-            List[WatchlistItem]: List of items in the watchlist
+            list[WatchlistItem]: List of items in the watchlist
         """
         if not watchlist_slug or watchlist_slug == "watchlist":
             endpoint = "sync/watchlist"
@@ -375,7 +377,7 @@ class TraktAPI:
     @staticmethod
     def interactive_select_item(
         items: list["TraktItem"], media_item: "MediaItem"
-    ) -> Optional["TraktItem"]:
+    ) -> "TraktItem" | None:
         """
         Interactively select the correct item from search results
 
@@ -546,7 +548,7 @@ def process_scan_file(
         include_statuses: List of FileStatus values to include (default: all statuses)
 
     Returns:
-        List[MediaItem]: List of parsed media items from filtered files
+        list[MediaItem]: List of parsed media items from filtered files
 
     Raises:
         FileNotFoundError: If scan file doesn't exist
@@ -611,7 +613,7 @@ def process_scan_file(
 
 
 def _add_item_to_watchlist_or_list(
-    api: "TraktAPI", trakt_item: "TraktItem", media_type: str, watchlist: Optional[str]
+    api: "TraktAPI", trakt_item: "TraktItem", media_type: str, watchlist: str | None
 ) -> bool:
     """
     Helper function to add a Trakt item to either the main watchlist or a custom list.

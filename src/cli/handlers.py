@@ -659,4 +659,7 @@ def list_video_files(
     except Exception:
         logger.exception("Error listing video files")
         sys.exit(1)
->>>>>>> origin/main
+
+
+# Typer app for CLI entry point
+app = typer.Typer()
