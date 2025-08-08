@@ -16,7 +16,7 @@ def format_file_size(size_bytes: int) -> str:
         size_bytes: File size in bytes
 
     Returns:
-        str: Formatted size string (e.g., "1.5 MB")
+        str: Formatted size string (e.g., "1.5 MB", "500 B")
     """
     logger.debug(f"Formatting file size: {size_bytes} bytes")
 
@@ -24,8 +24,11 @@ def format_file_size(size_bytes: int) -> str:
 
     for unit in ["B", "KB", "MB", "GB"]:
         if size_float < 1024:
-            # Always show one decimal place for all units
-            formatted = f"{size_float:.1f} {unit}"
+            # For bytes, show as integer; for larger units, show one decimal place
+            if unit == "B":
+                formatted = f"{int(size_float)} {unit}"
+            else:
+                formatted = f"{size_float:.1f} {unit}"
             logger.debug(f"Formatted size: {formatted}")
             return formatted
         size_float /= 1024

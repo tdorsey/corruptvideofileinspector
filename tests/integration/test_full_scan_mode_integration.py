@@ -67,4 +67,4 @@ def test_video_scanner_full_scan(tmp_path):
     scanner = VideoScanner(config)
     results = scanner.scan([str(test_file)], mode=ScanMode.FULL)
     assert isinstance(results, list)
-    assert any(hasattr(r, "corrupt") for r in results)
+    assert any(hasattr(r, "is_corrupt") for r in results)
