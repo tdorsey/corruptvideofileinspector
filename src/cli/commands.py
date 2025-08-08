@@ -768,41 +768,68 @@ def report(
 @cli.command()
 @global_options
 @click.option("--all-configs", is_flag=True, help="Show all configuration sources and values")
+@click.option("--debug", is_flag=True, help="Enable debug logging to see configuration overrides")
 @click.pass_context
-def show_config(ctx, all_configs, config):
-    # If no arguments are provided, show the help for the show-config subcommand
-    if ctx.args == []:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
+def show_config(ctx, all_configs, debug, config):
     """
     Show current configuration settings.
 
     Displays the effective configuration after loading from all sources
     (defaults, files, environment variables, etc.).
+    
+    Use --debug to see detailed information about configuration overrides
+    from environment variables and Docker secrets.
     """
     try:
-        # Load configuration
-        app_config = load_config(config_path=config)
+        # Enable debug logging if requested
+        if debug:
+            logging.getLogger("src.config.merge").setLevel(logging.DEBUG)
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+            logging.getLogger("src.config.merge").addHandler(handler)
+            click.echo("Configuration Override Debug Log:")
+            click.echo("-" * 50)
+
+        # Load configuration with debug option
+        app_config = load_config(config_path=config, debug=debug)
+
+        if debug:
+            click.echo("-" * 50)
+            click.echo()
 
         if all_configs:
             # Show detailed configuration
             config_dict = app_config.model_dump()
-            click.echo(json.dumps(config_dict, indent=2))
+            # Mask sensitive information in output
+            if "trakt" in config_dict and "client_secret" in config_dict["trakt"]:
+                if config_dict["trakt"]["client_secret"]:
+                    config_dict["trakt"]["client_secret"] = "***MASKED***"
+            click.echo(json.dumps(config_dict, indent=2, default=str))
         else:
             # Show key settings
-            click.echo("Current Configuration")
+            click.echo("Effective Configuration")
             click.echo("=" * 30)
             click.echo(f"Log Level: {app_config.logging.level}")
-            click.echo(f"Max Workers: {app_config.scan.max_workers}")
+            click.echo(f"Max Workers: {app_config.processing.max_workers}")
             click.echo(f"Default Scan Mode: {app_config.scan.mode}")
             click.echo(f"FFmpeg Command: {app_config.ffmpeg.command or 'auto-detect'}")
             click.echo(f"Quick Timeout: {app_config.ffmpeg.quick_timeout}s")
             click.echo(f"Deep Timeout: {app_config.ffmpeg.deep_timeout}s")
+            click.echo(f"Recursive Scan: {app_config.scan.recursive}")
+            click.echo(f"Extensions: {', '.join(app_config.scan.extensions)}")
 
             if app_config.trakt.client_id:
                 click.echo(f"Trakt Client ID: {app_config.trakt.client_id[:8]}...")
+                click.echo(f"Trakt Client Secret: {'***SET***' if app_config.trakt.client_secret else 'Not set'}")
+                if app_config.trakt.default_watchlist:
+                    click.echo(f"Trakt Default Watchlist: {app_config.trakt.default_watchlist}")
+                click.echo(f"Trakt Include Statuses: {[status.value for status in app_config.trakt.include_statuses]}")
             else:
-                click.echo("Trakt Client ID: Not configured")
+                click.echo("Trakt: Not configured")
+
+            click.echo(f"Output Directory: {app_config.output.default_output_dir}")
+            if hasattr(app_config.scan, 'default_input_dir'):
+                click.echo(f"Input Directory: {app_config.scan.default_input_dir}")
 
     except Exception as e:
         logger.exception("Show config command failed")

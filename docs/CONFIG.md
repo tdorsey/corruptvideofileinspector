@@ -1,16 +1,132 @@
 # Configuration Guide
 
-The Corrupt Video Inspector supports flexible configuration through YAML files, environment variables, and Docker secrets with proper precedence handling.
+The Corrupt Video Inspector supports flexible configuration through YAML files, environment variables, and Docker secrets with explicit precedence handling.
 
 ## Configuration Precedence
 
 Settings are applied in this order (highest to lowest precedence):
 
-1. **Environment Variables** - Override everything
-2. **Command Line Flags** - Override config file and defaults  
-3. **Docker Secrets** - Override config file and defaults
-4. **Configuration File** - Override built-in defaults
-5. **Built-in Defaults** - Base configuration
+1. **Environment Variables (CVI_*, TRKT_*)** - Override everything
+2. **Docker Secrets** - Override config file and defaults  
+3. **Configuration File** - Override built-in defaults
+4. **Built-in Defaults** - Base configuration
+
+**Important**: Environment variables override Docker secrets for the same setting. Use `--debug` flag with the `show-config` command to see exactly which values are being overridden and from which source.
+
+## Environment Variables
+
+All configuration options can be overridden using environment variables with the `CVI_` prefix for general settings and `TRKT_` prefix for Trakt-specific settings:
+
+### Comprehensive Environment Variable Support
+
+#### Logging Configuration
+- `CVI_LOG_LEVEL` - Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `CVI_LOG_FORMAT` - Log message format
+- `CVI_LOG_DATE_FORMAT` - Date format for log messages  
+- `CVI_LOG_FILE` - Log file path
+
+#### FFmpeg Configuration
+- `CVI_FFMPEG_COMMAND` - FFmpeg command path
+- `CVI_FFMPEG_QUICK_TIMEOUT` - Quick scan timeout in seconds
+- `CVI_FFMPEG_DEEP_TIMEOUT` - Deep scan timeout in seconds
+
+#### Processing Configuration
+- `CVI_MAX_WORKERS` - Number of worker threads
+- `CVI_DEFAULT_MODE` - Default scan mode (quick, deep, hybrid)
+
+#### Output Configuration
+- `CVI_DEFAULT_JSON` - Generate JSON output by default (true/false)
+- `CVI_OUTPUT_DIR` - Default output directory
+- `CVI_OUTPUT_FILENAME` - Default output filename
+
+#### Scanning Configuration
+- `CVI_RECURSIVE` - Scan recursively (true/false)
+- `CVI_VIDEO_DIR` - Default input directory to scan
+- `CVI_SCAN_MODE` - Scan mode (quick, deep, hybrid)
+- `CVI_EXTENSIONS` - Comma-separated list of extensions (.mp4,.mkv,.avi)
+
+#### Trakt Configuration
+- `TRKT_CLIENT_ID` - Trakt.tv API client ID
+- `TRKT_CLIENT_SECRET` - Trakt.tv API client secret
+- `TRKT_DEFAULT_WATCHLIST` - Default watchlist name or slug
+- `TRKT_INCLUDE_STATUSES` - Comma-separated list of file statuses (healthy,corrupt,suspicious)
+
+#### Special Configuration
+- `CVI_SECRETS_DIR` - Docker secrets directory path (default: /run/secrets)
+
+### Type Conversion
+
+Environment variables are automatically converted to appropriate types:
+- **Booleans**: `true`, `1`, `yes`, `on` become True; everything else becomes False
+- **Integers**: Converted for timeout and worker count settings
+- **Paths**: Converted to Path objects for directory and file settings
+- **Lists**: Comma-separated values split into lists
+- **Enums**: Converted to appropriate ScanMode and FileStatus enums
+
+### Examples
+
+```bash
+# Set logging to debug and increase workers
+export CVI_LOG_LEVEL=DEBUG
+export CVI_MAX_WORKERS=16
+
+# Configure input and output directories
+export CVI_VIDEO_DIR=/path/to/videos
+export CVI_OUTPUT_DIR=/path/to/results
+
+# Configure Trakt integration
+export TRKT_CLIENT_ID=your_client_id
+export TRKT_CLIENT_SECRET=your_client_secret
+export TRKT_INCLUDE_STATUSES=healthy,suspicious
+
+# Set scan configuration
+export CVI_SCAN_MODE=deep
+export CVI_EXTENSIONS=mp4,mkv,avi
+
+# Run with environment overrides
+corrupt-video-inspector scan /videos --debug
+
+# One-time environment override
+CVI_LOG_LEVEL=ERROR CVI_MAX_WORKERS=2 corrupt-video-inspector scan /videos
+```
+
+## Docker Secrets
+
+For secure deployment, sensitive configuration can be provided via Docker secrets. **Environment variables override Docker secrets** for the same setting.
+
+### Supported Secrets
+
+- `trakt_client_id` - Trakt.tv API client ID
+- `trakt_client_secret` - Trakt.tv API client secret
+
+### Docker Compose Setup
+
+```yaml
+services:
+  video:
+    # ... other config
+    secrets:
+      - trakt_client_id
+      - trakt_client_secret
+      
+secrets:
+  trakt_client_id:
+    file: ./secrets/trakt_client_id.txt
+  trakt_client_secret:
+    file: ./secrets/trakt_client_secret.txt
+```
+
+### Creating Secret Files
+
+```bash
+# Create secret files
+echo "your_client_id" > secrets/trakt_client_id.txt
+echo "your_client_secret" > secrets/trakt_client_secret.txt
+```
+
+### Credential Validation
+
+**Important**: Trakt credentials must be provided together - both `client_id` and `client_secret` must be present, or neither. Partial credentials will cause configuration loading to fail with a clear error message.
 
 ## Configuration File
 
@@ -334,6 +450,65 @@ python cli_handler.py --config config.autorun.yaml /custom/videos
 CVI_INPUT_DIR=/other/videos CVI_OUTPUT_DIR=/other/output python cli_handler.py --config config.autorun.yaml
 ```
 
+## Debugging Configuration
+
+### Show Effective Configuration
+
+Use the `show-config` command to inspect the current configuration:
+
+```bash
+# Show key configuration settings
+corrupt-video-inspector show-config
+
+# Show complete configuration in JSON format
+corrupt-video-inspector show-config --all-configs
+
+# Show configuration with debug logging to see overrides
+corrupt-video-inspector show-config --debug
+```
+
+The `--debug` flag will show exactly which configuration values are being overridden and from which source:
+
+```bash
+$ CVI_LOG_LEVEL=ERROR CVI_MAX_WORKERS=16 corrupt-video-inspector show-config --debug
+
+Configuration Override Debug Log:
+--------------------------------------------------
+DEBUG: Config override [environment]: logging.level = ERROR (was: WARNING)
+DEBUG: Config override [environment]: processing.max_workers = 16 (was: 8)
+--------------------------------------------------
+
+Effective Configuration
+==============================
+Log Level: ERROR
+Max Workers: 16
+...
+```
+
+### Configuration Loading Order
+
+The configuration merger applies settings in this exact order:
+
+1. **Base configuration** from YAML file
+2. **Docker secrets** (if available)
+3. **Environment variables** (override secrets)
+4. **Post-processing validation** (e.g., Trakt credential validation)
+
+### Testing Configuration
+
+Test different configurations without modifying files:
+
+```bash
+# Test with temporary environment variables
+CVI_LOG_LEVEL=DEBUG CVI_MAX_WORKERS=4 corrupt-video-inspector show-config
+
+# Test with custom config file
+corrupt-video-inspector show-config --config /path/to/test-config.yaml
+
+# Combine custom config with environment overrides
+CVI_MAX_WORKERS=16 corrupt-video-inspector show-config --config custom.yaml --debug
+```
+
 ## Troubleshooting
 
 ### Configuration Loading Issues
@@ -343,6 +518,36 @@ CVI_INPUT_DIR=/other/videos CVI_OUTPUT_DIR=/other/output python cli_handler.py -
 3. **Type conversion errors**: Check data types match expected values
 4. **Permission denied**: Ensure read access to config files
 
+### Partial Trakt Credentials
+
+If you see this error:
+```
+ValueError: Partial Trakt credentials detected: client_id provided but client_secret missing
+```
+
+**Solution**: Provide both credentials or neither:
+- Set both `TRKT_CLIENT_ID` and `TRKT_CLIENT_SECRET`
+- Or remove both to disable Trakt integration
+- Or provide both via Docker secrets
+
+### Environment Variable Issues
+
+**Problem**: Environment variable not taking effect
+**Solution**: 
+1. Use `show-config --debug` to verify the variable is being read
+2. Check variable name spelling and prefix (`CVI_` or `TRKT_`)
+3. Ensure proper type conversion (use lowercase for booleans and enums)
+
+**Problem**: List environment variables not working
+**Solution**: Use comma-separated values without spaces:
+```bash
+# Correct
+export CVI_EXTENSIONS=mp4,mkv,avi
+
+# Incorrect  
+export CVI_EXTENSIONS="mp4, mkv, avi"  # spaces cause issues
+```
+
 ### Checking Current Configuration
 
 The application logs which configuration files were loaded:
@@ -351,10 +556,23 @@ The application logs which configuration files were loaded:
 INFO - Configuration loaded from: ['/app/config.yaml']
 ```
 
-### Validation
-
-Use the `--verbose` flag to see detailed configuration loading:
+Use the `--debug` flag to see detailed configuration loading:
 
 ```bash
-python cli_handler.py --verbose --config my-config.yaml /videos
+corrupt-video-inspector show-config --debug
 ```
+
+## Migration from Previous Versions
+
+### Removed Features
+
+As of this version, the following legacy features have been **permanently removed**:
+
+- **Legacy path-list return style**: The `as_paths` flag and similar backward compatibility shims are no longer supported
+- **Implicit configuration precedence**: All configuration precedence is now explicit and documented
+
+### Breaking Changes
+
+- **Trakt credential validation**: Partial credentials now cause startup failure instead of silent ignore
+- **Environment variable precedence**: Environment variables now consistently override Docker secrets
+- **Configuration validation**: Invalid configuration values now cause explicit errors instead of being silently ignored

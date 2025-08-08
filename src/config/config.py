@@ -5,7 +5,7 @@ import toml
 import yaml
 from pydantic import BaseModel, Field
 
-from src.config.secrets import read_docker_secret
+from src.config.merge import load_configuration_with_merge
 from src.core.models.scanning import FileStatus, ScanMode
 
 
@@ -68,18 +68,31 @@ class AppConfig(BaseModel):
 _CONFIG_SINGLETON: AppConfig | None = None
 
 
-def load_config(config_path: Path | None = None) -> AppConfig:
+def load_config(config_path: Path | None = None, debug: bool = False) -> AppConfig:
     """
-    Load configuration from a YAML file with Pydantic schema validation.
+    Load configuration from a YAML file with centralized merge pipeline.
     Loads once and caches the result as a singleton.
+    
+    Configuration precedence (highest to lowest):
+    1. Environment variables (CVI_*, TRKT_*)
+    2. Docker secrets files  
+    3. Configuration file (YAML)
+    4. Model defaults (Pydantic)
+    
     Args:
         config_path: Optional path to the configuration file.
                      If None, the default config.yaml will be used.
+        debug: Enable debug logging for configuration overrides
+                     
     Returns:
         AppConfig: Loaded configuration object with validation
+        
+    Raises:
+        FileNotFoundError: If no configuration file can be found
+        ValueError: For invalid configuration (e.g., partial Trakt credentials)
     """
     global _CONFIG_SINGLETON
-    if config_path is None and _CONFIG_SINGLETON is not None:
+    if config_path is None and _CONFIG_SINGLETON is not None and not debug:
         return _CONFIG_SINGLETON
 
     if config_path is not None:
@@ -119,23 +132,16 @@ def load_config(config_path: Path | None = None) -> AppConfig:
 
     # Load YAML configuration file
     with config_path.open("r", encoding="utf-8") as f:
-        config_data = yaml.safe_load(f)
+        file_config = yaml.safe_load(f)
 
-    # If a Docker secret exists for trakt_client_secret, override config value
-    docker_secret = read_docker_secret("trakt_client_secret")
-    if docker_secret is not None and "trakt" in config_data:
-        config_data["trakt"]["client_secret"] = docker_secret
-
-    # Environment overrides for directories
-    # Allow CVI_OUTPUT_DIR to override output.default_output_dir
-    env_output = os.environ.get("CVI_OUTPUT_DIR")
-    if env_output:
-        config_data.setdefault("output", {})["default_output_dir"] = env_output
-    # Allow CVI_VIDEO_DIR to override scan.default_input_dir
-    env_video = os.environ.get("CVI_VIDEO_DIR")
-    if env_video:
-        config_data.setdefault("scan", {})["default_input_dir"] = env_video
+    # Use centralized merge pipeline
+    secrets_dir = os.environ.get("CVI_SECRETS_DIR", "/run/secrets")
+    merged_config = load_configuration_with_merge(
+        file_config=file_config,
+        secrets_dir=secrets_dir,
+        debug=debug
+    )
 
     # Validate and create config object using Pydantic
-    _CONFIG_SINGLETON = AppConfig.model_validate(config_data)
+    _CONFIG_SINGLETON = AppConfig.model_validate(merged_config)
     return _CONFIG_SINGLETON
