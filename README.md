@@ -62,7 +62,7 @@ corrupt-video-inspector scan /path/to/videos
 corrupt-video-inspector scan --mode quick --output results.json /path/to/videos
 
 # Sync scan results to Trakt.tv
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
+corrupt-video-inspector trakt sync results.json
 ```
 
 **For detailed usage instructions, see [CLI Module Documentation](docs/CLI.md)**
@@ -152,9 +152,9 @@ docker-compose --profile trakt up scan trakt
 The Docker setup includes dedicated containers for Trakt.tv watchlist synchronization:
 
 ```bash
-# Set required environment variables
-export TRAKT_ACCESS_TOKEN="your_oauth_token"
+# Set required environment variables for Trakt credentials
 export TRAKT_CLIENT_ID="your_client_id"
+export TRAKT_CLIENT_SECRET="your_client_secret"
 export CVI_VIDEO_DIR="/path/to/videos"
 export CVI_OUTPUT_DIR="/path/to/output"
 

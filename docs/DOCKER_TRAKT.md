@@ -15,6 +15,7 @@ Create a `.env` file in the `docker/` directory (copy from `.env.example`):
 ```bash
 # Required for Trakt functionality
 TRAKT_CLIENT_ID=your_api_client_id
+TRAKT_CLIENT_SECRET=your_api_client_secret
 
 # Required for volume mounts
 CVI_VIDEO_DIR=/path/to/your/videos
@@ -66,8 +67,6 @@ trakt:
     - trakt
     - sync
     - /app/output/scan_results.json
-    - --token
-    - ${TRAKT_ACCESS_TOKEN}
   depends_on:
     - scan
   profiles:
@@ -77,7 +76,7 @@ trakt:
 **Features:**
 - Extends the main scan container
 - Automatically syncs results after scan completes
-- Uses environment variables for authentication
+- Uses configuration-based authentication (Docker secrets or environment variables)
 - Only runs when `trakt` profile is enabled
 
 ### Development Container (`trakt-dev`)
@@ -90,8 +89,6 @@ trakt-dev:
     - trakt
     - sync
     - /app/output/scan_results.json
-    - --token
-    - ${TRAKT_ACCESS_TOKEN}
     - --interactive
   profiles:
     - trakt
@@ -101,6 +98,7 @@ trakt-dev:
 - Includes `--interactive` flag for manual selection
 - Hot-reloaded source code from volumes
 - Better for development and testing
+- Uses configuration-based authentication
 
 ## Workflow Examples
 
@@ -109,6 +107,7 @@ trakt-dev:
 ```bash
 # 1. Set environment variables
 export TRAKT_CLIENT_ID="your_client_id"
+export TRAKT_CLIENT_SECRET="your_client_secret"
 export CVI_VIDEO_DIR="/path/to/videos"
 export CVI_OUTPUT_DIR="/path/to/output"
 export CVI_LOG_DIR="/path/to/logs"
@@ -141,7 +140,8 @@ docker-compose -f docker-compose.dev.yml --profile trakt up app trakt-dev
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `TRAKT_CLIENT_ID` | No | API client ID (can be set in config or secrets) |
+| `TRAKT_CLIENT_ID` | Yes | API client ID from Trakt application |
+| `TRAKT_CLIENT_SECRET` | Yes | API client secret from Trakt application |
 | `CVI_VIDEO_DIR` | Yes | Path to video directory for scanning |
 | `CVI_OUTPUT_DIR` | Yes | Path for output files |
 | `CVI_LOG_DIR` | Yes | Path for log files |
@@ -157,17 +157,18 @@ The Trakt container supports all standard `trakt sync` options:
 
 ## Security
 
-- Never commit your access token to version control
+- Never commit your client secret to version control
 - Use environment variables or Docker secrets for sensitive data
-- Regularly rotate your API tokens
+- Regularly rotate your API credentials
 - The `.env` file is in `.gitignore` by default
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"TRAKT_CLIENT_ID environment variable not set"**
-   - Ensure you've set the client ID in your `.env` file or Docker secrets
+1. **"Trakt credentials not configured"**
+   - Ensure you've set both TRAKT_CLIENT_ID and TRAKT_CLIENT_SECRET environment variables
+   - Check that Docker secrets files exist and contain valid credentials
 
 2. **"No scan results found"**
    - Make sure the scan container has completed successfully
@@ -186,8 +187,6 @@ command:
   - trakt
   - sync
   - /app/output/scan_results.json
-  - --token
-  - ${TRAKT_ACCESS_TOKEN}
   - --verbose
 ```
 
