@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from src.config import load_config
 from src.config.config import AppConfig
+from src.core.credential_validator import handle_credential_error, validate_trakt_access_token, validate_trakt_secrets
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import FileStatus, ScanMode, ScanProgress, ScanResult, ScanSummary
 from src.core.reporter import ReportService
@@ -373,6 +374,11 @@ class TraktHandler(BaseHandler):
             watchlist: Optional watchlist name/slug to sync to
             include_statuses: Optional list of file statuses to include
         """
+        # Validate Trakt credentials early
+        validation_result = validate_trakt_secrets()
+        if not validation_result.is_valid:
+            handle_credential_error(validation_result)
+        
         try:
             logger.info(f"Syncing scan results from {scan_file} to Trakt.tv watchlist.")
 
@@ -458,6 +464,16 @@ class TraktHandler(BaseHandler):
         Returns:
             List of watchlist information or None if failed
         """
+        # Validate access token early
+        validation_result = validate_trakt_access_token(access_token)
+        if not validation_result.is_valid:
+            handle_credential_error(validation_result)
+        
+        # Also validate client credentials from config
+        secrets_validation = validate_trakt_secrets()
+        if not secrets_validation.is_valid:
+            handle_credential_error(secrets_validation)
+        
         try:
             logger.info("Fetching user's watchlists from Trakt")
             api = TraktAPI(self.config)
@@ -479,6 +495,16 @@ class TraktHandler(BaseHandler):
         Returns:
             List of watchlist items or None if failed
         """
+        # Validate access token early
+        validation_result = validate_trakt_access_token(access_token)
+        if not validation_result.is_valid:
+            handle_credential_error(validation_result)
+        
+        # Also validate client credentials from config  
+        secrets_validation = validate_trakt_secrets()
+        if not secrets_validation.is_valid:
+            handle_credential_error(secrets_validation)
+        
         try:
             watchlist_name = watchlist or "Main Watchlist"
             logger.info(f"Fetching items from watchlist: {watchlist_name}")
