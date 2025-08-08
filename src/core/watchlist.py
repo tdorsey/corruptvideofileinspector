@@ -6,17 +6,26 @@ by processing video inspection JSON files and using filename parsing.
 
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import re
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 import trakt  # type: ignore[import-untyped]
 
 from src.config import AppConfig
 from src.core.models.scanning import FileStatus
-from src.core.models.watchlist import MediaItem, SyncResultItem, TraktItem, TraktSyncSummary
+from src.core.models.watchlist import (
+    MediaItem,
+    SyncResultItem,
+    TraktItem,
+    TraktSyncSummary,
+    WatchlistInfo,
+    WatchlistItem,
+)
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -65,7 +74,7 @@ class TraktAPI:
             limit: Maximum number of results to return
 
         Returns:
-            List[TraktItem]: List of matching movie results,
+            list[TraktItem]: List of matching movie results,
             empty if none found
 
         """
@@ -94,7 +103,7 @@ class TraktAPI:
             limit: Maximum number of results to return
 
         Returns:
-            List[TraktItem]: List of matching show results, empty if none found
+            list[TraktItem]: List of matching show results, empty if none found
         """
         logger.info(f"Searching for TV show: {title} ({year})")
 
@@ -198,10 +207,177 @@ class TraktAPI:
             logger.exception("Error adding show to watchlist")
             return False
 
+    def list_watchlists(self) -> list[WatchlistInfo]:
+        """
+        Get all custom lists/watchlists for the authenticated user
+
+        Returns:
+            list[WatchlistInfo]: List of user's watchlists
+        """
+        logger.info("Fetching user's watchlists")
+
+        try:
+            # Get user's custom lists
+            response = trakt["users/me/lists"].get()
+
+            watchlists = []
+            if response:
+                for list_data in response:
+                    try:
+                        watchlist = WatchlistInfo.from_trakt_response(list_data)
+                        watchlists.append(watchlist)
+                    except Exception as e:
+                        logger.warning(f"Failed to parse watchlist data: {e}")
+                        continue
+
+            # Add the main watchlist as a special case
+            main_watchlist = WatchlistInfo(
+                name="Main Watchlist",
+                slug="watchlist",
+                description="Your main Trakt watchlist",
+                privacy="private",
+                item_count=0,  # We don't know the count without another API call
+            )
+            watchlists.insert(0, main_watchlist)
+
+            logger.info(f"Found {len(watchlists)} watchlists")
+            return watchlists
+
+        except Exception:
+            logger.exception("Error fetching watchlists")
+            return []
+
+    def get_watchlist_items(self, watchlist_slug: str | None = None) -> list[WatchlistItem]:
+        """
+        Get items from a specific watchlist
+
+        Args:
+            watchlist_slug: Slug of the watchlist to fetch items from.
+                          If None or "watchlist", fetches from main watchlist.
+
+        Returns:
+            list[WatchlistItem]: List of items in the watchlist
+        """
+        if not watchlist_slug or watchlist_slug == "watchlist":
+            endpoint = "sync/watchlist"
+            logger.info("Fetching items from main watchlist")
+        else:
+            endpoint = f"users/me/lists/{watchlist_slug}/items"
+            logger.info(f"Fetching items from watchlist: {watchlist_slug}")
+
+        try:
+            response = trakt[endpoint].get()
+
+            items = []
+            if response:
+                for item_data in response:
+                    try:
+                        item = WatchlistItem.from_trakt_response(item_data)
+                        items.append(item)
+                    except Exception as e:
+                        logger.warning(f"Failed to parse watchlist item: {e}")
+                        continue
+
+            logger.info(f"Found {len(items)} items in watchlist")
+            return items
+
+        except Exception:
+            logger.exception(f"Error fetching items from watchlist: {watchlist_slug}")
+            return []
+
+    def add_movie_to_list(self, trakt_item: TraktItem, list_slug: str) -> bool:
+        """
+        Add a movie to a specific custom list
+
+        Args:
+            trakt_item: TraktItem representing the movie to add
+            list_slug: Slug of the custom list to add to
+
+        Returns:
+            bool: True if successfully added, False otherwise
+        """
+        if trakt_item.media_type != "movie":
+            logger.error(f"Item is not a movie: {trakt_item.media_type}")
+            return False
+
+        logger.info(f"Adding movie to list '{list_slug}': {trakt_item.title}")
+
+        try:
+            response = trakt[f"users/me/lists/{list_slug}/items"].post(
+                data={
+                    "movies": [
+                        {
+                            "title": trakt_item.title,
+                            "year": trakt_item.year,
+                            "ids": {
+                                "trakt": trakt_item.trakt_id,
+                                "imdb": trakt_item.imdb_id,
+                                "tmdb": trakt_item.tmdb_id,
+                            },
+                        }
+                    ]
+                }
+            )
+
+            if response and response.get("added", {}).get("movies", 0) > 0:
+                logger.info(f"Successfully added movie to list '{list_slug}': {trakt_item.title}")
+                return True
+
+            logger.warning(f"Movie was not added to list '{list_slug}' (may already be there): {trakt_item.title}")
+            return True  # Consider this a success
+        except Exception:
+            logger.exception(f"Error adding movie to list '{list_slug}'")
+            return False
+
+    def add_show_to_list(self, trakt_item: TraktItem, list_slug: str) -> bool:
+        """
+        Add a TV show to a specific custom list
+
+        Args:
+            trakt_item: TraktItem representing the show to add
+            list_slug: Slug of the custom list to add to
+
+        Returns:
+            bool: True if successfully added, False otherwise
+        """
+        if trakt_item.media_type != "show":
+            logger.error(f"Item is not a show: {trakt_item.media_type}")
+            return False
+
+        logger.info(f"Adding show to list '{list_slug}': {trakt_item.title}")
+
+        try:
+            response = trakt[f"users/me/lists/{list_slug}/items"].post(
+                data={
+                    "shows": [
+                        {
+                            "title": trakt_item.title,
+                            "year": trakt_item.year,
+                            "ids": {
+                                "trakt": trakt_item.trakt_id,
+                                "imdb": trakt_item.imdb_id,
+                                "tmdb": trakt_item.tmdb_id,
+                                "tvdb": trakt_item.tvdb_id,
+                            },
+                        }
+                    ]
+                }
+            )
+
+            if response and response.get("added", {}).get("shows", 0) > 0:
+                logger.info(f"Successfully added show to list '{list_slug}': {trakt_item.title}")
+                return True
+
+            logger.warning(f"Show was not added to list '{list_slug}' (may already be there): {trakt_item.title}")
+            return True  # Consider this a success
+        except Exception:
+            logger.exception(f"Error adding show to list '{list_slug}'")
+            return False
+
     @staticmethod
     def interactive_select_item(
         items: list["TraktItem"], media_item: "MediaItem"
-    ) -> Optional["TraktItem"]:
+    ) -> "TraktItem" | None:
         """
         Interactively select the correct item from search results
 
@@ -372,7 +548,7 @@ def process_scan_file(
         include_statuses: List of FileStatus values to include (default: all statuses)
 
     Returns:
-        List[MediaItem]: List of parsed media items from filtered files
+        list[MediaItem]: List of parsed media items from filtered files
 
     Raises:
         FileNotFoundError: If scan file doesn't exist
@@ -436,11 +612,38 @@ def process_scan_file(
     return media_items
 
 
+def _add_item_to_watchlist_or_list(
+    api: "TraktAPI", trakt_item: "TraktItem", media_type: str, watchlist: str | None
+) -> bool:
+    """
+    Helper function to add a Trakt item to either the main watchlist or a custom list.
+
+    Args:
+        api: TraktAPI instance
+        trakt_item: The TraktItem to add
+        media_type: Type of media ("movie" or "show")
+        watchlist: Watchlist name/slug. If None or "watchlist", adds to main watchlist.
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    if not watchlist or watchlist == "watchlist":
+        # Add to main watchlist
+        if media_type == "movie":
+            return api.add_movie_to_watchlist(trakt_item)
+        return api.add_show_to_watchlist(trakt_item)
+    # Add to custom list
+    if media_type == "movie":
+        return api.add_movie_to_list(trakt_item, watchlist)
+    return api.add_show_to_list(trakt_item, watchlist)
+
+
 def sync_to_trakt_watchlist(
     scan_file: str,
     config: AppConfig,
     verbose: bool = False,
     interactive: bool = False,
+    watchlist: str | None = None,
     include_statuses: list[FileStatus] | None = None,
 ) -> TraktSyncSummary:
     """
@@ -451,6 +654,7 @@ def sync_to_trakt_watchlist(
         config: AppConfig instance with trakt credentials
         verbose: Enable verbose output
         interactive: Enable interactive selection of search results
+        watchlist: Optional watchlist name/slug. If None, uses main watchlist.
         include_statuses: List of FileStatus values to sync (default: from config)
 
     Returns:
@@ -461,6 +665,10 @@ def sync_to_trakt_watchlist(
     if verbose:
         print("Starting Trakt watchlist sync...")
         print(f"Processing scan file: {scan_file}")
+        if watchlist:
+            print(f"Target watchlist: {watchlist}")
+        else:
+            print("Target: Main watchlist")
 
     # Initialize API client
     try:
@@ -484,7 +692,14 @@ def sync_to_trakt_watchlist(
         logger.warning("No media items found to sync")
         if verbose:
             print("No media items found to sync")
-        return TraktSyncSummary(total=0, movies_added=0, shows_added=0, failed=0, results=[])
+        return TraktSyncSummary(
+            total=0,
+            movies_added=0,
+            shows_added=0,
+            failed=0,
+            watchlist=watchlist,
+            results=[]
+        )
 
     # Sync to watchlist
     summary = TraktSyncSummary(
@@ -492,6 +707,7 @@ def sync_to_trakt_watchlist(
         movies_added=0,
         shows_added=0,
         failed=0,
+        watchlist=watchlist,
         results=[],
     )
 
@@ -547,15 +763,13 @@ def sync_to_trakt_watchlist(
                         type=media_item.media_type,
                         status=("not_found" if not interactive else "skipped"),
                         filename=media_item.original_filename,
+                        watchlist=watchlist,
                     )
                 )
                 continue
 
-            # Add to watchlist
-            if media_item.media_type == "movie":
-                success = api.add_movie_to_watchlist(trakt_item)
-            else:
-                success = api.add_show_to_watchlist(trakt_item)
+            # Add to watchlist or custom list using helper
+            success = _add_item_to_watchlist_or_list(api, trakt_item, media_item.media_type, watchlist)
 
             if success:
                 if media_item.media_type == "movie":
@@ -574,6 +788,7 @@ def sync_to_trakt_watchlist(
                         status="added",
                         trakt_id=trakt_item.trakt_id,
                         filename=media_item.original_filename,
+                        watchlist=watchlist,
                     )
                 )
             else:
@@ -588,6 +803,7 @@ def sync_to_trakt_watchlist(
                         type=trakt_item.media_type,
                         status="failed",
                         filename=media_item.original_filename,
+                        watchlist=watchlist,
                     )
                 )
 
@@ -605,6 +821,7 @@ def sync_to_trakt_watchlist(
                     status="error",
                     error=str(e),
                     filename=media_item.original_filename,
+                    watchlist=watchlist,
                 )
             )
 

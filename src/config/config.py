@@ -37,8 +37,12 @@ class OutputConfig(BaseModel):
 class TraktConfig(BaseModel):
     client_id: str = Field(default="")
     client_secret: str = Field(default="")
+    default_watchlist: str | None = Field(
+        default=None,
+        description="Default watchlist name or slug for sync operations. If None, uses main watchlist."
+    )
     include_statuses: list[FileStatus] = Field(
-        default_factory=lambda: [FileStatus.CORRUPT, FileStatus.SUSPICIOUS]
+        default_factory=lambda: [FileStatus.HEALTHY]
     )
 
 

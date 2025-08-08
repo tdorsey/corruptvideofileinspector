@@ -362,6 +362,11 @@ def trakt(ctx):
 @click.option("--dry-run", is_flag=True, help="Show what would be synced without actually syncing")
 @click.option("--output", "-o", type=PathType(), help="Save sync results to file")
 @click.option(
+    "--watchlist",
+    "-w",
+    help="Watchlist name or slug to sync to (default: main watchlist)",
+)
+@click.option(
     "--include-status",
     multiple=True,
     type=click.Choice(["healthy", "corrupt", "suspicious"], case_sensitive=False),
@@ -378,13 +383,10 @@ def sync(
     interactive,
     dry_run,
     output,
+    watchlist,
     include_status,
     config,
 ):
-    # If no arguments are provided, show the help for the trakt sync subcommand
-    if ctx.args == [] and scan_file is None:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     Sync scan results to Trakt.tv watchlist.
 
@@ -394,8 +396,13 @@ def sync(
     Examples:
 
     \b
-    # Basic sync
+    # Basic sync to main watchlist
     corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
+
+    \b
+    # Sync to a specific watchlist
+    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN \\
+        --watchlist "my-custom-list"
 
     \b
     # Interactive sync with output
@@ -406,6 +413,10 @@ def sync(
     # Dry run to see what would be synced
     corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --dry-run
     """
+    # If no arguments are provided, show the help for the trakt sync subcommand
+    if ctx.args == [] and scan_file is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     try:
         # Load configuration
         app_config = load_config(config_path=config)
@@ -430,6 +441,7 @@ def sync(
             scan_file=scan_file,
             interactive=interactive,
             output_file=output,
+            watchlist=watchlist,
             include_statuses=include_statuses,
         )
 
@@ -444,6 +456,156 @@ def sync(
 
     except Exception as e:
         logger.exception("Trakt sync command failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@trakt.command()
+@click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
+@click.option("--output", "-o", type=PathType(), help="Save watchlist info to file")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["json", "table"], case_sensitive=False),
+    default="table",
+    help="Output format",
+    show_default=True,
+)
+@global_options
+def list_watchlists(token, output, output_format, config):
+    """
+    List all available watchlists for the authenticated user.
+
+    Shows all custom lists and the main watchlist that the user has access to.
+
+    Examples:
+
+    \b
+    # List watchlists in table format
+    corrupt-video-inspector trakt list-watchlists --token YOUR_TOKEN
+
+    \b
+    # List watchlists in JSON format
+    corrupt-video-inspector trakt list-watchlists --token YOUR_TOKEN --format json
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Create and run Trakt handler
+        handler = TraktHandler(app_config)
+        watchlists = handler.list_watchlists(access_token=token)
+
+        if not watchlists:
+            click.echo("No watchlists found or failed to fetch watchlists.")
+            return
+
+        if output_format == "json":
+            output_data = {"watchlists": watchlists}
+            click.echo(json.dumps(output_data, indent=2))
+        else:
+            # Table format
+            click.echo(f"\nFound {len(watchlists)} watchlists:\n")
+            click.echo(f"{'Name':<30} {'Slug':<20} {'Items':<8} {'Privacy':<10}")
+            click.echo("-" * 70)
+            for wl in watchlists:
+                name = wl.get("name", "Unknown")[:29]
+                slug = wl.get("slug", "")[:19]
+                items = wl.get("item_count", 0)
+                privacy = wl.get("privacy", "private")[:9]
+                click.echo(f"{name:<30} {slug:<20} {items:<8} {privacy:<10}")
+
+        if output:
+            with output.open("w", encoding="utf-8") as f:
+                json.dump({"watchlists": watchlists}, f, indent=2)
+            click.echo(f"\nWatchlist data saved to: {output}")
+
+    except Exception as e:
+        logger.exception("List watchlists command failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@trakt.command()
+@click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
+@click.option(
+    "--watchlist",
+    "-w",
+    help="Watchlist name or slug to view (leave empty for main watchlist)",
+)
+@click.option("--output", "-o", type=PathType(), help="Save watchlist contents to file")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["json", "table"], case_sensitive=False),
+    default="table",
+    help="Output format",
+    show_default=True,
+)
+@global_options
+def view(token, watchlist, output, output_format, config):
+    """
+    View items in a specific watchlist.
+
+    Shows all movies and TV shows in the specified watchlist.
+    If no watchlist is specified, shows items from the main watchlist.
+
+    Examples:
+
+    \b
+    # View main watchlist
+    corrupt-video-inspector trakt view --token YOUR_TOKEN
+
+    \b
+    # View a specific custom list
+    corrupt-video-inspector trakt view --token YOUR_TOKEN --watchlist "my-list"
+
+    \b
+    # View watchlist in JSON format
+    corrupt-video-inspector trakt view --token YOUR_TOKEN --format json
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Create and run Trakt handler
+        handler = TraktHandler(app_config)
+        items = handler.view_watchlist(access_token=token, watchlist=watchlist)
+
+        if not items:
+            watchlist_name = watchlist or "Main Watchlist"
+            click.echo(f"No items found in '{watchlist_name}' or failed to fetch items.")
+            return
+
+        watchlist_name = watchlist or "Main Watchlist"
+
+        if output_format == "json":
+            output_data = {"watchlist": watchlist_name, "items": items}
+            click.echo(json.dumps(output_data, indent=2))
+        else:
+            # Table format
+            click.echo(f"\nItems in '{watchlist_name}' ({len(items)} total):\n")
+            click.echo(f"{'#':<4} {'Title':<40} {'Year':<6} {'Type':<6}")
+            click.echo("-" * 58)
+            for item in items:
+                rank = item.get("rank", "")
+                rank_str = str(rank) if rank else ""
+
+                trakt_item = item.get("trakt_item", {})
+                title = trakt_item.get("title", "Unknown")[:39]
+                year = trakt_item.get("year", "")
+                year_str = str(year) if year else ""
+                media_type = trakt_item.get("media_type", "unknown")[:5]
+
+                click.echo(f"{rank_str:<4} {title:<40} {year_str:<6} {media_type:<6}")
+
+        if output:
+            with output.open("w", encoding="utf-8") as f:
+                json.dump({"watchlist": watchlist_name, "items": items}, f, indent=2)
+            click.echo(f"\nWatchlist contents saved to: {output}")
+
+    except Exception as e:
+        logger.exception("View watchlist command failed")
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 

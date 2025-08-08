@@ -20,7 +20,7 @@ from src.core.models.inspection import VideoFile
 from src.core.models.scanning import FileStatus, ScanMode, ScanProgress, ScanResult, ScanSummary
 from src.core.reporter import ReportService
 from src.core.scanner import VideoScanner
-from src.core.watchlist import sync_to_trakt_watchlist
+from src.core.watchlist import TraktAPI, sync_to_trakt_watchlist
 from src.output import OutputFormatter
 
 logger = logging.getLogger(__name__)
@@ -344,6 +344,7 @@ class TraktSyncResult(BaseModel):
     movies_added: int = Field(...)
     shows_added: int = Field(...)
     failed: int = Field(...)
+    watchlist: str | None = Field(default=None)
     results: list = Field(default_factory=list)
 
 
@@ -359,10 +360,18 @@ class TraktHandler(BaseHandler):
         scan_file: Path,
         interactive: bool = False,
         output_file: Path | None = None,
+        watchlist: str | None = None,
         include_statuses: list[FileStatus] | None = None,
     ) -> TraktSyncResult | None:
         """
         Sync scan results to Trakt.tv watchlist and return TraktSyncResult Pydantic model.
+
+        Args:
+            scan_file: Path to scan results JSON file
+            interactive: Enable interactive mode for ambiguous matches
+            output_file: Optional file to save sync results
+            watchlist: Optional watchlist name/slug to sync to
+            include_statuses: Optional list of file statuses to include
         """
         try:
             logger.info(f"Syncing scan results from {scan_file} to Trakt.tv watchlist.")
@@ -375,6 +384,7 @@ class TraktHandler(BaseHandler):
                 scan_file=str(scan_file),
                 config=self.config,
                 interactive=interactive,
+                watchlist=watchlist,
                 include_statuses=include_statuses,
             )
             # Convert TraktSyncSummary to TraktSyncResult
@@ -383,6 +393,7 @@ class TraktHandler(BaseHandler):
                 movies_added=getattr(result_summary, "movies_added", 0),
                 shows_added=getattr(result_summary, "shows_added", 0),
                 failed=getattr(result_summary, "failed", 0),
+                watchlist=getattr(result_summary, "watchlist", None),
                 results=getattr(result_summary, "results", []),
             )
             logger.info(
@@ -439,6 +450,51 @@ class TraktHandler(BaseHandler):
         except Exception as e:
             logger.warning(f"Failed to save sync results: {e}")
             click.echo(f"Warning: Could not save sync results: {e}", err=True)
+
+    def list_watchlists(self, access_token: str) -> list | None:
+        """
+        List all available watchlists for the authenticated user.
+
+        Args:
+            access_token: Trakt API access token
+
+        Returns:
+            List of watchlist information or None if failed
+        """
+        try:
+            logger.info("Fetching user's watchlists from Trakt")
+            api = TraktAPI(access_token)
+            watchlists = api.list_watchlists()
+
+            return [w.model_dump() for w in watchlists]
+
+        except Exception as e:
+            self._handle_error(e, "Failed to fetch watchlists")
+            return None
+
+    def view_watchlist(self, access_token: str, watchlist: str | None = None) -> list | None:
+        """
+        View items in a specific watchlist.
+
+        Args:
+            access_token: Trakt API access token
+            watchlist: Watchlist name/slug to view (None for main watchlist)
+
+        Returns:
+            List of watchlist items or None if failed
+        """
+        try:
+            watchlist_name = watchlist or "Main Watchlist"
+            logger.info(f"Fetching items from watchlist: {watchlist_name}")
+
+            api = TraktAPI(access_token)
+            items = api.get_watchlist_items(watchlist)
+
+            return [item.model_dump() for item in items]
+
+        except Exception as e:
+            self._handle_error(e, f"Failed to fetch watchlist items for '{watchlist}'")
+            return None
 
 
 class UtilityHandler(BaseHandler):
@@ -603,3 +659,7 @@ def list_video_files(
     except Exception:
         logger.exception("Error listing video files")
         sys.exit(1)
+
+
+# Typer app for CLI entry point
+app = typer.Typer()

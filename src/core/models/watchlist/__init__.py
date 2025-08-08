@@ -1,7 +1,11 @@
+import logging
 import re
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
+
+logger = logging.getLogger(__name__)
 
 
 class MediaItem(BaseModel):
@@ -93,6 +97,131 @@ class TraktItem(BaseModel):
         return f"{self.title} {year_str} [{self.media_type}]"
 
 
+class WatchlistInfo(BaseModel):
+    """Represents information about a Trakt watchlist/custom list"""
+
+    name: str
+    slug: str = Field(description="URL-safe slug for the list")
+    trakt_id: int | None = Field(default=None, ge=1)
+    description: str | None = None
+    privacy: str = Field(default="private", pattern=r"^(private|friends|public)$")
+    display_numbers: bool = Field(default=True)
+    allow_comments: bool = Field(default=True)
+    sort_by: str = Field(default="rank")
+    sort_how: str = Field(default="asc", pattern=r"^(asc|desc)$")
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    item_count: int = Field(default=0, ge=0)
+    comment_count: int = Field(default=0, ge=0)
+    like_count: int = Field(default=0, ge=0)
+
+    @field_validator("name")
+    def validate_name(cls, v: str) -> str:
+        """Ensure name is not empty."""
+        if not v or not v.strip():
+            raise ValueError("Watchlist name cannot be empty")
+        return v.strip()
+
+    @field_validator("slug")
+    def validate_slug(cls, v: str) -> str:
+        """Validate slug format."""
+        if not v or not v.strip():
+            raise ValueError("Watchlist slug cannot be empty")
+        # Basic slug validation - should be URL-safe
+        if not re.match(r"^[a-z0-9\-_]+$", v):
+            raise ValueError("Slug must contain only lowercase letters, numbers, hyphens, and underscores")
+        return v.strip()
+
+    @classmethod
+    def from_trakt_response(cls, data: dict[str, Any]) -> "WatchlistInfo":
+        """Create WatchlistInfo from Trakt API response"""
+        ids = data.get("ids", {})
+        created_at = None
+        updated_at = None
+
+        # Parse datetime strings if present
+        if data.get("created_at"):
+            try:
+                created_at = datetime.fromisoformat(data["created_at"].replace('Z', '+00:00'))
+            except ValueError as e:
+                logger.warning(f"Failed to parse created_at datetime: {data['created_at']!r} ({e})")
+
+        if data.get("updated_at"):
+            try:
+                updated_at = datetime.fromisoformat(data["updated_at"].replace('Z', '+00:00'))
+            except ValueError as e:
+                logger.warning(f"Failed to parse updated_at datetime: {data['updated_at']!r} ({e})")
+
+        return cls(
+            name=data.get("name", ""),
+            slug=data.get("slug", ""),
+            trakt_id=ids.get("trakt"),
+            description=data.get("description"),
+            privacy=data.get("privacy", "private"),
+            display_numbers=data.get("display_numbers", True),
+            allow_comments=data.get("allow_comments", True),
+            sort_by=data.get("sort_by", "rank"),
+            sort_how=data.get("sort_how", "asc"),
+            created_at=created_at,
+            updated_at=updated_at,
+            item_count=data.get("item_count", 0),
+            comment_count=data.get("comment_count", 0),
+            like_count=data.get("like_count", 0),
+        )
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.item_count} items)"
+
+
+class WatchlistItem(BaseModel):
+    """Represents an item in a Trakt watchlist"""
+
+    rank: int | None = Field(default=None, ge=1)
+    listed_at: datetime | None = None
+    notes: str | None = None
+    type: str = Field(pattern=r"^(movie|show)$")
+
+    # The actual media item (movie or show data)
+    trakt_item: TraktItem
+
+    @classmethod
+    def from_trakt_response(cls, data: dict[str, Any]) -> "WatchlistItem":
+        """Create WatchlistItem from Trakt API response"""
+        listed_at = None
+        if data.get("listed_at"):
+            try:
+                listed_at = datetime.fromisoformat(data["listed_at"].replace('Z', '+00:00'))
+            except ValueError as e:
+                logger.warning(
+                    "Failed to parse listed_at datetime from value '%s': %s",
+                    data["listed_at"], e
+                )
+
+        # Determine type and extract media data
+        if "movie" in data:
+            media_type = "movie"
+            media_data = data["movie"]
+            trakt_item = TraktItem.from_movie_response(media_data)
+        elif "show" in data:
+            media_type = "show"
+            media_data = data["show"]
+            trakt_item = TraktItem.from_show_response(media_data)
+        else:
+            raise ValueError("Response must contain either 'movie' or 'show' data")
+
+        return cls(
+            rank=data.get("rank"),
+            listed_at=listed_at,
+            notes=data.get("notes"),
+            type=media_type,
+            trakt_item=trakt_item,
+        )
+
+    def __str__(self) -> str:
+        rank_str = f"#{self.rank}: " if self.rank else ""
+        return f"{rank_str}{self.trakt_item}"
+
+
 class SyncResultItem(BaseModel):
     """Represents the result of syncing a single media item"""
 
@@ -103,6 +232,7 @@ class SyncResultItem(BaseModel):
     trakt_id: int | None = Field(default=None, ge=1)
     filename: str = ""
     error: str | None = None
+    watchlist: str | None = Field(default=None, description="Name or slug of the target watchlist")
 
     @field_validator("title")
     def validate_title(cls, v: str) -> str:
@@ -119,6 +249,7 @@ class TraktSyncSummary(BaseModel):
     movies_added: int = Field(ge=0, description="Number of movies added")
     shows_added: int = Field(ge=0, description="Number of shows added")
     failed: int = Field(ge=0, description="Number of items that failed")
+    watchlist: str | None = Field(default=None, description="Name or slug of the target watchlist")
     results: list[SyncResultItem] = Field(
         default_factory=list, description="Detailed results for each item"
     )
@@ -136,7 +267,8 @@ class TraktSyncSummary(BaseModel):
         return (self.success_count / self.total) * 100
 
     def __str__(self) -> str:
+        watchlist_str = f" to '{self.watchlist}'" if self.watchlist else ""
         return (
-            f"Trakt Sync Summary: {self.success_count}/{self.total} items added "
+            f"Trakt Sync Summary{watchlist_str}: {self.success_count}/{self.total} items added "
             f"({self.success_rate:.1f}% success rate)"
         )

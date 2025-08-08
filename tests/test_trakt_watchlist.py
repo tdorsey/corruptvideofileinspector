@@ -229,6 +229,7 @@ class TestTraktSyncModels(unittest.TestCase):
             status="added",
             trakt_id=123,
             filename="/path/to/test.mp4",
+            watchlist="my-list",
         )
 
         assert result.title == "Test Movie"
@@ -237,6 +238,7 @@ class TestTraktSyncModels(unittest.TestCase):
         assert result.status == "added"
         assert result.trakt_id == 123
         assert result.filename == "/path/to/test.mp4"
+        assert result.watchlist == "my-list"
 
     def test_trakt_sync_summary_creation(self):
         """Test creating a TraktSyncSummary"""
@@ -247,6 +249,7 @@ class TestTraktSyncModels(unittest.TestCase):
             movies_added=3,
             shows_added=1,
             failed=1,
+            watchlist="test-list",
             results=[
                 SyncResultItem(title="Movie 1", type="movie", status="added", filename="movie1.mp4")
             ],
@@ -256,6 +259,7 @@ class TestTraktSyncModels(unittest.TestCase):
         assert summary.movies_added == 3
         assert summary.shows_added == 1
         assert summary.failed == 1
+        assert summary.watchlist == "test-list"
         assert summary.success_count == 4
         assert summary.success_rate == 80.0
         assert len(summary.results) == 1
@@ -272,6 +276,138 @@ class TestTraktSyncModels(unittest.TestCase):
         summary = TraktSyncSummary(total=10, movies_added=6, shows_added=2, failed=2)
         assert summary.success_count == 8
         assert summary.success_rate == 80.0
+
+    def test_watchlist_info_creation(self):
+        """Test creating a WatchlistInfo model"""
+        from src.core.models.watchlist import WatchlistInfo
+
+        info = WatchlistInfo(
+            name="My Test List",
+            slug="my-test-list",
+            trakt_id=456,
+            description="A test watchlist",
+            privacy="public",
+            item_count=42,
+        )
+
+        assert info.name == "My Test List"
+        assert info.slug == "my-test-list"
+        assert info.trakt_id == 456
+        assert info.description == "A test watchlist"
+        assert info.privacy == "public"
+        assert info.item_count == 42
+
+    def test_watchlist_info_from_trakt_response(self):
+        """Test creating WatchlistInfo from Trakt API response"""
+        from src.core.models.watchlist import WatchlistInfo
+
+        trakt_response = {
+            "name": "My Movies",
+            "slug": "my-movies",
+            "ids": {"trakt": 123},
+            "description": "My favorite movies",
+            "privacy": "private",
+            "item_count": 25,
+            "created_at": "2023-01-01T00:00:00.000Z",
+        }
+
+        info = WatchlistInfo.from_trakt_response(trakt_response)
+        assert info.name == "My Movies"
+        assert info.slug == "my-movies"
+        assert info.trakt_id == 123
+        assert info.description == "My favorite movies"
+        assert info.privacy == "private"
+        assert info.item_count == 25
+        assert info.created_at is not None
+
+    def test_watchlist_item_creation(self):
+        """Test creating a WatchlistItem model"""
+        from src.core.models.watchlist import TraktItem, WatchlistItem
+
+        trakt_item = TraktItem(
+            title="Test Movie",
+            year=2023,
+            media_type="movie",
+            trakt_id=789,
+        )
+
+        item = WatchlistItem(
+            rank=1,
+            notes="Great movie!",
+            type="movie",
+            trakt_item=trakt_item,
+        )
+
+        assert item.rank == 1
+        assert item.notes == "Great movie!"
+        assert item.type == "movie"
+        assert item.trakt_item.title == "Test Movie"
+        assert item.trakt_item.year == 2023
+
+    def test_watchlist_item_from_trakt_response(self):
+        """Test creating WatchlistItem from Trakt API response"""
+        from src.core.models.watchlist import WatchlistItem
+
+        trakt_response = {
+            "rank": 5,
+            "listed_at": "2023-01-01T00:00:00.000Z",
+            "notes": "Must watch",
+            "movie": {
+                "title": "The Matrix",
+                "year": 1999,
+                "ids": {"trakt": 123, "imdb": "tt0133093"},
+            },
+        }
+
+        item = WatchlistItem.from_trakt_response(trakt_response)
+        assert item.rank == 5
+        assert item.notes == "Must watch"
+        assert item.type == "movie"
+        assert item.trakt_item.title == "The Matrix"
+        assert item.trakt_item.year == 1999
+        assert item.trakt_item.imdb_id == "tt0133093"
+        assert item.listed_at is not None
+
+
+class TestTraktAPIExtensions(unittest.TestCase):
+    """Test the extended TraktAPI methods"""
+
+    def test_trakt_api_has_new_methods(self):
+        """Test that TraktAPI has the new watchlist methods"""
+        from src.core.watchlist import TraktAPI
+
+        # Check that all new methods exist
+        assert hasattr(TraktAPI, "list_watchlists")
+        assert hasattr(TraktAPI, "get_watchlist_items")
+        assert hasattr(TraktAPI, "add_movie_to_list")
+        assert hasattr(TraktAPI, "add_show_to_list")
+
+        # Check they are callable
+        assert callable(TraktAPI.list_watchlists)
+        assert callable(TraktAPI.get_watchlist_items)
+        assert callable(TraktAPI.add_movie_to_list)
+        assert callable(TraktAPI.add_show_to_list)
+
+
+class TestWatchlistSyncFunction(unittest.TestCase):
+    """Test the updated sync_to_trakt_watchlist function signature"""
+
+    def test_sync_function_accepts_watchlist_parameter(self):
+        """Test that sync function accepts watchlist parameter"""
+        import inspect
+
+        from src.core.watchlist import sync_to_trakt_watchlist
+
+        # Get function signature
+        sig = inspect.signature(sync_to_trakt_watchlist)
+        params = list(sig.parameters.keys())
+
+        # Check that watchlist parameter exists
+        assert "watchlist" in params
+
+        # Check that watchlist parameter is optional
+        watchlist_param = sig.parameters["watchlist"]
+        assert watchlist_param.default is None
 
 
 if __name__ == "__main__":
