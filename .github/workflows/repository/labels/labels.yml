@@ -1,0 +1,125 @@
+# -------------------------------------------------------------
+# GitHub Issue Labeler Configuration
+# -------------------------------------------------------------
+# This file controls automatic labeling for issues and PRs using
+# github/issue-labeler (https://github.com/marketplace/actions/issue-labeler)
+#
+# It also controls label definitions in the repository settings file
+# (.github/settings.yaml or .github/settings.json), which are used for
+# label creation and management in the GitHub UI and automation workflows.
+#
+# SECURITY SENSITIVE: Labels can affect PR state and automation.
+# Changes should be reviewed by repository maintainers.
+#
+# Organization:
+#   1. Component Labels (match by domain/component)
+#   2. Stakeholder Labels (match by stakeholder type)
+#   3. Keyword Labels (match by keywords in content/title)
+# -------------------------------------------------------------
+
+# ------------------ Component Labels -------------------------
+# These labels are applied based on component/domain keywords.
+'component:cli':
+  - '*CLI*'
+'component:scanner':
+  - '*Scanner*'
+'component:trakt':
+  - '*Trakt Integration*'
+'component:config':
+  - '*Config*'
+'component:reporter':
+  - '*Reporter*'
+'component:output':
+  - '*Output*'
+'component:docker':
+  - '*Docker*'
+'component:cicd':
+  - '*CI/CD*'
+'component:github-actions':
+  - '*GitHub Actions*'
+'component:tests':
+  - '*Tests*'
+'component:docs':
+  - '*Documentation*'
+'component:other':
+  - '*Other*'
+
+# ---------------- Stakeholder Labels -------------------------
+# These labels are applied based on stakeholder type keywords.
+'stakeholder:maintainer':
+  - '*Project Maintainer*'
+'stakeholder:contributor':
+  - '*Contributor*'
+'stakeholder:user':
+  - '*End User*'
+
+# ------------------- Keyword Labels --------------------------
+# These labels are applied based on keywords in issue/PR content.
+labels:
+  bug:
+    - '🐞 bug'
+    - 'error'
+    - 'fail'
+    - 'crash'
+  enhancement:
+    - '✨ feature'
+    - 'enhancement'
+    - 'improve'
+    - 'add'
+  documentation:
+    - '📚 docs'
+    - 'documentation'
+    - 'readme'
+  question:
+    - '❓ question'
+    - 'how to'
+    - 'help'
+  answered:
+    - '✅ answered'
+    - 'resolved'
+    - 'solution'
+  done:
+    - '✔️ done'
+    - 'completed'
+    - 'finished'
+  security:
+    - '🔒 security'
+    - 'vulnerability'
+    - 'exploit'
+  test:
+    - '🧪 test'
+    - 'testing'
+    - 'pytest'
+    - 'coverage'
+  ci:
+    - '⚙️ ci'
+    - 'github actions'
+    - 'workflow'
+    - 'pipeline'
+  project-status:
+    ready:
+      - '🟢 ready'
+      - 'ready for work'
+      - 'ready to start'
+    in-progress:
+      - '🟡 in progress'
+      - 'working on'
+      - 'active'
+    blocked:
+      - '🔴 blocked'
+      - 'waiting'
+      - 'on hold'
+  review:
+    - '🔍 review'
+    - 'needs review'
+    - 'awaiting review'
+  wontfix:
+    - '🚫 wontfix'
+    - 'not planned'
+    - "won't fix"
+    - 'declined'
+  waiting-for-info:
+    - '⏳ waiting for information'
+    - 'need info'
+    - 'awaiting info'
+    - 'more information needed'
