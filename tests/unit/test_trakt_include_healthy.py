@@ -176,10 +176,12 @@ class TestTraktIncludeStatuses:
         """Test that TraktHandler correctly passes include_statuses parameter."""
         # Create a proper mock result that has the expected attributes
         mock_result = MagicMock()
-        mock_result.total = 5
-        mock_result.movies_added = 2
-        mock_result.shows_added = 1
-        mock_result.failed = 2
+        mock_result.model_dump.return_value = {"test": "result"}
+        # Set up the mock to return proper attributes for TraktSyncResult
+        mock_result.total = 0
+        mock_result.movies_added = 0
+        mock_result.shows_added = 0
+        mock_result.failed = 0
         mock_result.watchlist = "test-watchlist"
         mock_result.results = []
         mock_sync.return_value = mock_result
@@ -195,6 +197,7 @@ class TestTraktIncludeStatuses:
             scan_file=str(temp_scan_file),
             config=mock_config,
             interactive=False,
+            watchlist=None,
             include_statuses=[FileStatus.HEALTHY],
         )
 
@@ -206,6 +209,7 @@ class TestTraktIncludeStatuses:
             scan_file=str(temp_scan_file),
             config=mock_config,
             interactive=False,
+            watchlist=None,
             include_statuses=custom_statuses,
         )
 
