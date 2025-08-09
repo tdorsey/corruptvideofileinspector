@@ -137,8 +137,6 @@ jobs:
               validationErrors.push(`   Issue #${foundIssueNumber} was not found in this repository. Please reference a valid, existing issue.`);
             }
 
-            // Check if semantic PR validation failed
-            const semanticPrFailed = '${{ steps.semantic-pr.outcome }}' === 'failure';
 
             let validationErrors = [];
 
