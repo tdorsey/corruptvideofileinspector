@@ -1,0 +1,157 @@
+name: 🏗️ Build System Issue
+description: Report issues with build tools, dependencies, or compilation
+title: "[BUILD]: "
+labels: ["build"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a build system issue! Please provide details about the build problem you're experiencing.
+        
+        **Component labels will be automatically applied** based on your selection below.
+
+  - type: dropdown
+    id: stakeholder
+    attributes:
+      label: Stakeholder Type
+      description: What type of stakeholder are you?
+      options:
+        - Project Maintainer
+        - Contributor
+        - End User
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/Domain
+      description: Which component or domain does this build issue affect?
+      options:
+        - CLI
+        - Scanner
+        - Trakt Integration
+        - Config
+        - Reporter
+        - Output
+        - Docker
+        - CI/CD
+        - GitHub Actions
+        - Tests
+        - Documentation
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-want
+    attributes:
+      label: "I want to"
+      description: "Describe what you're trying to build or accomplish"
+      placeholder: "I want to be able to build the project on..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-but
+    attributes:
+      label: "But"
+      description: "Describe the build issue or error you're encountering"
+      placeholder: "But the build fails with..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-helps
+    attributes:
+      label: "This helps by"
+      description: "Explain how fixing this build issue would help"
+      placeholder: "This helps by allowing developers to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-unlike
+    attributes:
+      label: "Unlike"
+      description: "Describe how this differs from a working build"
+      placeholder: "Unlike a successful build which should..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build-type
+    attributes:
+      label: Build Issue Type
+      description: What type of build issue is this?
+      options:
+        - Dependency resolution
+        - Compilation errors
+        - Docker build failures
+        - Package installation
+        - Environment setup
+        - Build tool configuration
+        - Missing dependencies
+        - Version conflicts
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: build-environment
+    attributes:
+      label: Build Environment
+      description: Describe your build environment
+      placeholder: |
+        Examples:
+        - OS: [e.g., Ubuntu 22.04, Windows 11, macOS 13]
+        - Python version: [e.g., 3.13.0]
+        - Poetry version: [e.g., 1.6.0]
+        - Docker version: [e.g., 24.0.0]
+        - Make version: [e.g., 4.3]
+    validations:
+      required: true
+
+  - type: textarea
+    id: build-command
+    attributes:
+      label: Build Command/Steps
+      description: What command or steps were you running when the build failed?
+      placeholder: |
+        Examples:
+        - make install-dev
+        - poetry install
+        - docker build -f docker/Dockerfile .
+        - make docker-build
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-output
+    attributes:
+      label: Error Output
+      description: Please paste the complete error output
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What should happen during a successful build?
+      placeholder: Describe what you expected to happen...
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
