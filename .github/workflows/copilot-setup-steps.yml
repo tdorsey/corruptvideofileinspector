@@ -25,19 +25,30 @@ jobs:
     # You can define any steps you want, and they will run before the agent starts.
     # If you do not check out your code, Copilot will do this for you.
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Cache APT packages
+        id: cache-apt
+        uses: actions/cache@v4
         with:
-          python-version: "3.13"
-          cache: 'pip'
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-ffmpeg
+          restore-keys: |
+            ${{ runner.os }}-apt-
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+
+      - name: Install poetry
+        run: pipx install poetry
+
+      - id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ vars.PYTHON_VERSION || '3.13' }}
+          cache: 'poetry'
 
       - name: Install Python dependencies
         run: |
