@@ -263,6 +263,28 @@ We welcome contributions! To get started:
 2. **Automatic branch creation**: A branch will be automatically created for your issue (see [Automation](#-automation) below)
 3. **Start development**: Follow the automatically posted instructions to check out your branch
 4. **Follow code quality standards**: Use pre-commit hooks and project guidelines
+
+### 📝 Conventional Commit Types
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) for consistent commit messages and automated versioning. All pull requests must use one of these types in the title:
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `feat` | New features or enhancements | `feat: add video batch processing` |
+| `fix` | Bug fixes | `fix: resolve scanner timeout issues` |
+| `docs` | Documentation changes | `docs: update installation guide` |
+| `style` | Code style/formatting changes | `style: fix import organization` |
+| `refactor` | Code refactoring without functional changes | `refactor: extract video validation logic` |
+| `perf` | Performance improvements | `perf: optimize video scanning algorithm` |
+| `test` | Test additions or improvements | `test: add integration tests for scanner` |
+| `chore` | Maintenance tasks, dependencies | `chore: update Python dependencies` |
+| `build` | Build system or dependency changes | `build: update Docker base image` |
+| `ci` | CI/CD pipeline changes | `ci: add automated security scanning` |
+| `revert` | Revert previous changes | `revert: undo problematic scanner changes` |
+
+**Pull Request Title Format**: `type: description` (e.g., `feat: add new video validation feature`)
+
+Issue templates are available for each type to guide your contribution. The automated systems will label and process your contribution based on the type you choose.
 5. **Add tests**: Include tests for new functionality
 6. **Submit a Pull Request**: Use conventional commit format and reference the issue
 
