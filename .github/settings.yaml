@@ -5,6 +5,7 @@
 repository:
   # Repository basic settings
   name: corruptvideofileinspector
+  owner: tdorsey
   description: "A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support."
   topics:
     - python
@@ -18,23 +19,23 @@ repository:
   
   # Repository properties
   homepage: ""
+  visibility: public
   private: false
   has_issues: true
   has_projects: true
-  has_wiki: false
+  has_wiki: true
   has_downloads: true
   has_pages: false
   allow_squash_merge: true
   allow_merge_commit: false
   allow_rebase_merge: true
   allow_auto_merge: false
+  allow_forking: true
   delete_branch_on_merge: true
   enable_automated_security_fixes: true
   enable_vulnerability_alerts: true
-  
   # Default branch protection
   default_branch: main
-
 # Branch Protection Rules
 branches:
   - name: main
@@ -47,6 +48,8 @@ branches:
           - "test"
           - "docker"
           - "security"
+          - "make check"
+          - "make test"
       
       # Require pull request reviews
       required_pull_request_reviews:
@@ -202,6 +205,122 @@ labels:
     color: "fef2c0"
     description: "Issue needs reproduction steps"
 
+  # Type labels
+  - name: "type: bug"
+    color: "d73a4a"
+    description: "Something isn't working"
+  
+  - name: "type: feature"
+    color: "0075ca"
+    description: "New feature or request"
+  
+  - name: "type: enhancement"
+    color: "a2eeef"
+    description: "Enhancement to existing functionality"
+  
+  - name: "type: documentation"
+    color: "0052cc"
+    description: "Improvements or additions to documentation"
+  
+  - name: "type: refactor"
+    color: "5319e7"
+    description: "Code refactoring"
+  
+  - name: "type: test"
+    color: "1d76db"
+    description: "Testing related changes"
+  
+  # Priority labels
+  - name: "priority: critical"
+    color: "b60205"
+    description: "Critical priority"
+  
+  - name: "priority: high"
+    color: "d93f0b"
+    description: "High priority"
+  
+  - name: "priority: medium"
+    color: "fbca04"
+    description: "Medium priority"
+  
+  - name: "priority: low"
+    color: "0e8a16"
+    description: "Low priority"
+  
+  # Status labels
+  - name: "status: blocked"
+    color: "b60205"
+    description: "Blocked by external dependency"
+  
+  - name: "status: in-progress"
+    color: "fbca04"
+    description: "Currently being worked on"
+  
+  - name: "status: needs-review"
+    color: "0052cc"
+    description: "Needs code review"
+  
+  - name: "status: needs-testing"
+    color: "1d76db"
+    description: "Needs testing"
+  
+  # Component labels
+  - name: "component: cli"
+    color: "c2e0c6"
+    description: "Command line interface"
+  
+  - name: "component: core"
+    color: "c2e0c6"
+    description: "Core business logic"
+  
+  - name: "component: ffmpeg"
+    color: "c2e0c6"
+    description: "FFmpeg integration"
+  
+  - name: "component: trakt"
+    color: "c2e0c6"
+    description: "Trakt.tv integration"
+  
+  - name: "component: docker"
+    color: "c2e0c6"
+    description: "Docker configuration"
+  
+  - name: "component: tests"
+    color: "c2e0c6"
+    description: "Test suite"
+  
+  - name: "component: docs"
+    color: "c2e0c6"
+    description: "Documentation"
+  
+  - name: "component: ci-cd"
+    color: "c2e0c6"
+    description: "CI/CD pipeline"
+  
+  # Special labels
+  - name: "good first issue"
+    color: "7057ff"
+    description: "Good for newcomers"
+  
+  - name: "help wanted"
+    color: "008672"
+    description: "Extra attention is needed"
+  
+  - name: "dependencies"
+    color: "0366d6"
+    description: "Pull requests that update a dependency file"
+  
+  - name: "security"
+    color: "b60205"
+    description: "Security related issue"
+  
+  - name: "breaking-change"
+    color: "d73a4a"
+    description: "Breaking change"
+  
+  - name: "needs-reproduction"
+    color: "fef2c0"
+    description: "Issue needs reproduction steps"
 # Collaborators and team access (for public repos, this is mainly for documentation)
 # Note: Actual collaborator management typically requires repository admin permissions
 # This section serves as documentation of intended access levels
@@ -221,3 +340,7 @@ security:
   dependency_graph: true
   dependabot_security_updates: true
   dependabot_version_updates: true
+# CODEOWNERS integration
+codeowners:
+  enabled: true
+  file: .github/CODEOWNERS
