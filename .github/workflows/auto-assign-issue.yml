@@ -11,7 +11,7 @@ jobs:
         uses: pozil/auto-assign-issue@v2.2.0
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          assignees: @copilot 
+          assignees: "@copilot" 
           numOfAssignees: 1
           allowSelfAssign: false
           skipDraft: false

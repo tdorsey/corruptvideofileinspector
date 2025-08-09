@@ -264,11 +264,18 @@ type: description (#issue-number)
 ```
 Examples: `feat: add progress bar (#123)`, `fix: resolve timeout issue (#456)`
 
+**GitHub Actions Workflow Validation:**
+- PRs that add or modify GitHub Actions workflow files (`.github/workflows/*.yml` or `.github/workflows/*.yaml`) are automatically validated for syntax correctness
+- The workflow validation check uses `actionlint` via the `devops-actions/actionlint@v0.1.9` marketplace action to ensure proper GitHub Actions syntax
+- PRs with invalid workflow syntax will be blocked from merging until issues are resolved
+- This validation runs automatically and is a required check
+
 ### Code Quality Standards
 - **Formatting**: Black (100 character line length)
 - **Linting**: Ruff with comprehensive rule set
 - **Type Checking**: MyPy with strict configuration
 - **Testing**: Comprehensive test coverage
+- **Workflow Validation**: GitHub Actions syntax validation with actionlint
 
 **For detailed contribution guidelines, see [Contributing Guide](docs/CONTRIBUTING.md)**
 
