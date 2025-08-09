@@ -9,6 +9,8 @@ jobs:
   validate-pr-title:
     name: Validate PR Title
     runs-on: ubuntu-latest
+    # Skip validation for draft PRs
+    if: github.event.pull_request.draft == false
 
     steps:
       - name: Validate PR title
