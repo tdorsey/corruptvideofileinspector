@@ -248,3 +248,6 @@ The workflows integrate with the project's development toolchain:
 - **Code quality**: Linting and formatting enforced consistently
 
 This ensures that CI/CD processes match the local development experience and catch issues early in the development cycle.
+
+## Workflow Documentation
+See [GitHub Workflows Structure](../../workflows/README.md) for details on workflow organization, usage, and subfolder documentation.
