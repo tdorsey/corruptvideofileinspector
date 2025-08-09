@@ -32,6 +32,17 @@ This project follows the [Conventional Commits](https://www.conventionalcommits.
 - `test(utils): add unit tests for file processing`
 - `chore(deps): update dependencies to latest versions`
 
+### Atomic Commits (REQUIRED)
+- **Each commit should represent a single, focused change**
+- **Avoid combining unrelated changes in one commit**
+- Examples of good atomic commits:
+  - One commit for adding a feature
+  - Separate commit for updating documentation related to that feature
+  - Separate commit for adding tests for that feature
+- Examples of bad commits (combining unrelated changes):
+  - Fixing a bug + adding a new feature + updating documentation in one commit
+  - Changing multiple unrelated files or components in one commit
+
 ### Why Conventional Commits?
 Using Conventional Commits helps:
 - Automate the release process
