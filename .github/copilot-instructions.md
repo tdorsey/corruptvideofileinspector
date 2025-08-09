@@ -159,7 +159,7 @@ When marketplace actions are insufficient:
 ### Available Issue Types
 The repository provides comprehensive issue templates aligned with Conventional Commit types:
 - **🚀 Feature Request** (`feat`): New features and enhancements
-- **🐛 Bug Report** (`fix`): Bug reports and fixes
+- **🐛 Bug Report** (`fix`): Bug reports and fixes  
 - **🔧 Chore/Maintenance** (`chore`): Maintenance tasks, dependencies, tooling
 - **📚 Documentation** (`docs`): Documentation updates and improvements
 - **🧪 Testing** (`test`): Test coverage gaps and testing improvements
