@@ -154,6 +154,44 @@ When marketplace actions are insufficient:
 - Document complex workflows thoroughly
 - Consider contributing useful patterns back to the community
 
+## Issue Template Guidelines
+
+### Required Issue Templates
+**All issues MUST use approved issue templates** - blank issues are disabled (`blank_issues_enabled: false`).
+
+### Available Issue Types
+The repository provides comprehensive issue templates aligned with Conventional Commit types:
+- **🚀 Feature Request** (`feat`): New features and enhancements
+- **🐛 Bug Report** (`fix`): Bug reports and fixes  
+- **🔧 Chore/Maintenance** (`chore`): Maintenance tasks, dependencies, tooling
+- **📚 Documentation** (`docs`): Documentation updates and improvements
+- **🧪 Testing** (`test`): Test coverage gaps and testing improvements
+- **⚡ Performance** (`perf`): Performance issues and optimizations
+- **♻️ Refactor** (`refactor`): Code structure and maintainability improvements
+- **🎨 Code Style** (`style`): Formatting, style, and consistency issues
+
+### Title Requirements
+All issue templates include **Title Examples** showing proper conventional commit format:
+```
+feat(component): brief description of feature
+fix(component): brief description of fix
+chore(component): brief description of maintenance task
+docs(component): brief description of documentation update
+test(component): brief description of testing improvement
+perf(component): brief description of performance improvement
+refactor(component): brief description of refactoring
+style(component): brief description of style improvement
+```
+
+### Automatic Labeling
+Issues are automatically labeled based on:
+- **Issue Type**: Determined by template (feat, fix, chore, etc.)
+- **Component/Domain**: Based on dropdown selection (cli, scanner, trakt, config, etc.)
+- **Stakeholder Type**: Based on dropdown selection (maintainer, contributor, user)
+
+### Maintenance Task Types
+The chore template includes "Issue creation" as a maintenance task type for meta-improvements to the issue process itself.
+
 ## Quick Reference
 
 ### Essential Setup (Network Required)

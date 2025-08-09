@@ -9,6 +9,13 @@ body:
       value: |
         Thanks for helping improve test coverage! Please describe what testing needs to be added or improved.
         
+        **Title Examples:**
+        - `test(cli): add unit tests for scan command validation`
+        - `test(scanner): improve integration test coverage for video analysis`
+        - `test(config): add tests for environment variable handling`
+        - `test(trakt): mock API integration test scenarios`
+        - `test(e2e): add end-to-end workflow testing`
+        
         **Component labels will be automatically applied** based on your selection below.
 
   - type: dropdown

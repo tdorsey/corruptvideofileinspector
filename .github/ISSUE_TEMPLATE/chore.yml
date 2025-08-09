@@ -9,6 +9,13 @@ body:
       value: |
         Thanks for helping with project maintenance! Please describe the chore or maintenance task needed.
         
+        **Title Examples:** 
+        - `chore(deps): update Python dependencies to latest versions`
+        - `chore(ci): improve GitHub Actions workflow performance`
+        - `chore(docs): reorganize documentation structure`
+        - `chore(config): update Docker compose configuration`
+        - `chore(core): clean up unused imports in scanner module`
+        
         **Component labels will be automatically applied** based on your selection below.
 
   - type: dropdown
@@ -98,6 +105,7 @@ body:
         - Security updates
         - Development tooling
         - Release preparation
+        - Issue creation
         - Other
       default: 0
     validations:
