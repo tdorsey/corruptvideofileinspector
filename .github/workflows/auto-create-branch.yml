@@ -1,6 +1,6 @@
 name: 🌿 Auto Create Branch from Issue
 
-"on":
+on:
   issues:
     types: [opened]
 
