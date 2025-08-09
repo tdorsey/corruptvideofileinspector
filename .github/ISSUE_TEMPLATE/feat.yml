@@ -9,6 +9,13 @@ body:
       value: |
         Thanks for taking the time to fill out this feature request! Please provide as much detail as possible to help us understand your needs.
         
+        **Title Examples:**
+        - `feat(cli): add new scan mode for faster processing`
+        - `feat(scanner): implement parallel video analysis`
+        - `feat(trakt): add support for custom collections`
+        - `feat(config): support environment variable configuration`
+        - `feat(output): add CSV export format support`
+        
         **Component labels will be automatically applied** based on your selection below.
 
   - type: dropdown
