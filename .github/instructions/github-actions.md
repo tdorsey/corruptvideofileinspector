@@ -41,7 +41,13 @@ The project contains multiple workflow files in `.github/workflows/`:
 - Provides fallback instructions if branch creation fails
 - Uses `actions/github-script@v7` for GitHub API interactions
 
-### 5. labeler.yml - Issue Labeling
+### 5. auto-assign-issue.yml - Issue Assignment
+**Purpose**: Automatically assigns issues to maintainers when opened
+**Key Components**:
+- Uses marketplace action `pozil/auto-assign-issue@v2.2.0`
+- Assigns to @copilot by default
+- Configurable assignment rules
+### 6. labeler.yml - Issue Labeling
 **Purpose**: Automatically labels issues based on content and title
 **Key Components**:
 - Uses `github/issue-labeler@v3.4` marketplace action
@@ -50,7 +56,7 @@ The project contains multiple workflow files in `.github/workflows/`:
 - GitHub release creation with automated changelog generation
 - Docker image publishing to GitHub Container Registry
 
-### 4. copilot-setup-steps.yml - Copilot Environment
+### 7. copilot-setup-steps.yml - Copilot Environment
 **Purpose**: Prepares the development environment for GitHub Copilot agents
 **Key Components**:
 - Python 3.13 environment setup

@@ -16,9 +16,6 @@ from typing import TYPE_CHECKING, ClassVar
 
 import trakt  # type: ignore[import-untyped]
 
-if TYPE_CHECKING:
-    from src.config import AppConfig
-
 from src.core.models.scanning import FileStatus
 from src.core.models.watchlist import (
     MediaItem,
