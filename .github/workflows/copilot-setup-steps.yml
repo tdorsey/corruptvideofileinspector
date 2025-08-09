@@ -37,9 +37,8 @@ jobs:
             ${{ runner.os }}-apt-
 
       - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+        if: steps.cache-apt.outputs.cache-hit == 'false'
+        run:           sudo apt-get install -y ffmpeg
 
       - name: Install poetry
         run: pipx install poetry
@@ -47,7 +46,7 @@ jobs:
       - id: setup-python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ vars.PYTHON_VERSION || '3.13' }}
+          python-version: ${{ vars.PYTHON_VERSION }}
           cache: 'poetry'
 
       - name: Install dependencies (Poetry)
