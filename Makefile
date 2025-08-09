@@ -1,5 +1,5 @@
 # Project setup: install dependencies, create env files, and secrets
-setup: install-system-deps install docker-env secrets-init  ## Set up project: install deps, env, secrets
+setup: install-system-deps install-dev install docker-env secrets-init  ## Set up project: install deps, env, secrets
 	@echo "Project setup complete. Edit docker/secrets/* and docker/.env as needed."
 
 # Install system dependencies (FFmpeg)
