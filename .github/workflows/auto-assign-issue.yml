@@ -1,5 +1,6 @@
 name: Auto-Assign Issues
-on:
+
+"on":
   issues:
     types: [opened]
 
@@ -7,11 +8,4 @@ jobs:
   auto-assign:
     runs-on: ubuntu-latest
     steps:
-      - name: Auto-assign Issue
-        uses: pozil/auto-assign-issue@v2.2.0
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          assignees: "@copilot" 
-          numOfAssignees: 1
-          allowSelfAssign: false
-          skipDraft: false
+      - run: exit 0
