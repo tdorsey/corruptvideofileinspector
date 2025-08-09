@@ -180,18 +180,19 @@ jobs:
             // If PR was previously in draft due to validation failures, 
             // post a success comment
             if (isDraft) {
-              const issueRefInfo = hasIssueRefInTitle ? '- ✅ Issue reference in title' : '';
-              const bodyRefInfo = hasIssueRefInBody ? '- ✅ Issue reference in body' : '';
+              const validatedItems = [
+                '- ✅ PR title follows conventional commit format',
+                '- ✅ Issue reference found',
+                hasIssueRefInTitle ? '- ✅ Issue reference in title' : '',
+                hasIssueRefInBody ? '- ✅ Issue reference in body' : ''
+              ].filter(Boolean);
               
               const successComment = `## ✅ PR Validation Passed
               
             All validation checks have passed! This PR is ready for review.
             
             ### Validated:
-            - ✅ PR title follows conventional commit format
-            - ✅ Issue reference found
-            ${issueRefInfo}
-            ${bodyRefInfo}
+            ${validatedItems.join('\n')}
             
             You can now mark this PR as ready for review.`;
 
