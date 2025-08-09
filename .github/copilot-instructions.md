@@ -437,7 +437,8 @@ src/
 ├── core/                          # Core business logic → docs/CORE.md
 ├── config/                        # Configuration management → docs/CONFIG.md
 ├── ffmpeg/                        # FFmpeg integration → docs/FFMPEG.md
-├── utils/                         # Shared utilities → docs/UTILS.md
+├── output.py                      # Output formatting and file handling
+├── version.py                     # Version information
 └── __main__.py                    # Main entry point: python -m src
 ```
 
