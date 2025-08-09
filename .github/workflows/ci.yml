@@ -16,7 +16,7 @@ jobs:
 
     - name: Remove Python cache
       run: |
-        find . -name "__pycache__" -exec rm -rf {} +
+        find . -name "__pycache__" -type d -delete
         find . -name "*.pyc" -delete
 
     - name: Set up Python
