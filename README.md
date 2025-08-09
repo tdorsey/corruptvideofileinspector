@@ -251,11 +251,21 @@ The application generates comprehensive reports in multiple formats:
 
 We welcome contributions! To get started:
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow our code quality standards (automatic via pre-commit hooks)
-4. Add tests for new functionality
-5. Submit a Pull Request with a properly formatted title
+1. **Open an issue**: Describe the feature, bug fix, or improvement you'd like to make
+2. **Automatic branch creation**: A branch will be automatically created for your issue (see [Automation](#-automation) below)
+3. **Start development**: Follow the automatically posted instructions to check out your branch
+4. **Follow code quality standards**: Use pre-commit hooks and project guidelines
+5. **Add tests**: Include tests for new functionality
+6. **Submit a Pull Request**: Use conventional commit format and reference the issue
+
+### 🤖 Automation
+
+**Automatic Branch Creation**: When you open a new issue, our GitHub Actions workflow automatically:
+- Creates a new branch named `issue-<number>-<slug>` based on your issue title
+- Posts a comment with branch information and development instructions
+- Provides ready-to-use git commands for getting started
+
+**Example**: Issue #123 titled "Add progress bar feature" creates branch `issue-123-add-progress-bar-feature`
 
 ### Pull Request Requirements
 **All PR titles must follow conventional commit format and reference an issue:**

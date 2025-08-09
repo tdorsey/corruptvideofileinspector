@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from src.core.video_files import count_all_video_files
-from src.core.formatting import format_file_size
 from src.config.video_formats import get_video_extensions
+from src.core.formatting import format_file_size
+from src.core.video_files import count_all_video_files
 
 pytestmark = pytest.mark.unit
 

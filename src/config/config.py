@@ -39,11 +39,9 @@ class TraktConfig(BaseModel):
     client_secret: str = Field(default="")
     default_watchlist: str | None = Field(
         default=None,
-        description="Default watchlist name or slug for sync operations. If None, uses main watchlist."
+        description="Default watchlist name or slug for sync operations. If None, uses main watchlist.",
     )
-    include_statuses: list[FileStatus] = Field(
-        default_factory=lambda: [FileStatus.HEALTHY]
-    )
+    include_statuses: list[FileStatus] = Field(default_factory=lambda: [FileStatus.HEALTHY])
 
 
 class ScanConfig(BaseModel):
