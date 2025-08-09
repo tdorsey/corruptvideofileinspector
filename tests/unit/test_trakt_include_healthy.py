@@ -174,6 +174,7 @@ class TestTraktIncludeStatuses:
     @patch("src.cli.handlers.sync_to_trakt_watchlist")
     def test_trakt_handler_passes_include_statuses(self, mock_sync, mock_config, temp_scan_file):
         """Test that TraktHandler correctly passes include_statuses parameter."""
+        # Create a proper mock result that has the expected attributes
         mock_result = MagicMock()
         mock_result.model_dump.return_value = {"test": "result"}
         # Set up the mock to return proper attributes for TraktSyncResult
@@ -187,7 +188,7 @@ class TestTraktIncludeStatuses:
 
         handler = TraktHandler(mock_config)
 
-        # Test with default statuses (corrupt and suspicious)
+        # Test with default statuses (now HEALTHY)
         handler.sync_to_watchlist(
             scan_file=temp_scan_file,
         )
@@ -197,7 +198,7 @@ class TestTraktIncludeStatuses:
             config=mock_config,
             interactive=False,
             watchlist=None,
-            include_statuses=[FileStatus.CORRUPT, FileStatus.SUSPICIOUS],
+            include_statuses=[FileStatus.HEALTHY],
         )
 
         # Test with custom statuses

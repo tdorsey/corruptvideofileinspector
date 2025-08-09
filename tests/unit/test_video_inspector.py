@@ -609,7 +609,6 @@ class TestInspectVideoFilesCli(unittest.TestCase):
                 inspect_video_files_cli(str(self.temp_path))
 
             assert "FFmpeg not found" in str(context.value)
-
     @patch("src.cli.handlers.get_ffmpeg_command")
     @patch("src.cli.handlers.get_all_video_object_files")
     def test_no_video_files(self, mock_get_files, mock_get_ffmpeg):
