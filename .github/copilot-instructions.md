@@ -6,8 +6,6 @@ Always reference these instructions first and fallback to search or bash command
 
 A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support.
 
-Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
-
 ## GitHub Copilot Usage Guidelines
 
 ### Primary Use Cases for GitHub Copilot Chat
