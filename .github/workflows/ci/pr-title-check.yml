@@ -178,7 +178,7 @@ jobs:
                - Allowed types: \`feat\`, \`fix\`, \`docs\`, \`style\`, \`refactor\`, \`perf\`, \`test\`, \`chore\`
 
             2. **Add issue reference** if missing:
-               - Include issue number in title: \`feat: add feature (#123)\`
+               - Include issue number in title: \`feat: add new feature (#123)\`
                - Or add to PR body: \`Fixes #123\` or \`Closes #123\`
 
             3. **Mark as ready for review** once all issues are resolved
