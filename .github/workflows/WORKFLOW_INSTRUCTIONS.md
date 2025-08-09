@@ -14,6 +14,9 @@ applyTo: ".github/workflows/*.yml,.github/workflows/*.yaml"
 - Use marketplace actions when possible.
 - Document any custom scripts or logic in workflow files.
 - Reference related issues or PRs in commit messages when appropriate.
+ - **Never use Python to test GitHub Actions workflow files.**
+   - Use dedicated tools like `actionlint` or GitHub Actions itself for validation.
+   - Do not create or maintain Python tests for `.github/workflows/*.yml` or `.yaml` files.
 
 ## Review and Approval
 - All workflow changes should be reviewed by a maintainer familiar with CI/CD.
