@@ -68,6 +68,17 @@ scan:
     - ".mkv"
     # ... more extensions
 
+# Trakt.tv integration configuration
+trakt:
+  client_id: ""  # Trakt API client ID (required for Trakt sync)
+  client_secret: ""  # Trakt API client secret (can be provided via Docker secrets)
+  default_watchlist: null  # Default watchlist name/slug (null = main watchlist)
+  include_statuses:  # File statuses to include in sync operations
+    - "HEALTHY"  # Default: only sync healthy (non-corrupt) files
+    # Available statuses: HEALTHY, CORRUPT, SUSPICIOUS
+    # Example to sync all files: [HEALTHY, CORRUPT, SUSPICIOUS]
+    # Example for old behavior: [CORRUPT, SUSPICIOUS]
+
 # Secrets configuration
 secrets:
   docker_secrets_path: "/run/secrets"
@@ -100,6 +111,12 @@ All configuration options can be overridden using environment variables with the
 - `CVI_RECURSIVE` - Scan recursively (true/false)
 - `CVI_INPUT_DIR` - Default input directory to scan
 - `CVI_EXTENSIONS` - Comma-separated list of extensions (.mp4,.mkv,.avi)
+
+### Trakt.tv Integration
+- `CVI_TRAKT_CLIENT_ID` - Trakt API client ID
+- `CVI_TRAKT_CLIENT_SECRET` - Trakt API client secret
+- `CVI_TRAKT_DEFAULT_WATCHLIST` - Default watchlist name/slug
+- `CVI_TRAKT_INCLUDE_STATUSES` - Comma-separated file statuses (HEALTHY,CORRUPT,SUSPICIOUS)
 
 ### Secrets
 - `CVI_SECRETS_PATH` - Docker secrets directory path
@@ -264,6 +281,57 @@ python cli_handler.py --config config.autorun.yaml /custom/videos
 
 # Override with environment variables
 CVI_INPUT_DIR=/other/videos CVI_OUTPUT_DIR=/other/output python cli_handler.py --config config.autorun.yaml
+```
+
+### Trakt.tv Integration Configuration
+
+```yaml
+# config.trakt.yaml - Example with Trakt.tv integration
+logging:
+  level: "INFO"
+  file: "/app/output/inspector.log"
+
+scan:
+  default_input_dir: "/app/videos"
+  recursive: true
+
+output:
+  default_json: true
+  default_output_dir: "/app/output"
+
+# Trakt.tv configuration
+trakt:
+  client_id: "your_trakt_client_id"
+  client_secret: "your_trakt_client_secret"  # Can be provided via Docker secrets
+  default_watchlist: null  # Use main watchlist
+  include_statuses:
+    - "HEALTHY"  # Default: only sync healthy files to watchlist
+
+# Alternative: sync all files (including corrupt/suspicious)
+# trakt:
+#   include_statuses:
+#     - "HEALTHY"
+#     - "CORRUPT" 
+#     - "SUSPICIOUS"
+
+# Alternative: use legacy behavior (corrupt/suspicious only)
+# trakt:
+#   include_statuses:
+#     - "CORRUPT"
+#     - "SUSPICIOUS"
+```
+
+Example Trakt sync workflow:
+
+```bash
+# 1. Scan videos and generate results
+corrupt-video-inspector scan /videos --output scan_results.json
+
+# 2. Sync healthy files to Trakt (default behavior)
+corrupt-video-inspector trakt sync scan_results.json --token YOUR_TOKEN
+
+# 3. Sync specific file statuses
+corrupt-video-inspector trakt sync scan_results.json --token YOUR_TOKEN --include-statuses HEALTHY CORRUPT
 ```
 
 ## Troubleshooting
