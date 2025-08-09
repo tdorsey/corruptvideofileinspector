@@ -10,3 +10,7 @@
 
 # Fallback owner for all files
 * @tdorsey
+
+# SECURITY SENSITIVE: Label configuration can affect PR state and automation.
+# Changes to this file should be reviewed by repository maintainers.
+/.github/labels/labels.yml @tdorsey

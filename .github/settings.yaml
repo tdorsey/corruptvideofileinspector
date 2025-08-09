@@ -31,7 +31,6 @@ repository:
   delete_branch_on_merge: true
   enable_automated_security_fixes: true
   enable_vulnerability_alerts: true
-  
   # Default branch protection
   default_branch: main
 

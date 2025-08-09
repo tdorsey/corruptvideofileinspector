@@ -1,0 +1,380 @@
+# -------------------------------------------------------------
+# INTERNAL WORKFLOW: Comprehensive PR Management
+# -------------------------------------------------------------
+# This workflow combines label management and PR state control.
+# It can be triggered manually or by other workflows to:
+# - Add/remove/set labels on PRs
+# - Change PR state (draft/ready/open/closed)
+# - Merge PRs with validation
+# -------------------------------------------------------------
+
+name: Manage Pull Request
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request Number'
+        required: true
+        type: string
+      labels_add:
+        description: 'JSON array of labels to add (e.g. ["enhancement","video"])'
+        required: false
+        default: ''
+        type: string
+      labels_remove:
+        description: 'JSON array of labels to remove (e.g. ["wip"])'
+        required: false
+        default: ''
+        type: string
+      labels_set:
+        description: 'JSON array full label set override (e.g. ["ready","scanned"])'
+        required: false
+        default: ''
+        type: string
+      pr_state:
+        description: 'PR state action'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - 'draft'
+          - 'ready'
+          - 'open'
+          - 'close'
+          - 'merge'
+      merge_method:
+        description: 'Merge method (only used if pr_state is merge)'
+        required: false
+        default: 'squash'
+        type: choice
+        options:
+          - 'squash'
+          - 'merge'
+          - 'rebase'
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'Pull Request Number'
+        required: true
+        type: string
+      labels_add:
+        description: 'JSON array of labels to add'
+        required: false
+        default: ''
+        type: string
+      labels_remove:
+        description: 'JSON array of labels to remove'
+        required: false
+        default: ''
+        type: string
+      labels_set:
+        description: 'JSON array full label set override'
+        required: false
+        default: ''
+        type: string
+      pr_state:
+        description: 'PR state action'
+        required: false
+        default: ''
+        type: string
+      merge_method:
+        description: 'Merge method'
+        required: false
+        default: 'squash'
+        type: string
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+jobs:
+  # First job: Get available labels using the reusable workflow
+  get-labels:
+    uses: ./.github/workflows/internal/get-labels.yml
+
+  # Second job: Validate inputs and perform operations
+  manage-pr:
+    runs-on: ubuntu-latest
+    needs: get-labels
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate inputs and manage PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get labels from the previous job's output
+            const labelNames = '${{ needs.get-labels.outputs.label_names }}';
+            const labelsJson = '${{ needs.get-labels.outputs.labels_json }}';
+
+            let definedLabels = new Set();
+
+            if (labelNames) {
+              // Parse comma-separated label names
+              const names = labelNames.split(',').map(name => name.trim()).filter(name => name);
+              names.forEach(name => definedLabels.add(name));
+              core.info(`Loaded ${definedLabels.size} labels from get-labels workflow.`);
+            } else {
+              core.warning('No labels received from get-labels workflow; proceeding with fallback.');
+            }
+
+            // Input validation
+            const errors = [];
+            const prNumberInput = '${{ inputs.pr_number }}';
+            if (!prNumberInput) errors.push('pr_number is required.');
+
+            const prNumber = Number(prNumberInput);
+            if (!Number.isInteger(prNumber) || prNumber <= 0) {
+              errors.push(`pr_number must be a positive integer; received '${prNumberInput}'.`);
+            }
+
+            // Validate PR exists
+            let pr = null;
+            if (!errors.length) {
+              try {
+                const prResponse = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber
+                });
+                pr = prResponse.data;
+                core.info(`Found PR #${prNumber}: "${pr.title}" (state: ${pr.state}, draft: ${pr.draft})`);
+              } catch {
+                errors.push(`Pull request #${prNumber} does not exist or is inaccessible.`);
+              }
+            }
+
+            // Parse label inputs
+            const parseJsonLabelArray = (raw, field) => {
+              if (!raw) return [];
+              const trimmed = raw.trim();
+              if (!trimmed) return [];
+              try {
+                const val = JSON.parse(trimmed);
+                if (!Array.isArray(val)) {
+                  errors.push(`${field} must be a JSON array of strings.`);
+                  return [];
+                }
+                const out = [];
+                for (const item of val) {
+                  if (typeof item !== 'string') {
+                    errors.push(`${field} must contain only strings.`);
+                    return [];
+                  }
+                  const lbl = item.trim();
+                  if (lbl) out.push(lbl);
+                }
+                return out;
+              } catch (e) {
+                errors.push(`${field} is not valid JSON: ${e.message}`);
+                return [];
+              }
+            };
+
+            const labelsAdd = parseJsonLabelArray('${{ inputs.labels_add }}', 'labels_add');
+            const labelsRemove = parseJsonLabelArray('${{ inputs.labels_remove }}', 'labels_remove');
+            const labelsSet = parseJsonLabelArray('${{ inputs.labels_set }}', 'labels_set');
+            const prState = '${{ inputs.pr_state }}' || '';
+            const mergeMethod = '${{ inputs.merge_method }}' || 'squash';
+
+            // Validate label operations
+            if (labelsSet.length && (labelsAdd.length || labelsRemove.length)) {
+              errors.push('labels_set cannot be combined with labels_add or labels_remove.');
+            }
+
+            const labelPattern = /^[A-Za-z0-9._ \-:]{1,50}$/;
+            const validateList = (list, name) => {
+              for (const label of list) {
+                if (!labelPattern.test(label)) {
+                  errors.push(`Invalid label '${label}' in ${name}.`);
+                }
+                // Warn if label not in defined set (but don't fail)
+                if (definedLabels.size && !definedLabels.has(label)) {
+                  core.warning(`Label '${label}' not found in repository labels configuration.`);
+                }
+              }
+            };
+
+            validateList(labelsAdd, 'labels_add');
+            validateList(labelsRemove, 'labels_remove');
+            validateList(labelsSet, 'labels_set');
+
+            if (labelsAdd.length && labelsRemove.length) {
+              const removeSet = new Set(labelsRemove);
+              const overlap = labelsAdd.filter(l => removeSet.has(l));
+              if (overlap.length) errors.push('labels_add and labels_remove overlap: ' + overlap.join(', '));
+            }
+
+            if (labelsSet.length > 50) errors.push('labels_set exceeds 50 labels.');
+
+            // Validate PR state
+            const validStates = ['', 'draft', 'ready', 'open', 'close', 'merge'];
+            if (prState && !validStates.includes(prState)) {
+              errors.push(`Invalid pr_state '${prState}'. Valid options: ${validStates.join(', ')}`);
+            }
+
+            // Validate merge method
+            const validMergeMethods = ['squash', 'merge', 'rebase'];
+            if (!validMergeMethods.includes(mergeMethod)) {
+              errors.push(`Invalid merge_method '${mergeMethod}'. Valid options: ${validMergeMethods.join(', ')}`);
+            }
+
+            // Check if any operation is specified
+            const hasLabelOp = labelsSet.length || labelsAdd.length || labelsRemove.length;
+            const hasStateOp = prState !== '';
+            if (!hasLabelOp && !hasStateOp) {
+              errors.push('At least one operation must be specified (labels or PR state).');
+            }
+
+            if (errors.length) {
+              core.setFailed('Input validation failed:\n' + errors.map(e => '- ' + e).join('\n'));
+              return;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Perform label operations
+            if (hasLabelOp) {
+              core.info('=== Performing label operations ===');
+
+              if (labelsSet.length) {
+                await github.rest.issues.setLabels({
+                  owner,
+                  repo,
+                  issue_number: prNumber,
+                  labels: labelsSet
+                });
+                core.info(`Set labels on PR #${prNumber} to: ${labelsSet.join(', ')}`);
+              } else {
+                if (labelsAdd.length) {
+                  await github.rest.issues.addLabels({
+                    owner,
+                    repo,
+                    issue_number: prNumber,
+                    labels: labelsAdd
+                  });
+                  core.info(`Added labels to PR #${prNumber}: ${labelsAdd.join(', ')}`);
+                }
+
+                for (const label of labelsRemove) {
+                  try {
+                    await github.rest.issues.removeLabel({
+                      owner,
+                      repo,
+                      issue_number: prNumber,
+                      name: label
+                    });
+                    core.info(`Removed label from PR #${prNumber}: ${label}`);
+                  } catch (e) {
+                    core.warning(`Failed removing label '${label}' from PR #${prNumber}: ${e.message}`);
+                  }
+                }
+              }
+            }
+
+            // Perform PR state operations
+            if (hasStateOp) {
+              core.info('=== Performing PR state operations ===');
+
+              try {
+                if (prState === 'draft') {
+                  if (pr.draft) {
+                    core.info('PR already draft; no change.');
+                  } else {
+                    await github.rest.pulls.update({
+                      owner,
+                      repo,
+                      pull_number: prNumber,
+                      draft: true
+                    });
+                    core.info(`Converted PR #${prNumber} to draft.`);
+                  }
+                } else if (prState === 'ready') {
+                  if (!pr.draft) {
+                    core.info('PR already ready; no change.');
+                  } else {
+                    await github.request('POST /repos/{owner}/{repo}/pulls/{pull_number}/ready_for_review', {
+                      owner,
+                      repo,
+                      pull_number: prNumber
+                    });
+                    core.info(`Marked PR #${prNumber} ready for review.`);
+                  }
+                } else if (prState === 'open') {
+                  if (pr.state === 'open') {
+                    core.info('PR already open; no change.');
+                  } else {
+                    await github.rest.pulls.update({
+                      owner,
+                      repo,
+                      pull_number: prNumber,
+                      state: 'open'
+                    });
+                    core.info(`Reopened PR #${prNumber}.`);
+                  }
+                } else if (prState === 'close') {
+                  if (pr.state === 'closed') {
+                    core.info('PR already closed; no change.');
+                  } else {
+                    await github.rest.pulls.update({
+                      owner,
+                      repo,
+                      pull_number: prNumber,
+                      state: 'closed'
+                    });
+                    core.info(`Closed PR #${prNumber}.`);
+                  }
+                } else if (prState === 'merge') {
+                  if (pr.merged) {
+                    core.info('PR already merged; no change.');
+                  } else if (pr.draft) {
+                    core.setFailed('Cannot merge draft PR. Mark as ready first.');
+                  } else if (pr.state !== 'open') {
+                    core.setFailed('Cannot merge non-open PR.');
+                  } else {
+                    // Check if PR is mergeable
+                    const prDetails = await github.rest.pulls.get({
+                      owner,
+                      repo,
+                      pull_number: prNumber
+                    });
+
+                    if (prDetails.data.mergeable === false) {
+                      core.setFailed('PR has merge conflicts and cannot be merged.');
+                      return;
+                    }
+
+                    if (prDetails.data.mergeable === null) {
+                      core.warning('PR mergeable status is unknown. Attempting merge anyway.');
+                    }
+
+                    try {
+                      const mergeResp = await github.rest.pulls.merge({
+                        owner,
+                        repo,
+                        pull_number: prNumber,
+                        merge_method: mergeMethod
+                      });
+
+                      if (mergeResp.data.merged) {
+                        core.info(`Successfully merged PR #${prNumber} using ${mergeMethod} method.`);
+                        core.info(`Merge commit SHA: ${mergeResp.data.sha}`);
+                      } else {
+                        core.setFailed(`Failed to merge PR #${prNumber}: ${mergeResp.data.message || 'Unknown error'}`);
+                      }
+                    } catch (mergeError) {
+                      core.setFailed(`Error merging PR #${prNumber}: ${mergeError.message}`);
+                    }
+                  }
+                }
+              } catch (error) {
+                core.setFailed(`Error applying PR state change: ${error.message}`);
+              }
+            }
+
+            core.info('=== PR management operations complete ===');

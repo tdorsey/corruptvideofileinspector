@@ -1,0 +1,85 @@
+---
+name: Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: 'Runner to use'
+        type: string
+        default: 'ubuntu-latest'
+      python-version:
+        description: 'Python version to use'
+        type: string
+        default: '3.13'
+      scan-dependencies:
+        description: 'Whether to scan Python dependencies'
+        type: boolean
+        default: true
+      scan-code:
+        description: 'Whether to run code security scanning'
+        type: boolean
+        default: true
+      scan-docker:
+        description: 'Whether to scan Docker images'
+        type: boolean
+        default: false
+      docker-image:
+        description: 'Docker image to scan'
+        type: string
+        default: ''
+    outputs:
+      scan-results:
+        description: 'Security scan results summary'
+        value: ${{ jobs.security-scan.outputs.results }}
+
+jobs:
+  security-scan:
+    name: Run Security Scans
+    runs-on: ${{ inputs.runs-on }}
+    outputs:
+      results: ${{ steps.summary.outputs.results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: inputs.scan-dependencies || inputs.scan-code
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        if: inputs.scan-dependencies || inputs.scan-code
+        run: make install-dev
+
+      - name: Run dependency security scan
+        if: inputs.scan-dependencies
+        run: make security-scan
+
+      - name: Run CodeQL Analysis
+        if: inputs.scan-code
+        uses: github/codeql-action/analyze@v3
+        with:
+          languages: python
+
+      - name: Run Trivy vulnerability scanner on Docker image
+        if: inputs.scan-docker && inputs.docker-image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ inputs.docker-image }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: inputs.scan-docker && inputs.docker-image
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Summary
+        id: summary
+        run: |
+          echo "results=completed" >> $GITHUB_OUTPUT
+          echo "Security scans completed successfully"

@@ -1,0 +1,115 @@
+---
+name: Python Code Quality
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        type: string
+        default: '3.13'
+      runs-on:
+        description: 'Runner to use'
+        type: string
+        default: 'ubuntu-latest'
+      check-format:
+        description: 'Whether to check code formatting'
+        type: boolean
+        default: true
+      check-lint:
+        description: 'Whether to run linting'
+        type: boolean
+        default: true
+      check-types:
+        description: 'Whether to run type checking'
+        type: boolean
+        default: true
+
+jobs:
+  setup:
+    name: Setup Python Environment
+    runs-on: ${{ inputs.runs-on }}
+    outputs:
+      python-version: ${{ steps.setup.outputs.python-version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        id: setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: make install-dev
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ steps.setup.outputs.python-version }}-${{ hashFiles('pyproject.toml') }}
+
+  format:
+    name: Check Code Format
+    runs-on: ${{ inputs.runs-on }}
+    needs: setup
+    if: inputs.check-format
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: make install-dev
+
+      - name: Check formatting
+        run: make format
+
+  lint:
+    name: Lint Code
+    runs-on: ${{ inputs.runs-on }}
+    needs: setup
+    if: inputs.check-lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: make install-dev
+
+      - name: Run linting
+        run: make lint
+
+  type-check:
+    name: Type Check
+    runs-on: ${{ inputs.runs-on }}
+    needs: setup
+    if: inputs.check-types
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: make install-dev
+
+      - name: Run type checking
+        run: make type

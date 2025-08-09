@@ -19,6 +19,6 @@ jobs:
         uses: github/issue-labeler@v3.4
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
-          configuration-path: .github/issue-labeler.yml
-          include-title: false
           enable-versioned-regex: true
+          configuration-path: .github/workflows/repository/labels/labels.yml
+          include-title: false

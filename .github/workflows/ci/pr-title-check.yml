@@ -10,9 +10,14 @@ permissions:
   issues: read
 
 jobs:
+  # First job: Get available labels using the reusable workflow
+  get-labels:
+    uses: ./.github/workflows/internal/get-labels.yml
+
   validate-pr-title:
     name: Validate PR Title and Requirements
     runs-on: ubuntu-latest
+    needs: get-labels
 
     steps:
       - name: Validate PR title format
@@ -51,20 +56,15 @@ jobs:
           # Validate PR body contains issue reference
           validateSingleCommit: false
 
-      - name: Validate issue reference and handle failures
+      - name: Validate issue reference
+        id: issue-validation
         if: always()
         uses: actions/github-script@v7
         with:
-
           script: |
             const title = context.payload.pull_request.title;
             const body = context.payload.pull_request.body || '';
-            const prNumber = context.payload.pull_request.number;
-            const isDraft = context.payload.pull_request.draft;
-            const assignees = context.payload.pull_request.assignees;
             const branchName = context.payload.pull_request.head.ref || '';
-
-
 
             // Check for issue reference in title, body, or branch name
             const issueRefPattern = /#(\d+)/;
@@ -115,8 +115,31 @@ jobs:
               }
             }
 
-            // Check if semantic PR validation failed
+            // Set outputs for the next step
+            core.setOutput('has_issue_reference', hasIssueReference);
+            core.setOutput('issue_exists', issueExists);
+            core.setOutput('found_issue_number', foundIssueNumber || '');
+
+            console.log(`Issue reference validation:`);
+            console.log(`- Has reference: ${hasIssueReference}`);
+            console.log(`- Issue exists: ${issueExists}`);
+            if (foundIssueNumber) {
+              console.log(`- Found issue: #${foundIssueNumber}`);
+            }
+
+      - name: Handle validation results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const isDraft = context.payload.pull_request.draft;
+
+            // Get results from previous steps
             const semanticPrFailed = '${{ steps.semantic-pr.outcome }}' === 'failure';
+            const hasIssueReference = '${{ steps.issue-validation.outputs.has_issue_reference }}' === 'true';
+            const issueExists = '${{ steps.issue-validation.outputs.issue_exists }}' === 'true';
+            const foundIssueNumber = '${{ steps.issue-validation.outputs.found_issue_number }}';
 
             let validationErrors = [];
 
@@ -137,45 +160,13 @@ jobs:
               validationErrors.push(`   Issue #${foundIssueNumber} was not found in this repository. Please reference a valid, existing issue.`);
             }
 
-
-            let validationErrors = [];
-
-            // Collect validation errors
-            if (semanticPrFailed) {
-              validationErrors.push('❌ **PR title format validation failed**');
-              validationErrors.push('   The PR title must follow conventional commit format: `type: description`');
-              validationErrors.push('   Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`');
-              validationErrors.push('   Example: `feat: add new video validation feature`');
-            }
-
-            if (!hasIssueReference) {
-              validationErrors.push('❌ **Missing issue reference**');
-              validationErrors.push('   PR must reference an issue number (e.g., #123) in the title, body, or branch name');
-              validationErrors.push('   Example: `feat: add new feature (#123)` or add "Fixes #123" to PR body, or use a branch name like `issue-123-description`');
-            }
-
             // If there are validation errors, handle the failure
             if (validationErrors.length > 0) {
-              // Convert PR to draft if it's not already
-              if (!isDraft) {
-                try {
-                  await github.rest.pulls.update({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    pull_number: prNumber,
-                    draft: true
-                  });
-                  console.log('✅ Converted PR to draft due to validation failures');
-                } catch (error) {
-                  console.error('❌ Failed to convert PR to draft:', error.message);
-                }
-              }
-
               // Create comment with validation errors
               const errorList = validationErrors.join('\n');
               const commentBody = `## 🚫 PR Validation Failed
 
-            This pull request has been automatically converted to **draft** due to validation failures.
+            This pull request will be automatically converted to **draft** and labeled due to validation failures.
 
             ### Issues Found:
             ${errorList}
@@ -207,48 +198,23 @@ jobs:
                 console.error('❌ Failed to post comment:', error.message);
               }
 
-              // Notify assignees if any
-              if (assignees && assignees.length > 0) {
-                const assigneeNotifications = assignees.map(assignee => `@${assignee.login}`).join(' ');
-                const notificationComment = `${assigneeNotifications} - This PR requires your attention due to validation failures. Please review the comment above.`;
-
-                try {
-                  await github.rest.issues.createComment({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: prNumber,
-                    body: notificationComment
-                  });
-                  console.log('✅ Notified assignees');
-                } catch (error) {
-                  console.error('❌ Failed to notify assignees:', error.message);
-                }
-              }
-
-              // Fail the workflow
+              // Fail the workflow so the failure job can handle labels and draft conversion
               core.setFailed('PR validation failed. Check the comments for details.');
               return;
             }
 
             // Success case
             console.log('✅ All validations passed');
-            console.log(`Title: ${title}`);
-            if (hasIssueRefInTitle) {
-              console.log('✅ Issue reference found in title');
-            }
-            if (hasIssueRefInBody) {
-              console.log('✅ Issue reference found in body');
+            if (hasIssueReference && foundIssueNumber) {
+              console.log(`✅ Issue reference found and validated: #${foundIssueNumber}`);
             }
 
-            // If PR was previously in draft due to validation failures,
-            // post a success comment
+            // Post success comment for draft PRs
             if (isDraft) {
               const validatedItems = [
                 '- ✅ PR title follows conventional commit format',
-                '- ✅ Issue reference found',
-                hasIssueRefInTitle ? '- ✅ Issue reference in title' : '',
-                hasIssueRefInBody ? '- ✅ Issue reference in body' : ''
-              ].filter(Boolean);
+                '- ✅ Issue reference found and validated'
+              ];
 
               const successComment = `## ✅ PR Validation Passed
 
@@ -257,7 +223,7 @@ jobs:
             ### Validated:
             ${validatedItems.join('\n')}
 
-            You can now mark this PR as ready for review.`;
+            You can now mark this PR as ready for review, or it will be automatically promoted.`;
 
               try {
                 await github.rest.issues.createComment({
@@ -271,3 +237,46 @@ jobs:
                 console.error('❌ Failed to post success comment:', error.message);
               }
             }
+
+  # Job to handle validation failure - add failure labels and convert to draft
+  handle-validation-failure:
+    name: Handle Validation Failure
+    runs-on: ubuntu-latest
+    needs: [get-labels, validate-pr-title]
+    if: always() && needs.validate-pr-title.result == 'failure'
+    steps:
+      - name: Add validation failure labels and convert to draft
+        uses: ./.github/workflows/internal/manage-pr.yml
+        with:
+          pr_number: '${{ github.event.pull_request.number }}'
+          labels_add: '["validation:failed", "status:draft", "needs:attention"]'
+          labels_remove: '["validation:passed", "status:ready"]'
+          pr_state: 'draft'
+
+  # Job to handle validation success - add success labels
+  handle-validation-success:
+    name: Handle Validation Success
+    runs-on: ubuntu-latest
+    needs: [get-labels, validate-pr-title]
+    if: always() && needs.validate-pr-title.result == 'success'
+    steps:
+      - name: Add validation success labels
+        uses: ./.github/workflows/internal/manage-pr.yml
+        with:
+          pr_number: '${{ github.event.pull_request.number }}'
+          labels_add: '["validation:passed"]'
+          labels_remove: '["validation:failed", "needs:attention"]'
+
+  # Job to handle when PR becomes ready after being draft due to validation
+  promote-from-draft:
+    name: Promote Draft PR to Ready
+    runs-on: ubuntu-latest
+    needs: [get-labels, validate-pr-title]
+    if: always() && needs.validate-pr-title.result == 'success' && github.event.pull_request.draft == true
+    steps:
+      - name: Add ready-for-review labels and suggest promotion
+        uses: ./.github/workflows/internal/manage-pr.yml
+        with:
+          pr_number: '${{ github.event.pull_request.number }}'
+          labels_add: '["validation:passed", "status:ready-for-promotion"]'
+          labels_remove: '["validation:failed", "status:draft", "needs:attention"]'

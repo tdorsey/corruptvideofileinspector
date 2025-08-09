@@ -26,7 +26,7 @@ jobs:
     # If you do not check out your code, Copilot will do this for you.
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Cache APT packages
         id: cache-apt
         uses: actions/cache@v4
@@ -35,11 +35,11 @@ jobs:
           key: ${{ runner.os }}-apt-ffmpeg
           restore-keys: |
             ${{ runner.os }}-apt-
-      
+
       - name: Install system dependencies
         if: steps.cache-apt.outputs.cache-hit == 'false'
         run:           sudo apt-get install -y ffmpeg
-      
+
       - name: Install poetry
         run: pipx install poetry
 
@@ -48,7 +48,7 @@ jobs:
         with:
           python-version: ${{ vars.PYTHON_VERSION || '3.13' }}
           cache: 'poetry'
-          
+
       - name: Install dependencies (Poetry)
         if: steps.setup-python.outputs.cache-hit == 'false'
         run: poetry install
