@@ -31,6 +31,8 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    # Tests should run after linting passes
+    needs: lint-and-format
 
     steps:
     - uses: actions/checkout@v4
@@ -61,6 +63,8 @@ jobs:
   docker:
     name: Build and Test Docker Image
     runs-on: ubuntu-latest
+    # Docker build should only occur after all tests pass
+    needs: test
 
     steps:
     - uses: actions/checkout@v4
@@ -79,6 +83,8 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    # Security scan can run in parallel with docker after tests pass
+    needs: test
 
     steps:
     - uses: actions/checkout@v4
