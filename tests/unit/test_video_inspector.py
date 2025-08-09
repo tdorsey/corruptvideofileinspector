@@ -602,15 +602,13 @@ class TestInspectVideoFilesCli(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch("tests.test_video_inspector.get_ffmpeg_command")
-    def test_no_ffmpeg_found(self, mock_get_ffmpeg):
+    def test_no_ffmpeg_found(self):
         """Test behavior when ffmpeg is not found"""
-        mock_get_ffmpeg.return_value = None
+        with patch.object(sys.modules[__name__], 'get_ffmpeg_command', return_value=None):
+            with pytest.raises(RuntimeError) as context:
+                inspect_video_files_cli(str(self.temp_path))
 
-        with pytest.raises(RuntimeError) as context:
-            inspect_video_files_cli(str(self.temp_path))
-
-        assert "FFmpeg not found" in str(context.value)
+            assert "FFmpeg not found" in str(context.value)
 
     @patch("src.cli.handlers.get_ffmpeg_command")
     @patch("src.cli.handlers.get_all_video_object_files")
