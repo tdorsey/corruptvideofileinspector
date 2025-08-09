@@ -577,10 +577,9 @@ class UtilityHandler(BaseHandler):
         # Ensure directory is a Path
         directory_path = Path(directory)
         # Pass extensions directly to get_video_files instead of mutating config
-        video_files = self.scanner.get_video_files(
+        return self.scanner.get_video_files(
             directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
         )
-        return video_files
 
     def list_video_files_simple(
         self,
@@ -660,10 +659,9 @@ def get_all_video_object_files(
     config = load_config()
     scanner = VideoScanner(config)
     # Pass extensions directly to get_video_files instead of mutating config
-    video_files = scanner.get_video_files(
+    return scanner.get_video_files(
         directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
     )
-    return video_files
 
 
 def list_video_files(
