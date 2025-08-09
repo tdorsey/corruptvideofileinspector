@@ -16,20 +16,14 @@ For comprehensive guidance on specific aspects of development, refer to these sp
 - **[Git & Version Control](instructions/git.md)** - Commit conventions, branching strategies, and version control
 - **[GitHub Actions & CI/CD](instructions/github-actions.md)** - Workflow patterns, marketplace actions, and automation
 - **[Project-Specific Guidelines](instructions/project-specific.md)** - Architecture, key entry points, and project-specific patterns
-- **[Workflow File Commit Instructions](../instructions/workflows.md)** - Commit message and review guidelines for workflow files
+- **[Workflow File Commit Instructions](.github/workflows/WORKFLOW_INSTRUCTIONS.md)** - Commit message and review guidelines for workflow files
 
 ## Recent Updates and Fixes
 
-✅ **CLI Entry Point Fixed**: cli_handler.py now has proper implementation  
-✅ **Missing Make Targets Added**: `docker-test` and `security-scan` targets added to Makefile  
-✅ **Configuration Requirements**: CLI requires config.yaml file (sample provided below)  
+✅ **CLI Entry Point Fixed**: cli_handler.py now has proper implementation
+✅ **Missing Make Targets Added**: `docker-test` and `security-scan` targets added to Makefile
+✅ **Configuration Requirements**: CLI requires config.yaml file (sample provided below)
 ✅ **Validation Completed**: All commands and scenarios tested and verified working
-
-✅ **CLI Entry Point Fixed**: cli_handler.py now has proper implementation  
-✅ **Missing Make Targets Added**: `docker-test` and `security-scan` targets added to Makefile  
-✅ **Configuration Requirements**: CLI requires config.yaml file (sample provided below)  
-✅ **Validation Completed**: All commands and scenarios tested and verified working  
->>>>>>> 96e27dd (chore: resolve merge conflicts and enhance copilot-instructions.md with instruction file links (#99))
 
 ## GitHub Actions and Automation Guidelines
 
@@ -247,7 +241,7 @@ Always manually validate changes by running these complete scenarios:
      client_secret: ""
      include_statuses: ["healthy"]
    EOF
-   
+
    # Test CLI with PYTHONPATH (works without full installation)
    export PYTHONPATH=$(pwd)/src
    python3 cli_handler.py --config config.yaml --help
