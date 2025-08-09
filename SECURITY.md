@@ -6,7 +6,7 @@
 
 The `main` branch is protected with the following requirements:
 
-- **Pull Request Reviews**: All pull requests to `main` require passing status checks and pull request reviews
+- **Code Owner Review Required**: All pull requests to `main` require approval from designated code owners
 - **Status Checks**: CI/CD pipeline must pass before merging
 - **Dismiss Stale Reviews**: Reviews are automatically dismissed when new commits are pushed
 - **No Force Push**: Force pushes to `main` are not allowed
@@ -33,11 +33,11 @@ The `.github/settings.yml` file controls repository settings and security polici
 
 #### Impact on Development Workflow
 
-✅ **Current Setting**: "require code owner review" is disabled on the main branch:
+⚠️ **Important**: Enabling "require code owner review" on the main branch means:
 
-- **All pull requests** to `main` need to pass status checks but do not require mandatory code owner approval
-- **Development workflow** is streamlined without requiring admin reviews for every change
-- **Code owners** (@tdorsey) may still review and provide feedback but it's not enforced
+- **All pull requests** to `main` require code owner approval, not just changes to `.github/settings.yml`
+- **Development workflow** may be slower due to required admin reviews
+- **Code owners** (@tdorsey) must be available to review and approve changes
 
 ### Security Best Practices
 
@@ -62,7 +62,7 @@ Some security settings must be configured manually in the GitHub repository sett
 1. **Navigate to**: Repository Settings → Branches
 2. **Configure main branch protection**:
    - ✅ Require pull request reviews before merging
-   - ❌ Require review from code owners (disabled for smoother workflow)
+   - ✅ Require review from code owners
    - ✅ Dismiss stale reviews when new commits are pushed
    - ✅ Require status checks to pass before merging
    - ✅ Require branches to be up to date before merging
@@ -79,4 +79,4 @@ If you discover a security vulnerability, please:
 
 ## Security Updates
 
-This document will be updated as security policies evolve. Changes to this SECURITY.md file specifically may receive code owner review as it is listed in the CODEOWNERS file.
+This document will be updated as security policies evolve. All changes to security policies require code owner review as enforced by the CODEOWNERS file.

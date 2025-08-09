@@ -288,6 +288,16 @@ This repository implements security measures to protect critical configuration f
 
 For security policies and reporting vulnerabilities, see [SECURITY.md](SECURITY.md).
 
+## 🔒 Security
+
+This repository implements security measures to protect critical configuration files:
+
+- **CODEOWNERS**: Critical files require code owner review (see `.github/CODEOWNERS`)
+- **Branch Protection**: Main branch requires code owner approval for all changes
+- **Configuration Protection**: `.github/settings.yml` and security files have additional safeguards
+
+For security policies and reporting vulnerabilities, see [SECURITY.md](SECURITY.md).
+
 ## 📞 Support & Resources
 
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/tdorsey/corruptvideofileinspector/issues)
