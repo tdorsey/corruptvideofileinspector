@@ -167,23 +167,23 @@ docker-compose -f docker/docker-compose.dev.yml --profile trakt up app trakt-dev
 git clone https://github.com/tdorsey/corruptvideofileinspector.git
 cd corruptvideofileinspector
 
-# Install system dependencies
+# Install system dependencies (FFmpeg is required)
 make install-system-deps
 
-# Install development dependencies
+# Install in development mode with all dependencies
 make install-dev
 
-# Setup the project
-make setup
-```
+# Install pre-commit hooks for code quality
+make pre-commit-install
 
+# Test FFmpeg installation
+make test-ffmpeg
 
-```bash
-# Scan a directory for corrupt videos
-corrupt-video-inspector scan /path/to/videos --mode hybrid --output results.json
+# Run tests
+make test
 
-# View help for all commands
-corrupt-video-inspector --help
+# Run code quality checks
+make check
 ```
 
 **Note**: FFmpeg is a critical system dependency required for video analysis. The `make install-system-deps` command will install it automatically on most systems, or see [FFmpeg Installation](https://ffmpeg.org/download.html) for manual installation.
