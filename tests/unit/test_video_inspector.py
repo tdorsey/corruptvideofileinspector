@@ -38,12 +38,20 @@ def inspect_single_video_quick(video_file, ffmpeg_cmd, verbose=False):
     """Stub function that simulates quick video inspection with subprocess interaction."""
     import subprocess
 
-    result = VideoInspectionResult(video_file.path.name, ScanMode.QUICK)
+    # Handle both VideoFile objects and Path objects for testing
+    if hasattr(video_file, 'path'):
+        file_path = video_file.path
+        file_name = video_file.path.name
+    else:
+        file_path = video_file
+        file_name = video_file.name
+    
+    result = VideoInspectionResult(file_name, ScanMode.QUICK)
 
     try:
         # This will be mocked in tests
         process = subprocess.run(
-            [ffmpeg_cmd, "-v", "error", "-i", str(video_file.path), "-f", "null", "-"],
+            [ffmpeg_cmd, "-v", "error", "-i", str(file_path), "-f", "null", "-"],
             capture_output=True,
             text=True,
             timeout=60,
@@ -90,13 +98,21 @@ def inspect_single_video_deep(video_file, ffmpeg_cmd, verbose=False):
     """Stub function that simulates deep video inspection with subprocess interaction."""
     import subprocess
 
-    result = VideoInspectionResult(video_file.path.name, ScanMode.DEEP)
+    # Handle both VideoFile objects and Path objects for testing
+    if hasattr(video_file, 'path'):
+        file_path = video_file.path
+        file_name = video_file.path.name
+    else:
+        file_path = video_file
+        file_name = video_file.name
+
+    result = VideoInspectionResult(file_name, ScanMode.DEEP)
     result.deep_scan_completed = True
 
     try:
         # This will be mocked in tests
         process = subprocess.run(
-            [ffmpeg_cmd, "-v", "error", "-i", str(video_file.path), "-f", "null", "-"],
+            [ffmpeg_cmd, "-v", "error", "-i", str(file_path), "-f", "null", "-"],
             capture_output=True,
             text=True,
             timeout=900,  # 15 minutes for deep scan
