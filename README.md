@@ -293,12 +293,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Click](https://click.palletsprojects.com/) for the excellent CLI framework
 - The Python community for the fantastic ecosystem of tools
 
+## 🔒 Security
+
+This repository implements security measures to protect critical configuration files:
+
+- **CODEOWNERS**: Critical files require code owner review (see `.github/CODEOWNERS`)
+- **Branch Protection**: Main branch requires code owner approval for all changes
+- **Configuration Protection**: `.github/settings.yml` and security files have additional safeguards
+
+For security policies and reporting vulnerabilities, see [SECURITY.md](SECURITY.md).
+
 ## 📞 Support & Resources
 
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/tdorsey/corruptvideofileinspector/issues)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/tdorsey/corruptvideofileinspector/discussions)
 - 📖 **Documentation**: See docs/ directory for detailed guides
 - 🔄 **Contributing**: See [Contributing Guide](docs/CONTRIBUTING.md)
+- 🔒 **Security**: See [Security Policy](SECURITY.md)
 
 ---
 
@@ -323,5 +334,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Development
 
 - **[Contributing Guidelines](docs/CONTRIBUTING.md)** - Development setup, code quality, and submission process
+- **[Repository Configuration](docs/REPOSITORY_CONFIGURATION.md)** - Repository settings management and code ownership
 - **[Version Management](docs/VERSIONING.md)** - Dynamic versioning with Git tags
 - **[Tests Documentation](docs/tests.md)** - Testing framework and test execution

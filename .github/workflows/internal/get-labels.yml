@@ -1,0 +1,62 @@
+name: Build Label Artifact
+
+on:
+  workflow_call:
+    outputs:
+      labels_json:
+        description: 'Full JSON array of label objects parsed from labels.yml'
+        value: ${{ jobs.build-label-artifact.outputs.labels_json }}
+      label_names:
+        description: 'Comma-separated list of label names'
+        value: ${{ jobs.build-label-artifact.outputs.label_names }}
+  push:
+    paths:
+      - '.github/labels/labels.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-label-artifact:
+    runs-on: ubuntu-latest
+    outputs:
+      labels_json: ${{ steps.setoutputs.outputs.labels_json }}
+      label_names: ${{ steps.setoutputs.outputs.label_names }}
+    steps:
+      - name: Checkout label config only
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/labels/labels.yml
+
+      - name: Parse labels.yml to JSON
+        run: |
+          yq -o=json '.labels' .github/labels/labels.yml > .github/label-artifact.json
+
+      - name: Cache label artifact
+        uses: actions/cache@v4
+        with:
+          path: .github/label-artifact.json
+          key: label-artifact-${{ hashFiles('.github/labels/labels.yml') }}
+
+      - name: Set outputs
+        id: setoutputs
+        run: |
+          if [ ! -f .github/label-artifact.json ]; then
+            echo 'Label artifact missing; creating empty array.'
+            echo '[]' > .github/label-artifact.json
+          fi
+          labels_json=$(cat .github/label-artifact.json)
+          echo "labels_json=$(echo "$labels_json" | jq -c .)" >> $GITHUB_OUTPUT
+
+      - name: Upload label artifact (debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: label-artifact
+          path: .github/label-artifact.json
+          retention-days: 5
+
+      - name: Summary
+        run: |
+          echo 'Label artifact ready.'
+          cat .github/label-artifact.json || true

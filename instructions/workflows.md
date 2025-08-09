@@ -1,6 +1,3 @@
-# ---
-applyTo: ".github/workflows/*.yml,.github/workflows/*.yaml"
-# ---
 # GitHub Actions Workflow File Instructions
 
 ## Commit Message Guidelines

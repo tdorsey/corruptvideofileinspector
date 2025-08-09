@@ -1,6 +1,6 @@
 name: 🏷️ Auto Label Issues
 
-"on":
+on:
   issues:
     types: [opened, edited]
 
@@ -18,6 +18,7 @@ jobs:
       - name: Auto label issues
         uses: github/issue-labeler@v3.4
         with:
-          repository-token: "${{ secrets.GITHUB_TOKEN }}"
-          configuration-path: .github/issue-labeler.yml
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-path: .github/workflows/repository/labels/labels.yml
           include-title: false
+          enable-versioned-regex: true

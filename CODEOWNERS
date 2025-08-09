@@ -1,0 +1,49 @@
+# CODEOWNERS
+# 
+# This file defines ownership for specific files and directories in the repository.
+# Code owners are automatically requested for review when someone opens a pull request
+# that modifies code that they own.
+#
+# For more information about CODEOWNERS, see:
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global ownership - repository owner has final say on all changes
+* @tdorsey
+
+# Critical configuration files that require extra scrutiny
+# These files control repository behavior and security settings
+/.github/settings.yaml @tdorsey
+/.github/workflows/ @tdorsey
+/CODEOWNERS @tdorsey
+
+# Security and dependency management files
+/.github/dependabot.yml @tdorsey
+/.github/security.md @tdorsey
+/pyproject.toml @tdorsey
+/poetry.lock @tdorsey
+
+# Docker and deployment configuration
+/Dockerfile @tdorsey
+/docker-compose*.yml @tdorsey
+/docker/ @tdorsey
+
+# CI/CD and automation
+/.pre-commit-config.yaml @tdorsey
+/Makefile @tdorsey
+
+# Documentation ownership - maintainers should review docs
+/README.md @tdorsey
+/docs/ @tdorsey
+/CONTRIBUTING.md @tdorsey
+
+# Core application areas - domain experts should review
+/src/cli/ @tdorsey
+/src/core/ @tdorsey
+/src/ffmpeg/ @tdorsey
+/src/config/ @tdorsey
+
+# Testing - ensure test quality and coverage
+/tests/ @tdorsey
+
+# Release and versioning
+/CHANGELOG.md @tdorsey

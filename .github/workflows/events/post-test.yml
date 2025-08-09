@@ -1,0 +1,163 @@
+---
+name: Post-test Actions
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+    branches: [main, develop]
+
+jobs:
+  # Deploy to staging after successful CI on develop
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'develop'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging environment
+        run: |
+          echo "🚀 Deploying to staging environment"
+          # Add staging deployment logic here
+          echo "Staging deployment completed"
+
+  # Generate release notes and prepare for release
+  prepare-release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate release notes
+        run: |
+          echo "📝 Generating release notes"
+          # Add release notes generation logic here
+          echo "Release notes prepared"
+
+  # Update documentation after successful tests
+  update-docs:
+    name: Update Documentation
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update documentation
+        run: |
+          echo "📚 Updating documentation"
+          # Add documentation update logic here
+          echo "Documentation updated"
+
+  # Clean up old artifacts and process coverage
+  cleanup:
+    name: Cleanup and Process Reports
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports-${{ vars.PYTHON_VERSION || '3.13' }}
+          path: ./coverage-reports/
+        continue-on-error: true
+
+      - name: Process coverage reports
+        run: |
+          if [ -d "./coverage-reports" ]; then
+            echo "Processing coverage reports..."
+            # Add any post-processing logic here
+            ls -la ./coverage-reports/
+          else
+            echo "No coverage reports found"
+          fi
+
+      - name: Clean up old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Get artifacts older than 30 days
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner,
+              repo,
+              per_page: 100
+            });
+
+            for (const artifact of artifacts.data.artifacts) {
+              const createdAt = new Date(artifact.created_at);
+              if (createdAt < thirtyDaysAgo) {
+                console.log(`Deleting old artifact: ${artifact.name} (${artifact.created_at})`);
+                await github.rest.actions.deleteArtifact({
+                  owner,
+                  repo,
+                  artifact_id: artifact.id
+                });
+              }
+            }
+
+  # Notify team of build status
+  notify:
+    name: Notify Team
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Notify on success
+        if: github.event.workflow_run.conclusion == 'success'
+        run: |
+          echo "✅ CI Pipeline succeeded for ${{ github.event.workflow_run.head_branch }}"
+          # Add notification logic (Slack, email, etc.)
+
+      - name: Notify on failure
+        if: github.event.workflow_run.conclusion == 'failure'
+        run: |
+          echo "❌ CI Pipeline failed for ${{ github.event.workflow_run.head_branch }}"
+          # Add failure notification logic
+    if: github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - name: Handle test failure
+        run: |
+          echo "❌ Build and test workflow failed"
+          echo "Branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Commit: ${{ github.event.workflow_run.head_sha }}"
+
+      - name: Create issue for main branch failures
+        if: github.event.workflow_run.head_branch == 'main'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Main branch build failure - ${new Date().toISOString().split('T')[0]}`;
+            const body = `**Build failure detected on main branch**
+
+            - **Workflow**: ${{ github.event.workflow_run.name }}
+            - **Branch**: ${{ github.event.workflow_run.head_branch }}
+            - **Commit**: ${{ github.event.workflow_run.head_sha }}
+            - **Run URL**: ${{ github.event.workflow_run.html_url }}
+
+            Please investigate and fix the build failure as soon as possible.
+
+            **Auto-generated issue** - created by post-test workflow`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['bug', 'ci/cd', 'priority:high']
+            });
