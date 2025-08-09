@@ -582,7 +582,7 @@ class TestInspectVideoFilesCli(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch("tests.test_video_inspector.get_ffmpeg_command")
+    @patch("src.cli.handlers.get_ffmpeg_command")
     def test_no_ffmpeg_found(self, mock_get_ffmpeg):
         """Test behavior when ffmpeg is not found"""
         mock_get_ffmpeg.return_value = None
@@ -592,8 +592,8 @@ class TestInspectVideoFilesCli(unittest.TestCase):
 
         assert "FFmpeg not found" in str(context.value)
 
-    @patch("tests.test_video_inspector.get_ffmpeg_command")
-    @patch("tests.test_video_inspector.get_all_video_object_files")
+    @patch("src.cli.handlers.get_ffmpeg_command")
+    @patch("src.cli.handlers.get_all_video_object_files")
     def test_no_video_files(self, mock_get_files, mock_get_ffmpeg):
         """Test behavior when no video files are found"""
         mock_get_ffmpeg.return_value = "/usr/bin/ffmpeg"
@@ -602,8 +602,8 @@ class TestInspectVideoFilesCli(unittest.TestCase):
         # Should not raise exception, just print message
         inspect_video_files_cli(str(self.temp_path))
 
-    @patch("tests.test_video_inspector.get_ffmpeg_command")
-    @patch("tests.test_video_inspector.get_all_video_object_files")
+    @patch("src.cli.handlers.get_ffmpeg_command")
+    @patch("src.cli.handlers.get_all_video_object_files")
     @patch("tests.test_video_inspector.inspect_single_video")
     @patch("builtins.print")
     def test_quick_scan_mode(self, mock_print, mock_inspect, mock_get_files, mock_get_ffmpeg):
@@ -624,8 +624,8 @@ class TestInspectVideoFilesCli(unittest.TestCase):
         # Verify inspect_single_video was called with correct parameters
         mock_inspect.assert_called()
 
-    @patch("tests.test_video_inspector.get_ffmpeg_command")
-    @patch("tests.test_video_inspector.get_all_video_object_files")
+    @patch("src.cli.handlers.get_ffmpeg_command")
+    @patch("src.cli.handlers.get_all_video_object_files")
     @patch("tests.test_video_inspector.inspect_single_video")
     @patch("pathlib.Path.open", new_callable=mock_open)
     @patch("json.dump")
