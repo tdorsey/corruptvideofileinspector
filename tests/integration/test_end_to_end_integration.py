@@ -126,7 +126,7 @@ class TestEndToEndIntegration(unittest.TestCase):
         video_files = get_all_video_object_files(str(self.test_dir))
 
         for vf in video_files:
-            size = vf.stat().st_size
+            size = vf.size
             formatted_size = format_file_size(size)
 
             # Should be a valid format
