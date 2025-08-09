@@ -4,6 +4,106 @@ A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
+## GitHub Copilot Usage Guidelines
+
+### Primary Use Cases for GitHub Copilot Chat
+Use GitHub Copilot Chat for these primary scenarios in this repository:
+
+1. **Code Implementation & Refactoring**
+   - Writing new Python functions with proper type annotations
+   - Implementing FFmpeg integration and video processing logic
+   - Creating CLI commands and handlers using Typer framework
+   - Building configuration management with Pydantic models
+
+2. **Testing & Quality Assurance**
+   - Writing unit tests with pytest markers (`@pytest.mark.unit`)
+   - Creating integration tests for video processing workflows
+   - Debugging test failures and improving test coverage
+   - Implementing test fixtures for video file scenarios
+
+3. **Docker & Containerization**
+   - Optimizing Dockerfile configurations for multi-stage builds
+   - Setting up docker-compose workflows for development
+   - Troubleshooting container environment issues
+   - Implementing container-based testing strategies
+
+4. **Configuration & Environment Setup**
+   - Setting up environment variables and configuration files
+   - Creating Pydantic configuration models
+   - Managing Docker secrets and environment-specific settings
+   - Troubleshooting CLI configuration issues
+
+### Primary Use Cases for GitHub Copilot Code Review
+Use GitHub Copilot Code Review for these key scenarios:
+
+1. **Code Quality & Standards Enforcement**
+   - Ensuring Black formatting, Ruff linting, and MyPy type checking compliance
+   - Validating proper type annotations and Python best practices
+   - Checking adherence to 79-character line length and f-string usage
+   - Reviewing import organization and code structure consistency
+
+2. **Security & Best Practices**
+   - Identifying hardcoded secrets or security vulnerabilities
+   - Validating proper environment variable usage
+   - Ensuring container security practices are followed
+   - Checking input validation and error handling patterns
+
+3. **Testing & Documentation Coverage**
+   - Verifying that changes include appropriate unit tests
+   - Ensuring pytest markers are correctly applied
+   - Checking for adequate documentation updates
+   - Validating that public APIs have proper docstrings
+
+4. **Architecture & Integration Compliance**
+   - Ensuring changes align with existing project structure
+   - Validating FFmpeg integration patterns
+   - Checking Docker and containerization compatibility
+   - Reviewing CLI framework usage and command structure
+
+### For Other Copilot Scenarios
+For comprehensive guidance on all other GitHub Copilot usage scenarios, development patterns, and detailed instructions, please refer to:
+
+**📖 [Complete Copilot Instructions](instructions/copilot-instructions.md)**
+
+This includes detailed guidance on:
+- Advanced development workflows and patterns
+- Specialized testing scenarios and fixtures
+- Complex Docker configurations and troubleshooting
+- Extended configuration management patterns
+- CI/CD integration with Copilot workflows
+- Project-specific architectural considerations
+
+### Key Project Context for Copilot
+- **Primary language**: Python 3.13 with strict type checking
+- **Build system**: pyproject.toml with Poetry-style configuration
+- **Testing framework**: pytest with unit/integration separation
+- **Code quality**: Black + Ruff + MyPy enforcement via `make check`
+- **Containerization**: Docker with multi-stage builds and docker-compose
+- **CLI framework**: Typer with Click integration
+- **Core dependency**: FFmpeg for video analysis and corruption detection
+## Development Standards and Requirements
+
+### Commit Standards (REQUIRED)
+**All commits MUST follow the [Conventional Commits](https://www.conventionalcommits.org/) standard:**
+- Use format: `<type>[optional scope]: <description>`
+- Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
+- Examples: `feat(cli): add video scan command`, `fix(config): resolve YAML parsing error`
+- **Atomic commits**: Each commit should represent a single, focused change. Avoid combining unrelated changes in one commit.
+- See [Git & Version Control](instructions/git.md) for detailed commit guidelines
+
+### Issue Creation (REQUIRED)
+**Always select a relevant issue template when creating issues:**
+- **Template selection is enforced** (blank issues are disabled)
+- Available templates: Feature Request, Bug Report, Documentation Update, Testing Issue, Chore/Maintenance, Performance Issue, Refactor Request, Code Style Issue
+- **All templates create proper conventional commit titles** with prefixes like `[FEAT]:`, `[FIX]:`, `[DOCS]:`, `[TEST]:`, `[CHORE]:`, `[PERF]:`, `[REFACTOR]:`, `[STYLE]:`
+- Templates ensure required information is provided and consistent formatting
+
+### Code Quality Standards
+- Run `make check` before every commit to ensure formatting, linting, and type checking pass
+- All tests must pass before submitting changes
+- Follow existing code style and patterns in the repository
+
+>>>>>>> 90de438 (docs(copilot): merge development standards with Copilot usage guidelines (#148))
 ## Additional Resources
 
 For comprehensive guidance on specific aspects of development, refer to these specialized instruction files:
