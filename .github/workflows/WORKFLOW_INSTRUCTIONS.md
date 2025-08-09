@@ -1,0 +1,26 @@
+# ---
+applyTo: ".github/workflows/*.yml,.github/workflows/*.yaml"
+# ---
+# GitHub Actions Workflow File Instructions
+
+## Commit Message Guidelines
+- **Commits to workflow files (`.github/workflows/*.yml`, `.github/workflows/*.yaml`) MUST NOT be marked as `fix:`.**
+- Use `ci:` as the commit type for changes to workflow files.
+- Example: `ci(workflow): update PR title validation script`
+- This ensures that CI-related changes are tracked separately from bug fixes and feature changes.
+
+## Best Practices
+- Always validate workflow syntax before committing.
+- Use marketplace actions when possible.
+- Document any custom scripts or logic in workflow files.
+- Reference related issues or PRs in commit messages when appropriate.
+
+## Review and Approval
+- All workflow changes should be reviewed by a maintainer familiar with CI/CD.
+- Avoid making unrelated changes in workflow commits.
+
+---
+**Summary:**
+- Use `ci:` for workflow file commits, not `fix:`.
+- Validate and document all workflow changes.
+- Seek review for CI/CD changes.

@@ -14,7 +14,7 @@ jobs:
   validate-pr-title:
     name: Validate PR Title and Requirements
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Validate PR title format
         id: semantic-pr
@@ -57,26 +57,25 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { context, github } = require('@actions/github');
             const core = require('@actions/core');
-            
+
             const title = context.payload.pull_request.title;
             const body = context.payload.pull_request.body || '';
             const prNumber = context.payload.pull_request.number;
             const isDraft = context.payload.pull_request.draft;
             const assignees = context.payload.pull_request.assignees;
-            
+
             // Check for issue reference in title or body
             const issueRefPattern = /#\d+/;
             const hasIssueRefInTitle = issueRefPattern.test(title);
             const hasIssueRefInBody = issueRefPattern.test(body);
             const hasIssueReference = hasIssueRefInTitle || hasIssueRefInBody;
-            
+
             // Check if semantic PR validation failed
             const semanticPrFailed = '${{ steps.semantic-pr.outcome }}' === 'failure';
-            
+
             let validationErrors = [];
-            
+
             // Collect validation errors
             if (semanticPrFailed) {
               validationErrors.push('❌ **PR title format validation failed**');
@@ -84,13 +83,13 @@ jobs:
               validationErrors.push('   Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`');
               validationErrors.push('   Example: `feat: add new video validation feature`');
             }
-            
+
             if (!hasIssueReference) {
               validationErrors.push('❌ **Missing issue reference**');
               validationErrors.push('   PR must reference an issue number (e.g., #123) either in the title or body');
               validationErrors.push('   Example: `feat: add new feature (#123)` or add "Fixes #123" to PR body');
             }
-            
+
             // If there are validation errors, handle the failure
             if (validationErrors.length > 0) {
               // Convert PR to draft if it's not already
@@ -107,28 +106,28 @@ jobs:
                   console.error('❌ Failed to convert PR to draft:', error.message);
                 }
               }
-              
+
               // Create comment with validation errors
               const errorList = validationErrors.join('\n');
               const commentBody = `## 🚫 PR Validation Failed
-              
+
             This pull request has been automatically converted to **draft** due to validation failures.
-            
+
             ### Issues Found:
             ${errorList}
-            
+
             ### How to Fix:
             1. **Fix the PR title format** if needed:
                - Use conventional commit format: \`type: description\`
                - Ensure description starts with lowercase letter
                - Allowed types: \`feat\`, \`fix\`, \`docs\`, \`style\`, \`refactor\`, \`perf\`, \`test\`, \`chore\`
-            
+
             2. **Add issue reference** if missing:
                - Include issue number in title: \`feat: add feature (#123)\`
                - Or add to PR body: \`Fixes #123\` or \`Closes #123\`
-            
+
             3. **Mark as ready for review** once all issues are resolved
-            
+
             ---
             *This check is automated. Once you fix the issues above, the validation will run again when you update the PR.*`;
 
@@ -143,12 +142,12 @@ jobs:
               } catch (error) {
                 console.error('❌ Failed to post comment:', error.message);
               }
-              
+
               // Notify assignees if any
               if (assignees && assignees.length > 0) {
                 const assigneeNotifications = assignees.map(assignee => `@${assignee.login}`).join(' ');
                 const notificationComment = `${assigneeNotifications} - This PR requires your attention due to validation failures. Please review the comment above.`;
-                
+
                 try {
                   await github.rest.issues.createComment({
                     owner: context.repo.owner,
@@ -161,12 +160,12 @@ jobs:
                   console.error('❌ Failed to notify assignees:', error.message);
                 }
               }
-              
+
               // Fail the workflow
               core.setFailed('PR validation failed. Check the comments for details.');
               return;
             }
-            
+
             // Success case
             console.log('✅ All validations passed');
             console.log(`Title: ${title}`);
@@ -176,8 +175,8 @@ jobs:
             if (hasIssueRefInBody) {
               console.log('✅ Issue reference found in body');
             }
-            
-            // If PR was previously in draft due to validation failures, 
+
+            // If PR was previously in draft due to validation failures,
             // post a success comment
             if (isDraft) {
               const validatedItems = [
@@ -186,14 +185,14 @@ jobs:
                 hasIssueRefInTitle ? '- ✅ Issue reference in title' : '',
                 hasIssueRefInBody ? '- ✅ Issue reference in body' : ''
               ].filter(Boolean);
-              
+
               const successComment = `## ✅ PR Validation Passed
-              
+
             All validation checks have passed! This PR is ready for review.
-            
+
             ### Validated:
             ${validatedItems.join('\n')}
-            
+
             You can now mark this PR as ready for review.`;
 
               try {
