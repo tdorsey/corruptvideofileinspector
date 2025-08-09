@@ -65,6 +65,11 @@ def test_video_scanner_full_scan(tmp_path):
     test_file = tmp_path / "test.mp4"
     test_file.touch()
     scanner = VideoScanner(config)
-    results = scanner.scan([str(test_file)], mode=ScanMode.FULL)
-    assert isinstance(results, list)
-    assert any(hasattr(r, "corrupt") for r in results)
+    summary = scanner.scan_directory(
+        directory=tmp_path,
+        scan_mode=ScanMode.FULL,
+        recursive=True,
+        resume=False,
+    )
+    assert hasattr(summary, "scan_mode")
+    assert summary.scan_mode == ScanMode.FULL
