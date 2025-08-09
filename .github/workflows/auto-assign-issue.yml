@@ -1,5 +1,6 @@
 name: Auto-Assign Issues
-on:
+
+"on":
   issues:
     types: [opened]
 
@@ -14,5 +15,4 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           assignees: "copilot" 
-          numOfAssignees: 1
           allowSelfAssign: false

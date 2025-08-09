@@ -10,10 +10,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Remove Python cache
-      run: |
-        find . -name "__pycache__" -type d -delete
-        find . -name "*.pyc" -delete
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -35,10 +31,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Remove Python cache
-      run: |
-        find . -name "__pycache__" -type d -delete
-        find . -name "*.pyc" -delete
 
     - name: Set up Python
       uses: actions/setup-python@v5
