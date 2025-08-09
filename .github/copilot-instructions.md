@@ -4,6 +4,10 @@ A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
+A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support.
+
+Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
+
 ## GitHub Copilot Usage Guidelines
 
 ### Primary Use Cases for GitHub Copilot Chat
@@ -81,6 +85,27 @@ This includes detailed guidance on:
 - **Containerization**: Docker with multi-stage builds and docker-compose
 - **CLI framework**: Typer with Click integration
 - **Core dependency**: FFmpeg for video analysis and corruption detection
+## Development Standards and Requirements
+
+### Commit Standards (REQUIRED)
+**All commits MUST follow the [Conventional Commits](https://www.conventionalcommits.org/) standard:**
+- Use format: `<type>[optional scope]: <description>`
+- Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
+- Examples: `feat(cli): add video scan command`, `fix(config): resolve YAML parsing error`
+- **Atomic commits**: Each commit should represent a single, focused change. Avoid combining unrelated changes in one commit.
+- See [Git & Version Control](instructions/git.md) for detailed commit guidelines
+
+### Issue Creation (REQUIRED)
+**Always select a relevant issue template when creating issues:**
+- **Template selection is enforced** (blank issues are disabled)
+- Available templates: Feature Request, Bug Report, Documentation Update, Testing Issue, Chore/Maintenance, Performance Issue, Refactor Request, Code Style Issue
+- **All templates create proper conventional commit titles** with prefixes like `[FEAT]:`, `[FIX]:`, `[DOCS]:`, `[TEST]:`, `[CHORE]:`, `[PERF]:`, `[REFACTOR]:`, `[STYLE]:`
+- Templates ensure required information is provided and consistent formatting
+
+### Code Quality Standards
+- Run `make check` before every commit to ensure formatting, linting, and type checking pass
+- All tests must pass before submitting changes
+- Follow existing code style and patterns in the repository
 
 ## Additional Resources
 
@@ -115,7 +140,7 @@ For comprehensive guidance on specific aspects of development, refer to these sp
 
 ### Common Recommended Actions
 - **Code checkout**: `actions/checkout@v4`
-- **Language setup**: `actions/setup-python@v4`, `actions/setup-node@v4`
+- **Language setup**: `actions/setup-python@v5`, `actions/setup-node@v4`
 - **Caching**: `actions/cache@v3`
 - **Issue/PR labeling**: `github/issue-labeler@v3.4`
 - **File-based labeling**: `actions/labeler@v5`
@@ -147,10 +172,17 @@ make docker-build               # Build container (5-15 min, timeout 30+ min)
 
 ### CLI Usage Examples
 ```bash
+# Using installed package (after 'make install' or 'pip install -e .')
 corrupt-video-inspector --help
 corrupt-video-inspector scan /path/to/videos --mode hybrid --output results.json
-corrupt-video-inspector init-config --format yaml --output config.yml
+
+# Using without installation (requires PYTHONPATH=src)
+export PYTHONPATH=$(pwd)/src
+python3 cli_handler.py --config config.yaml --help
+python3 cli_handler.py --config config.yaml scan --directory /path/to/videos --mode hybrid --output results.json
 ```
+
+Note: CLI requires a configuration file. Use the sample config from "Application Validation" section below.
 
 ## Working Effectively
 
@@ -405,7 +437,8 @@ src/
 ├── core/                          # Core business logic → docs/CORE.md
 ├── config/                        # Configuration management → docs/CONFIG.md
 ├── ffmpeg/                        # FFmpeg integration → docs/FFMPEG.md
-├── utils/                         # Shared utilities → docs/UTILS.md
+├── output.py                      # Output formatting and file handling
+├── version.py                     # Version information
 └── __main__.py                    # Main entry point: python -m src
 ```
 
@@ -485,7 +518,6 @@ PYTHONPATH=src python3 cli_handler.py --config config.yaml --help
 ```bash
 make install-dev, make install, make docker-build, make test
 make format, make lint, make type  # Require installed dependencies
-make pre-commit-install  # Downloads pre-commit hooks
 ```
 
 Remember: This is a video processing application that requires actual video files for complete testing. Always validate with real video scanning workflows when possible.
