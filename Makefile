@@ -73,10 +73,10 @@ docker-env:  ## Generate docker/.env with required volume paths
 
 
 .DEFAULT_GOAL := help
-.PHONY: help install install-dev install-system-deps test-ffmpeg format lint type check test test-integration test-cov clean build \
-	docker-build docker-build-clean build-clean docker-dev dev-build dev-up dev-down dev-shell \
-	pre-commit-install pre-commit-run docker-scan docker-report docker-trakt docker-all \
-	setup secrets-init docker-env
+.PHONY: help install install-dev install-system-deps test-ffmpeg format lint type check test
+.PHONY: test-integration test-cov clean build docker-build docker-build-clean build-clean
+.PHONY: docker-dev dev-build dev-up dev-down dev-shell pre-commit-install pre-commit-run
+.PHONY: docker-scan docker-report docker-trakt docker-all setup secrets-init docker-env
 
 
 help:             ## Show this help message and list all targets.
