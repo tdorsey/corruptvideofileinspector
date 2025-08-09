@@ -3,7 +3,6 @@
 # See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/repository-ownership-and-permissions/about-code-owners
 #
 # This is intended for use with branch protection on the 'main' branch.
-.github/settings.yml @tdorsey
 
 # Explicitly set owner for CODEOWNERS file itself
 .github/CODEOWNERS @tdorsey
