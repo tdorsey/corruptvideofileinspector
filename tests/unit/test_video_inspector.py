@@ -546,38 +546,35 @@ class TestInspectSingleVideo(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch("tests.test_video_inspector.inspect_single_video_quick")
-    def test_inspect_quick_mode(self, mock_quick):
+    def test_inspect_quick_mode(self):
         """Test inspect_single_video with quick mode"""
         mock_result = VideoInspectionResult(self.test_file)
-        mock_quick.return_value = mock_result
+        
+        # Patch the function directly in the module's globals
+        with patch.object(sys.modules[__name__], 'inspect_single_video_quick', return_value=mock_result) as mock_quick:
+            result = inspect_single_video(self.video_file, "/usr/bin/ffmpeg", False, ScanMode.QUICK)
+            mock_quick.assert_called_once_with(self.video_file, "/usr/bin/ffmpeg", False)
+            assert result == mock_result
 
-        result = inspect_single_video(self.video_file, "/usr/bin/ffmpeg", False, ScanMode.QUICK)
-
-        mock_quick.assert_called_once_with(self.video_file, "/usr/bin/ffmpeg", False)
-        assert result == mock_result
-
-    @patch("tests.test_video_inspector.inspect_single_video_deep")
-    def test_inspect_deep_mode(self, mock_deep):
+    def test_inspect_deep_mode(self):
         """Test inspect_single_video with deep mode"""
         mock_result = VideoInspectionResult(self.test_file)
-        mock_deep.return_value = mock_result
+        
+        # Patch the function directly in the module's globals
+        with patch.object(sys.modules[__name__], 'inspect_single_video_deep', return_value=mock_result) as mock_deep:
+            result = inspect_single_video(self.video_file, "/usr/bin/ffmpeg", False, ScanMode.DEEP)
+            mock_deep.assert_called_once_with(self.video_file, "/usr/bin/ffmpeg", False)
+            assert result == mock_result
 
-        result = inspect_single_video(self.video_file, "/usr/bin/ffmpeg", False, ScanMode.DEEP)
-
-        mock_deep.assert_called_once_with(self.video_file, "/usr/bin/ffmpeg", False)
-        assert result == mock_result
-
-    @patch("tests.test_video_inspector.inspect_single_video_quick")
-    def test_inspect_hybrid_mode(self, mock_quick):
+    def test_inspect_hybrid_mode(self):
         """Test inspect_single_video with hybrid mode (falls back to quick)"""
         mock_result = VideoInspectionResult(self.test_file)
-        mock_quick.return_value = mock_result
-
-        result = inspect_single_video(self.video_file, "/usr/bin/ffmpeg", False, ScanMode.HYBRID)
-
-        mock_quick.assert_called_once_with(self.video_file, "/usr/bin/ffmpeg", False)
-        assert result == mock_result
+        
+        # Patch the function directly in the module's globals
+        with patch.object(sys.modules[__name__], 'inspect_single_video_quick', return_value=mock_result) as mock_quick:
+            result = inspect_single_video(self.video_file, "/usr/bin/ffmpeg", False, ScanMode.HYBRID)
+            mock_quick.assert_called_once_with(self.video_file, "/usr/bin/ffmpeg", False)
+            assert result == mock_result
 
 
 class TestInspectVideoFilesCli(unittest.TestCase):
