@@ -1,7 +1,7 @@
 ---
 name: "Component/Domain"
 description: "Specify affected component or domain."
-labels: []
+labels: ['needs-triage']
 assignees: []
 ---
 
