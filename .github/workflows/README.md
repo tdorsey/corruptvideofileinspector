@@ -18,7 +18,6 @@ Runs when version tags are pushed:
 - **Build**: Creates Python package builds
 - **Docker**: Builds and pushes multi-platform Docker images to Docker Hub
 - **GitHub Release**: Creates GitHub releases automatically
-- **PyPI**: Publishes packages to PyPI (when configured)
 
 ## Setup
 
@@ -27,7 +26,6 @@ For the release workflow to work fully, add these secrets to your repository:
 
 - `DOCKER_USERNAME`: Docker Hub username
 - `DOCKER_PASSWORD`: Docker Hub password/token
-- `PYPI_API_TOKEN`: PyPI API token for package publishing
 
 ### Branch Protection
 Consider setting up branch protection rules for the main branch that require:
