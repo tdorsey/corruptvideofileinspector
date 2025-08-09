@@ -47,7 +47,7 @@ def test_ffmpeg_client_inspect_full_runs(tmp_path):
     # This will likely fail if ffmpeg is not installed, but should run
     try:
         result = client.inspect_full(video_file)
-        assert hasattr(result, "corrupt")
+        assert hasattr(result, "is_corrupt")
     except Exception as e:
         pytest.skip(f"FFmpeg not available: {e}")
 
