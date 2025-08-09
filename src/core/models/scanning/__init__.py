@@ -137,7 +137,9 @@ class ScanResult(BaseModel):
         *,
         strict: bool | None = None,
         from_attributes: bool | None = None,
-        context: dict[str, Any] | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,  # noqa: ARG003
+        by_name: bool | None = None,  # noqa: ARG003
     ) -> "ScanResult":
         # Accept both old and new formats
         if isinstance(obj, dict):
@@ -257,7 +259,9 @@ class ScanSummary(BaseModel):
         *,
         strict: bool | None = None,
         from_attributes: bool | None = None,
-        context: dict[str, Any] | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,  # noqa: ARG003
+        by_name: bool | None = None,  # noqa: ARG003
     ) -> "ScanSummary":
         if isinstance(obj, dict):
             data = dict(obj)
@@ -400,7 +404,9 @@ class ScanProgress(BaseModel):
         *,
         strict: bool | None = None,
         from_attributes: bool | None = None,
-        context: dict[str, Any] | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,  # noqa: ARG003
+        by_name: bool | None = None,  # noqa: ARG003
     ) -> "ScanProgress":
         if isinstance(obj, dict):
             data = dict(obj)
@@ -516,7 +522,9 @@ class BatchScanRequest(BaseModel):
         *,
         strict: bool | None = None,
         from_attributes: bool | None = None,
-        context: dict[str, Any] | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,  # noqa: ARG003
+        by_name: bool | None = None,  # noqa: ARG003
     ) -> "BatchScanRequest":
         if isinstance(obj, dict):
             data = dict(obj)

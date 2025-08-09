@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,7 +19,7 @@ class DummySummary(BaseModel):
 
     result: str = "default"
 
-    def model_dump(self):
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         return {"result": self.result}
 
 
@@ -51,7 +52,7 @@ def test_generate_output_uses_default_dir_when_given_directory(config, tmp_path,
 
     # Act
     handler._generate_output(
-        summary=summary,
+        summary=summary,  # type: ignore[arg-type]
         output_file=output_dir,
         output_format="json",
         pretty_print=True,
@@ -79,7 +80,7 @@ def test_generate_output_writes_to_specified_file(config, tmp_path):
     target_file = tmp_path / "custom.json"
     # Act
     handler._generate_output(
-        summary=summary,
+        summary=summary,  # type: ignore[arg-type]
         output_file=target_file,
         output_format="json",
         pretty_print=False,
@@ -100,7 +101,7 @@ def test_generate_output_default_writes_to_default_dir(config, tmp_path):
     summary = DummySummary(result="123")
     # Act: no output_file
     handler._generate_output(
-        summary=summary,
+        summary=summary,  # type: ignore[arg-type]
         output_file=None,
         output_format="json",
         pretty_print=False,

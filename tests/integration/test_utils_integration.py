@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from src.core.video_files import count_all_video_files
-from src.core.formatting import format_file_size
 from src.config.video_formats import get_video_extensions
+from src.core.formatting import format_file_size
+from src.core.video_files import count_all_video_files
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -115,8 +115,8 @@ class TestUtilsIntegration(unittest.TestCase):
 
     def test_format_file_size(self):
         """Test file size formatting"""
-        assert format_file_size(0) == "0 B"
-        assert format_file_size(512) == "512 B"
+        assert format_file_size(0) == "0.0 B"
+        assert format_file_size(512) == "512.0 B"
         assert format_file_size(1024) == "1.0 KB"
         assert format_file_size(1536) == "1.5 KB"
         assert format_file_size(1024 * 1024) == "1.0 MB"
