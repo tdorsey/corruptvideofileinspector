@@ -9,6 +9,13 @@ body:
       value: |
         Thanks for helping improve the codebase! Please describe the refactoring you'd like to see.
         
+        **Title Examples:**
+        - `refactor(scanner): reorganize video analysis logic into separate modules`
+        - `refactor(cli): simplify command structure and argument parsing`
+        - `refactor(config): extract configuration validation to dedicated class`
+        - `refactor(core): improve error handling consistency across modules`
+        - `refactor(utils): consolidate file system utilities`
+        
         **Component labels will be automatically applied** based on your selection below.
 
   - type: dropdown
