@@ -127,11 +127,3 @@ body:
       description: Show an example of how it should be styled
       render: python
 
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: Code of Conduct
-      description: By submitting this issue, you agree to follow our Code of Conduct
-      options:
-        - label: I agree to follow this project's Code of Conduct
-          required: true

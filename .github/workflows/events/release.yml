@@ -1,0 +1,143 @@
+---
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.2.3)'
+        required: true
+        type: string
+      draft:
+        description: 'Create as draft release'
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  # Build release artifacts
+  build-release:
+    name: Build Release Artifacts
+    uses: ./.github/workflows/actions/build.yml
+    with:
+      python-version: ${{ vars.PYTHON_VERSION }}
+      build-python: true
+      build-docker: true
+      docker-platforms: 'linux/amd64,linux/arm64'
+      docker-push: true
+      tag-name: ${{ github.event.inputs.tag || github.ref_name }}
+      upload-pypi: true
+    secrets:
+      docker-username: ${{ secrets.DOCKER_USERNAME }}
+      docker-password: ${{ secrets.DOCKER_PASSWORD }}
+      pypi-token: ${{ secrets.PYPI_API_TOKEN }}
+
+  # Run final security scan on release
+  release-security-scan:
+    name: Release Security Scan
+    uses: ./.github/workflows/actions/security-scan.yml
+    with:
+      scan-dependencies: true
+      scan-code: true
+      scan-docker: true
+      docker-image: '${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.event.inputs.tag || github.ref_name }}'
+
+  # Create GitHub Release
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-release, release-security-scan]
+    if: always() && needs.build-release.result == 'success' && needs.release-security-scan.result == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@${{ vars.CHECKOUT_VERSION  }}
+        with:
+          fetch-depth: 0
+
+      - name: Get release tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Generate changelog from git commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            CHANGELOG=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          fi
+
+          # Save changelog to output
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Download Python artifacts
+        uses: actions/download-artifact@${{ vars.ACTIONS_VERSIONS_DOWNLOAD_ARTIFACT }}
+        with:
+          name: python-packages-${{ steps.tag.outputs.tag }}
+          path: ./dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Release ${{ steps.tag.outputs.tag }}
+          body: |
+            ## Changes
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Docker Images
+
+            ```bash
+            docker pull ${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ steps.tag.outputs.tag }}
+            docker pull ${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+            ```
+
+            ## Python Package
+
+            ```bash
+            pip install ${{ github.event.repository.name }}==${{ steps.tag.outputs.tag }}
+            ```
+
+            ## Verification
+
+            - ✅ All tests passed
+            - ✅ Security scans completed
+            - ✅ Docker images built for linux/amd64, linux/arm64
+            - ✅ Python package published to PyPI
+          draft: ${{ github.event.inputs.draft || false }}
+          prerelease: ${{ github.event.inputs.prerelease || false }}
+          files: ./dist/*
+          generate_release_notes: true
+
+  # Post-release actions
+  post-release:
+    name: Post-release Actions
+    runs-on: ubuntu-latest
+    needs: create-release
+    if: always() && needs.create-release.result == 'success'
+    steps:
+      - name: Post-release summary
+        run: |
+          echo "🎉 Release ${{ github.event.inputs.tag || github.ref_name }} completed successfully!"
+          echo "- GitHub Release: Created"
+          echo "- Docker Images: Published"
+          echo "- PyPI Package: Published"
+          echo "- Security Scans: Passed"

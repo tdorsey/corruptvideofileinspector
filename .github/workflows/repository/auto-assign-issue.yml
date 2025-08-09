@@ -1,5 +1,6 @@
 name: Auto-Assign Issues
-on:
+
+"on":
   issues:
     types: [opened]
 
@@ -11,7 +12,7 @@ jobs:
         uses: pozil/auto-assign-issue@v2.2.0
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          assignees: @copilot 
+          assignees: tdorsey
           numOfAssignees: 1
-          allowSelfAssign: false
+          allowSelfAssign: true
           skipDraft: false

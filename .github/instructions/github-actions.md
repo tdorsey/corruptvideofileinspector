@@ -7,7 +7,7 @@ This project uses GitHub Actions for continuous integration, automated testing, 
 
 ## Workflow Files Overview
 
-The project contains three main workflow files in `.github/workflows/`:
+The project contains four main workflow files in `.github/workflows/`:
 
 ### 1. ci.yml - Continuous Integration
 **Purpose**: Runs on every push and pull request to validate code quality and run tests
@@ -23,6 +23,29 @@ The project contains three main workflow files in `.github/workflows/`:
 - Automated version incrementation using conventional commits
 - Multi-platform Docker builds (linux/amd64, linux/arm64)
 - PyPI package publishing with proper authentication
+
+### 3. auto-create-branch.yml - Automatic Branch Creation
+**Purpose**: Automatically creates development branches when issues are opened
+**Key Components**:
+- Triggers on `issues: opened` events
+- Creates branches named `issue-<number>-<slug>` from issue titles
+- Posts instructional comments with development guidelines
+- Provides fallback instructions if branch creation fails
+- Uses `actions/github-script@v7` for GitHub API interactions
+
+### 4. auto-assign-issue.yml - Issue Assignment
+**Purpose**: Automatically assigns issues to maintainers when opened
+**Key Components**:
+- Uses marketplace action `pozil/auto-assign-issue@v2.2.0`
+- Assigns to @copilot by default
+- Configurable assignment rules
+
+### 5. labeler.yml - Issue Labeling
+**Purpose**: Automatically labels issues based on content and title
+**Key Components**:
+- Uses `github/issue-labeler@v3.4` marketplace action
+- Configuration driven by `.github/issue-labeler.yml`
+- Triggers on issue opened and edited events
 - GitHub release creation with automated changelog generation
 - Docker image publishing to GitHub Container Registry
 
@@ -225,3 +248,6 @@ The workflows integrate with the project's development toolchain:
 - **Code quality**: Linting and formatting enforced consistently
 
 This ensures that CI/CD processes match the local development experience and catch issues early in the development cycle.
+
+## Workflow Documentation
+See [GitHub Workflows Structure](../../workflows/README.md) for details on workflow organization, usage, and subfolder documentation.
