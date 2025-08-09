@@ -313,5 +313,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Development
 
 - **[Contributing Guidelines](docs/CONTRIBUTING.md)** - Development setup, code quality, and submission process
+- **[Repository Configuration](docs/REPOSITORY_CONFIGURATION.md)** - Repository settings management and code ownership
 - **[Version Management](docs/VERSIONING.md)** - Dynamic versioning with Git tags
 - **[Tests Documentation](docs/tests.md)** - Testing framework and test execution
