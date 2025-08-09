@@ -790,7 +790,7 @@ def report(
 @click.option("--all-configs", is_flag=True, help="Show all configuration sources and values")
 @click.option("--debug", is_flag=True, help="Enable debug logging to see configuration overrides")
 @click.pass_context
-def show_config(ctx, all_configs, debug, config):
+def show_config(all_configs, debug, config):
     """
     Show current configuration settings.
 
@@ -821,9 +821,12 @@ def show_config(ctx, all_configs, debug, config):
             # Show detailed configuration
             config_dict = app_config.model_dump()
             # Mask sensitive information in output
-            if "trakt" in config_dict and "client_secret" in config_dict["trakt"]:
-                if config_dict["trakt"]["client_secret"]:
-                    config_dict["trakt"]["client_secret"] = "***MASKED***"
+            if (
+                "trakt" in config_dict
+                and "client_secret" in config_dict["trakt"]
+                and config_dict["trakt"]["client_secret"]
+            ):
+                config_dict["trakt"]["client_secret"] = "***MASKED***"
             click.echo(json.dumps(config_dict, indent=2, default=str))
         else:
             # Show key settings

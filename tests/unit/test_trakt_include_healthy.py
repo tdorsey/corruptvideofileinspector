@@ -72,7 +72,7 @@ class TestTraktIncludeStatuses:
             trakt=TraktConfig(
                 client_id="test_client",
                 client_secret="test_secret",
-                include_statuses=[FileStatus.CORRUPT, FileStatus.SUSPICIOUS],
+                # Use default include_statuses (HEALTHY) instead of overriding
             ),
             ffmpeg={"command": "ffmpeg", "quick_timeout": 60, "deep_timeout": 900},
         )
@@ -187,8 +187,8 @@ class TestTraktIncludeStatuses:
 
         handler = TraktHandler(mock_config)
 
-        # Test with config-specified statuses (corrupt and suspicious)
-        handler.sync_to_watchlist(
+        # Test with config-specified statuses (default HEALTHY)
+        result = handler.sync_to_watchlist(
             scan_file=temp_scan_file,
         )
 
@@ -198,7 +198,7 @@ class TestTraktIncludeStatuses:
             config=mock_config,
             interactive=False,
             watchlist=None,
-            include_statuses=[FileStatus.CORRUPT, FileStatus.SUSPICIOUS],
+            include_statuses=[FileStatus.HEALTHY],
         )
 
         # Verify result is returned
