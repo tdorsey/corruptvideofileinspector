@@ -622,9 +622,8 @@ class TestInspectVideoFilesCli(unittest.TestCase):
 
     @patch("src.cli.handlers.get_ffmpeg_command")
     @patch("src.cli.handlers.get_all_video_object_files")
-    @patch("tests.unit.test_video_inspector.inspect_single_video")
     @patch("builtins.print")
-    def test_quick_scan_mode(self, mock_print, mock_inspect, mock_get_files, mock_get_ffmpeg):
+    def test_quick_scan_mode(self, mock_print, mock_get_files, mock_get_ffmpeg):
         """Test quick scan mode"""
         mock_get_ffmpeg.return_value = "/usr/bin/ffmpeg"
 
@@ -632,19 +631,20 @@ class TestInspectVideoFilesCli(unittest.TestCase):
         video_files = [VideoFile(path=str(self.temp_path / "video1.mp4"))]
         mock_get_files.return_value = video_files
 
-        # Mock inspection result
-        result = VideoInspectionResult(str(self.temp_path / "video1.mp4"))
-        result.is_corrupt = False
-        mock_inspect.return_value = result
+        # Use patch.object to patch the locally-defined function
+        with patch.object(sys.modules[__name__], 'inspect_single_video') as mock_inspect:
+            # Mock inspection result
+            result = VideoInspectionResult(str(self.temp_path / "video1.mp4"))
+            result.is_corrupt = False
+            mock_inspect.return_value = result
 
-        inspect_video_files_cli(str(self.temp_path), scan_mode=ScanMode.QUICK)
+            inspect_video_files_cli(str(self.temp_path), scan_mode=ScanMode.QUICK)
 
-        # Verify inspect_single_video was called with correct parameters
-        mock_inspect.assert_called()
+            # Verify inspect_single_video was called with correct parameters
+            mock_inspect.assert_called()
 
     @patch("src.cli.handlers.get_ffmpeg_command")
     @patch("src.cli.handlers.get_all_video_object_files")
-    @patch("tests.unit.test_video_inspector.inspect_single_video")
     @patch("pathlib.Path.open", new_callable=mock_open)
     @patch("json.dump")
     @patch("builtins.print")  # Suppress print output
@@ -653,7 +653,6 @@ class TestInspectVideoFilesCli(unittest.TestCase):
         mock_print,
         mock_json_dump,
         mock_file_open,
-        mock_inspect,
         mock_get_files,
         mock_get_ffmpeg,
     ):
@@ -664,16 +663,18 @@ class TestInspectVideoFilesCli(unittest.TestCase):
         video_files = [VideoFile(path=str(self.temp_path / "video1.mp4"))]
         mock_get_files.return_value = video_files
 
-        # Mock inspection result
-        result = VideoInspectionResult(str(self.temp_path / "video1.mp4"))
-        result.is_corrupt = False
-        mock_inspect.return_value = result
+        # Use patch.object to patch the locally-defined function
+        with patch.object(sys.modules[__name__], 'inspect_single_video') as mock_inspect:
+            # Mock inspection result
+            result = VideoInspectionResult(str(self.temp_path / "video1.mp4"))
+            result.is_corrupt = False
+            mock_inspect.return_value = result
 
-        inspect_video_files_cli(str(self.temp_path), json_output=True)
+            inspect_video_files_cli(str(self.temp_path), json_output=True)
 
-        # Verify JSON file was attempted to be written
-        mock_file_open.assert_called()
-        mock_json_dump.assert_called()
+            # Verify JSON file was attempted to be written
+            mock_file_open.assert_called()
+            mock_json_dump.assert_called()
 
 
 if __name__ == "__main__":
