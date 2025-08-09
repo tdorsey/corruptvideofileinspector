@@ -72,7 +72,7 @@ class TestTraktIncludeStatuses:
             trakt=TraktConfig(
                 client_id="test_client",
                 client_secret="test_secret",
-                include_statuses=[FileStatus.CORRUPT, FileStatus.SUSPICIOUS],
+                # Use default include_statuses (HEALTHY) instead of overriding
             ),
             ffmpeg={"command": "ffmpeg", "quick_timeout": 60, "deep_timeout": 900},
         )

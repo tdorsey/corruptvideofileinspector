@@ -24,11 +24,8 @@ def format_file_size(size_bytes: int) -> str:
 
     for unit in ["B", "KB", "MB", "GB"]:
         if size_float < 1024:
-            # For bytes, show no decimal; for other units, show one decimal place
-            if unit == "B":
-                formatted = f"{int(size_float)} {unit}"
-            else:
-                formatted = f"{size_float:.1f} {unit}"
+            # Always show one decimal place for consistency
+            formatted = f"{size_float:.1f} {unit}"
             logger.debug(f"Formatted size: {formatted}")
             return formatted
         size_float /= 1024
