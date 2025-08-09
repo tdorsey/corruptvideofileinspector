@@ -148,7 +148,7 @@ body:
     attributes:
       label: Workflow Run URL (Optional)
       description: Link to the failing workflow run if available
-      placeholder: https://github.com/tdorsey/corruptvideofileinspector/actions/runs/...
+      placeholder: https://github.com/owner/repo/actions/runs/...
 
   - type: textarea
     id: reproduction-steps
