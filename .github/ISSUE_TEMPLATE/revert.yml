@@ -1,0 +1,186 @@
+name: ↩️ Revert Request
+description: Request to revert a previous change or commit
+title: "[REVERT]: "
+labels: ["revert"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for requesting a revert! Please provide details about what needs to be reverted and why.
+        
+        **Component labels will be automatically applied** based on your selection below.
+
+  - type: dropdown
+    id: stakeholder
+    attributes:
+      label: Stakeholder Type
+      description: What type of stakeholder are you?
+      options:
+        - Project Maintainer
+        - Contributor
+        - End User
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/Domain
+      description: Which component or domain is affected by the revert?
+      options:
+        - CLI
+        - Scanner
+        - Trakt Integration
+        - Config
+        - Reporter
+        - Output
+        - Docker
+        - CI/CD
+        - GitHub Actions
+        - Tests
+        - Documentation
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-want
+    attributes:
+      label: "I want to"
+      description: "Describe what you want to revert and why"
+      placeholder: "I want to revert the changes that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-but
+    attributes:
+      label: "But"
+      description: "Describe the problem caused by the changes that need reverting"
+      placeholder: "But those changes introduced..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-helps
+    attributes:
+      label: "This helps by"
+      description: "Explain how reverting would help"
+      placeholder: "This helps by restoring the previous working state and..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-unlike
+    attributes:
+      label: "Unlike"
+      description: "Describe how this differs from the current problematic state"
+      placeholder: "Unlike the current broken state which..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: revert-urgency
+    attributes:
+      label: Revert Urgency
+      description: How urgent is this revert?
+      options:
+        - Critical (Production broken)
+        - High (Major functionality affected)
+        - Medium (Some features impacted)
+        - Low (Minor issues or improvements)
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: target-commit
+    attributes:
+      label: Target Commit/PR to Revert
+      description: Specify the commit hash, PR number, or release that should be reverted
+      placeholder: |
+        Examples:
+        - Commit: abc123def456
+        - PR: #42
+        - Release: v2.1.0
+        - Branch: feature/new-scanner
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: revert-reason
+    attributes:
+      label: Reason for Revert
+      description: Provide a detailed explanation of why this revert is necessary
+      placeholder: |
+        Examples:
+        - Introduced critical security vulnerability
+        - Broke core functionality for all users
+        - Performance regression causing timeouts
+        - Incompatible with production environment
+        - Failed testing revealed in production
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact-analysis
+    attributes:
+      label: Impact Analysis
+      description: What is the impact of both the problematic change and the proposed revert?
+      placeholder: |
+        Current impact:
+        - What is broken or problematic now
+
+        Revert impact:
+        - What functionality will be lost by reverting
+        - What features will be restored
+        - Any side effects of reverting
+
+  - type: textarea
+    id: alternatives-considered
+    attributes:
+      label: Alternatives Considered
+      description: What alternatives to reverting have been considered?
+      placeholder: |
+        Examples:
+        - Forward fix (patch the issue)
+        - Partial revert (only specific changes)
+        - Configuration change
+        - Rollback to previous version
+        - Why these alternatives are not suitable
+
+  - type: textarea
+    id: testing-plan
+    attributes:
+      label: Post-Revert Testing Plan
+      description: How will you verify that the revert resolves the issue?
+      placeholder: |
+        Examples:
+        - Run specific test cases that were failing
+        - Verify core functionality works
+        - Check performance metrics
+        - User acceptance testing
+
+  - type: checkboxes
+    id: revert-checklist
+    attributes:
+      label: Revert Checklist
+      description: Please confirm the following
+      options:
+        - label: I have identified the specific commit/PR that introduced the issue
+        - label: I have confirmed that reverting will not break other dependent changes
+        - label: I have considered alternatives to reverting
+        - label: I understand the impact of reverting these changes
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

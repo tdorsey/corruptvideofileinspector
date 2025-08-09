@@ -22,7 +22,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # Define the allowed conventional commit types based on the
-          # project's issue templates
+          # project's issue templates and standard Conventional Commits specification
           types: |
             feat
             fix
@@ -32,6 +32,9 @@ jobs:
             perf
             test
             chore
+            build
+            ci
+            revert
           # Allow scopes (optional part after type)
           requireScope: false
           # Disallow release-related types since this is handled by
@@ -77,7 +80,7 @@ jobs:
             if (semanticPrFailed) {
               validationErrors.push('❌ **PR title format validation failed**');
               validationErrors.push('   The PR title must follow conventional commit format: `type: description`');
-              validationErrors.push('   Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`');
+              validationErrors.push('   Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `build`, `ci`, `revert`');
               validationErrors.push('   Example: `feat: add new video validation feature`');
             }
 
@@ -117,7 +120,7 @@ jobs:
             1. **Fix the PR title format** if needed:
                - Use conventional commit format: \`type: description\`
                - Ensure description starts with lowercase letter
-               - Allowed types: \`feat\`, \`fix\`, \`docs\`, \`style\`, \`refactor\`, \`perf\`, \`test\`, \`chore\`
+               - Allowed types: \`feat\`, \`fix\`, \`docs\`, \`style\`, \`refactor\`, \`perf\`, \`test\`, \`chore\`, \`build\`, \`ci\`, \`revert\`
 
             2. **Add issue reference** if missing:
                - Include issue number in title: \`feat: add feature (#123)\`

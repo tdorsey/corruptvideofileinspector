@@ -1,0 +1,172 @@
+name: ⚙️ CI/CD Pipeline Issue
+description: Report issues with Continuous Integration or Continuous Deployment
+title: "[CI]: "
+labels: ["ci"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a CI/CD pipeline issue! Please provide details about the pipeline problem you're experiencing.
+        
+        **Component labels will be automatically applied** based on your selection below.
+
+  - type: dropdown
+    id: stakeholder
+    attributes:
+      label: Stakeholder Type
+      description: What type of stakeholder are you?
+      options:
+        - Project Maintainer
+        - Contributor
+        - End User
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/Domain
+      description: Which component or domain does this CI/CD issue affect?
+      options:
+        - CLI
+        - Scanner
+        - Trakt Integration
+        - Config
+        - Reporter
+        - Output
+        - Docker
+        - CI/CD
+        - GitHub Actions
+        - Tests
+        - Documentation
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-want
+    attributes:
+      label: "I want to"
+      description: "Describe what CI/CD functionality you expect"
+      placeholder: "I want the CI pipeline to successfully..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-but
+    attributes:
+      label: "But"
+      description: "Describe the CI/CD issue or failure you're encountering"
+      placeholder: "But the pipeline fails with..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-helps
+    attributes:
+      label: "This helps by"
+      description: "Explain how fixing this CI/CD issue would help"
+      placeholder: "This helps by ensuring reliable automated..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story-unlike
+    attributes:
+      label: "Unlike"
+      description: "Describe how this differs from a working CI/CD pipeline"
+      placeholder: "Unlike a successful pipeline which should..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: pipeline-type
+    attributes:
+      label: Pipeline Issue Type
+      description: What type of CI/CD issue is this?
+      options:
+        - GitHub Actions workflow failure
+        - Test execution failure
+        - Build failure in CI
+        - Deployment failure
+        - Environment setup issues
+        - Secret/credential issues
+        - Workflow configuration
+        - Performance issues in CI
+        - Dependency caching issues
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected-workflow
+    attributes:
+      label: Affected Workflow
+      description: Which workflow is experiencing issues?
+      options:
+        - ci.yml (Main CI Pipeline)
+        - release.yml (Release Pipeline)
+        - auto-assign-issue.yml (Auto Assignment)
+        - auto-create-branch.yml (Branch Creation)
+        - labeler.yml (Issue Labeling)
+        - pr-title-check.yml (PR Validation)
+        - copilot-setup-steps.yml (Copilot Setup)
+        - All workflows
+        - Other/Custom workflow
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: failure-details
+    attributes:
+      label: Failure Details
+      description: Describe the specific failure or issue
+      placeholder: |
+        Examples:
+        - Tests fail on specific Python version
+        - Docker build times out
+        - Secrets not accessible
+        - Workflow never triggers
+        - Build artifacts not generated
+    validations:
+      required: true
+
+  - type: textarea
+    id: workflow-logs
+    attributes:
+      label: Workflow Logs/Output
+      description: Please paste relevant workflow logs or error messages
+      render: shell
+
+  - type: textarea
+    id: run-url
+    attributes:
+      label: Workflow Run URL (Optional)
+      description: Link to the failing workflow run if available
+      placeholder: https://github.com/tdorsey/corruptvideofileinspector/actions/runs/...
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Reproduction Steps
+      description: How can this CI/CD issue be reproduced?
+      placeholder: |
+        Examples:
+        - Create PR with specific changes
+        - Push to specific branch
+        - Run specific workflow manually
+        - Occurs on all PRs
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

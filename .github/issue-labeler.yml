@@ -38,6 +38,51 @@
 'component:other':
   - '*Other*'
 
+# Conventional Commit Type Labels - based on issue title prefixes
+'type:feat':
+  - '\[FEAT\]'
+  - 'feature'
+
+'type:fix':
+  - '\[FIX\]'
+  - 'bug'
+
+'type:docs':
+  - '\[DOCS\]'
+  - 'docs'
+
+'type:style':
+  - '\[STYLE\]'
+  - 'style'
+
+'type:refactor':
+  - '\[REFACTOR\]'
+  - 'refactor'
+
+'type:perf':
+  - '\[PERF\]'
+  - 'performance'
+
+'type:test':
+  - '\[TEST\]'
+  - 'test'
+
+'type:chore':
+  - '\[CHORE\]'
+  - 'chore'
+
+'type:build':
+  - '\[BUILD\]'
+  - 'build'
+
+'type:ci':
+  - '\[CI\]'
+  - 'ci'
+
+'type:revert':
+  - '\[REVERT\]'
+  - 'revert'
+
 # Stakeholder Labels - based on Stakeholder Type dropdown selection
 'stakeholder:maintainer':
   - '*Project Maintainer*'
