@@ -18,7 +18,7 @@ The project contains four main workflow files in `.github/workflows/`:
 - Parallel job execution for faster feedback
 
 ### 2. release.yml - Release Automation
-**Purpose**: Handles version bumping, Docker builds, and PyPI publishing
+**Purpose**: Handles version bumping, Docker builds, and release management
 **Key Components**:
 - Automated version incrementation using conventional commits
 - Multi-platform Docker builds (linux/amd64, linux/arm64)
@@ -136,15 +136,9 @@ The CI workflows heavily rely on Makefile targets for consistency:
       ghcr.io/${{ github.repository }}:${{ steps.version.outputs.new_version }}
 ```
 
-### PyPI Publishing
-- Uses trusted publishing with OpenID Connect (no API tokens required)
-- Builds both source distribution (sdist) and wheel packages
-- Publishes to PyPI only on successful builds and tests
-
 ## Secrets and Environment Variables
 
 ### Required Repository Secrets
-- `PYPI_API_TOKEN`: For PyPI package publishing (if not using trusted publishing)
 - `GITHUB_TOKEN`: Automatically provided for GitHub API access
 
 ### Trakt Integration (Optional)
@@ -181,7 +175,6 @@ Each workflow uses minimal required permissions:
 permissions:
   contents: read        # Read repository contents
   packages: write       # Push Docker images
-  id-token: write       # PyPI trusted publishing
 ```
 
 ## Adding New Workflows
