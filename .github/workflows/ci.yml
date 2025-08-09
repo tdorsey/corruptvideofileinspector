@@ -1,0 +1,183 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # PR title validation (skip for pushes and draft PRs)
+  validate-pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    # Skip for pushes and draft PRs
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+
+    steps:
+      - name: Skip for pushes
+        if: github.event_name != 'pull_request'
+        run: echo "Skipping PR title validation for push events"
+        
+      - name: Validate PR title
+        if: github.event_name == 'pull_request'
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Define the allowed conventional commit types based on the
+          # project's issue templates
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            chore
+          # Allow scopes (optional part after type)
+          requireScope: false
+          # Disallow release-related types since this is handled by
+          # automated releases
+          disallowScopes: |
+            release
+          # Validate that the subject starts with lowercase
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            didn't match the configured pattern. Please ensure that the subject
+            starts with a lowercase letter.
+          # Ignore merge commits and dependabot PRs
+          ignoreLabels: |
+            bot
+            ignore-semantic-pr
+          # Validate PR body contains issue reference
+          validateSingleCommit: false
+
+      - name: Validate issue reference
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            const body = context.payload.pull_request.body || '';
+
+            // Check for issue reference in title or body
+            const issueRefPattern = /#\d+/;
+            const hasIssueRefInTitle = issueRefPattern.test(title);
+            const hasIssueRefInBody = issueRefPattern.test(body);
+
+            if (!hasIssueRefInTitle && !hasIssueRefInBody) {
+              core.setFailed(
+                'PR must reference an issue number (e.g., #123) either in ' +
+                'the title or body. Example: "feat: add new feature (#123)" ' +
+                'or reference in PR body.'
+              );
+              return;
+            }
+
+            console.log('✅ Issue reference found');
+            console.log(`Title: ${title}`);
+            if (hasIssueRefInTitle) {
+              console.log('Issue reference found in title');
+            }
+            if (hasIssueRefInBody) {
+              console.log('Issue reference found in body');
+            }
+
+  lint-and-format:
+    name: Lint, Format, and Type Check
+    runs-on: ubuntu-latest
+    # Always depend on PR title validation, but it will be skipped for pushes and drafts
+    needs: validate-pr-title
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Remove Python cache
+      run: |
+        find . -name "__pycache__" -type d -delete
+        find . -name "*.pyc" -delete
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: |
+        make install-dev
+
+    - name: Lint and Format
+      run: |
+        make lint
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    # Tests should run after linting passes
+    needs: lint-and-format
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Remove Python cache
+      run: |
+        find . -name "__pycache__" -type d -delete
+        find . -name "*.pyc" -delete
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+
+    - name: Setup test configuration
+      run: |
+        cp config.sample.yaml config.yaml
+
+    - name: Install dependencies
+      run: |
+        make install-dev
+
+    - name: Run Tests
+      run: |
+        make test
+
+  docker:
+    name: Build and Test Docker Image
+    runs-on: ubuntu-latest
+    # Docker build should only occur after all tests pass
+    needs: test
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: |
+        make docker-build
+
+    - name: Test Docker image
+      run: |
+        make docker-test
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    # Security scan can run in parallel with docker after tests pass
+    needs: test
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run Security Scan
+      run: |
+        make security-scan
