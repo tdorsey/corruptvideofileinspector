@@ -35,9 +35,6 @@ def format_file_size(size_bytes: int, trim_trailing_zero: bool = True) -> str:
                 # Optionally trim trailing .0 for whole numbers
                 if trim_trailing_zero and formatted.endswith(f'.0 {unit}'):
                     formatted = f"{int(size_float)} {unit}"
-        logger.debug(f"Formatted size: {formatted}")
-        return formatted
-        size_float /= 1024
             logger.debug(f"Formatted size: {formatted}")
             return formatted
         size_float /= 1024
