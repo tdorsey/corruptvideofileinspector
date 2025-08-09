@@ -1,6 +1,33 @@
 # Project setup: install dependencies, create env files, and secrets
-setup: install docker-env secrets-init  ## Set up project: install deps, env, secrets
+setup: install-system-deps install-dev install docker-env secrets-init  ## Set up project: install deps, env, secrets
 	@echo "Project setup complete. Edit docker/secrets/* and docker/.env as needed."
+
+# Install system dependencies (FFmpeg)
+install-system-deps:  ## Install system dependencies including FFmpeg
+	@echo "Installing system dependencies..."
+	@if command -v apt-get >/dev/null 2>&1; then \
+		sudo apt-get update && sudo apt-get install -y ffmpeg; \
+	elif command -v brew >/dev/null 2>&1; then \
+		brew install ffmpeg; \
+	elif command -v yum >/dev/null 2>&1; then \
+		sudo yum install -y ffmpeg; \
+	elif command -v dnf >/dev/null 2>&1; then \
+		sudo dnf install -y ffmpeg; \
+	else \
+		echo "Package manager not detected. Please install FFmpeg manually."; \
+		echo "Ubuntu/Debian: sudo apt-get install ffmpeg"; \
+		echo "macOS: brew install ffmpeg"; \
+		echo "CentOS/RHEL: sudo yum install ffmpeg"; \
+		echo "Fedora: sudo dnf install ffmpeg"; \
+		exit 1; \
+	fi
+	@echo "System dependencies installed successfully!"
+
+# Test FFmpeg installation
+test-ffmpeg:  ## Test FFmpeg installation and show version
+	@echo "Testing FFmpeg installation..."
+	@ffmpeg -version | head -n 1 || (echo "FFmpeg not found! Run 'make install-system-deps' first." && exit 1)
+	@echo "FFmpeg is available and working!"
 # Generate required secret files for project setup
 secrets-init:  ## Create required secret files in docker/secrets
 	@mkdir -p docker/secrets
@@ -46,10 +73,10 @@ docker-env:  ## Generate docker/.env with required volume paths
 
 
 .DEFAULT_GOAL := help
-.PHONY: help install install-dev format lint type check test test-integration test-cov clean build \
-	docker-build docker-build-clean build-clean docker-dev dev-build dev-up dev-down dev-shell \
-	pre-commit-install pre-commit-run docker-scan docker-report docker-trakt docker-all \
-	setup secrets-init docker-env
+.PHONY: help install install-dev install-system-deps test-ffmpeg format lint type check test
+.PHONY: test-integration test-cov clean build docker-build docker-build-clean build-clean
+.PHONY: docker-dev dev-build dev-up dev-down dev-shell pre-commit-install pre-commit-run
+.PHONY: docker-scan docker-report docker-trakt docker-all setup secrets-init docker-env
 
 
 help:             ## Show this help message and list all targets.
