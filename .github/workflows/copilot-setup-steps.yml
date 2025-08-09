@@ -50,9 +50,9 @@ jobs:
           python-version: ${{ vars.PYTHON_VERSION || '3.13' }}
           cache: 'poetry'
 
-      - name: Install Python dependencies
-        run: |
-          make install-dev
+      - name: Install dependencies (Poetry)
+        if: steps.setup-python.outputs.cache-hit == 'false'
+        run: poetry install
 
   #    - name: Install pre-commit hooks
   #      run: make pre-commit-install
