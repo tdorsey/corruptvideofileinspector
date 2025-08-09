@@ -32,10 +32,11 @@ This directory contains the restructured GitHub Actions workflows using an actio
 - **Used by**: CI pipeline, release workflows
 
 ### `actions/test.yml`
-- **Purpose**: Run tests for Python code and Docker images
-- **Inputs**: python-version, test-type, coverage, docker-image
-- **Outputs**: coverage-artifact, test-results
+- **Purpose**: Execute project tests (unit, integration, or all) optionally using a pre-built Docker image
+- **Inputs**: python-version, test-type (unit|integration|all), coverage (true|false), docker-image (optional)
+- **Outputs**: coverage-artifact (when coverage=true), test-results
 - **Used by**: CI pipeline, pre-commit validation
+- **Note**: Build/publish tasks are handled by `actions/build.yml`; release packaging by `actions/release-build.yml`
 
 ### `actions/python-quality.yml`
 - **Purpose**: Code quality checks (formatting, linting, type checking)
@@ -51,6 +52,8 @@ This directory contains the restructured GitHub Actions workflows using an actio
 - **Purpose**: Release-specific build and deployment tasks
 - **Inputs**: python-version, push-to-registry
 - **Used by**: Release workflows
+- `DOCKER_USERNAME`: Docker Hub username
+- `DOCKER_PASSWORD`: Docker Hub password/token
 
 ## Event-Oriented Workflows (Callers)
 
