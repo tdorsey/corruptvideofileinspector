@@ -1,0 +1,42 @@
+# Sample configuration file for Corrupt Video Inspector
+# Copy this file to config.yaml and customize as needed
+
+logging:
+  level: INFO
+  file: /tmp/inspector.log
+  date_format: "%Y-%m-%dT%H:%M:%S%z"
+  format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+
+ffmpeg:
+  command: /usr/bin/ffmpeg
+  quick_timeout: 30
+  deep_timeout: 1800
+
+processing:
+  max_workers: 8
+  default_mode: "quick"
+
+output:
+  default_json: true
+  default_output_dir: /tmp/output
+  default_filename: "scan_results.json"
+
+scan:
+  recursive: true
+  max_workers: 8
+  mode: "quick"
+  default_input_dir: /tmp/videos
+  extensions:
+    - ".mp4"
+    - ".mkv"
+    - ".avi"
+    - ".mov"
+    - ".wmv"
+    - ".flv"
+
+trakt:
+  client_id: ""
+  client_secret: ""
+  default_watchlist: null
+  include_statuses:
+    - "healthy"

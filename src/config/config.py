@@ -39,11 +39,9 @@ class TraktConfig(BaseModel):
     client_secret: str = Field(default="")
     default_watchlist: str | None = Field(
         default=None,
-        description="Default watchlist name or slug for sync operations. If None, uses main watchlist."
+        description="Default watchlist name or slug for sync operations. If None, uses main watchlist.",
     )
-    include_statuses: list[FileStatus] = Field(
-        default_factory=lambda: [FileStatus.HEALTHY]
-    )
+    include_statuses: list[FileStatus] = Field(default_factory=lambda: [FileStatus.HEALTHY])
 
 
 class ScanConfig(BaseModel):
@@ -120,6 +118,10 @@ def load_config(config_path: Path | None = None) -> AppConfig:
     # Load YAML configuration file
     with config_path.open("r", encoding="utf-8") as f:
         config_data = yaml.safe_load(f)
+
+    # Ensure config_data is not None
+    if config_data is None:
+        config_data = {}
 
     # If a Docker secret exists for trakt_client_secret, override config value
     docker_secret = read_docker_secret("trakt_client_secret")
