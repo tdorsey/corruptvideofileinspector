@@ -39,7 +39,7 @@ jobs:
                 '## Next Steps',
                 '- @copilot will review this issue and provide guidance',
                 '- If you\'d like to work on this yourself, feel free to comment and request assignment',
-                '- Follow the [development guidelines](https://github.com/tdorsey/corruptvideofileinspector/blob/main/.github/copilot-instructions.md) when contributing',
+                `- Follow the [development guidelines](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/.github/copilot-instructions.md) when contributing`,
                 '',
                 'Happy coding! 🚀'
               ].join('\n');
