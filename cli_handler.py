@@ -5,7 +5,6 @@ CLI Handler - Convenience wrapper for the main CLI application.
 This module provides a simple entry point that delegates to the main CLI module.
 """
 
-import sys
 from src.cli.main import main
 
 if __name__ == "__main__":
