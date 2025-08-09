@@ -18,14 +18,24 @@ Thank you for your interest in contributing to Corrupt Video Inspector! This doc
    cd corruptvideofileinspector
    ```
 
-2. **Install the package with development dependencies:**
+2. **Install system dependencies (including FFmpeg):**
    ```bash
-   pip install -e ".[dev]"
+   make install-system-deps
    ```
 
-3. **Install and set up pre-commit hooks:**
+3. **Install the package with development dependencies:**
    ```bash
-   pre-commit install
+   make install-dev
+   ```
+
+4. **Install and set up pre-commit hooks:**
+   ```bash
+   make pre-commit-install
+   ```
+
+5. **Verify FFmpeg installation:**
+   ```bash
+   make test-ffmpeg
    ```
 
    This will automatically run formatting, linting, and type checking before each commit to ensure code quality and consistency.
