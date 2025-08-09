@@ -44,6 +44,10 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ffmpeg
 
+    - name: Setup test configuration
+      run: |
+        cp config.sample.yaml config.yaml
+
     - name: Install dependencies
       run: |
         make install-dev
