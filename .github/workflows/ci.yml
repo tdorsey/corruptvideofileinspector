@@ -1,74 +1,64 @@
+
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
 
-jobs:
-  validate-pr-title:
-    name: Validate PR Title
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    steps:
-<<<<<<< HEAD
-=======
-      - name: Skip for pushes
-        if: github.event_name != 'pull_request'
-        run: echo "Skipping PR title validation for push events"
-
->>>>>>> 481c680 (ci: disable PyPI publishing to prevent accidental releases (#126))
-      - name: Validate PR title
-        if: github.event_name == 'pull_request'
-        uses: amannn/action-semantic-pull-request@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          types: |
-            feat
-            fix
-            docs
-            style
-            refactor
-            perf
-            test
-            chore
-<<<<<<< HEAD
-=======
-            ci
-          # Allow scopes (optional part after type)
->>>>>>> 481c680 (ci: disable PyPI publishing to prevent accidental releases (#126))
-          requireScope: false
-          disallowScopes: |
-            release
-          validateSingleCommit: false
-              console.log('Issue reference found in title');
-            }
-            if (hasIssueRefInBody) {
-              console.log('Issue reference found in body');
-            }
-<<<<<<< HEAD
-=======
 
   lint-and-format:
     name: Lint, Format, and Type Check
     runs-on: ubuntu-latest
-    # Always depend on PR title validation, but it will be skipped for pushes and drafts
-    needs: validate-pr-title
-
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: |
+          make install-dev
+      - name: Lint and Format
+        run: |
+          make lint
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-<<<<<<< HEAD
-=======
-        python-version: '3.13'
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-format
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Setup test configuration
+        run: |
+          cp config.sample.yaml config.yaml
+      - name: Install dependencies
+        run: |
+          make install-dev
+      - name: Run Tests
+        run: |
+          make test
 
-    - name: Install dependencies
-      run: |
-        set -e
-        make install-dev
-
-    - name: Lint and Format
-      run: |
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: |
+          make install-dev
+      - name: Run Security Scan
+        run: |
+          make security-scan
+    runs-on: ubuntu-latest

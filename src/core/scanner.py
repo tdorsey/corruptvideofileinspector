@@ -9,12 +9,9 @@ import os
 import subprocess
 import threading
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING
-from collections.abc import Callable, Iterator
 
 from src.config import load_config
-from src.config.config import AppConfig
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import (
     ScanMode,
@@ -25,7 +22,10 @@ from src.core.models.scanning import (
 from src.ffmpeg.corruption_detector import CorruptionDetector
 
 if TYPE_CHECKING:
-    pass
+    from collections.abc import Callable, Iterator
+    from pathlib import Path
+
+    from src.config.config import AppConfig
 
 logger = logging.getLogger(__name__)
 

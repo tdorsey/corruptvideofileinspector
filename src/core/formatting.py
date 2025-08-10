@@ -19,7 +19,9 @@ def format_file_size(size_bytes: int, trim_trailing_zero: bool = True) -> str:
     Returns:
         str: Formatted size string (e.g., "1.5 MB", "12 MB", "500 B")
     """
-    logger.debug(f"Formatting file size: {size_bytes} bytes, trim_trailing_zero: {trim_trailing_zero}")
+    logger.debug(
+        f"Formatting file size: {size_bytes} bytes, trim_trailing_zero: {trim_trailing_zero}"
+    )
 
     size_float = float(size_bytes)  # Convert to float for calculations
 
@@ -39,8 +41,8 @@ def format_file_size(size_bytes: int, trim_trailing_zero: bool = True) -> str:
 
     # Handle TB
     formatted = f"{size_float:.1f} TB"
-    if trim_trailing_zero and formatted.endswith('.0 TB'):
+    if trim_trailing_zero and formatted.endswith(".0 TB"):
         formatted = f"{int(size_float)} TB"
-    
+
     logger.debug(f"Formatted size: {formatted}")
     return formatted
