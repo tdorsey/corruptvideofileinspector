@@ -23,24 +23,27 @@ on:
         default: false
 
 jobs:
-  # Build release artifacts
+  # Build release artifacts using reusable workflow
+  # This includes Python package build, Docker multi-platform build,
+  # and optional publishing to PyPI and Docker Hub
   build-release:
     name: Build Release Artifacts
     uses: ./.github/workflows/actions/build.yml
     with:
-      python-version: ${{ vars.PYTHON_VERSION }}
+      python-version: ${{ vars.DEFAULT_PYTHON_VERSION }}
       build-python: true
       build-docker: true
-      docker-platforms: 'linux/amd64,linux/arm64'
+      docker-platforms: 'linux/amd64,linux/arm64'  # Multi-platform support for broad compatibility
       docker-push: true
       tag-name: ${{ github.event.inputs.tag || github.ref_name }}
       upload-pypi: true
+      docker-username: ${{ vars.DOCKER_USERNAME }}
     secrets:
-      docker-username: ${{ secrets.DOCKER_USERNAME }}
       docker-password: ${{ secrets.DOCKER_PASSWORD }}
       pypi-token: ${{ secrets.PYPI_API_TOKEN }}
 
-  # Run final security scan on release
+  # Run comprehensive security scanning on release artifacts
+  # Includes dependency scanning, code analysis, and Docker image vulnerability scanning
   release-security-scan:
     name: Release Security Scan
     uses: ./.github/workflows/actions/security-scan.yml
@@ -50,11 +53,13 @@ jobs:
       scan-docker: true
       docker-image: '${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.event.inputs.tag || github.ref_name }}'
 
-  # Create GitHub Release
+  # Create GitHub Release with generated changelog and artifacts
+  # Only runs if both build and security scan succeed
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: [build-release, release-security-scan]
+    # Always evaluate needs, but only run if both jobs succeeded
     if: always() && needs.build-release.result == 'success' && needs.release-security-scan.result == 'success'
     steps:
       - name: Checkout code
@@ -65,7 +70,7 @@ jobs:
       - name: Get release tag
         id: tag
         run: |
-          set -e
+          # Determine release tag from manual input or git tag event
           if [ -n "${{ github.event.inputs.tag }}" ]; then
             echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
           else
@@ -77,6 +82,7 @@ jobs:
         run: |
           set -e
           # Generate changelog from git commits since last tag
+          # If no previous tag exists, include all commits in the repository
           LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$LAST_TAG" ]; then
             CHANGELOG=$(git log "${LAST_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
@@ -84,7 +90,7 @@ jobs:
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
           fi
 
-          # Save changelog to output
+          # Save changelog to GitHub Actions output using heredoc syntax for multiline content
           {
             echo "changelog<<EOF"
             echo "$CHANGELOG"
@@ -98,7 +104,7 @@ jobs:
           path: ./dist/
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@latest
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Release ${{ steps.tag.outputs.tag }}
@@ -129,13 +135,16 @@ jobs:
           draft: ${{ github.event.inputs.draft || false }}
           prerelease: ${{ github.event.inputs.prerelease || false }}
           files: ./dist/*
+          # Allow GitHub to automatically generate additional release notes
           generate_release_notes: true
 
-  # Post-release actions
+  # Post-release summary and notifications
+  # Provides a summary of completed release actions for monitoring and logging
   post-release:
     name: Post-release Actions
     runs-on: ubuntu-latest
     needs: create-release
+    # Only run if release creation succeeded
     if: always() && needs.create-release.result == 'success'
     steps:
       - name: Post-release summary
