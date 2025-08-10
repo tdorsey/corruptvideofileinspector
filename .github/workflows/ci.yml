@@ -62,3 +62,14 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
+<<<<<<< HEAD
+=======
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: |
+        set -e
+        make install-dev
+
+    - name: Lint and Format
+      run: |

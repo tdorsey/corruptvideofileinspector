@@ -1,370 +1,152 @@
-# Corrupt Video Inspector 2.0
+actionlint
+==========
+[![CI Badge][]][CI]
+[![API Document][api-badge]][apidoc]
 
-[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[actionlint][repo] is a static checker for GitHub Actions workflow files. [Try it online!][playground]
 
-A comprehensive, modular tool for detecting corrupted video files using FFmpeg and optionally syncing healthy files to your Trakt.tv watchlist.
+Features:
 
-## ✨ Features
+- **Syntax check for workflow files** to check unexpected or missing keys following [workflow syntax][syntax-doc]
+- **Strong type check for `${{ }}` expressions** to catch several semantic errors like access to not existing property,
+  type mismatches, ...
+- **Actions usage check** to check that inputs at `with:` and outputs in `steps.{id}.outputs` are correct
+- **Reusable workflow check** to check inputs/outputs/secrets of reusable workflows and workflow calls
+- **[shellcheck][] and [pyflakes][] integrations** for scripts at `run:`
+- **Security checks**; [script injection][script-injection-doc] by untrusted inputs, hard-coded credentials
+- **Other several useful checks**; [glob syntax][filter-pattern-doc] validation, dependencies check for `needs:`,
+  runner label validation, cron syntax validation, ...
 
-### 🔍 **Advanced Video Corruption Detection**
-- **Three Scan Modes**: Quick (1min timeout), Deep (15min timeout), and Hybrid (intelligent combination)
-- **FFmpeg Integration**: Leverages FFmpeg's robust video analysis capabilities
-- **Intelligent Detection**: Advanced pattern matching for corruption indicators
-- **Parallel Processing**: Multi-threaded scanning for improved performance
+See [the full list](docs/checks.md) of checks done by actionlint.
 
-### 🔄 **Resume & Recovery**
-- **Write-Ahead Logging (WAL)**: Automatically resume interrupted scans
-- **Progress Tracking**: Real-time progress reporting with signal handling
-- **Graceful Shutdown**: Handles interruptions cleanly with progress preservation
+<img src="https://github.com/rhysd/ss/blob/master/actionlint/main.gif?raw=true" alt="actionlint reports 7 errors" width="806" height="492"/>
 
-### 📺 **Trakt.tv Integration**
-- **Watchlist Sync**: Automatically add healthy files to Trakt watchlist
-- **Intelligent Parsing**: Extract movie/TV show info from filenames
-- **Interactive Mode**: Manual selection when multiple matches found
-- **Dry Run Support**: Preview sync operations before execution
+**Example of broken workflow:**
 
-### ⚙️ **Flexible Configuration**
-- **Multiple Sources**: Environment variables, config files, Docker secrets
-- **Profile Support**: Development, production, and custom profiles
-- **Extensive Options**: Customize timeouts, workers, extensions, and more
-
-### 📊 **Rich Output & Reporting**
-- **Multiple Formats**: JSON, YAML, CSV output support
-- **Detailed Reports**: Comprehensive scan summaries and statistics
-- **Progress Visualization**: Real-time progress bars and status updates
-
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-# Install from source
-git clone https://github.com/tdorsey/corruptvideofileinspector.git
-cd corruptvideofileinspector
-pip install -e .
-
-# Install with all optional dependencies
-pip install -e ".[dev]"
+```yaml
+on:
+  push:
+    branch: main
+    tags:
+      - 'v\d+'
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [macos-latest, linux-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: echo "Checking commit '${{ github.event.head_commit.message }}'"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node_version: 18.x
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
+        if: ${{ github.repository.permissions.admin == true }}
+      - run: npm install && npm test
 ```
 
-### Basic Usage
-
-```bash
-# Basic scan with hybrid mode (recommended)
-corrupt-video-inspector scan /path/to/videos
-
-# Quick scan with JSON output
-corrupt-video-inspector scan --mode quick --output results.json /path/to/videos
-
-# Set up Trakt credentials and sync scan results
-make secrets-init  # Creates secret files for Trakt credentials
-corrupt-video-inspector trakt sync results.json
-```
-
-**For detailed usage instructions, see [CLI Module Documentation](docs/CLI.md)**
-
-## 📖 Documentation Overview
-
-This project uses a modular documentation structure. Each major component has its own detailed documentation:
-
-### 🔧 Core Components
-- **[CLI Module](docs/CLI.md)** - Command-line interface and user interaction
-- **[Core Engine](docs/CORE.md)** - Video scanning, inspection, and analysis algorithms
-- **[FFmpeg Integration](docs/FFMPEG.md)** - Video corruption detection engine
-- **[Configuration System](docs/CONFIG.md)** - Flexible configuration management
-
-### 🎯 Features & Integration
-- **[Trakt.tv Integration](docs/trakt.md)** - Watchlist synchronization and media management
-- **[Report Generation](docs/REPORTER.md)** - Multi-format reporting (JSON, CSV, YAML, text)
-- **[Utilities](docs/UTILS.md)** - Shared functions and helper tools
-
-### 👨‍💻 Development
-- **[Contributing Guide](docs/CONTRIBUTING.md)** - Setup, code quality, and contribution process
-- **[Version Management](docs/VERSIONING.md)** - Git tag-based dynamic versioning
-- **[Testing](docs/tests.md)** - Test framework and execution
-
-### Quick Reference
-
-#### Scan Modes
-- **Hybrid** (recommended): Quick scan + deep scan of suspicious files
-- **Quick**: Fast 1-minute timeout per file
-- **Deep**: Thorough 15-minute timeout per file
-
-#### Key Features
-- ✅ **Resume capability** with Write-Ahead Logging (WAL)
-- ✅ **Multi-threaded processing** with configurable workers
-- ✅ **Multiple output formats** (JSON, CSV, YAML, text)
-- ✅ **Trakt.tv synchronization** for watchlist management
-- ✅ **Docker support** for containerized workflows
-
-**For complete usage instructions and examples, see the module-specific documentation above.**
-
-## ⚙️ Configuration
-
-The application supports flexible configuration through multiple sources with proper precedence handling:
-
-1. **Command-line arguments** (highest precedence)
-2. **Environment variables** (CVI_ prefix)
-3. **Configuration files** (YAML/JSON)
-4. **Docker secrets** (for containerized deployments)
-5. **Built-in defaults** (lowest precedence)
-
-### Quick Configuration Examples
-
-```bash
-# Generate sample configuration file
-corrupt-video-inspector init-config --format yaml --output config.yml
-
-# Use environment variables
-export CVI_MAX_WORKERS=8
-export CVI_LOG_LEVEL=DEBUG
-
-# Use custom config file
-corrupt-video-inspector scan --config my-config.yml /path/to/videos
-```
-
-**For complete configuration documentation, see [Configuration Guide](docs/CONFIG.md)**
-
-## 🐳 Docker Usage
-
-The application is designed to work seamlessly in containerized environments with full support for Trakt.tv integration:
-
-```bash
-# Build Docker image
-docker build -t corrupt-video-inspector .
-
-# Scan with volume mount
-docker run -v /path/to/videos:/videos corrupt-video-inspector scan /videos
-
-# Use docker-compose for complex workflows
-docker-compose up scan report
-
-# Include Trakt sync with docker-compose profiles
-docker-compose --profile trakt up scan trakt
-```
-
-### Trakt.tv Integration with Docker
-
-The Docker setup includes dedicated containers for Trakt.tv watchlist synchronization with config-based authentication:
-
-```bash
-# Set up Trakt credentials using secrets
-make secrets-init
-echo "your_client_id" > docker/secrets/trakt_client_id.txt
-echo "your_client_secret" > docker/secrets/trakt_client_secret.txt
-
-# Set required environment variables
-export CVI_VIDEO_DIR="/path/to/videos"
-export CVI_OUTPUT_DIR="/path/to/output"
-
-# Run complete workflow: scan + sync to Trakt
-docker-compose --profile trakt up scan trakt
-
-# Development mode with interactive Trakt sync
-docker-compose -f docker/docker-compose.dev.yml --profile trakt up app trakt-dev
-```
-
-**For detailed Docker and Trakt container documentation, see:**
-- **[Configuration Guide](docs/CONFIG.md)** - Docker secrets and environment setup
-- **[Docker Trakt Guide](docs/DOCKER_TRAKT.md)** - Complete Trakt container documentation
-
-## 🔧 Development
-
-### Quick Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/tdorsey/corruptvideofileinspector.git
-cd corruptvideofileinspector
-
-# Install system dependencies (FFmpeg is required)
-make install-system-deps
-
-# Install in development mode with all dependencies
-make install-dev
-
-# Install pre-commit hooks for code quality
-make pre-commit-install
-
-# Test FFmpeg installation
-make test-ffmpeg
-
-# Run tests
-make test
-
-# Run code quality checks
-make check
-```
-
-**Note**: FFmpeg is a critical system dependency required for video analysis. The `make install-system-deps` command will install it automatically on most systems, or see [FFmpeg Installation](https://ffmpeg.org/download.html) for manual installation.
-
-**For complete development documentation, see [Contributing Guide](docs/CONTRIBUTING.md)**
-
-### Project Structure
 
 ```
-corrupt_video_inspector/
-├── src/
-│   ├── cli/                    # Command-line interface → See docs/CLI.md
-│   ├── core/                   # Core business logic → See docs/CORE.md
-│   ├── config/                 # Configuration management → See docs/CONFIG.md
-│   ├── ffmpeg/                 # FFmpeg integration → See docs/FFMPEG.md
-│   └── utils/                  # Shared utilities → See docs/UTILS.md
-├── tests/                      # Test suite → See docs/tests.md
-├── docs/                       # Documentation
-│   ├── CLI.md                  # Command-line interface documentation
-│   ├── CORE.md                 # Core module documentation
-│   ├── CONFIG.md               # Configuration system guide
-│   ├── FFMPEG.md               # FFmpeg integration details
-│   ├── UTILS.md                # Utilities documentation
-│   ├── trakt.md                # Trakt.tv integration guide
-│   ├── CONTRIBUTING.md         # Development setup and guidelines
-│   ├── REPORTER.md             # Report generation system
-│   └── VERSIONING.md           # Version management
-└── pyproject.toml              # Project configuration
+test.yaml:3:5: unexpected key "branch" for "push" section. expected one of "branches", "branches-ignore", "paths", "paths-ignore", "tags", "tags-ignore", "types", "workflows" [syntax-check]
+  |
+3 |     branch: main
+  |     ^~~~~~~
+test.yaml:5:11: character '\' is invalid for branch and tag names. only special characters [, ?, +, *, \, ! can be escaped with \. see `man git-check-ref-format` for more details. note that regular expression is unavailable. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]
+  |
+5 |       - 'v\d+'
+  |           ^~~~
+test.yaml:10:28: label "linux-latest" is unknown. available labels are "windows-latest", "windows-2022", "windows-2019", "windows-2016", "ubuntu-latest", "ubuntu-22.04", "ubuntu-20.04", "ubuntu-18.04", "macos-latest", "macos-12", "macos-12.0", "macos-11", "macos-11.0", "macos-10.15", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
+   |
+10 |         os: [macos-latest, linux-latest]
+   |                            ^~~~~~~~~~~~~
+test.yaml:13:41: "github.event.head_commit.message" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions for more details [expression]
+   |
+13 |       - run: echo "Checking commit '${{ github.event.head_commit.message }}'"
+   |                                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test.yaml:17:11: input "node_version" is not defined in action "actions/setup-node@v4". available inputs are "always-auth", "architecture", "cache", "cache-dependency-path", "check-latest", "node-version", "node-version-file", "registry-url", "scope", "token" [action]
+   |
+17 |           node_version: 18.x
+   |           ^~~~~~~~~~~~~
+test.yaml:21:20: property "platform" is not defined in object type {os: string} [expression]
+   |
+21 |           key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
+   |                    ^~~~~~~~~~~~~~~
+test.yaml:22:17: receiver of object dereference "permissions" must be type of object but got "string" [expression]
+   |
+22 |         if: ${{ github.repository.permissions.admin == true }}
+   |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-## 📊 Output Examples
+## Why?
 
-The application generates comprehensive reports in multiple formats:
+- **Running a workflow is time consuming.** You need to push the changes and wait until the workflow runs on GitHub even if
+  it contains some trivial mistakes. [act][] is useful to debug the workflow locally. But it is not suitable for CI and still
+  time consuming when your workflow gets larger.
+- **Checks of workflow files by GitHub are very loose.** It reports no error even if unexpected keys are in mappings
+  (meant that some typos in keys). And also it reports no error when accessing to property which is actually not existing.
+  For example `matrix.foo` when no `foo` is defined in `matrix:` section, it is evaluated to `null` and causes no error.
+- **Some mistakes silently break a workflow.** Most common case I saw is specifying missing property to cache key. In the
+  case cache silently does not work properly but a workflow itself runs without error. So you might not notice the mistake
+  forever.
 
-### JSON Report Summary
-```json
-{
-  "scan_summary": {
-    "total_files": 150,
-    "corrupt_files": 3,
-    "healthy_files": 147,
-    "scan_mode": "hybrid",
-    "success_rate": 98.0
-  },
-  "results": [
-    {
-      "filename": "/path/to/video.mp4",
-      "is_corrupt": false,
-      "confidence": 0.05,
-      "scan_mode": "quick",
-      "inspection_time": 2.3
-    }
-  ]
-}
+## Quick start
+
+Install `actionlint` command by downloading [the released binary][releases] or by Homebrew or by `go install`. See
+[the installation document](docs/install.md) for more details like how to manage the command with several package managers
+or run via Docker container.
+
+```sh
+go install github.com/rhysd/actionlint/cmd/actionlint@latest
 ```
 
-**Supported formats**: JSON, CSV, YAML, Plain Text
+Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and
+checks errors. actionlint focuses on finding out mistakes. It tries to catch errors as much as possible and make false positives
+as minimal as possible.
 
-**For detailed report structure and examples, see [Report Generation Documentation](docs/REPORTER.md)**
-
-## 🤝 Contributing
-
-We welcome contributions! To get started:
-
-1. **Open an issue**: Describe the feature, bug fix, or improvement you'd like to make
-2. **Automatic branch creation**: A branch will be automatically created for your issue (see [Automation](#-automation) below)
-3. **Start development**: Follow the automatically posted instructions to check out your branch
-4. **Follow code quality standards**: Use pre-commit hooks and project guidelines
-
-### 📝 Conventional Commit Types
-
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) for consistent commit messages and automated versioning. All pull requests must use one of these types in the title:
-
-| Type | Description | Example |
-|------|-------------|---------|
-| `feat` | New features or enhancements | `feat: add video batch processing` |
-| `fix` | Bug fixes | `fix: resolve scanner timeout issues` |
-| `docs` | Documentation changes | `docs: update installation guide` |
-| `style` | Code style/formatting changes | `style: fix import organization` |
-| `refactor` | Code refactoring without functional changes | `refactor: extract video validation logic` |
-| `perf` | Performance improvements | `perf: optimize video scanning algorithm` |
-| `test` | Test additions or improvements | `test: add integration tests for scanner` |
-| `chore` | Maintenance tasks, dependencies | `chore: update Python dependencies` |
-| `build` | Build system or dependency changes | `build: update Docker base image` |
-| `ci` | CI/CD pipeline changes | `ci: add automated security scanning` |
-| `revert` | Revert previous changes | `revert: undo problematic scanner changes` |
-
-**Pull Request Title Format**: `type: description` (e.g., `feat: add new video validation feature`)
-
-Issue templates are available for each type to guide your contribution. The automated systems will label and process your contribution based on the type you choose.
-5. **Add tests**: Include tests for new functionality
-6. **Submit a Pull Request**: Use conventional commit format and reference the issue
-
-### 🤖 Automation
-
-**Automatic Branch Creation**: When you open a new issue, our GitHub Actions workflow automatically:
-- Creates a new branch named `issue-<number>-<slug>` based on your issue title
-- Posts a comment with branch information and development instructions
-- Provides ready-to-use git commands for getting started
-
-**Example**: Issue #123 titled "Add progress bar feature" creates branch `issue-123-add-progress-bar-feature`
-
-### Pull Request Requirements
-**All PR titles must follow conventional commit format and reference an issue:**
+```sh
+actionlint
 ```
-type: description (#issue-number)
-```
-Examples: `feat: add progress bar (#123)`, `fix: resolve timeout issue (#456)`
 
-### Code Quality Standards
-- **Formatting**: Black (100 character line length)
-- **Linting**: Ruff with comprehensive rule set
-- **Type Checking**: MyPy with strict configuration
-- **Testing**: Comprehensive test coverage
+Another option to try actionlint is [the online playground][playground]. Your browser can run actionlint through WebAssembly.
 
-**For detailed contribution guidelines, see [Contributing Guide](docs/CONTRIBUTING.md)**
+See [the usage document](docs/usage.md) for more details.
 
-## 📝 License
+## Documents
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- [Checks](docs/checks.md): Full list of all checks done by actionlint with example inputs, outputs, and playground links.
+- [Installation](docs/install.md): Installation instructions. Prebuilt binaries, Homebrew package, a Docker image, building from
+  source, a download script (for CI) are available.
+- [Usage](docs/usage.md): How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker
+  image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
+- [Configuration](docs/config.md): How to configure actionlint behavior. Currently only labels of self-hosted runners can be
+  configured.
+- [Go API](docs/api.md): How to use actionlint as Go library.
+- [References](docs/reference.md): Links to resources.
 
-## 🙏 Acknowledgments
+## Bug reporting
 
-- [FFmpeg](https://ffmpeg.org/) for video analysis capabilities
-- [Trakt.tv](https://trakt.tv/) for providing the API for media tracking
-- [Click](https://click.palletsprojects.com/) for the excellent CLI framework
-- The Python community for the fantastic ecosystem of tools
+When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example
+of input. Giving me some feedbacks like feature requests or ideas of additional checks is also welcome.
 
-## 🔒 Security
+## License
 
-This repository implements security measures to protect critical configuration files:
+actionlint is distributed under [the MIT license](./LICENSE.txt).
 
-- **CODEOWNERS**: Critical files require code owner review (see `.github/CODEOWNERS`)
-- **Branch Protection**: Main branch requires code owner approval for all changes
-- **Configuration Protection**: `.github/settings.yml` and security files have additional safeguards
-
-For security policies and reporting vulnerabilities, see [SECURITY.md](SECURITY.md).
-
-## 📞 Support & Resources
-
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/tdorsey/corruptvideofileinspector/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/tdorsey/corruptvideofileinspector/discussions)
-- 📖 **Documentation**: See docs/ directory for detailed guides
-- 🔄 **Contributing**: See [Contributing Guide](docs/CONTRIBUTING.md)
-- 🔒 **Security**: See [Security Policy](SECURITY.md)
-
----
-
-**Made with ❤️ for the media management community**
-
-# Documentation
-
-## Module Documentation
-
-- **[CLI Module](docs/CLI.md)** - Command-line interface, commands, and handlers
-- **[Core Module](docs/CORE.md)** - Business logic, scanning, inspection, and reporting
-- **[Configuration](docs/CONFIG.md)** - Configuration system, environment variables, and Docker secrets
-- **[FFmpeg Integration](docs/FFMPEG.md)** - Video analysis engine and corruption detection
-- **[Utilities](docs/UTILS.md)** - Shared utilities and helper functions
-
-## Integration and Usage
-
-- **[Trakt.tv Integration](docs/trakt.md)** - Watchlist synchronization and media management
-- **[Docker Trakt Integration](docs/DOCKER_TRAKT.md)** - Containerized Trakt.tv workflows and setup
-- **[Report Generation](docs/REPORTER.md)** - Multi-format reporting system
-
-## Development
-
-- **[Contributing Guidelines](docs/CONTRIBUTING.md)** - Development setup, code quality, and submission process
-- **[Repository Configuration](docs/REPOSITORY_CONFIGURATION.md)** - Repository settings management and code ownership
-- **[Version Management](docs/VERSIONING.md)** - Dynamic versioning with Git tags
-- **[Tests Documentation](docs/tests.md)** - Testing framework and test execution
+[CI Badge]: https://github.com/rhysd/actionlint/workflows/CI/badge.svg?branch=main&event=push
+[CI]: https://github.com/rhysd/actionlint/actions?query=workflow%3ACI+branch%3Amain
+[api-badge]: https://pkg.go.dev/badge/github.com/rhysd/actionlint.svg
+[apidoc]: https://pkg.go.dev/github.com/rhysd/actionlint
+[repo]: https://github.com/rhysd/actionlint
+[playground]: https://rhysd.github.io/actionlint/
+[shellcheck]: https://github.com/koalaman/shellcheck
+[pyflakes]: https://github.com/PyCQA/pyflakes
+[act]: https://github.com/nektos/act
+[syntax-doc]: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions
+[filter-pattern-doc]: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+[script-injection-doc]: https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions#understanding-the-risk-of-script-injections
+[issue-form]: https://github.com/rhysd/actionlint/issues/new
+[releases]: https://github.com/rhysd/actionlint/releases
