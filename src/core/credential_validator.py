@@ -23,16 +23,19 @@ class CredentialValidationResult(NamedTuple):
     empty_files: list[str]
 
 
-def validate_trakt_secrets(secrets_dir: Path = Path("docker/secrets")) -> CredentialValidationResult:
+def validate_trakt_secrets(secrets_dir: Path = None) -> CredentialValidationResult:
     """
     Validate Trakt secret files exist and contain content.
     
     Args:
-        secrets_dir: Path to directory containing secret files
+        secrets_dir: Path to directory containing secret files. If None, uses the TRAKT_SECRETS_DIR environment variable or defaults to 'docker/secrets'.
         
     Returns:
         CredentialValidationResult with validation status and details
     """
+    if secrets_dir is None:
+        secrets_dir_str = os.environ.get("TRAKT_SECRETS_DIR", "docker/secrets")
+        secrets_dir = Path(secrets_dir_str)
     required_files = ["trakt_client_id.txt", "trakt_client_secret.txt"]
     missing_files = []
     empty_files = []
