@@ -85,23 +85,6 @@ The application generates comprehensive reports in multiple formats:
 }
 ```
 
-**Supported formats**: JSON, CSV, YAML, Plain Text
-
-**For detailed report structure and examples, see [Report Generation Documentation](docs/REPORTER.md)**
-
-**GitHub Actions Workflow Validation:**
-- PRs that add or modify GitHub Actions workflow files (`.github/workflows/*.yml` or `.github/workflows/*.yaml`) are automatically validated for syntax correctness
-- The workflow validation check uses `actionlint` via the `devops-actions/actionlint@v0.1.9` marketplace action to ensure proper GitHub Actions syntax
-- PRs with invalid workflow syntax will be blocked from merging until issues are resolved
-- This validation runs automatically and is a required check
-
-### Code Quality Standards
-- **Formatting**: Black (100 character line length)
-- **Linting**: Ruff with comprehensive rule set
-- **Type Checking**: MyPy with strict configuration
-- **Testing**: Comprehensive test coverage
-- **Workflow Validation**: GitHub Actions syntax validation with actionlint
-
 See [the usage document](docs/usage.md) for more details.
 
 ## 🤝 Contributing
@@ -131,89 +114,18 @@ This project uses [Conventional Commits](https://www.conventionalcommits.org/) f
 | `ci` | CI/CD pipeline changes | `ci: add automated security scanning` |
 | `revert` | Revert previous changes | `revert: undo problematic scanner changes` |
 
-**Pull Request Title Format**: `type: description` (e.g., `feat: add new video validation feature`)
-
-Issue templates are available for each type to guide your contribution. The automated systems will label and process your contribution based on the type you choose.
-
-5. **Add tests**: Include tests for new functionality
-6. **Submit a Pull Request**: Use conventional commit format and reference the issue
-
-### 🤖 Automation
-
-**Automatic Branch Creation**: When you open a new issue, our GitHub Actions workflow automatically:
-- Creates a new branch named `issue-<number>-<slug>` based on your issue title
-- Posts a comment with branch information and development instructions
-- Provides ready-to-use git commands for getting started
-
-**Example**: Issue #123 titled "Add progress bar feature" creates branch `issue-123-add-progress-bar-feature`
-
-### Pull Request Requirements
-**All PR titles must follow conventional commit format and reference an issue:**
-```
-type: description (#issue-number)
-```
-Examples: `feat: add progress bar (#123)`, `fix: resolve timeout issue (#456)`
-
-### Code Quality Standards
-- **Formatting**: Black (100 character line length)
-- **Linting**: Ruff with comprehensive rule set
-- **Type Checking**: MyPy with strict configuration
-- **Testing**: Comprehensive test coverage
-
-**For detailed contribution guidelines, see [Contributing Guide](docs/CONTRIBUTING.md)**
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [FFmpeg](https://ffmpeg.org/) for video analysis capabilities
-- [Trakt.tv](https://trakt.tv/) for providing the API for media tracking
-- [Click](https://click.palletsprojects.com/) for the excellent CLI framework
-- The Python community for the fantastic ecosystem of tools
-
-## 🔒 Security
-
-This repository implements security measures to protect critical configuration files:
-
-- **CODEOWNERS**: Critical files have defined code owners (see `.github/CODEOWNERS`)
-- **Branch Protection**: Main branch requires status checks and pull request reviews
-- **Configuration Protection**: `.github/settings.yml` and security files have additional safeguards
-
-For security policies and reporting vulnerabilities, see [SECURITY.md](SECURITY.md).
-
-## 📞 Support & Resources
-
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/tdorsey/corruptvideofileinspector/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/tdorsey/corruptvideofileinspector/discussions)
-- 📖 **Documentation**: See docs/ directory for detailed guides
-- 🔄 **Contributing**: See [Contributing Guide](docs/CONTRIBUTING.md)
-- 🔒 **Security**: See [Security Policy](SECURITY.md)
-
----
-
-**Made with ❤️ for the media management community**
-
-# Documentation
-
-## Module Documentation
-
-- **[CLI Module](docs/CLI.md)** - Command-line interface, commands, and handlers
-- **[Core Module](docs/CORE.md)** - Business logic, scanning, inspection, and reporting
-- **[Configuration](docs/CONFIG.md)** - Configuration system, environment variables, and Docker secrets
-- **[FFmpeg Integration](docs/FFMPEG.md)** - Video analysis engine and corruption detection
-- **[Utilities](docs/UTILS.md)** - Shared utilities and helper functions
-
-## Integration and Usage
-
-- **[Trakt.tv Integration](docs/trakt.md)** - Watchlist synchronization and media management
-- **[Docker Trakt Integration](docs/DOCKER_TRAKT.md)** - Containerized Trakt.tv workflows and setup
-- **[Report Generation](docs/REPORTER.md)** - Multi-format reporting system
-
-## Development
-
-- **[Contributing Guidelines](docs/CONTRIBUTING.md)** - Development setup, code quality, and submission process
-- **[Repository Configuration](docs/REPOSITORY_CONFIGURATION.md)** - Repository settings management and code ownership
-- **[Version Management](docs/VERSIONING.md)** - Dynamic versioning with Git tags
-- **[Tests Documentation](docs/tests.md)** - Testing framework and test execution
+[CI Badge]: https://github.com/rhysd/actionlint/workflows/CI/badge.svg?branch=main&event=push
+[CI]: https://github.com/rhysd/actionlint/actions?query=workflow%3ACI+branch%3Amain
+[api-badge]: https://pkg.go.dev/badge/github.com/rhysd/actionlint.svg
+[apidoc]: https://pkg.go.dev/github.com/rhysd/actionlint
+[repo]: https://github.com/rhysd/actionlint
+[playground]: https://rhysd.github.io/actionlint/
+[shellcheck]: https://github.com/koalaman/shellcheck
+[pyflakes]: https://github.com/PyCQA/pyflakes
+[act]: https://github.com/nektos/act
+[syntax-doc]: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions
+[filter-pattern-doc]: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+[script-injection-doc]: https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions#understanding-the-risk-of-script-injections
+[issue-form]: https://github.com/rhysd/actionlint/issues/new
+[releases]: https://github.com/rhysd/actionlint/releases
+>>>>>>> 12fa64c (fix: resolve GitHub Actions workflow validation errors and syntax issues)
