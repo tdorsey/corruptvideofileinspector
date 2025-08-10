@@ -102,7 +102,7 @@ jobs:
           path: ./dist/
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@${{ vars.ACTIONS_VERSIONS_GH_RELEASE }}
+        uses: softprops/action-gh-release@latest
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Release ${{ steps.tag.outputs.tag }}
