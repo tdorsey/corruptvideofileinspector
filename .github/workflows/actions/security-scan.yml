@@ -58,11 +58,15 @@ jobs:
         if: inputs.scan-dependencies
         run: make security-scan
 
+      - name: Initialize CodeQL
+        if: inputs.scan-code
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+
       - name: Run CodeQL Analysis
         if: inputs.scan-code
         uses: github/codeql-action/analyze@v3
-        with:
-          languages: python
 
       - name: Run Trivy vulnerability scanner on Docker image
         if: inputs.scan-docker && inputs.docker-image
@@ -81,5 +85,6 @@ jobs:
       - name: Summary
         id: summary
         run: |
-          echo "results=completed" >> $GITHUB_OUTPUT
+          set -e
+          echo "results=completed" >> "$GITHUB_OUTPUT"
           echo "Security scans completed successfully"

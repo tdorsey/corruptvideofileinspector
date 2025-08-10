@@ -31,6 +31,7 @@ jobs:
 
       - name: Parse labels.yml to JSON
         run: |
+          set -e
           yq -o=json '.labels' .github/labels/labels.yml > .github/label-artifact.json
 
       - name: Cache label artifact
@@ -42,12 +43,13 @@ jobs:
       - name: Set outputs
         id: setoutputs
         run: |
+          set -e
           if [ ! -f .github/label-artifact.json ]; then
             echo 'Label artifact missing; creating empty array.'
             echo '[]' > .github/label-artifact.json
           fi
           labels_json=$(cat .github/label-artifact.json)
-          echo "labels_json=$(echo "$labels_json" | jq -c .)" >> $GITHUB_OUTPUT
+          echo "labels_json=$(echo "$labels_json" | jq -c .)" >> "$GITHUB_OUTPUT"
 
       - name: Upload label artifact (debug)
         uses: actions/upload-artifact@v4
@@ -58,5 +60,6 @@ jobs:
 
       - name: Summary
         run: |
+          set -e
           echo 'Label artifact ready.'
           cat .github/label-artifact.json || true

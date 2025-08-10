@@ -20,6 +20,7 @@ jobs:
 
       - name: Deploy to staging environment
         run: |
+          set -e
           echo "🚀 Deploying to staging environment"
           # Add staging deployment logic here
           echo "Staging deployment completed"
@@ -36,6 +37,7 @@ jobs:
 
       - name: Generate release notes
         run: |
+          set -e
           echo "📝 Generating release notes"
           # Add release notes generation logic here
           echo "Release notes prepared"
@@ -52,6 +54,7 @@ jobs:
 
       - name: Update documentation
         run: |
+          set -e
           echo "📚 Updating documentation"
           # Add documentation update logic here
           echo "Documentation updated"
@@ -74,6 +77,7 @@ jobs:
 
       - name: Process coverage reports
         run: |
+          set -e
           if [ -d "./coverage-reports" ]; then
             echo "Processing coverage reports..."
             # Add any post-processing logic here
@@ -121,18 +125,21 @@ jobs:
       - name: Notify on success
         if: github.event.workflow_run.conclusion == 'success'
         run: |
+          set -e
           echo "✅ CI Pipeline succeeded for ${{ github.event.workflow_run.head_branch }}"
           # Add notification logic (Slack, email, etc.)
 
       - name: Notify on failure
         if: github.event.workflow_run.conclusion == 'failure'
         run: |
+          set -e
           echo "❌ CI Pipeline failed for ${{ github.event.workflow_run.head_branch }}"
           # Add failure notification logic
-    if: github.event.workflow_run.conclusion == 'failure'
-    steps:
+
       - name: Handle test failure
+        if: github.event.workflow_run.conclusion == 'failure'
         run: |
+          set -e
           echo "❌ Build and test workflow failed"
           echo "Branch: ${{ github.event.workflow_run.head_branch }}"
           echo "Commit: ${{ github.event.workflow_run.head_sha }}"
