@@ -52,20 +52,24 @@ jobs:
 
       - name: Install system dependencies
         run: |
+          set -e
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
       - name: Setup test configuration
         run: |
+          set -e
           cp config.sample.yaml config.yaml
 
       - name: Install dependencies
         run: |
+          set -e
           make install-dev
 
       - name: Run tests
         id: test
         run: |
+          set -e
           if [[ "${{ inputs.test-type }}" == "unit" ]]; then
             TEST_CMD="pytest tests/unit/ -v"
           elif [[ "${{ inputs.test-type }}" == "integration" ]]; then
@@ -82,7 +86,7 @@ jobs:
           $TEST_CMD
 
           # Set test results output
-          echo "results=success" >> $GITHUB_OUTPUT
+          echo "results=success" >> "$GITHUB_OUTPUT"
 
       - name: Upload coverage reports
         id: upload-coverage
@@ -116,21 +120,22 @@ jobs:
 
       - name: Test Docker image functionality
         run: |
+          set -e
           # Test basic CLI help
-          docker run --rm ${{ inputs.docker-image }} --help
+          docker run --rm "${{ inputs.docker-image }}" --help
 
           # Test CLI commands
-          docker run --rm ${{ inputs.docker-image }} show-config
-          docker run --rm ${{ inputs.docker-image }} test-ffmpeg
+          docker run --rm "${{ inputs.docker-image }}" show-config
+          docker run --rm "${{ inputs.docker-image }}" test-ffmpeg
 
           # Create test environment
           mkdir -p test-videos test-output
 
           # Test scan functionality with empty directory
           docker run --rm \
-            -v $(pwd)/test-videos:/app/videos:ro \
-            -v $(pwd)/test-output:/app/output \
-            ${{ inputs.docker-image }} \
+            -v "$(pwd)/test-videos:/app/videos:ro" \
+            -v "$(pwd)/test-output:/app/output" \
+            "${{ inputs.docker-image }}" \
             scan --directory /app/videos --output /app/output/test-results.json
 
           # Verify output file was created

@@ -85,5 +85,6 @@ jobs:
       - name: Summary
         id: summary
         run: |
-          echo "results=completed" >> $GITHUB_OUTPUT
+          set -e
+          echo "results=completed" >> "$GITHUB_OUTPUT"
           echo "Security scans completed successfully"

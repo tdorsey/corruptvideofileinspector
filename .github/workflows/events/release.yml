@@ -65,27 +65,29 @@ jobs:
       - name: Get release tag
         id: tag
         run: |
+          set -e
           if [ -n "${{ github.event.inputs.tag }}" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Generate changelog
         id: changelog
         run: |
+          set -e
           # Generate changelog from git commits since last tag
           LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$LAST_TAG" ]; then
-            CHANGELOG=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            CHANGELOG=$(git log "${LAST_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
           else
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
           fi
 
           # Save changelog to output
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$CHANGELOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Download Python artifacts
         uses: actions/download-artifact@${{ vars.ACTIONS_VERSIONS_DOWNLOAD_ARTIFACT }}
@@ -136,6 +138,7 @@ jobs:
     steps:
       - name: Post-release summary
         run: |
+          set -e
           echo "🎉 Release ${{ github.event.inputs.tag || github.ref_name }} completed successfully!"
           echo "- GitHub Release: Created"
           echo "- Docker Images: Published"

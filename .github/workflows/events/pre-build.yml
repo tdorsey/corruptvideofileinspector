@@ -44,6 +44,7 @@ jobs:
     steps:
       - name: Check pre-build results
         run: |
+          set -e
           echo "Code Quality: ${{ needs.code-quality.result }}"
           echo "Security Check: ${{ needs.security-check.result }}"
 

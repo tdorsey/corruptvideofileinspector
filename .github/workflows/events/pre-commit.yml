@@ -34,7 +34,7 @@ jobs:
       - name: Export labels to output
         id: export_labels
         run: |
-          echo "labels=${{ steps.get_labels.outputs.labels }}" >> $GITHUB_OUTPUT
+          echo "labels=${{ steps.get_labels.outputs.labels }}" >> "$GITHUB_OUTPUT"
 
       - name: Check for code change labels
         id: check_labels
@@ -80,6 +80,7 @@ jobs:
     steps:
       - name: Check pre-commit results
         run: |
+          set -e
           echo "Quality: ${{ needs.quality.result }}"
           echo "Unit Tests (Branches): ${{ needs.other-branches.result }}"
           echo "All Tests (Main): ${{ needs.main-branch.result }}"

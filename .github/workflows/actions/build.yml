@@ -92,12 +92,14 @@ jobs:
 
       - name: Install build dependencies
         run: |
+          set -e
           python -m pip install --upgrade pip
           pip install --timeout=300 --retries=3 build twine
 
       - name: Build package
         id: build
         run: |
+          set -e
           python -m build
           echo "artifacts=dist/*" >> "$GITHUB_OUTPUT"
 
@@ -173,6 +175,7 @@ jobs:
 
       - name: Test Docker image
         run: |
+          set -e
           # Basic smoke test for the Docker image
           echo "Docker image testing would go here"
           # make docker-test
