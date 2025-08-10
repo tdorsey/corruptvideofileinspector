@@ -490,6 +490,7 @@ def list_watchlists(output, output_format, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
+
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
         watchlists = handler.list_watchlists()
@@ -576,6 +577,7 @@ def view(watchlist, output, output_format, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
+
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
         items = handler.view_watchlist(watchlist=watchlist)
