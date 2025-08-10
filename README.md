@@ -40,9 +40,6 @@ A comprehensive, modular tool for detecting corrupted video files using FFmpeg a
 ### Installation
 
 ```bash
-# Install from PyPI (when published)
-pip install corrupt-video-inspector
-
 # Install from source
 git clone https://github.com/tdorsey/corruptvideofileinspector.git
 cd corruptvideofileinspector

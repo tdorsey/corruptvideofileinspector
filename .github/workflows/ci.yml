@@ -18,7 +18,7 @@ jobs:
       - name: Skip for pushes
         if: github.event_name != 'pull_request'
         run: echo "Skipping PR title validation for push events"
-        
+
       - name: Validate PR title
         if: github.event_name == 'pull_request'
         uses: amannn/action-semantic-pull-request@v5
@@ -36,6 +36,7 @@ jobs:
             perf
             test
             chore
+            ci
           # Allow scopes (optional part after type)
           requireScope: false
           # Disallow release-related types since this is handled by
@@ -95,10 +96,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Remove Python cache
-      run: |
-        find . -name "__pycache__" -type d -delete
-        find . -name "*.pyc" -delete
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -121,11 +118,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
-    - name: Remove Python cache
-      run: |
-        find . -name "__pycache__" -type d -delete
-        find . -name "*.pyc" -delete
 
     - name: Set up Python
       uses: actions/setup-python@v5
