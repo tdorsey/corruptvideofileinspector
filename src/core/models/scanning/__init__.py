@@ -138,11 +138,8 @@ class ScanResult(BaseModel):
         strict: bool | None = None,
         from_attributes: bool | None = None,
         context: Any | None = None,
-        by_alias: bool | None = None,
-        by_name: bool | None = None,
+        **kwargs: Any,
     ) -> "ScanResult":
-        # Unused parameters to match pydantic signature
-        _ = by_alias, by_name
         # Accept both old and new formats
         if isinstance(obj, dict):
             data = dict(obj)
