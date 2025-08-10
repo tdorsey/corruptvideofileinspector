@@ -378,7 +378,7 @@ class TraktHandler(BaseHandler):
         validation_result = validate_trakt_secrets()
         if not validation_result.is_valid:
             handle_credential_error(validation_result)
-        
+
         try:
             logger.info(f"Syncing scan results from {scan_file} to Trakt.tv watchlist.")
 
@@ -457,7 +457,7 @@ class TraktHandler(BaseHandler):
             logger.warning(f"Failed to save sync results: {e}")
             click.echo(f"Warning: Could not save sync results: {e}", err=True)
 
-    def list_watchlists(self, access_token: str | None = None) -> list | None:
+    def list_watchlists(self) -> list | None:
         """
         List all available watchlists for the authenticated user.
 
@@ -471,7 +471,7 @@ class TraktHandler(BaseHandler):
         secrets_validation = validate_trakt_secrets()
         if not secrets_validation.is_valid:
             handle_credential_error(secrets_validation)
-        
+
         try:
             logger.info("Fetching user's watchlists from Trakt")
             api = TraktAPI(self.config)
@@ -483,7 +483,7 @@ class TraktHandler(BaseHandler):
             self._handle_error(e, "Failed to fetch watchlists")
             return None
 
-    def view_watchlist(self, watchlist: str | None = None, access_token: str | None = None) -> list | None:
+    def view_watchlist(self, watchlist: str | None = None) -> list | None:
         """
         View items in a specific watchlist.
 
@@ -498,7 +498,7 @@ class TraktHandler(BaseHandler):
         secrets_validation = validate_trakt_secrets()
         if not secrets_validation.is_valid:
             handle_credential_error(secrets_validation)
-        
+
         try:
             watchlist_name = watchlist or "Main Watchlist"
             logger.info(f"Fetching items from watchlist: {watchlist_name}")
