@@ -114,6 +114,49 @@ This project uses [Conventional Commits](https://www.conventionalcommits.org/) f
 | `ci` | CI/CD pipeline changes | `ci: add automated security scanning` |
 | `revert` | Revert previous changes | `revert: undo problematic scanner changes` |
 
+This repository implements security measures to protect critical configuration files:
+
+- **CODEOWNERS**: Critical files have defined code owners (see `.github/CODEOWNERS`)
+- **Branch Protection**: Main branch requires status checks and pull request reviews
+- **Configuration Protection**: `.github/settings.yml` and security files have additional safeguards
+
+For security policies and reporting vulnerabilities, see [SECURITY.md](SECURITY.md).
+
+## 📞 Support & Resources
+
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/tdorsey/corruptvideofileinspector/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/tdorsey/corruptvideofileinspector/discussions)
+- 📖 **Documentation**: See docs/ directory for detailed guides
+- 🔄 **Contributing**: See [Contributing Guide](docs/CONTRIBUTING.md)
+- 🔒 **Security**: See [Security Policy](SECURITY.md)
+
+---
+
+**Made with ❤️ for the media management community**
+
+# Documentation
+
+## Module Documentation
+
+- **[CLI Module](docs/CLI.md)** - Command-line interface, commands, and handlers
+- **[Core Module](docs/CORE.md)** - Business logic, scanning, inspection, and reporting
+- **[Configuration](docs/CONFIG.md)** - Configuration system, environment variables, and Docker secrets
+- **[FFmpeg Integration](docs/FFMPEG.md)** - Video analysis engine and corruption detection
+- **[Utilities](docs/UTILS.md)** - Shared utilities and helper functions
+
+## Integration and Usage
+
+- **[Trakt.tv Integration](docs/trakt.md)** - Watchlist synchronization and media management
+- **[Docker Trakt Integration](docs/DOCKER_TRAKT.md)** - Containerized Trakt.tv workflows and setup
+- **[Report Generation](docs/REPORTER.md)** - Multi-format reporting system
+
+## Development
+
+- **[Contributing Guidelines](docs/CONTRIBUTING.md)** - Development setup, code quality, and submission process
+- **[Repository Configuration](docs/REPOSITORY_CONFIGURATION.md)** - Repository settings management and code ownership
+- **[Version Management](docs/VERSIONING.md)** - Dynamic versioning with Git tags
+- **[Tests Documentation](docs/tests.md)** - Testing framework and test execution
+
 [CI Badge]: https://github.com/rhysd/actionlint/workflows/CI/badge.svg?branch=main&event=push
 [CI]: https://github.com/rhysd/actionlint/actions?query=workflow%3ACI+branch%3Amain
 [api-badge]: https://pkg.go.dev/badge/github.com/rhysd/actionlint.svg
