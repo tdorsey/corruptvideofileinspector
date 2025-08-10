@@ -24,7 +24,7 @@ The `.github/settings.yaml` file contains the following sections:
 - Security and vulnerability settings
 
 #### Branch Protection Rules
-- **Main Branch**: Strict protection with required status checks and code owner reviews
+- **Main Branch**: Strict protection with required status checks and pull request reviews
 - **Develop Branch**: Relaxed protection for development workflow
 - Status check requirements aligned with CI/CD pipeline
 
@@ -127,7 +127,7 @@ Files that control repository behavior and security:
 ### Common Issues
 
 1. **Settings Not Applied**: Remember that `.github/settings.yaml` requires tooling to apply
-2. **Review Requirements**: Protected file changes always require code owner approval
+2. **Review Requirements**: Protected file changes may receive additional review from code owners
 3. **Merge Conflicts**: Coordinate with other maintainers when multiple people edit protected files
 4. **Permission Errors**: Check that you have necessary repository permissions
 
