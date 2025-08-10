@@ -24,9 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Validate workflow files with actionlint
-        uses: rhysd/actionlint-action@v1
-        with:
-          fail-on-error: true
+        uses: devops-actions/actionlint@v0.1.9
 
       - name: Report validation results
         if: always()
@@ -39,7 +37,7 @@ jobs:
             // Get list of changed workflow files
             const { execSync } = require('child_process');
             try {
-              const changedFiles = execSync('git diff --name-only origin/${{ github.base_ref }}..HEAD | grep "^\.github/workflows/.*\.ya?ml$"', { encoding: 'utf8' });
+              const changedFiles = execSync('git diff --name-only origin/${{ github.base_ref }}..HEAD | grep "^\\.github/workflows/.*\\.ya?ml$"', { encoding: 'utf8' });
               const fileList = changedFiles.trim().split('\n').filter(f => f);
               
               if (fileList.length > 0) {

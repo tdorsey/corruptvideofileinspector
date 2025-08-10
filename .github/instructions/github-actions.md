@@ -21,7 +21,7 @@ The project contains multiple workflow files in `.github/workflows/`:
 **Purpose**: Validates syntax of GitHub Actions workflow files on PR changes
 **Key Components**:
 - Triggers on PRs that modify `.github/workflows/*.yml` or `.github/workflows/*.yaml`
-- Uses `actionlint` via `rhysd/actionlint-action@v1` for comprehensive validation
+- Uses `actionlint` via `devops-actions/actionlint@v0.1.9` for comprehensive validation
 - Required check that blocks merging if workflow syntax errors are found
 - Reports validation results for changed workflow files
 
