@@ -7,7 +7,7 @@ This project uses GitHub Actions for continuous integration, automated testing, 
 
 ## Workflow Files Overview
 
-The project contains three main workflow files in `.github/workflows/`:
+The project contains four main workflow files in `.github/workflows/`:
 
 ### 1. ci.yml - Continuous Integration
 **Purpose**: Runs on every push and pull request to validate code quality and run tests
@@ -18,11 +18,34 @@ The project contains three main workflow files in `.github/workflows/`:
 - Parallel job execution for faster feedback
 
 ### 2. release.yml - Release Automation
-**Purpose**: Handles version bumping, Docker builds, and PyPI publishing
+**Purpose**: Handles version bumping, Docker builds, and release management
 **Key Components**:
 - Automated version incrementation using conventional commits
 - Multi-platform Docker builds (linux/amd64, linux/arm64)
 - PyPI package publishing with proper authentication
+
+### 3. auto-create-branch.yml - Automatic Branch Creation
+**Purpose**: Automatically creates development branches when issues are opened
+**Key Components**:
+- Triggers on `issues: opened` events
+- Creates branches named `issue-<number>-<slug>` from issue titles
+- Posts instructional comments with development guidelines
+- Provides fallback instructions if branch creation fails
+- Uses `actions/github-script@v7` for GitHub API interactions
+
+### 4. auto-assign-issue.yml - Issue Assignment
+**Purpose**: Automatically assigns issues to maintainers when opened
+**Key Components**:
+- Uses marketplace action `pozil/auto-assign-issue@v2.2.0`
+- Assigns to @copilot by default
+- Configurable assignment rules
+
+### 5. labeler.yml - Issue Labeling
+**Purpose**: Automatically labels issues based on content and title
+**Key Components**:
+- Uses `github/issue-labeler@v3.4` marketplace action
+- Configuration driven by `.github/issue-labeler.yml`
+- Triggers on issue opened and edited events
 - GitHub release creation with automated changelog generation
 - Docker image publishing to GitHub Container Registry
 
@@ -113,15 +136,9 @@ The CI workflows heavily rely on Makefile targets for consistency:
       ghcr.io/${{ github.repository }}:${{ steps.version.outputs.new_version }}
 ```
 
-### PyPI Publishing
-- Uses trusted publishing with OpenID Connect (no API tokens required)
-- Builds both source distribution (sdist) and wheel packages
-- Publishes to PyPI only on successful builds and tests
-
 ## Secrets and Environment Variables
 
 ### Required Repository Secrets
-- `PYPI_API_TOKEN`: For PyPI package publishing (if not using trusted publishing)
 - `GITHUB_TOKEN`: Automatically provided for GitHub API access
 
 ### Trakt Integration (Optional)
@@ -158,7 +175,6 @@ Each workflow uses minimal required permissions:
 permissions:
   contents: read        # Read repository contents
   packages: write       # Push Docker images
-  id-token: write       # PyPI trusted publishing
 ```
 
 ## Adding New Workflows
@@ -225,3 +241,6 @@ The workflows integrate with the project's development toolchain:
 - **Code quality**: Linting and formatting enforced consistently
 
 This ensures that CI/CD processes match the local development experience and catch issues early in the development cycle.
+
+## Workflow Documentation
+See [GitHub Workflows Structure](../../workflows/README.md) for details on workflow organization, usage, and subfolder documentation.

@@ -9,6 +9,13 @@ body:
       value: |
         Thanks for helping improve our documentation! Please provide details about what needs to be updated or improved.
         
+        **Title Examples:**
+        - `docs(cli): add examples for new scan mode usage`
+        - `docs(config): document environment variable options`
+        - `docs(api): add missing parameter descriptions`
+        - `docs(setup): improve installation troubleshooting guide`
+        - `docs(readme): update quick start examples`
+        
         **Component labels will be automatically applied** based on your selection below.
 
   - type: dropdown
@@ -117,11 +124,3 @@ body:
       description: If you have ideas for what the documentation should include, please share them
       placeholder: Describe what you think should be documented...
 
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: Code of Conduct
-      description: By submitting this issue, you agree to follow our Code of Conduct
-      options:
-        - label: I agree to follow this project's Code of Conduct
-          required: true

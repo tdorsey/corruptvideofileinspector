@@ -528,25 +528,17 @@ class UtilityHandler(BaseHandler):
         directory: Path | str,
         recursive: bool = True,
         extensions: Sequence[str] | None = None,
-    ) -> list[Path]:
+    ) -> list[VideoFile]:
         """
-        Return list of video file objects (paths or models).
+        Return list of video file objects.
         Accepts Path for directory.
         """
         # Ensure directory is a Path
         directory_path = Path(directory)
         # Pass extensions directly to get_video_files instead of mutating config
-        video_files = self.scanner.get_video_files(
+        return self.scanner.get_video_files(
             directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
         )
-        result: list[Path] = []
-        for vf in video_files:
-            if hasattr(vf, "path") and vf.path is not None:
-                result.append(vf.path if isinstance(vf.path, Path) else Path(vf.path))
-            else:
-                # Handle case where vf might be a Path already
-                result.append(vf if isinstance(vf, Path) else Path(str(vf)))
-        return result
 
     def list_video_files_simple(
         self,
@@ -616,9 +608,9 @@ def get_all_video_object_files(
     directory: Path | str,
     recursive: bool = True,
     extensions: Sequence[str] | None = None,
-) -> list[Path]:
+) -> list[VideoFile]:
     """
-    Return list of video file objects (paths or models).
+    Return list of video file objects.
     Accepts Path for directory.
     """
     # Ensure directory is a Path
@@ -626,17 +618,9 @@ def get_all_video_object_files(
     config = load_config()
     scanner = VideoScanner(config)
     # Pass extensions directly to get_video_files instead of mutating config
-    video_files = scanner.get_video_files(
+    return scanner.get_video_files(
         directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
     )
-    result: list[Path] = []
-    for vf in video_files:
-        if hasattr(vf, "path") and vf.path is not None:
-            result.append(vf.path if isinstance(vf.path, Path) else Path(vf.path))
-        else:
-            # Handle case where vf might be a Path already
-            result.append(vf if isinstance(vf, Path) else Path(str(vf)))
-    return result
 
 
 def list_video_files(

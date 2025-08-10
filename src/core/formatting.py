@@ -25,7 +25,7 @@ def format_file_size(size_bytes: int, trim_trailing_zero: bool = True) -> str:
 
     for unit in ["B", "KB", "MB", "GB"]:
         if size_float < 1024:
-            # Show one decimal place for all units
+            # Always show one decimal place for consistency
             formatted = f"{size_float:.1f} {unit}"
             
             # Optionally trim trailing .0 for whole numbers
