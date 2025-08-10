@@ -114,13 +114,22 @@ class TestUtilsIntegration(unittest.TestCase):
         assert count == 0
 
     def test_format_file_size(self):
-        """Test file size formatting"""
-        assert format_file_size(0) == "0.0 B"
-        assert format_file_size(512) == "512.0 B"
-        assert format_file_size(1024) == "1.0 KB"
+        """Test file size formatting with default trim_trailing_zero=True"""
+        assert format_file_size(0) == "0 B"
+        assert format_file_size(512) == "512 B"
+        assert format_file_size(1024) == "1 KB"
         assert format_file_size(1536) == "1.5 KB"
-        assert format_file_size(1024 * 1024) == "1.0 MB"
-        assert format_file_size(1024 * 1024 * 1024) == "1.0 GB"
+        assert format_file_size(1024 * 1024) == "1 MB"
+        assert format_file_size(1024 * 1024 * 1024) == "1 GB"
+
+    def test_format_file_size_backward_compatibility(self):
+        """Test file size formatting with trim_trailing_zero=False for backward compatibility"""
+        assert format_file_size(0, trim_trailing_zero=False) == "0.0 B"
+        assert format_file_size(512, trim_trailing_zero=False) == "512.0 B"
+        assert format_file_size(1024, trim_trailing_zero=False) == "1.0 KB"
+        assert format_file_size(1536, trim_trailing_zero=False) == "1.5 KB"
+        assert format_file_size(1024 * 1024, trim_trailing_zero=False) == "1.0 MB"
+        assert format_file_size(1024 * 1024 * 1024, trim_trailing_zero=False) == "1.0 GB"
 
     def test_get_video_extensions(self):
         """Test getting video extensions list"""
