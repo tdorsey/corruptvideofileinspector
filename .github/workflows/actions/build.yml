@@ -82,10 +82,10 @@ jobs:
       artifact-name: python-packages-${{ inputs.tag-name || github.run_id }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@${{ vars.ACTIONS_VERSIONS_CHECKOUT || 'v4' }}
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@${{ vars.ACTIONS_VERSIONS_SETUP_PYTHON || 'v5' }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version }}
           cache: 'pip'
@@ -105,7 +105,7 @@ jobs:
 
       - name: Upload Python package artifacts
         id: upload
-        uses: actions/upload-artifact@${{ vars.ACTIONS_VERSIONS_UPLOAD_ARTIFACT || 'v4' }}
+        uses: actions/upload-artifact@v4
         with:
           name: python-packages-${{ inputs.tag-name || github.run_id }}
           path: dist/
