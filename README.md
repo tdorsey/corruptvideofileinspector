@@ -111,21 +111,7 @@ as minimal as possible.
 ```sh
 actionlint
 ```
-
 Another option to try actionlint is [the online playground][playground]. Your browser can run actionlint through WebAssembly.
-
-**GitHub Actions Workflow Validation:**
-- PRs that add or modify GitHub Actions workflow files (`.github/workflows/*.yml` or `.github/workflows/*.yaml`) are automatically validated for syntax correctness
-- The workflow validation check uses `actionlint` via the `devops-actions/actionlint@v0.1.9` marketplace action to ensure proper GitHub Actions syntax
-- PRs with invalid workflow syntax will be blocked from merging until issues are resolved
-- This validation runs automatically and is a required check
-
-### Code Quality Standards
-- **Formatting**: Black (100 character line length)
-- **Linting**: Ruff with comprehensive rule set
-- **Type Checking**: MyPy with strict configuration
-- **Testing**: Comprehensive test coverage
-- **Workflow Validation**: GitHub Actions syntax validation with actionlint
 
 See [the usage document](docs/usage.md) for more details.
 
@@ -150,6 +136,7 @@ of input. Giving me some feedbacks like feature requests or ideas of additional 
 
 actionlint is distributed under [the MIT license](./LICENSE.txt).
 
+>>>>>>> 16044ef (fix: resolve GitHub Actions workflow validation errors and syntax issues)
 [CI Badge]: https://github.com/rhysd/actionlint/workflows/CI/badge.svg?branch=main&event=push
 [CI]: https://github.com/rhysd/actionlint/actions?query=workflow%3ACI+branch%3Amain
 [api-badge]: https://pkg.go.dev/badge/github.com/rhysd/actionlint.svg
