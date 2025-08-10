@@ -170,4 +170,3 @@ For security policies and reporting vulnerabilities, see [SECURITY.md](SECURITY.
 [script-injection-doc]: https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions#understanding-the-risk-of-script-injections
 [issue-form]: https://github.com/rhysd/actionlint/issues/new
 [releases]: https://github.com/rhysd/actionlint/releases
->>>>>>> 12fa64c (fix: resolve GitHub Actions workflow validation errors and syntax issues)
