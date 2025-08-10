@@ -10,7 +10,7 @@ from src.config.config import (
     TraktConfig,
 )
 from src.core.models.inspection import VideoFile
-from src.core.models.scanning import ScanMode, ScanSummary
+from src.core.models.scanning import ScanMode
 from src.core.scanner import VideoScanner
 from src.ffmpeg.ffmpeg_client import FFmpegClient
 

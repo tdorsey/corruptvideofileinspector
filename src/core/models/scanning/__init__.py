@@ -149,7 +149,7 @@ class ScanResult(BaseModel):
                 data["video_file"] = VideoFile(path=Path(data["filename"]))
             obj = data
         return super().model_validate(
-            obj, strict=strict, from_attributes=from_attributes, context=context
+            obj, strict=strict, from_attributes=from_attributes, context=context, **kwargs
         )
 
     def is_healthy(self) -> bool:
