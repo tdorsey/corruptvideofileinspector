@@ -32,10 +32,11 @@ This directory contains the restructured GitHub Actions workflows using an actio
 - **Used by**: CI pipeline, release workflows
 
 ### `actions/test.yml`
-- **Purpose**: Run tests for Python code and Docker images
-- **Inputs**: python-version, test-type, coverage, docker-image
-- **Outputs**: coverage-artifact, test-results
+- **Purpose**: Execute project tests (unit, integration, or all) optionally using a pre-built Docker image
+- **Inputs**: python-version, test-type (unit|integration|all), coverage (true|false), docker-image (optional)
+- **Outputs**: coverage-artifact (when coverage=true), test-results
 - **Used by**: CI pipeline, pre-commit validation
+- **Note**: Build/publish tasks are handled by `actions/build.yml`; release packaging by `actions/release-build.yml`
 
 ### `actions/python-quality.yml`
 - **Purpose**: Code quality checks (formatting, linting, type checking)
@@ -51,6 +52,8 @@ This directory contains the restructured GitHub Actions workflows using an actio
 - **Purpose**: Release-specific build and deployment tasks
 - **Inputs**: python-version, push-to-registry
 - **Used by**: Release workflows
+- `DOCKER_USERNAME`: Docker Hub username
+- `DOCKER_PASSWORD`: Docker Hub password/token
 
 ## Event-Oriented Workflows (Callers)
 
@@ -169,9 +172,21 @@ Runs on pull request events (opened, edited, synchronize):
 - **New event workflows**: Added for better event handling and post-processing
 - **Backward compatibility**: Existing functionality is preserved with improved structure
 
-## Future Enhancements
 
-1. **Environment-specific workflows**: Add staging and production deployment workflows
-2. **Performance monitoring**: Add performance testing action workflow
-3. **Dependency management**: Add automated dependency update workflows
-4. **Release automation**: Enhance release workflows with automatic changelog generation
+### Workflow Permissions
+Each workflow uses minimal required permissions:
+- **ci.yml**: `contents: read` for repository access
+- **pr-title-check.yml**: `contents: read`, `pull-requests: write`, `issues: read` for PR management
+- **release.yml**: `contents: write`, `packages: write`, `id-token: write` for publishing
+
+## Development
+
+The CI workflow ensures that all code changes:
+1. Follow consistent formatting (black)
+2. Pass linting checks (ruff)
+3. Pass type checking (mypy)
+4. Have working imports and basic functionality
+5. Build successfully in Docker
+6. Pass security scans
+
+This helps maintain code quality and prevents broken builds from being merged.

@@ -10,6 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     steps:
+<<<<<<< HEAD
+=======
+      - name: Skip for pushes
+        if: github.event_name != 'pull_request'
+        run: echo "Skipping PR title validation for push events"
+
+>>>>>>> 481c680 (ci: disable PyPI publishing to prevent accidental releases (#126))
       - name: Validate PR title
         if: github.event_name == 'pull_request'
         uses: amannn/action-semantic-pull-request@v5
@@ -25,6 +32,11 @@ jobs:
             perf
             test
             chore
+<<<<<<< HEAD
+=======
+            ci
+          # Allow scopes (optional part after type)
+>>>>>>> 481c680 (ci: disable PyPI publishing to prevent accidental releases (#126))
           requireScope: false
           disallowScopes: |
             release
@@ -34,3 +46,19 @@ jobs:
             if (hasIssueRefInBody) {
               console.log('Issue reference found in body');
             }
+<<<<<<< HEAD
+=======
+
+  lint-and-format:
+    name: Lint, Format, and Type Check
+    runs-on: ubuntu-latest
+    # Always depend on PR title validation, but it will be skipped for pushes and drafts
+    needs: validate-pr-title
+
+    steps:
+    - uses: actions/checkout@v4
+
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
