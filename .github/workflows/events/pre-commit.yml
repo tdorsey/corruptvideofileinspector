@@ -58,7 +58,7 @@ jobs:
 
       - name: Skip Unit Tests
         if: steps.check_labels.outputs.matched != 'true'
-        run: echo "Unit tests skipped: no code change labels found"
+        run: echo "Unit tests skipped - no code change labels found"
 
   # All tests for main branch
   main-branch:
