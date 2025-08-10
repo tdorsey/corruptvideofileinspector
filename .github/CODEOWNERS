@@ -1,18 +1,10 @@
-# CODEOWNERS for admin/push permission preservation
-# Set admin(s) as code owner for .github/settings.yml to help enforce permission boundaries
+# CODEOWNERS for critical admin files only
+# Repository settings are protected but code owner reviews are disabled via settings.yaml
 # See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/repository-ownership-and-permissions/about-code-owners
-#
-# This is intended for use with branch protection on the 'main' branch.
 
-# Critical configuration files requiring admin approval
+# Critical configuration files for repository administration
 .github/settings.yaml @tdorsey
 .github/CODEOWNERS @tdorsey
 
-# Security-related documentation and policies
+# Security-related documentation and policies  
 SECURITY.md @tdorsey
-
-# Label configuration (SECURITY SENSITIVE)
-.github/labels/labels.yml @tdorsey
-
-# Global fallback - repository owner is responsible for all files
-* @tdorsey
