@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Rhysd actionlint
+      - name: Validate workflow files with actionlint
         uses: devops-actions/actionlint@v0.1.9
 
       - name: Report validation results

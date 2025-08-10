@@ -7,7 +7,7 @@ This project uses GitHub Actions for continuous integration, automated testing, 
 
 ## Workflow Files Overview
 
-The project contains three main workflow files in `.github/workflows/`:
+The project contains multiple workflow files in `.github/workflows/`:
 
 ### 1. ci.yml - Continuous Integration
 **Purpose**: Runs on every push and pull request to validate code quality and run tests
