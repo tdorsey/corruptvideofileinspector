@@ -53,7 +53,7 @@ branches:
       required_pull_request_reviews:
         required_approving_review_count: 0
         dismiss_stale_reviews: true
-        require_code_owner_reviews: true
+        require_code_owner_reviews: false  # Allow admins to merge without code owner review
         restrict_pushes: false
       enforce_admins: false  # Allow repository admins to bypass all protection rules
       restrictions: null
