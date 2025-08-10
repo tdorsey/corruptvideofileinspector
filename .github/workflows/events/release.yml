@@ -30,15 +30,15 @@ jobs:
     name: Build Release Artifacts
     uses: ./.github/workflows/actions/build.yml
     with:
-      python-version: ${{ vars.PYTHON_VERSION }}
+      python-version: ${{ vars.DEFAULT_PYTHON_VERSION }}
       build-python: true
       build-docker: true
       docker-platforms: 'linux/amd64,linux/arm64'  # Multi-platform support for broad compatibility
       docker-push: true
       tag-name: ${{ github.event.inputs.tag || github.ref_name }}
       upload-pypi: true
+      docker-username: ${{ vars.DOCKER_USERNAME }}
     secrets:
-      docker-username: ${{ secrets.DOCKER_USERNAME }}
       docker-password: ${{ secrets.DOCKER_PASSWORD }}
       pypi-token: ${{ secrets.PYPI_API_TOKEN }}
 
@@ -63,7 +63,7 @@ jobs:
     if: always() && needs.build-release.result == 'success' && needs.release-security-scan.result == 'success'
     steps:
       - name: Checkout code
-        uses: actions/checkout@${{ vars.ACTIONS_VERSIONS_CHECKOUT }}
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 

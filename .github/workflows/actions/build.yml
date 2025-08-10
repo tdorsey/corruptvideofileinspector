@@ -48,10 +48,11 @@ on:
         description: 'Whether to upload to PyPI'
         type: boolean
         default: false
-    secrets:
       docker-username:
         description: 'Docker Hub username'
         required: false
+
+    secrets:
       docker-password:
         description: 'Docker Hub password/token'
         required: false
@@ -133,11 +134,11 @@ jobs:
         uses: docker/setup-buildx-action@$v3
 
       - name: Log in to Docker Hub
-        if: inputs.docker-push && secrets.docker-username && secrets.docker-password
+        if: inputs.docker-push
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.docker-username }}
-          password: ${{ secrets.docker-password }}
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Extract metadata
         id: meta
