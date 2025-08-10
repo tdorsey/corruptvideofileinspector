@@ -12,7 +12,6 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 from collections.abc import Callable, Iterator
-from pathlib import Path
 
 from src.config import load_config
 from src.config.config import AppConfig
