@@ -27,6 +27,14 @@ The following repository variables must be configured in the repository settings
 | `ACTIONS_VERSIONS_METADATA_ACTION` | docker/metadata-action version | `v5` |
 | `ACTIONS_VERSIONS_BUILD_PUSH_ACTION` | docker/build-push-action version | `v5` |
 
+### Artifact and Release Actions
+
+| Variable | Description | Current Recommended Value |
+|----------|-------------|---------------------------|
+| `ACTIONS_VERSIONS_UPLOAD_ARTIFACT` | actions/upload-artifact version | `v4` |
+| `ACTIONS_VERSIONS_DOWNLOAD_ARTIFACT` | actions/download-artifact version | `v4` |
+| `ACTIONS_VERSIONS_GH_RELEASE` | softprops/action-gh-release version | `v2` |
+
 ### Additional Actions
 
 | Variable | Description | Current Recommended Value |
