@@ -490,6 +490,10 @@ def list_watchlists(output, output_format, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
+        
+        # Note: Token parameter is currently ignored - using config credentials
+        if token:
+            click.echo("Warning: --token parameter is ignored. Using client credentials from config.", err=True)
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
@@ -577,6 +581,10 @@ def view(watchlist, output, output_format, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
+        
+        # Note: Token parameter is currently ignored - using config credentials
+        if token:
+            click.echo("Warning: --token parameter is ignored. Using client credentials from config.", err=True)
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)

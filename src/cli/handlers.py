@@ -196,7 +196,7 @@ class ScanHandler(BaseHandler):
 
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
-        with click.progressbar(  # type: ignore
+        with click.progressbar(
             length=progress.total_files,
             show_eta=True,
             show_percent=True,
