@@ -159,7 +159,7 @@ When marketplace actions are insufficient:
 ### Available Issue Types
 The repository provides comprehensive issue templates aligned with Conventional Commit types:
 - **🚀 Feature Request** (`feat`): New features and enhancements
-- **🐛 Bug Report** (`fix`): Bug reports and fixes  
+- **🐛 Bug Report** (`fix`): Bug reports and fixes
 - **🔧 Chore/Maintenance** (`chore`): Maintenance tasks, dependencies, tooling
 - **📚 Documentation** (`docs`): Documentation updates and improvements
 - **🧪 Testing** (`test`): Test coverage gaps and testing improvements
@@ -381,7 +381,7 @@ If network installation fails, you can still validate basic functionality:
 
 ```bash
 # System dependencies (requires network for initial setup)
-sudo apt-get update && sudo apt-get install -y ffmpeg build-essential
+sudo apt-get install -y ffmpeg
 
 # Basic functionality testing (no pip install required)
 make clean && make docker-env && make secrets-init

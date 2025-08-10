@@ -3,7 +3,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 from src.core.models.inspection import VideoFile
 
@@ -130,7 +130,6 @@ class ScanResult(BaseModel):
         data["confidence_percentage"] = self.confidence_percentage
         return data
 
-    @model_validator(mode='before')
     @classmethod
     def model_validate(
         cls,
@@ -139,18 +138,19 @@ class ScanResult(BaseModel):
         strict: bool | None = None,
         from_attributes: bool | None = None,
         context: Any | None = None,
-        by_alias: bool | None = None,  # noqa: ARG003
-        by_name: bool | None = None,  # noqa: ARG003
+        **kwargs: Any,
     ) -> "ScanResult":
         # Accept both old and new formats
         if isinstance(obj, dict):
             data = dict(obj)
             if "video_file" in data and isinstance(data["video_file"], dict):
                 data["video_file"] = VideoFile.model_validate(data["video_file"])
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
-                data["scan_mode"] = ScanMode(data["scan_mode"])
-        return data
+            elif "filename" in data:
+                data["video_file"] = VideoFile(path=Path(data["filename"]))
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context, **kwargs
+        )
 
     def is_healthy(self) -> bool:
         """Check if file is healthy (not corrupt and doesn't need deep scan)."""
@@ -251,7 +251,6 @@ class ScanSummary(BaseModel):
         data["scan_mode"] = self.scan_mode.value
         return data
 
-    @model_validator(mode='before')
     @classmethod
     def model_validate(
         cls,
@@ -260,17 +259,21 @@ class ScanSummary(BaseModel):
         strict: bool | None = None,
         from_attributes: bool | None = None,
         context: Any | None = None,
-        by_alias: bool | None = None,  # noqa: ARG003
-        by_name: bool | None = None,  # noqa: ARG003
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
     ) -> "ScanSummary":
+        # Unused parameters to match pydantic signature
+        _ = by_alias, by_name
         if isinstance(obj, dict):
             data = dict(obj)
             if "directory" in data and not isinstance(data["directory"], Path):
                 data["directory"] = Path(data["directory"])
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+            if "scan_mode" in data and not isinstance(data["scan_mode"], ScanMode):
                 data["scan_mode"] = ScanMode(data["scan_mode"])
-        return data
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
     def get_status_summary(self) -> str:
         """Get a human-readable status summary.
@@ -395,7 +398,6 @@ class ScanProgress(BaseModel):
         data["scan_mode"] = self.scan_mode.value
         return data
 
-    @model_validator(mode='before')
     @classmethod
     def model_validate(
         cls,
@@ -404,9 +406,11 @@ class ScanProgress(BaseModel):
         strict: bool | None = None,
         from_attributes: bool | None = None,
         context: Any | None = None,
-        by_alias: bool | None = None,  # noqa: ARG003
-        by_name: bool | None = None,  # noqa: ARG003
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
     ) -> "ScanProgress":
+        # Unused parameters to match pydantic signature
+        _ = by_alias, by_name
         if isinstance(obj, dict):
             data = dict(obj)
             if (
@@ -415,10 +419,16 @@ class ScanProgress(BaseModel):
                 and isinstance(data["phase"], str)
             ):
                 data["phase"] = ScanPhase(data["phase"])
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+            if (
+                "scan_mode" in data
+                and not isinstance(data["scan_mode"], ScanMode)
+                and isinstance(data["scan_mode"], str)
+            ):
                 data["scan_mode"] = ScanMode(data["scan_mode"])
-        return data
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
     def get_eta_string(self) -> str:
         """Get estimated time remaining as human-readable string.
@@ -508,7 +518,6 @@ class BatchScanRequest(BaseModel):
         data["output_format"] = self.output_format.value
         return data
 
-    @model_validator(mode='before')
     @classmethod
     def model_validate(
         cls,
@@ -517,22 +526,33 @@ class BatchScanRequest(BaseModel):
         strict: bool | None = None,
         from_attributes: bool | None = None,
         context: Any | None = None,
-        by_alias: bool | None = None,  # noqa: ARG003
-        by_name: bool | None = None,  # noqa: ARG003
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
     ) -> "BatchScanRequest":
+        # Unused parameters to match pydantic signature
+        _ = by_alias, by_name
         if isinstance(obj, dict):
             data = dict(obj)
             if "directories" in data:
                 data["directories"] = [
                     Path(d) if not isinstance(d, Path) else d for d in data["directories"]
                 ]
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+            if (
+                "scan_mode" in data
+                and not isinstance(data["scan_mode"], ScanMode)
+                and isinstance(data["scan_mode"], str)
+            ):
                 data["scan_mode"] = ScanMode(data["scan_mode"])
-            # Convert string output_format to enum (if it's a string)
-            if "output_format" in data and isinstance(data["output_format"], str):
+            if (
+                "output_format" in data
+                and not isinstance(data["output_format"], OutputFormat)
+                and isinstance(data["output_format"], str)
+            ):
                 data["output_format"] = OutputFormat(data["output_format"])
-        return data
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
 
 class ScanFilter(BaseModel):
