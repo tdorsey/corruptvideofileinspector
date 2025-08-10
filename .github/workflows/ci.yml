@@ -111,11 +111,35 @@ jobs:
         set -e
         make lint
 
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    # Security scan should run in parallel with linting, after PR validation
+    needs: validate-pr-title
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: |
+        set -e
+        make install-dev
+
+    - name: Run Security Scan
+      run: |
+        set -e
+        make security-scan
+
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    # Tests should run after linting passes
-    needs: lint-and-format
+    # Tests should run after both linting and security scanning pass
+    needs: [lint-and-format, security]
 
     steps:
     - uses: actions/checkout@v4
@@ -167,17 +191,3 @@ jobs:
       run: |
         set -e
         make docker-test
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    # Security scan can run in parallel with docker after tests pass
-    needs: test
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Run Security Scan
-      run: |
-        set -e
-        make security-scan

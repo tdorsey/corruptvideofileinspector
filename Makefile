@@ -136,6 +136,7 @@ clean:            ## Clean build artifacts
 	rm -rf .pytest_cache/
 	rm -rf .mypy_cache/
 	rm -rf .ruff_cache/
+	rm -f bandit-report.json safety-report.json
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
@@ -161,5 +162,11 @@ docker-test:       ## Test Docker image functionality
 	@echo "Current workaround: Use 'make test' for Python tests or 'make docker-build' to verify build"
 
 security-scan:     ## Run security scanning on the codebase
-	@echo "Security scan target - placeholder for future implementation"
-	@echo "Current workaround: Use 'make lint' for basic code quality checks"
+	@echo "Running security scans..."
+	@echo "1. Running Bandit security linter..."
+	bandit -r src/ -f json -o bandit-report.json || true
+	bandit -r src/ --severity-level medium
+	@echo "2. Running Safety dependency vulnerability check..."
+	safety check --json --output safety-report.json || true
+	safety check
+	@echo "Security scans completed. Reports saved to bandit-report.json and safety-report.json"
