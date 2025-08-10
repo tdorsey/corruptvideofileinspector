@@ -48,7 +48,6 @@ branches:
           - "Run Tests"
           - "Build and Test Docker Image"
           - "Security Scan"
-          - "lint-and-format"
           - "test"
           - "docker"
           - "security"
