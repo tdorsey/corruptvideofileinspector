@@ -35,10 +35,8 @@ on:
       pr_state:
         description: 'PR state action'
         required: false
-        default: ''
         type: choice
         options:
-          - ''
           - 'draft'
           - 'ready'
           - 'open'

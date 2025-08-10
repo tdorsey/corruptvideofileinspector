@@ -1,0 +1,61 @@
+---
+name: 🔍 Validate GitHub Workflows
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/*.yml'
+      - '.github/workflows/*.yaml'
+      - '.github/workflows/actions/*.yml'
+      - '.github/workflows/actions/*.yaml'
+      - '.github/workflows/ci/*.yml'
+      - '.github/workflows/ci/*.yaml'
+      - '.github/workflows/events/*.yml'
+      - '.github/workflows/events/*.yaml'
+      - '.github/workflows/internal/*.yml'
+      - '.github/workflows/internal/*.yaml'
+      - '!.github/workflows/repository/labels/*.yml'
+      - '!.github/workflows/repository/labels/*.yaml'
+    types: [opened, edited, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate-workflows:
+    name: Validate Workflow Syntax
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate workflow files with actionlint
+        uses: devops-actions/actionlint@v0.1.9
+
+      - name: Report validation results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Get list of changed workflow files
+            const { execSync } = require('child_process');
+            try {
+              const changedFiles = execSync('git diff --name-only origin/${{ github.base_ref }}..HEAD | grep "^\\.github/workflows/.*\\.ya?ml$"', { encoding: 'utf8' });
+              const fileList = changedFiles.trim().split('\n').filter(f => f);
+              
+              if (fileList.length > 0) {
+                console.log('✅ Validated GitHub Action workflow files:');
+                fileList.forEach(file => console.log(`  - ${file}`));
+              } else {
+                console.log('ℹ️ No workflow files were changed in this PR');
+              }
+            } catch (error) {
+              console.log('ℹ️ Could not determine changed files, validation completed for all workflows');
+            }

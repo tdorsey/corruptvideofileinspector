@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Validate Repository Variables
         id: validate
-        uses: actions/github-script@${{ vars.ACTIONS_VERSIONS_GITHUB_SCRIPT || 'v7'     }}
+        uses: actions/github-script@v7
         with:
           script: |
             // Define all required repository variables for action versions

@@ -15,8 +15,8 @@ jobs:
     with:
       python-version: ${{ vars.PYTHON_VERSION }}
       check-format: true
-      run-lint: true
-      run-type-check: true
+      check-lint: true
+      check-types: true
 
   # Unit tests for feature branches and PRs with appropriate labels
   other-branches:
@@ -34,11 +34,11 @@ jobs:
       - name: Export labels to output
         id: export_labels
         run: |
-          echo "labels=${{ steps.get_labels.outputs.labels }}" >> $GITHUB_OUTPUT
+          echo "labels=${{ steps.get_labels.outputs.labels }}" >> "$GITHUB_OUTPUT"
 
       - name: Check for code change labels
         id: check_labels
-        uses: actions/github-script@${{ vars.ACTIONS_VERSION_GITHUB_SCRIPT }}
+        uses: actions/github-script@v7
         with:
           script: |
             const CODE_LABELS = ["🐞 bug", "bug", "✨ feature", "enhancement", "🧪 test", "test"];
@@ -58,7 +58,7 @@ jobs:
 
       - name: Skip Unit Tests
         if: steps.check_labels.outputs.matched != 'true'
-        run: echo "Unit tests skipped: no code change labels found"
+        run: echo "Unit tests skipped - no code change labels found"
 
   # All tests for main branch
   main-branch:
@@ -80,6 +80,7 @@ jobs:
     steps:
       - name: Check pre-commit results
         run: |
+          set -e
           echo "Quality: ${{ needs.quality.result }}"
           echo "Unit Tests (Branches): ${{ needs.other-branches.result }}"
           echo "All Tests (Main): ${{ needs.main-branch.result }}"
