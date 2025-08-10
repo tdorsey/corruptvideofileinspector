@@ -125,3 +125,30 @@ on:
       run: |
         set -e
         make docker-test
+<<<<<<< HEAD
+=======
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    # Security scan can run in parallel with docker after tests pass
+    needs: test
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: |
+        set -e
+        make install-dev
+
+    - name: Run Security Scan
+      run: |
+        set -e
+        make security-scan
+>>>>>>> fc595f7 (fix(makefile): restore functionality, fix type checking errors, and resolve merge conflicts with main (#114))

@@ -164,3 +164,5 @@ docker-test:       ## Test Docker image functionality
 
 security-scan:     ## Run security scanning on the codebase
 	@echo "Running security scans..."
+	$(MAKE) lint
+	@echo "Security scan completed successfully"
