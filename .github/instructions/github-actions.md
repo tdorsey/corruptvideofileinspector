@@ -26,7 +26,7 @@ The project contains multiple workflow files in `.github/workflows/`:
 - Reports validation results for changed workflow files
 
 ### 3. release.yml - Release Automation
-**Purpose**: Handles version bumping, Docker builds, and PyPI publishing
+**Purpose**: Handles version bumping, Docker builds, and release management
 **Key Components**:
 - Automated version incrementation using conventional commits
 - Multi-platform Docker builds (linux/amd64, linux/arm64)
@@ -41,13 +41,7 @@ The project contains multiple workflow files in `.github/workflows/`:
 - Provides fallback instructions if branch creation fails
 - Uses `actions/github-script@v7` for GitHub API interactions
 
-### 5. auto-assign-issue.yml - Issue Assignment
-**Purpose**: Automatically assigns issues to maintainers when opened
-**Key Components**:
-- Uses marketplace action `pozil/auto-assign-issue@v2.2.0`
-- Assigns to @copilot by default
-- Configurable assignment rules
-### 6. labeler.yml - Issue Labeling
+### 5. labeler.yml - Issue Labeling
 **Purpose**: Automatically labels issues based on content and title
 **Key Components**:
 - Uses `github/issue-labeler@v3.4` marketplace action
@@ -56,7 +50,7 @@ The project contains multiple workflow files in `.github/workflows/`:
 - GitHub release creation with automated changelog generation
 - Docker image publishing to GitHub Container Registry
 
-### 7. copilot-setup-steps.yml - Copilot Environment
+### 6. copilot-setup-steps.yml - Copilot Environment
 **Purpose**: Prepares the development environment for GitHub Copilot agents
 **Key Components**:
 - Python 3.13 environment setup

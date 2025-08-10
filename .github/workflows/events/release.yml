@@ -70,7 +70,7 @@ jobs:
       - name: Get release tag
         id: tag
         run: |
-          # Determine release tag from manual input or git tag event
+          set -e
           if [ -n "${{ github.event.inputs.tag }}" ]; then
             echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
           else
@@ -90,7 +90,7 @@ jobs:
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
           fi
 
-          # Save changelog to GitHub Actions output using heredoc syntax for multiline content
+          # Save changelog to output
           {
             echo "changelog<<EOF"
             echo "$CHANGELOG"
