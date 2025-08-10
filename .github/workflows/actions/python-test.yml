@@ -43,7 +43,6 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update
           sudo apt-get install -y ffmpeg
 
       - name: Setup test configuration

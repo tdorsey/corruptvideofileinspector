@@ -128,8 +128,7 @@ jobs:
     - name: Install system dependencies
       run: |
         set -e
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg
+        sudo apt-get update && sudo apt-get install -y ffmpeg
 
     - name: Setup test configuration
       run: |
@@ -176,6 +175,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: |
+        set -e
+        make install-dev
 
     - name: Run Security Scan
       run: |

@@ -153,7 +153,10 @@ class TestFormatFileSize(unittest.TestCase):
     def test_format_terabytes_no_trim_mode(self):
         """Test formatting terabytes with trim_trailing_zero=False (backward compatibility)"""
         assert format_file_size(1024 * 1024 * 1024 * 1024, trim_trailing_zero=False) == "1.0 TB"
-        assert format_file_size(int(1024 * 1024 * 1024 * 1024 * 2.5), trim_trailing_zero=False) == "2.5 TB"
+        assert (
+            format_file_size(int(1024 * 1024 * 1024 * 1024 * 2.5), trim_trailing_zero=False)
+            == "2.5 TB"
+        )
 
     def test_fractional_values_unchanged(self):
         """Test that non-zero fractional values are unchanged in both modes"""
@@ -161,7 +164,7 @@ class TestFormatFileSize(unittest.TestCase):
         assert format_file_size(1536) == "1.5 KB"
         assert format_file_size(int(1024 * 1024 * 2.5)) == "2.5 MB"
         assert format_file_size(int(1024 * 1024 * 1024 * 1.7)) == "1.7 GB"
-        
+
         # With trim_trailing_zero=False
         assert format_file_size(1536, trim_trailing_zero=False) == "1.5 KB"
         assert format_file_size(int(1024 * 1024 * 2.5), trim_trailing_zero=False) == "2.5 MB"
