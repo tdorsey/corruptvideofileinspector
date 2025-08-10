@@ -129,7 +129,9 @@ class WatchlistInfo(BaseModel):
             raise ValueError("Watchlist slug cannot be empty")
         # Basic slug validation - should be URL-safe
         if not re.match(r"^[a-z0-9\-_]+$", v):
-            raise ValueError("Slug must contain only lowercase letters, numbers, hyphens, and underscores")
+            raise ValueError(
+                "Slug must contain only lowercase letters, numbers, hyphens, and underscores"
+            )
         return v.strip()
 
     @classmethod
@@ -142,13 +144,13 @@ class WatchlistInfo(BaseModel):
         # Parse datetime strings if present
         if data.get("created_at"):
             try:
-                created_at = datetime.fromisoformat(data["created_at"].replace('Z', '+00:00'))
+                created_at = datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
             except ValueError as e:
                 logger.warning(f"Failed to parse created_at datetime: {data['created_at']!r} ({e})")
 
         if data.get("updated_at"):
             try:
-                updated_at = datetime.fromisoformat(data["updated_at"].replace('Z', '+00:00'))
+                updated_at = datetime.fromisoformat(data["updated_at"].replace("Z", "+00:00"))
             except ValueError as e:
                 logger.warning(f"Failed to parse updated_at datetime: {data['updated_at']!r} ({e})")
 
@@ -190,11 +192,10 @@ class WatchlistItem(BaseModel):
         listed_at = None
         if data.get("listed_at"):
             try:
-                listed_at = datetime.fromisoformat(data["listed_at"].replace('Z', '+00:00'))
+                listed_at = datetime.fromisoformat(data["listed_at"].replace("Z", "+00:00"))
             except ValueError as e:
                 logger.warning(
-                    "Failed to parse listed_at datetime from value '%s': %s",
-                    data["listed_at"], e
+                    "Failed to parse listed_at datetime from value '%s': %s", data["listed_at"], e
                 )
 
         # Determine type and extract media data

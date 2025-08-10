@@ -9,6 +9,13 @@ body:
       value: |
         Thanks for helping improve performance! Please provide details about the performance issue or optimization request.
         
+        **Title Examples:**
+        - `perf(scanner): optimize video analysis algorithm for large files`
+        - `perf(cli): reduce memory usage during batch processing`
+        - `perf(trakt): improve API call efficiency and caching`
+        - `perf(config): speed up configuration loading and validation`
+        - `perf(output): optimize report generation for large datasets`
+        
         **Component labels will be automatically applied** based on your selection below.
 
   - type: dropdown
@@ -142,11 +149,3 @@ body:
       description: If you have any profiling data or performance measurements, please share
       render: text
 
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: Code of Conduct
-      description: By submitting this issue, you agree to follow our Code of Conduct
-      options:
-        - label: I agree to follow this project's Code of Conduct
-          required: true

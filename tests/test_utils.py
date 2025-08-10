@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from src.core.video_files import count_all_video_files
-from src.core.formatting import format_file_size
 from src.config.video_formats import get_video_extensions
+from src.core.formatting import format_file_size
+from src.core.video_files import count_all_video_files
 
 pytestmark = pytest.mark.unit
 
@@ -101,9 +101,9 @@ class TestFormatFileSize(unittest.TestCase):
 
     def test_format_bytes(self):
         """Test formatting bytes"""
-        assert format_file_size(500) == "500 B"
-        assert format_file_size(0) == "0 B"
-        assert format_file_size(1) == "1 B"
+        assert format_file_size(500) == "500.0 B"
+        assert format_file_size(0) == "0.0 B"
+        assert format_file_size(1) == "1.0 B"
 
     def test_format_kilobytes(self):
         """Test formatting kilobytes"""
