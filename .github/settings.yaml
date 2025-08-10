@@ -48,6 +48,12 @@ branches:
           - "Run Tests"
           - "Build and Test Docker Image"
           - "Security Scan"
+          - "lint-and-format"
+          - "test"
+          - "docker"
+          - "security"
+          - "make check"
+          - "make test"
           - "Validate Workflow Syntax"
       required_pull_request_reviews:
         required_approving_review_count: 0
