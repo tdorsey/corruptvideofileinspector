@@ -15,7 +15,7 @@ jobs:
       - name: Auto-assign Issue to Copilot
         uses: actions/github-script@v7
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const issueNumber = context.issue.number;
             

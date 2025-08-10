@@ -48,6 +48,7 @@ jobs:
 
       - name: Setup test configuration
         run: |
+          set -e
           cp config.sample.yaml config.yaml
 
       - name: Install dependencies
@@ -57,12 +58,13 @@ jobs:
         id: test
         if: inputs.test-type == 'unit' || inputs.test-type == 'all'
         run: |
+          set -e
           if [ "${{ inputs.coverage }}" = "true" ]; then
             make test-cov
           else
             make test
           fi
-          echo "results=success" >> $GITHUB_OUTPUT
+          echo "results=success" >> "$GITHUB_OUTPUT"
 
       - name: Run integration tests
         if: inputs.test-type == 'integration' || inputs.test-type == 'all'
