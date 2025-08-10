@@ -6,16 +6,6 @@ on:
     paths:
       - '.github/workflows/*.yml'
       - '.github/workflows/*.yaml'
-      - '.github/workflows/actions/*.yml'
-      - '.github/workflows/actions/*.yaml'
-      - '.github/workflows/ci/*.yml'
-      - '.github/workflows/ci/*.yaml'
-      - '.github/workflows/events/*.yml'
-      - '.github/workflows/events/*.yaml'
-      - '.github/workflows/internal/*.yml'
-      - '.github/workflows/internal/*.yaml'
-      - '!.github/workflows/repository/labels/*.yml'
-      - '!.github/workflows/repository/labels/*.yaml'
     types: [opened, edited, synchronize]
 
 permissions:
@@ -43,13 +33,13 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            
+
             // Get list of changed workflow files
             const { execSync } = require('child_process');
             try {
               const changedFiles = execSync('git diff --name-only origin/${{ github.base_ref }}..HEAD | grep "^\\.github/workflows/.*\\.ya?ml$"', { encoding: 'utf8' });
               const fileList = changedFiles.trim().split('\n').filter(f => f);
-              
+
               if (fileList.length > 0) {
                 console.log('✅ Validated GitHub Action workflow files:');
                 fileList.forEach(file => console.log(`  - ${file}`));
