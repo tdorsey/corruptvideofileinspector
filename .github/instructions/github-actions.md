@@ -26,7 +26,7 @@ The project contains multiple workflow files in `.github/workflows/`:
 - Reports validation results for changed workflow files
 
 ### 3. release.yml - Release Automation
-**Purpose**: Handles version bumping, Docker builds, and release management
+**Purpose**: Handles version bumping, Docker builds, and PyPI publishing
 **Key Components**:
 - Automated version incrementation using conventional commits
 - Multi-platform Docker builds (linux/amd64, linux/arm64)
@@ -50,7 +50,7 @@ The project contains multiple workflow files in `.github/workflows/`:
 - GitHub release creation with automated changelog generation
 - Docker image publishing to GitHub Container Registry
 
-### 6. copilot-setup-steps.yml - Copilot Environment
+### 4. copilot-setup-steps.yml - Copilot Environment
 **Purpose**: Prepares the development environment for GitHub Copilot agents
 **Key Components**:
 - Python 3.13 environment setup

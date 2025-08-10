@@ -157,14 +157,13 @@ This repository implements security measures that affect the contribution workfl
 
 ### Code Owner Review Requirements
 
-- **Main Branch Protection**: All pull requests to `main` require code owner approval
-- **Critical Files**: Changes to `.github/settings.yml`, `SECURITY.md`, and other protected files require admin review
-- **CODEOWNERS**: The repository uses GitHub CODEOWNERS to automatically request reviews from designated maintainers
+- **Main Branch Protection**: All pull requests to `main` require status checks and pull request reviews
+- **Critical Files**: Changes to protected files as defined in CODEOWNERS may receive additional review
+- **CODEOWNERS**: The repository uses GitHub CODEOWNERS to define ownership but reviews are not automatically required
 
 ### Protected Configuration Files
 
-The following files have additional protection and require code owner approval:
->>>>>>> b1da187 (ci: implement CODEOWNERS and branch protection for .github/settings.yml (#152))
+The following files have defined code owners and may receive additional review:
 - `.github/settings.yml` - Repository settings and automation
 - `.github/CODEOWNERS` - Code ownership definitions  
 - `SECURITY.md` - Security policies and procedures
@@ -172,8 +171,8 @@ The following files have additional protection and require code owner approval:
 
 ### Development Impact
 
-⚠️ **Important**: Because code owner review is required for all changes to `main`:
-- **All pull requests** need approval from @tdorsey (repository owner)
+✅ **Note**: Code owner reviews are not automatically required, allowing for smoother workflow:
+- **Pull requests** need to pass status checks and may receive review from code owners
 - **Review response time** may affect development velocity
 - **Plan ahead** for time-sensitive changes that need admin approval
 
