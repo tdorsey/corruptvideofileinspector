@@ -63,7 +63,7 @@ jobs:
     if: always() && needs.build-release.result == 'success' && needs.release-security-scan.result == 'success'
     steps:
       - name: Checkout code
-        uses: actions/checkout@${{ vars.ACTIONS_VERSIONS_CHECKOUT }}
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -71,31 +71,35 @@ jobs:
         id: tag
         run: |
           # Determine release tag from manual input or git tag event
+          set -e
           if [ -n "${{ github.event.inputs.tag }}" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Generate changelog
         id: changelog
         run: |
+          set -e
           # Generate changelog from git commits since last tag
           # If no previous tag exists, include all commits in the repository
           LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$LAST_TAG" ]; then
-            CHANGELOG=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            CHANGELOG=$(git log "${LAST_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
           else
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
           fi
 
-          # Save changelog to GitHub Actions output using heredoc syntax for multiline content
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Save changelog to output
+          {
+            echo "changelog<<EOF"
+            echo "$CHANGELOG"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Download Python artifacts
-        uses: actions/download-artifact@${{ vars.ACTIONS_VERSIONS_DOWNLOAD_ARTIFACT }}
+        uses: actions/download-artifact@v4
         with:
           name: python-packages-${{ steps.tag.outputs.tag }}
           path: ./dist/
@@ -146,6 +150,7 @@ jobs:
     steps:
       - name: Post-release summary
         run: |
+          set -e
           echo "🎉 Release ${{ github.event.inputs.tag || github.ref_name }} completed successfully!"
           echo "- GitHub Release: Created"
           echo "- Docker Images: Published"

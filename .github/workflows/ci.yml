@@ -104,10 +104,12 @@ jobs:
 
     - name: Install dependencies
       run: |
+        set -e
         make install-dev
 
     - name: Lint and Format
       run: |
+        set -e
         make lint
 
   test:
@@ -126,19 +128,23 @@ jobs:
 
     - name: Install system dependencies
       run: |
+        set -e
         sudo apt-get update
         sudo apt-get install -y ffmpeg
 
     - name: Setup test configuration
       run: |
+        set -e
         cp config.sample.yaml config.yaml
 
     - name: Install dependencies
       run: |
+        set -e
         make install-dev
 
     - name: Run Tests
       run: |
+        set -e
         make test
 
   docker:
@@ -155,10 +161,12 @@ jobs:
 
     - name: Build Docker image
       run: |
+        set -e
         make docker-build
 
     - name: Test Docker image
       run: |
+        set -e
         make docker-test
 
   security:
@@ -172,4 +180,5 @@ jobs:
 
     - name: Run Security Scan
       run: |
+        set -e
         make security-scan
