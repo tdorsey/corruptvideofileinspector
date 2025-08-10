@@ -15,10 +15,10 @@ jobs:
       build-docker: true
       docker-platforms: 'linux/amd64,linux/arm64'
       docker-push: true
+      docker-username: ${{ vars.DOCKER_USERNAME }}
       tag-name: ${{ github.ref_name }}
       upload-pypi: true
     secrets:
-      docker-username: ${{ secrets.DOCKER_USERNAME }}
       docker-password: ${{ secrets.DOCKER_PASSWORD }}
       pypi-token: ${{ secrets.PYPI_API_TOKEN }}
 
