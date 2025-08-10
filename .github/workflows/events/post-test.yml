@@ -129,9 +129,9 @@ jobs:
         run: |
           echo "❌ CI Pipeline failed for ${{ github.event.workflow_run.head_branch }}"
           # Add failure notification logic
-    if: github.event.workflow_run.conclusion == 'failure'
-    steps:
+
       - name: Handle test failure
+        if: github.event.workflow_run.conclusion == 'failure'
         run: |
           echo "❌ Build and test workflow failed"
           echo "Branch: ${{ github.event.workflow_run.head_branch }}"

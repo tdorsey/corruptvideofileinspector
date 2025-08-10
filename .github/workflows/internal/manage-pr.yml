@@ -38,7 +38,6 @@ on:
         default: ''
         type: choice
         options:
-          - ''
           - 'draft'
           - 'ready'
           - 'open'

@@ -15,8 +15,8 @@ jobs:
     with:
       python-version: ${{ vars.PYTHON_VERSION }}
       check-format: true
-      run-lint: true
-      run-type-check: true
+      check-lint: true
+      check-types: true
 
   # Unit tests for feature branches and PRs with appropriate labels
   other-branches:
