@@ -47,7 +47,7 @@ def test_ffmpeg_client_inspect_full_runs(tmp_path):
     # This will likely fail if ffmpeg is not installed, but should run
     try:
         result = client.inspect_full(video_file)
-        assert hasattr(result, "corrupt")
+        assert hasattr(result, "is_corrupt")
     except Exception as e:
         pytest.skip(f"FFmpeg not available: {e}")
 
@@ -65,7 +65,11 @@ def test_video_scanner_full_scan(tmp_path):
     test_file = tmp_path / "test.mp4"
     test_file.touch()
     scanner = VideoScanner(config)
-    results = scanner.scan_directory(tmp_path, scan_mode=ScanMode.FULL)
-    assert isinstance(results, ScanSummary)
-    # Check that scan results were processed
-    assert hasattr(results, "total_files")
+    summary = scanner.scan_directory(
+        directory=tmp_path,
+        scan_mode=ScanMode.FULL,
+        recursive=True,
+        resume=False,
+    )
+    assert hasattr(summary, "scan_mode")
+    assert summary.scan_mode == ScanMode.FULL

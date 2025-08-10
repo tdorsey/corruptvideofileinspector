@@ -7,7 +7,7 @@ This project uses GitHub Actions for continuous integration, automated testing, 
 
 ## Workflow Files Overview
 
-The project contains three main workflow files in `.github/workflows/`:
+The project contains multiple workflow files in `.github/workflows/`:
 
 ### 1. ci.yml - Continuous Integration
 **Purpose**: Runs on every push and pull request to validate code quality and run tests
@@ -17,16 +17,40 @@ The project contains three main workflow files in `.github/workflows/`:
 - Python 3.13 setup with pip caching
 - Parallel job execution for faster feedback
 
-### 2. release.yml - Release Automation
+### 2. workflow-validation.yml - GitHub Actions Validation
+**Purpose**: Validates syntax of GitHub Actions workflow files on PR changes
+**Key Components**:
+- Triggers on PRs that modify `.github/workflows/*.yml` or `.github/workflows/*.yaml`
+- Uses `actionlint` via `devops-actions/actionlint@v0.1.9` for comprehensive validation
+- Required check that blocks merging if workflow syntax errors are found
+- Reports validation results for changed workflow files
+
+### 3. release.yml - Release Automation
 **Purpose**: Handles version bumping, Docker builds, and PyPI publishing
 **Key Components**:
 - Automated version incrementation using conventional commits
 - Multi-platform Docker builds (linux/amd64, linux/arm64)
 - PyPI package publishing with proper authentication
+
+### 4. auto-create-branch.yml - Automatic Branch Creation
+**Purpose**: Automatically creates development branches when issues are opened
+**Key Components**:
+- Triggers on `issues: opened` events
+- Creates branches named `issue-<number>-<slug>` from issue titles
+- Posts instructional comments with development guidelines
+- Provides fallback instructions if branch creation fails
+- Uses `actions/github-script@v7` for GitHub API interactions
+
+### 5. labeler.yml - Issue Labeling
+**Purpose**: Automatically labels issues based on content and title
+**Key Components**:
+- Uses `github/issue-labeler@v3.4` marketplace action
+- Configuration driven by `.github/issue-labeler.yml`
+- Triggers on issue opened and edited events
 - GitHub release creation with automated changelog generation
 - Docker image publishing to GitHub Container Registry
 
-### 3. copilot-setup-steps.yml - Copilot Environment
+### 4. copilot-setup-steps.yml - Copilot Environment
 **Purpose**: Prepares the development environment for GitHub Copilot agents
 **Key Components**:
 - Python 3.13 environment setup
@@ -113,15 +137,9 @@ The CI workflows heavily rely on Makefile targets for consistency:
       ghcr.io/${{ github.repository }}:${{ steps.version.outputs.new_version }}
 ```
 
-### PyPI Publishing
-- Uses trusted publishing with OpenID Connect (no API tokens required)
-- Builds both source distribution (sdist) and wheel packages
-- Publishes to PyPI only on successful builds and tests
-
 ## Secrets and Environment Variables
 
 ### Required Repository Secrets
-- `PYPI_API_TOKEN`: For PyPI package publishing (if not using trusted publishing)
 - `GITHUB_TOKEN`: Automatically provided for GitHub API access
 
 ### Trakt Integration (Optional)
@@ -133,7 +151,11 @@ The CI workflows heavily rely on Makefile targets for consistency:
 ### Local Testing
 Before pushing workflow changes:
 ```bash
-# Validate workflow syntax
+# Validate workflow syntax with actionlint (recommended)
+curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash -s -- latest /tmp
+/tmp/actionlint .github/workflows/*.yml
+
+# Standard project validation
 make lint
 
 # Test the commands that workflows will run
@@ -158,7 +180,6 @@ Each workflow uses minimal required permissions:
 permissions:
   contents: read        # Read repository contents
   packages: write       # Push Docker images
-  id-token: write       # PyPI trusted publishing
 ```
 
 ## Adding New Workflows
@@ -225,3 +246,6 @@ The workflows integrate with the project's development toolchain:
 - **Code quality**: Linting and formatting enforced consistently
 
 This ensures that CI/CD processes match the local development experience and catch issues early in the development cycle.
+
+## Workflow Documentation
+See [GitHub Workflows Structure](../../workflows/README.md) for details on workflow organization, usage, and subfolder documentation.

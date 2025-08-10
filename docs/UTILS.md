@@ -213,10 +213,12 @@ def create_progress_bar(total: int, description: str = "Processing") -> Any:
         TimeRemainingColumn(),
     )
 
-def format_file_size(size_bytes: int) -> str:
+def format_file_size(size_bytes: int, trim_trailing_zero: bool = True) -> str:
     """Format file size in human-readable units"""
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
         if size_bytes < 1024.0:
+            if trim_trailing_zero and size_bytes == int(size_bytes):
+                return f"{int(size_bytes)} {unit}"
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
     return f"{size_bytes:.1f} PB"

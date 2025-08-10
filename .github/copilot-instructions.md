@@ -4,6 +4,107 @@ A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
+A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support.
+
+## GitHub Copilot Usage Guidelines
+
+### Primary Use Cases for GitHub Copilot Chat
+Use GitHub Copilot Chat for these primary scenarios in this repository:
+
+1. **Code Implementation & Refactoring**
+   - Writing new Python functions with proper type annotations
+   - Implementing FFmpeg integration and video processing logic
+   - Creating CLI commands and handlers using Typer framework
+   - Building configuration management with Pydantic models
+
+2. **Testing & Quality Assurance**
+   - Writing unit tests with pytest markers (`@pytest.mark.unit`)
+   - Creating integration tests for video processing workflows
+   - Debugging test failures and improving test coverage
+   - Implementing test fixtures for video file scenarios
+
+3. **Docker & Containerization**
+   - Optimizing Dockerfile configurations for multi-stage builds
+   - Setting up docker-compose workflows for development
+   - Troubleshooting container environment issues
+   - Implementing container-based testing strategies
+
+4. **Configuration & Environment Setup**
+   - Setting up environment variables and configuration files
+   - Creating Pydantic configuration models
+   - Managing Docker secrets and environment-specific settings
+   - Troubleshooting CLI configuration issues
+
+### Primary Use Cases for GitHub Copilot Code Review
+Use GitHub Copilot Code Review for these key scenarios:
+
+1. **Code Quality & Standards Enforcement**
+   - Ensuring Black formatting, Ruff linting, and MyPy type checking compliance
+   - Validating proper type annotations and Python best practices
+   - Checking adherence to 79-character line length and f-string usage
+   - Reviewing import organization and code structure consistency
+
+2. **Security & Best Practices**
+   - Identifying hardcoded secrets or security vulnerabilities
+   - Validating proper environment variable usage
+   - Ensuring container security practices are followed
+   - Checking input validation and error handling patterns
+
+3. **Testing & Documentation Coverage**
+   - Verifying that changes include appropriate unit tests
+   - Ensuring pytest markers are correctly applied
+   - Checking for adequate documentation updates
+   - Validating that public APIs have proper docstrings
+
+4. **Architecture & Integration Compliance**
+   - Ensuring changes align with existing project structure
+   - Validating FFmpeg integration patterns
+   - Checking Docker and containerization compatibility
+   - Reviewing CLI framework usage and command structure
+
+### For Other Copilot Scenarios
+For comprehensive guidance on all other GitHub Copilot usage scenarios, development patterns, and detailed instructions, please refer to:
+
+**📖 [Complete Copilot Instructions](instructions/copilot-instructions.md)**
+
+This includes detailed guidance on:
+- Advanced development workflows and patterns
+- Specialized testing scenarios and fixtures
+- Complex Docker configurations and troubleshooting
+- Extended configuration management patterns
+- CI/CD integration with Copilot workflows
+- Project-specific architectural considerations
+
+### Key Project Context for Copilot
+- **Primary language**: Python 3.13 with strict type checking
+- **Build system**: pyproject.toml with Poetry-style configuration
+- **Testing framework**: pytest with unit/integration separation
+- **Code quality**: Black + Ruff + MyPy enforcement via `make check`
+- **Containerization**: Docker with multi-stage builds and docker-compose
+- **CLI framework**: Typer with Click integration
+- **Core dependency**: FFmpeg for video analysis and corruption detection
+## Development Standards and Requirements
+
+### Commit Standards (REQUIRED)
+**All commits MUST follow the [Conventional Commits](https://www.conventionalcommits.org/) standard:**
+- Use format: `<type>[optional scope]: <description>`
+- Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
+- Examples: `feat(cli): add video scan command`, `fix(config): resolve YAML parsing error`
+- **Atomic commits**: Each commit should represent a single, focused change. Avoid combining unrelated changes in one commit.
+- See [Git & Version Control](instructions/git.md) for detailed commit guidelines
+
+### Issue Creation (REQUIRED)
+**Always select a relevant issue template when creating issues:**
+- **Template selection is enforced** (blank issues are disabled)
+- Available templates: Feature Request, Bug Report, Documentation Update, Testing Issue, Chore/Maintenance, Performance Issue, Refactor Request, Code Style Issue
+- **All templates create proper conventional commit titles** with prefixes like `[FEAT]:`, `[FIX]:`, `[DOCS]:`, `[TEST]:`, `[CHORE]:`, `[PERF]:`, `[REFACTOR]:`, `[STYLE]:`
+- Templates ensure required information is provided and consistent formatting
+
+### Code Quality Standards
+- Run `make check` before every commit to ensure formatting, linting, and type checking pass
+- All tests must pass before submitting changes
+- Follow existing code style and patterns in the repository
+
 ## Additional Resources
 
 For comprehensive guidance on specific aspects of development, refer to these specialized instruction files:
@@ -16,13 +117,14 @@ For comprehensive guidance on specific aspects of development, refer to these sp
 - **[Git & Version Control](instructions/git.md)** - Commit conventions, branching strategies, and version control
 - **[GitHub Actions & CI/CD](instructions/github-actions.md)** - Workflow patterns, marketplace actions, and automation
 - **[Project-Specific Guidelines](instructions/project-specific.md)** - Architecture, key entry points, and project-specific patterns
+- **[Workflow File Commit Instructions](../instructions/workflows.md)** - Commit message and review guidelines for workflow files
 
 ## Recent Updates and Fixes
 
-✅ **CLI Entry Point Fixed**: cli_handler.py now has proper implementation  
-✅ **Missing Make Targets Added**: `docker-test` and `security-scan` targets added to Makefile  
-✅ **Configuration Requirements**: CLI requires config.yaml file (sample provided below)  
-✅ **Validation Completed**: All commands and scenarios tested and verified working  
+✅ **CLI Entry Point Fixed**: cli_handler.py now has proper implementation
+✅ **Missing Make Targets Added**: `docker-test` and `security-scan` targets added to Makefile
+✅ **Configuration Requirements**: CLI requires config.yaml file (sample provided below)
+✅ **Validation Completed**: All commands and scenarios tested and verified working
 
 ## GitHub Actions and Automation Guidelines
 
@@ -36,7 +138,7 @@ For comprehensive guidance on specific aspects of development, refer to these sp
 
 ### Common Recommended Actions
 - **Code checkout**: `actions/checkout@v4`
-- **Language setup**: `actions/setup-python@v4`, `actions/setup-node@v4`
+- **Language setup**: `actions/setup-python@v5`, `actions/setup-node@v4`
 - **Caching**: `actions/cache@v3`
 - **Issue/PR labeling**: `github/issue-labeler@v3.4`
 - **File-based labeling**: `actions/labeler@v5`
@@ -49,6 +151,44 @@ When marketplace actions are insufficient:
 - Use `actions/github-script@v7` for simple API operations
 - Document complex workflows thoroughly
 - Consider contributing useful patterns back to the community
+
+## Issue Template Guidelines
+
+### Required Issue Templates
+**All issues MUST use approved issue templates** - blank issues are disabled (`blank_issues_enabled: false`).
+
+### Available Issue Types
+The repository provides comprehensive issue templates aligned with Conventional Commit types:
+- **🚀 Feature Request** (`feat`): New features and enhancements
+- **🐛 Bug Report** (`fix`): Bug reports and fixes  
+- **🔧 Chore/Maintenance** (`chore`): Maintenance tasks, dependencies, tooling
+- **📚 Documentation** (`docs`): Documentation updates and improvements
+- **🧪 Testing** (`test`): Test coverage gaps and testing improvements
+- **⚡ Performance** (`perf`): Performance issues and optimizations
+- **♻️ Refactor** (`refactor`): Code structure and maintainability improvements
+- **🎨 Code Style** (`style`): Formatting, style, and consistency issues
+
+### Title Requirements
+All issue templates include **Title Examples** showing proper conventional commit format:
+```
+feat(component): brief description of feature
+fix(component): brief description of fix
+chore(component): brief description of maintenance task
+docs(component): brief description of documentation update
+test(component): brief description of testing improvement
+perf(component): brief description of performance improvement
+refactor(component): brief description of refactoring
+style(component): brief description of style improvement
+```
+
+### Automatic Labeling
+Issues are automatically labeled based on:
+- **Issue Type**: Determined by template (feat, fix, chore, etc.)
+- **Component/Domain**: Based on dropdown selection (cli, scanner, trakt, config, etc.)
+- **Stakeholder Type**: Based on dropdown selection (maintainer, contributor, user)
+
+### Maintenance Task Types
+The chore template includes "Issue creation" as a maintenance task type for meta-improvements to the issue process itself.
 
 ## Quick Reference
 
@@ -68,17 +208,24 @@ make docker-build               # Build container (5-15 min, timeout 30+ min)
 
 ### CLI Usage Examples
 ```bash
+# Using installed package (after 'make install' or 'pip install -e .')
 corrupt-video-inspector --help
 corrupt-video-inspector scan /path/to/videos --mode hybrid --output results.json
-corrupt-video-inspector init-config --format yaml --output config.yml
+
+# Using without installation (requires PYTHONPATH=src)
+export PYTHONPATH=$(pwd)/src
+python3 cli_handler.py --config config.yaml --help
+python3 cli_handler.py --config config.yaml scan --directory /path/to/videos --mode hybrid --output results.json
 ```
+
+Note: CLI requires a configuration file. Use the sample config from "Application Validation" section below.
 
 ## Working Effectively
 
 ### Verified Commands (Network-Independent)
 These commands have been verified to work without network access:
 - `make help` - Show all available targets
-- `make clean` - Clean build artifacts  
+- `make clean` - Clean build artifacts
 - `make docker-env` - Generate Docker environment files
 - `make secrets-init` - Create Trakt secret files
 - `make setup` - Complete project setup (combines install + docker-env + secrets-init)
@@ -196,7 +343,7 @@ Always manually validate changes by running these complete scenarios:
      client_secret: ""
      include_statuses: ["healthy"]
    EOF
-   
+
    # Test CLI with PYTHONPATH (works without full installation)
    export PYTHONPATH=$(pwd)/src
    python3 cli_handler.py --config config.yaml --help
@@ -261,7 +408,7 @@ make install-dev                    # 2-5 min, timeout 10+ min
 
 # Code quality and validation
 make format                         # 30-60 sec, timeout 5+ min
-make lint                           # 10-30 sec, timeout 5+ min  
+make lint                           # 10-30 sec, timeout 5+ min
 make type                           # 30 sec-2 min, timeout 5+ min
 make check                          # All above combined, timeout 10+ min
 make clean                          # Clean build artifacts (5-10 sec)
@@ -326,7 +473,8 @@ src/
 ├── core/                          # Core business logic → docs/CORE.md
 ├── config/                        # Configuration management → docs/CONFIG.md
 ├── ffmpeg/                        # FFmpeg integration → docs/FFMPEG.md
-├── utils/                         # Shared utilities → docs/UTILS.md
+├── output.py                      # Output formatting and file handling
+├── version.py                     # Version information
 └── __main__.py                    # Main entry point: python -m src
 ```
 
@@ -366,7 +514,7 @@ tests/
 **Symptoms**: SSL certificate errors, connection timeouts to PyPI, "certificate verify failed" errors
 - **Root Cause**: Network environment blocking or filtering access to PyPI
 - **Commands Affected**: `make install-dev`, `make install`, `pip install`, Docker builds with Poetry
-- **Workarounds**: 
+- **Workarounds**:
   - Use `pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org`
   - Use pre-built Docker images if available
   - Install dependencies manually from local wheels
@@ -377,7 +525,7 @@ tests/
 - **Poetry conflicts**: Clear cache: `pip cache purge` and retry
 - **Build system failures**: Ensure build-essential is installed: `sudo apt-get install build-essential`
 
-### Development Issues  
+### Development Issues
 - **Import errors**: Ensure PYTHONPATH includes src: `export PYTHONPATH=/path/to/repo/src`
 - **FFmpeg not found**: Install system package: `sudo apt-get install ffmpeg`
 - **Permission errors**: Check file/directory permissions for video processing
@@ -406,7 +554,6 @@ PYTHONPATH=src python3 cli_handler.py --config config.yaml --help
 ```bash
 make install-dev, make install, make docker-build, make test
 make format, make lint, make type  # Require installed dependencies
-make pre-commit-install  # Downloads pre-commit hooks
 ```
 
 Remember: This is a video processing application that requires actual video files for complete testing. Always validate with real video scanning workflows when possible.

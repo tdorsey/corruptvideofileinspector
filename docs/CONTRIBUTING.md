@@ -18,14 +18,24 @@ Thank you for your interest in contributing to Corrupt Video Inspector! This doc
    cd corruptvideofileinspector
    ```
 
-2. **Install the package with development dependencies:**
+2. **Install system dependencies (including FFmpeg):**
    ```bash
-   pip install -e ".[dev]"
+   make install-system-deps
    ```
 
-3. **Install and set up pre-commit hooks:**
+3. **Install the package with development dependencies:**
    ```bash
-   pre-commit install
+   make install-dev
+   ```
+
+4. **Install and set up pre-commit hooks:**
+   ```bash
+   make pre-commit-install
+   ```
+
+5. **Verify FFmpeg installation:**
+   ```bash
+   make test-ffmpeg
    ```
 
    This will automatically run formatting, linting, and type checking before each commit to ensure code quality and consistency.
@@ -141,6 +151,33 @@ type(optional-scope): description (#issue-number)
 
 The PR title validation will automatically check these requirements when you create or update a pull request.
 
+## Security Considerations
+
+This repository implements security measures that affect the contribution workflow:
+
+### Code Owner Review Requirements
+
+- **Main Branch Protection**: All pull requests to `main` require status checks and pull request reviews
+- **Critical Files**: Changes to protected files as defined in CODEOWNERS may receive additional review
+- **CODEOWNERS**: The repository uses GitHub CODEOWNERS to define ownership but reviews are not automatically required
+
+### Protected Configuration Files
+
+The following files have defined code owners and may receive additional review:
+- `.github/settings.yml` - Repository settings and automation
+- `.github/CODEOWNERS` - Code ownership definitions  
+- `SECURITY.md` - Security policies and procedures
+- `.github/workflows/` - CI/CD pipeline configurations
+
+### Development Impact
+
+✅ **Note**: Code owner reviews are not automatically required, allowing for smoother workflow:
+- **Pull requests** need to pass status checks and may receive review from code owners
+- **Review response time** may affect development velocity
+- **Plan ahead** for time-sensitive changes that need admin approval
+
+For more details, see [SECURITY.md](../SECURITY.md).
+
 ## Submitting Changes
 
 1. **Create a feature branch:**
@@ -166,6 +203,8 @@ The PR title validation will automatically check these requirements when you cre
    ```bash
    git push origin feature/your-feature-name
    ```
+
+6. **Wait for code owner review** (required for all PRs to main branch)
 
 ## Pre-commit Hook Details
 

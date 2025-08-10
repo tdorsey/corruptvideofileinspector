@@ -9,6 +9,13 @@ body:
       value: |
         Thanks for taking the time to fill out this bug report! Please provide as much detail as possible to help us reproduce and fix the issue.
         
+        **Title Examples:**
+        - `fix(cli): resolve crash when scanning empty directories`
+        - `fix(scanner): correct video duration parsing errors`
+        - `fix(trakt): handle authentication timeout properly`
+        - `fix(config): validate configuration file format`
+        - `fix(output): prevent data loss in report generation`
+        
         **Component labels will be automatically applied** based on your selection below.
 
   - type: dropdown
@@ -113,11 +120,3 @@ body:
       description: Please paste any relevant error messages or logs
       render: shell
 
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: Code of Conduct
-      description: By submitting this issue, you agree to follow our Code of Conduct
-      options:
-        - label: I agree to follow this project's Code of Conduct
-          required: true

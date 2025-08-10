@@ -1,0 +1,81 @@
+---
+name: Python Testing
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        type: string
+        default: '3.13'
+      runs-on:
+        description: 'Runner to use'
+        type: string
+        default: 'ubuntu-latest'
+      test-type:
+        description: 'Type of tests to run (unit, integration, all)'
+        type: string
+        default: 'all'
+      coverage:
+        description: 'Whether to collect coverage'
+        type: boolean
+        default: false
+    outputs:
+      test-results:
+        description: 'Test execution results'
+        value: ${{ jobs.test.outputs.results }}
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ${{ inputs.runs-on }}
+    outputs:
+      results: ${{ steps.test.outputs.results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Setup test configuration
+        run: |
+          set -e
+          cp config.sample.yaml config.yaml
+
+      - name: Install dependencies
+        run: make install-dev
+
+      - name: Run unit tests
+        id: test
+        if: inputs.test-type == 'unit' || inputs.test-type == 'all'
+        run: |
+          set -e
+          if [ "${{ inputs.coverage }}" = "true" ]; then
+            make test-cov
+          else
+            make test
+          fi
+          echo "results=success" >> "$GITHUB_OUTPUT"
+
+      - name: Run integration tests
+        if: inputs.test-type == 'integration' || inputs.test-type == 'all'
+        run: make test-integration
+
+      - name: Upload coverage reports
+        if: inputs.coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports-${{ inputs.python-version }}
+          path: |
+            htmlcov/
+            coverage.xml
+          retention-days: 30

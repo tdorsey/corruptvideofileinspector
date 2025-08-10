@@ -1,0 +1,82 @@
+name: Auto-Assign Issues
+
+"on":
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  auto-assign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-assign Issue to Copilot
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.issue.number;
+            
+            try {
+              // Assign the issue to @copilot
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                assignees: ['copilot']
+              });
+              
+              console.log(`✅ Successfully assigned issue #${issueNumber} to @copilot`);
+              
+              // Add a welcome comment
+              const welcomeComment = [
+                '🤖 **Issue Assigned to Copilot**',
+                '',
+                'Thank you for opening this issue! This has been automatically assigned to @copilot for review and assistance.',
+                '',
+                '## Next Steps',
+                '- @copilot will review this issue and provide guidance',
+                '- If you\'d like to work on this yourself, feel free to comment and request assignment',
+                `- Follow the [development guidelines](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/.github/copilot-instructions.md) when contributing`,
+                '',
+                'Happy coding! 🚀'
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                issue_number: issueNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: welcomeComment
+              });
+              
+              console.log(`✅ Posted welcome comment on issue #${issueNumber}`);
+              
+            } catch (error) {
+              console.error('❌ Error assigning issue or posting comment:', error.message);
+              
+              // Still try to post a comment even if assignment fails
+              try {
+                const fallbackComment = [
+                  '⚠️ **Auto-assignment Notice**',
+                  '',
+                  'There was an issue with automatic assignment, but this issue has been logged for review.',
+                  '',
+                  'A maintainer will review this issue and assign it appropriately.',
+                  '',
+                  'Thank you for your contribution! 🙏'
+                ].join('\n');
+
+                await github.rest.issues.createComment({
+                  issue_number: issueNumber,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: fallbackComment
+                });
+                
+                console.log(`✅ Posted fallback comment on issue #${issueNumber}`);
+              } catch (commentError) {
+                console.error('❌ Error posting fallback comment:', commentError.message);
+              }
+            }

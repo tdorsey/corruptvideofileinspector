@@ -100,27 +100,40 @@ class TestFormatFileSize(unittest.TestCase):
     """Test format_file_size function"""
 
     def test_format_bytes(self):
-        """Test formatting bytes"""
+        """Test formatting bytes with default trim_trailing_zero=True"""
         assert format_file_size(500) == "500 B"
         assert format_file_size(0) == "0 B"
         assert format_file_size(1) == "1 B"
 
+    def test_format_bytes_no_trim(self):
+        """Test formatting bytes with trim_trailing_zero=False"""
+        assert format_file_size(500, trim_trailing_zero=False) == "500.0 B"
+        assert format_file_size(0, trim_trailing_zero=False) == "0.0 B"
+        assert format_file_size(1, trim_trailing_zero=False) == "1.0 B"
+
     def test_format_kilobytes(self):
-        """Test formatting kilobytes"""
-        assert format_file_size(1024) == "1.0 KB"
+        """Test formatting kilobytes with default trim_trailing_zero=True"""
+        assert format_file_size(1024) == "1 KB"
         assert format_file_size(1536) == "1.5 KB"
-        assert format_file_size(2048) == "2.0 KB"
+        assert format_file_size(2048) == "2 KB"
 
     def test_format_megabytes(self):
-        """Test formatting megabytes"""
-        assert format_file_size(1024 * 1024) == "1.0 MB"
+        """Test formatting megabytes with default trim_trailing_zero=True"""
+        assert format_file_size(1024 * 1024) == "1 MB"
         assert format_file_size(int(1024 * 1024 * 2.5)) == "2.5 MB"
-        assert format_file_size(1024 * 1024 * 100) == "100.0 MB"
+        assert format_file_size(1024 * 1024 * 100) == "100 MB"
 
     def test_format_gigabytes(self):
-        """Test formatting gigabytes"""
-        assert format_file_size(1024 * 1024 * 1024) == "1.0 GB"
+        """Test formatting gigabytes with default trim_trailing_zero=True"""
+        assert format_file_size(1024 * 1024 * 1024) == "1 GB"
         assert format_file_size(int(1024 * 1024 * 1024 * 2.5)) == "2.5 GB"
+
+    def test_format_backward_compatibility(self):
+        """Test formatting with trim_trailing_zero=False for backward compatibility"""
+        assert format_file_size(500, trim_trailing_zero=False) == "500.0 B"
+        assert format_file_size(1024, trim_trailing_zero=False) == "1.0 KB"
+        assert format_file_size(1024 * 1024, trim_trailing_zero=False) == "1.0 MB"
+        assert format_file_size(1024 * 1024 * 1024, trim_trailing_zero=False) == "1.0 GB"
 
 
 class TestGetVideoExtensions(unittest.TestCase):

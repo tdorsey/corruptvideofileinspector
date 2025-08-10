@@ -451,19 +451,16 @@ class TraktHandler(BaseHandler):
             logger.warning(f"Failed to save sync results: {e}")
             click.echo(f"Warning: Could not save sync results: {e}", err=True)
 
-    def list_watchlists(self, config: AppConfig) -> list | None:
+    def list_watchlists(self) -> list | None:
         """
         List all available watchlists for the authenticated user.
-
-        Args:
-            config: Application configuration containing Trakt credentials
 
         Returns:
             List of watchlist information or None if failed
         """
         try:
             logger.info("Fetching user's watchlists from Trakt")
-            api = TraktAPI(config)
+            api = TraktAPI(self.config)
             watchlists = api.list_watchlists()
 
             return [w.model_dump() for w in watchlists]
@@ -472,12 +469,11 @@ class TraktHandler(BaseHandler):
             self._handle_error(e, "Failed to fetch watchlists")
             return None
 
-    def view_watchlist(self, config: AppConfig, watchlist: str | None = None) -> list | None:
+    def view_watchlist(self, watchlist: str | None = None) -> list | None:
         """
         View items in a specific watchlist.
 
         Args:
-            config: Application configuration containing Trakt credentials
             watchlist: Watchlist name/slug to view (None for main watchlist)
 
         Returns:
@@ -487,7 +483,7 @@ class TraktHandler(BaseHandler):
             watchlist_name = watchlist or "Main Watchlist"
             logger.info(f"Fetching items from watchlist: {watchlist_name}")
 
-            api = TraktAPI(config)
+            api = TraktAPI(self.config)
             items = api.get_watchlist_items(watchlist)
 
             return [item.model_dump() for item in items]
@@ -528,25 +524,17 @@ class UtilityHandler(BaseHandler):
         directory: Path | str,
         recursive: bool = True,
         extensions: Sequence[str] | None = None,
-    ) -> list[Path]:
+    ) -> list[VideoFile]:
         """
-        Return list of video file objects (paths or models).
+        Return list of video file objects.
         Accepts Path for directory.
         """
         # Ensure directory is a Path
         directory_path = Path(directory)
         # Pass extensions directly to get_video_files instead of mutating config
-        video_files = self.scanner.get_video_files(
+        return self.scanner.get_video_files(
             directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
         )
-        result: list[Path] = []
-        for vf in video_files:
-            if hasattr(vf, "path") and vf.path is not None:
-                result.append(vf.path if isinstance(vf.path, Path) else Path(vf.path))
-            else:
-                # Handle case where vf might be a Path already
-                result.append(vf if isinstance(vf, Path) else Path(str(vf)))
-        return result
 
     def list_video_files_simple(
         self,
@@ -616,9 +604,9 @@ def get_all_video_object_files(
     directory: Path | str,
     recursive: bool = True,
     extensions: Sequence[str] | None = None,
-) -> list[Path]:
+) -> list[VideoFile]:
     """
-    Return list of video file objects (paths or models).
+    Return list of video file objects.
     Accepts Path for directory.
     """
     # Ensure directory is a Path
@@ -626,17 +614,9 @@ def get_all_video_object_files(
     config = load_config()
     scanner = VideoScanner(config)
     # Pass extensions directly to get_video_files instead of mutating config
-    video_files = scanner.get_video_files(
+    return scanner.get_video_files(
         directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
     )
-    result: list[Path] = []
-    for vf in video_files:
-        if hasattr(vf, "path") and vf.path is not None:
-            result.append(vf.path if isinstance(vf.path, Path) else Path(vf.path))
-        else:
-            # Handle case where vf might be a Path already
-            result.append(vf if isinstance(vf, Path) else Path(str(vf)))
-    return result
 
 
 def list_video_files(

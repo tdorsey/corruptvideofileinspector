@@ -119,6 +119,10 @@ def load_config(config_path: Path | None = None) -> AppConfig:
     with config_path.open("r", encoding="utf-8") as f:
         config_data = yaml.safe_load(f)
 
+    # Ensure config_data is not None
+    if config_data is None:
+        config_data = {}
+
     # If a Docker secret exists for trakt_client_secret, override config value
     docker_secret = read_docker_secret("trakt_client_secret")
     if docker_secret is not None and "trakt" in config_data:
