@@ -136,7 +136,6 @@ of input. Giving me some feedbacks like feature requests or ideas of additional 
 
 actionlint is distributed under [the MIT license](./LICENSE.txt).
 
->>>>>>> 16044ef (fix: resolve GitHub Actions workflow validation errors and syntax issues)
 [CI Badge]: https://github.com/rhysd/actionlint/workflows/CI/badge.svg?branch=main&event=push
 [CI]: https://github.com/rhysd/actionlint/actions?query=workflow%3ACI+branch%3Amain
 [api-badge]: https://pkg.go.dev/badge/github.com/rhysd/actionlint.svg
