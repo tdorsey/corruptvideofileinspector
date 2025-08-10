@@ -38,7 +38,7 @@ jobs:
 
       - name: Check for code change labels
         id: check_labels
-        uses: actions/github-script@${{ vars.ACTIONS_VERSION_GITHUB_SCRIPT }}
+        uses: actions/github-script@v7
         with:
           script: |
             const CODE_LABELS = ["🐞 bug", "bug", "✨ feature", "enhancement", "🧪 test", "test"];

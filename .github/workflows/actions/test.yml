@@ -37,15 +37,15 @@ jobs:
     name: Test Python Code
     runs-on: ubuntu-latest
     outputs:
-      coverage-artifact: ${{ steps.upload-coverage.outputs.artifact-name }}
+      coverage-artifact: ${{ steps.upload-coverage.outputs.artifact-id }}
       test-results: ${{ steps.test.outputs.results }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@${{ vars.ACTIONS_CHECKOUT_VERSION }}
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@${{ vars.ACTIONS_SETUP_PYTHON_VERSION }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version }}
           cache: 'pip'
@@ -91,7 +91,7 @@ jobs:
       - name: Upload coverage reports
         id: upload-coverage
         if: ${{ inputs.coverage == true }}
-        uses: actions/upload-artifact@${{ vars.ACTIONS_UPLOAD_ARTIFACT_VERSION }}
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-reports-${{ inputs.python-version }}
           path: |
@@ -101,7 +101,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@${{ vars.ACTIONS_UPLOAD_ARTIFACT_VERSION }}
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ inputs.python-version }}
           path: |
@@ -116,7 +116,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@${{ vars.ACTIONS_CHECKOUT_VERSION }}
+        uses: actions/checkout@v4
 
       - name: Test Docker image functionality
         run: |
