@@ -148,14 +148,14 @@ class ScanResult(BaseModel):
             
             # Handle legacy filename field
             if "filename" in data and "video_file" not in data:
-                data["video_file"] = {"path": data.pop("filename")}
-            
-            # Convert video_file dict to VideoFile object if needed
-            if "video_file" in data and isinstance(data["video_file"], dict):
+                data["video_file"] = VideoFile(path=Path(data.pop("filename")))
+            elif "video_file" in data and isinstance(data["video_file"], dict):
                 data["video_file"] = VideoFile.model_validate(data["video_file"])
             
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+            # Convert string scan_mode to enum (if it's a string and not already an enum)
+            if ("scan_mode" in data 
+                and not isinstance(data["scan_mode"], ScanMode) 
+                and isinstance(data["scan_mode"], str)):
                 data["scan_mode"] = ScanMode(data["scan_mode"])
         
         return data
@@ -278,8 +278,10 @@ class ScanSummary(BaseModel):
             if "directory" in data and not isinstance(data["directory"], Path):
                 data["directory"] = Path(data["directory"])
             
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+            # Convert string scan_mode to enum (if it's a string and not already an enum)
+            if ("scan_mode" in data 
+                and not isinstance(data["scan_mode"], ScanMode) 
+                and isinstance(data["scan_mode"], str)):
                 data["scan_mode"] = ScanMode(data["scan_mode"])
         
         return data
@@ -422,12 +424,16 @@ class ScanProgress(BaseModel):
         if isinstance(data, dict):
             data = dict(data)  # Create a copy to avoid mutating input
             
-            # Convert string phase to enum (if it's a string)
-            if "phase" in data and isinstance(data["phase"], str):
+            # Convert string phase to enum (if it's a string and not already an enum)
+            if ("phase" in data 
+                and not isinstance(data["phase"], ScanPhase) 
+                and isinstance(data["phase"], str)):
                 data["phase"] = ScanPhase(data["phase"])
             
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+            # Convert string scan_mode to enum (if it's a string and not already an enum)
+            if ("scan_mode" in data 
+                and not isinstance(data["scan_mode"], ScanMode) 
+                and isinstance(data["scan_mode"], str)):
                 data["scan_mode"] = ScanMode(data["scan_mode"])
         
         return data
@@ -542,12 +548,16 @@ class BatchScanRequest(BaseModel):
                     Path(d) if not isinstance(d, Path) else d for d in data["directories"]
                 ]
             
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+            # Convert string scan_mode to enum (if it's a string and not already an enum)
+            if ("scan_mode" in data 
+                and not isinstance(data["scan_mode"], ScanMode) 
+                and isinstance(data["scan_mode"], str)):
                 data["scan_mode"] = ScanMode(data["scan_mode"])
             
-            # Convert string output_format to enum (if it's a string)
-            if "output_format" in data and isinstance(data["output_format"], str):
+            # Convert string output_format to enum (if it's a string and not already an enum)
+            if ("output_format" in data 
+                and not isinstance(data["output_format"], OutputFormat) 
+                and isinstance(data["output_format"], str)):
                 data["output_format"] = OutputFormat(data["output_format"])
         
         return data
