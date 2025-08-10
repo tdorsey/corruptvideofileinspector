@@ -43,16 +43,15 @@ branches:
       required_status_checks:
         strict: true
         contexts:
-          - "lint-and-format"
-          - "test"
-          - "docker"
-          - "security"
-          - "make check"
-          - "make test"
+          - "Validate PR Title"
+          - "Lint, Format, and Type Check"
+          - "Run Tests"
+          - "Build and Test Docker Image"
+          - "Security Scan"
       required_pull_request_reviews:
         required_approving_review_count: 0
         dismiss_stale_reviews: true
-        require_code_owner_reviews: true
+        require_code_owner_reviews: false
         restrict_pushes: false
       enforce_admins: false
       restrictions: null
