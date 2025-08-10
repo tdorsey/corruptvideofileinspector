@@ -136,8 +136,8 @@ jobs:
         if: inputs.docker-push && secrets.docker-username && secrets.docker-password
         uses: docker/login-action@${{ vars.ACTIONS_VERSIONS_LOGIN_ACTION || 'v3' }}
         with:
-          username: ${{ vars.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.docker-username }}
+          password: ${{ secrets.docker-password }}
 
       - name: Extract metadata
         id: meta
