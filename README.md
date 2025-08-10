@@ -324,8 +324,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 This repository implements security measures to protect critical configuration files:
 
-- **CODEOWNERS**: Critical files require code owner review (see `.github/CODEOWNERS`)
-- **Branch Protection**: Main branch requires code owner approval for all changes
+- **CODEOWNERS**: Critical files have defined code owners (see `.github/CODEOWNERS`)
+- **Branch Protection**: Main branch requires status checks and pull request reviews
 - **Configuration Protection**: `.github/settings.yml` and security files have additional safeguards
 
 For security policies and reporting vulnerabilities, see [SECURITY.md](SECURITY.md).
