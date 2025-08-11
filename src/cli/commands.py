@@ -490,10 +490,9 @@ def list_watchlists(output, output_format, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        watchlists = handler.list_watchlists()
+        watchlists = handler.list_watchlists(access_token=token)
 
         if not watchlists:
             click.echo("No watchlists found or failed to fetch watchlists.")
@@ -565,10 +564,9 @@ def view(watchlist, output, output_format, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        items = handler.view_watchlist(watchlist=watchlist)
+        items = handler.view_watchlist(watchlist=watchlist, access_token=token)
 
         if not items:
             watchlist_name = watchlist or "Main Watchlist"
