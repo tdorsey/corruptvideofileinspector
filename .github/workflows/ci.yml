@@ -1,11 +1,9 @@
 on:
-on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-
-
+jobs:
   lint-and-format:
     name: Lint, Format, and Type Check
     runs-on: ubuntu-latest
@@ -76,79 +74,3 @@ on:
       - name: Test Docker image
         run: |
           make docker-test
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
-
-    - name: Install system dependencies
-      run: |
-        set -e
-        sudo apt-get update && sudo apt-get install -y ffmpeg
-
-    - name: Setup test configuration
-      run: |
-        set -e
-        cp config.sample.yaml config.yaml
-
-    - name: Install dependencies
-      run: |
-        set -e
-        make install-dev
-
-    - name: Run Tests
-      run: |
-        set -e
-        make test
-
-  docker:
-    name: Build and Test Docker Image
-    runs-on: ubuntu-latest
-    # Docker build should only occur after all tests pass
-    needs: test
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build Docker image
-      run: |
-        set -e
-        make docker-build
-
-    - name: Test Docker image
-      run: |
-        set -e
-        make docker-test
-<<<<<<< HEAD
-=======
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    # Security scan can run in parallel with docker after tests pass
-    needs: test
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
-
-    - name: Install dependencies
-      run: |
-        set -e
-        make install-dev
-
-    - name: Run Security Scan
-      run: |
-        set -e
-        make security-scan
->>>>>>> fc595f7 (fix(makefile): restore functionality, fix type checking errors, and resolve merge conflicts with main (#114))
