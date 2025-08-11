@@ -461,7 +461,6 @@ def sync(
 
 
 @trakt.command()
-@click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
 @click.option("--output", "-o", type=PathType(), help="Save watchlist info to file")
 @click.option(
     "--format",
@@ -472,7 +471,7 @@ def sync(
     show_default=True,
 )
 @global_options
-def list_watchlists(token, output, output_format, config):
+def list_watchlists(output, output_format, config):
     """
     List all available watchlists for the authenticated user.
 
@@ -482,19 +481,15 @@ def list_watchlists(token, output, output_format, config):
 
     \b
     # List watchlists in table format
-    corrupt-video-inspector trakt list-watchlists --token YOUR_TOKEN
+    corrupt-video-inspector trakt list-watchlists
 
     \b
     # List watchlists in JSON format
-    corrupt-video-inspector trakt list-watchlists --token YOUR_TOKEN --format json
+    corrupt-video-inspector trakt list-watchlists --format json
     """
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-        
-        # Note: Token parameter is currently ignored - using config credentials
-        if token:
-            click.echo("Warning: --token parameter is ignored. Using client credentials from config.", err=True)
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
@@ -531,7 +526,6 @@ def list_watchlists(token, output, output_format, config):
 
 
 @trakt.command()
-@click.option("--token", "-t", required=True, help="Trakt.tv OAuth access token")
 @click.option(
     "--watchlist",
     "-w",
@@ -547,7 +541,7 @@ def list_watchlists(token, output, output_format, config):
     show_default=True,
 )
 @global_options
-def view(token, watchlist, output, output_format, config):
+def view(watchlist, output, output_format, config):
     """
     View items in a specific watchlist.
 
@@ -558,23 +552,19 @@ def view(token, watchlist, output, output_format, config):
 
     \b
     # View main watchlist
-    corrupt-video-inspector trakt view --token YOUR_TOKEN
+    corrupt-video-inspector trakt view
 
     \b
     # View a specific custom list
-    corrupt-video-inspector trakt view --token YOUR_TOKEN --watchlist "my-list"
+    corrupt-video-inspector trakt view --watchlist "my-list"
 
     \b
     # View watchlist in JSON format
-    corrupt-video-inspector trakt view --token YOUR_TOKEN --format json
+    corrupt-video-inspector trakt view --format json
     """
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-        
-        # Note: Token parameter is currently ignored - using config credentials
-        if token:
-            click.echo("Warning: --token parameter is ignored. Using client credentials from config.", err=True)
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)

@@ -88,8 +88,7 @@ These commands have been verified to work without network access:
 ### Prerequisites and System Setup
 - Install system dependencies first:
   ```bash
-  sudo apt-get update
-  sudo apt-get install -y ffmpeg build-essential
+  sudo apt-get install -y ffmpeg
   ```
 - Verify FFmpeg installation: `ffmpeg -version`
 - Python 3.13+ is required and should be available
@@ -237,7 +236,7 @@ If network installation fails, you can still validate basic functionality:
 
 ```bash
 # System dependencies (requires network for initial setup)
-sudo apt-get update && sudo apt-get install -y ffmpeg build-essential
+sudo apt-get install -y ffmpeg
 
 # Basic functionality testing (no pip install required)
 make clean && make docker-env && make secrets-init
@@ -376,7 +375,6 @@ tests/
 - **Network timeouts**: Increase pip timeout: `pip install --timeout 300`
 - **SSL errors**: May indicate firewall/proxy issues - use Docker as fallback
 - **Poetry conflicts**: Clear cache: `pip cache purge` and retry
-- **Build system failures**: Ensure build-essential is installed: `sudo apt-get install build-essential`
 
 ### Development Issues
 - **Import errors**: Ensure PYTHONPATH includes src: `export PYTHONPATH=/path/to/repo/src`

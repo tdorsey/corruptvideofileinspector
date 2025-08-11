@@ -13,10 +13,8 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from src.core.models.scanning import ScanMode
-
 if TYPE_CHECKING:
-    pass
+    from src.core.models.scanning import ScanMode
 
 logger = logging.getLogger(__name__)
 
