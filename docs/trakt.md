@@ -146,9 +146,43 @@ The filename parser automatically detects and handles various naming conventions
 - `Game.of.Thrones.1x01.Winter.Is.Coming.mkv` → "Game of Thrones" S1E1
 - `Show Name S02E05 Episode Title.mp4` → "Show Name" S2E5
 
-## Process All Files
+## Process Files by Status
 
-The tool processes **all files** from the scan results, regardless of their corruption status, as specified in the requirements. This ensures your entire collection is synced to Trakt.
+**Default Behavior (v2.0+)**: The tool processes **healthy files only** by default, as specified by the `include_statuses` configuration. This ensures only working video files are synced to your Trakt watchlist.
+
+**Configurable Processing**: You can customize which file statuses to include:
+
+- **HEALTHY**: Non-corrupt files that passed video inspection
+- **CORRUPT**: Files identified as corrupted during scanning  
+- **SUSPICIOUS**: Files that require deep scanning or show corruption indicators
+
+**Configuration Examples**:
+
+```yaml
+# Default: sync only healthy files
+trakt:
+  include_statuses: [HEALTHY]
+
+# Sync all files regardless of status
+trakt:
+  include_statuses: [HEALTHY, CORRUPT, SUSPICIOUS]
+
+# Legacy behavior: sync only problematic files
+trakt:
+  include_statuses: [CORRUPT, SUSPICIOUS]
+```
+
+**Command Line Override**:
+```bash
+# Sync only healthy files (default)
+corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
+
+# Sync all files
+corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --include-statuses HEALTHY CORRUPT SUSPICIOUS
+
+# Sync only corrupt files
+corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --include-statuses CORRUPT
+```
 
 ## Example Workflow
 
