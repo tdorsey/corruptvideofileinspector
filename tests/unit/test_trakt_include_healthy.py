@@ -176,6 +176,11 @@ class TestTraktIncludeStatuses:
     @patch("src.core.watchlist.sync_to_trakt_watchlist")
     def test_trakt_handler_passes_include_statuses(self, mock_sync, mock_validate, mock_config, temp_scan_file):
         """Test that TraktHandler correctly passes include_statuses parameter."""
+        # Mock credential validation to return valid result
+        mock_validate.return_value = CredentialValidationResult(
+            is_valid=True, error_message=None, missing_files=[], empty_files=[]
+        )
+        
         # Create a proper mock result that has the expected attributes
         mock_result = MagicMock()
         mock_result.total = 0
