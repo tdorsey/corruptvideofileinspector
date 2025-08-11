@@ -176,12 +176,7 @@ class TestTraktIncludeStatuses:
     @patch("src.core.watchlist.sync_to_trakt_watchlist")
     def test_trakt_handler_passes_include_statuses(self, mock_sync, mock_validate, mock_config, temp_scan_file):
         """Test that TraktHandler correctly passes include_statuses parameter."""
-        # Mock credential validation to return valid result
-        mock_validate.return_value = CredentialValidationResult(
-            is_valid=True, error_message=None, missing_files=[], empty_files=[]
-        )
-        
-        # Create a proper mock result that has the expected attributes
+        # Configure mock result with proper attributes
         mock_result = MagicMock()
         mock_result.total = 0
         mock_result.movies_added = 0
@@ -189,30 +184,21 @@ class TestTraktIncludeStatuses:
         mock_result.failed = 0
         mock_result.watchlist = None
         mock_result.results = []
-        mock_result.model_dump.return_value = {"test": "result"}
-        # Set up the mock to return proper attributes for TraktSyncResult
-        mock_result.total = 0
-        mock_result.movies_added = 0
-        mock_result.shows_added = 0
-        mock_result.failed = 0
-        mock_result.watchlist = "test-watchlist"
-        mock_result.results = []
         mock_sync.return_value = mock_result
 
         handler = TraktHandler(mock_config)
 
-        # Test with default statuses (now HEALTHY)
+        # Test with config's default statuses (should use config's include_statuses)
         handler.sync_to_watchlist(
             scan_file=temp_scan_file,
         )
 
-        # Verify the sync was called with correct parameters
         mock_sync.assert_called_with(
             scan_file=str(temp_scan_file),
             config=mock_config,
             interactive=False,
             watchlist=None,
-            include_statuses=[FileStatus.HEALTHY],
+            include_statuses=[FileStatus.CORRUPT, FileStatus.SUSPICIOUS],  # From mock_config
         )
 
         # Test with custom statuses
