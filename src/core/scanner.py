@@ -505,6 +505,80 @@ class VideoScanner:
         )
         return summary
 
+    def scan(
+        self,
+        file_paths: list[str],
+        mode: ScanMode,
+        progress_callback: Callable[[ScanProgress], None] | None = None,
+    ) -> list[ScanResult]:
+        """Scan specific video files.
+
+        Args:
+            file_paths: List of file paths to scan
+            mode: Type of scan to perform
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            List of scan results for each file
+        """
+        from src.ffmpeg.ffmpeg_client import FFmpegClient
+        
+        # Create video files from paths
+        video_files = []
+        for path_str in file_paths:
+            path = Path(path_str)
+            if path.exists() and path.is_file():
+                video_files.append(VideoFile(path=path))
+        
+        if not video_files:
+            logger.warning("No valid video files found in provided paths")
+            return []
+        
+        # Initialize FFmpeg client
+        ffmpeg_client = FFmpegClient(self.config.ffmpeg)
+        
+        # Scan each file
+        results = []
+        for i, video_file in enumerate(video_files):
+            if self.is_shutdown_requested:
+                logger.info("Scan cancelled by user request")
+                break
+                
+            logger.debug("Scanning file %d/%d: %s", i + 1, len(video_files), video_file.path)
+            
+            # Create progress update
+            if progress_callback:
+                progress = ScanProgress(
+                    current_file=str(video_file.path),
+                    processed_files=i,
+                    total_files=len(video_files),
+                    corrupt_files=sum(1 for r in results if r.is_corrupt),
+                    scan_mode=mode,
+                )
+                progress_callback(progress)
+            
+            # Perform scan based on mode
+            if mode == ScanMode.QUICK:
+                result = ffmpeg_client.inspect_quick(video_file)
+            elif mode == ScanMode.DEEP:
+                result = ffmpeg_client.inspect_deep(video_file)
+            elif mode == ScanMode.HYBRID:
+                # First try quick scan
+                result = ffmpeg_client.inspect_quick(video_file)
+                if result.needs_deep_scan:
+                    result = ffmpeg_client.inspect_deep(video_file)
+            elif mode == ScanMode.FULL:
+                result = ffmpeg_client.inspect_full(video_file)
+            else:
+                logger.error("Unknown scan mode: %s", mode)
+                continue
+                
+            results.append(result)
+        
+        logger.info("File scan completed: %d files, %d corrupt", len(results), 
+                   sum(1 for r in results if r.is_corrupt))
+        return results
+
     # Private methods
 
     async def _find_video_files_async(
