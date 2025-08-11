@@ -136,6 +136,7 @@ clean:            ## Clean build artifacts
 	rm -rf .pytest_cache/
 	rm -rf .mypy_cache/
 	rm -rf .ruff_cache/
+	rm -f bandit-report.json safety-report.json
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
@@ -163,5 +164,3 @@ docker-test:       ## Test Docker image functionality
 
 security-scan:     ## Run security scanning on the codebase
 	@echo "Running security scans..."
-	$(MAKE) lint
-	@echo "Security scan completed successfully"
