@@ -242,6 +242,46 @@ Success rate: 66.7%
 3. **"Rate limited"**: The tool automatically handles rate limits, but you may need to wait
 4. **"Not found on Trakt"**: Some obscure titles may not be in Trakt's database
 
+### Credential Configuration Issues
+
+**Error**: `Trakt credentials not configured. Empty files: trakt_client_id.txt, trakt_client_secret.txt. Run 'make secrets-init' then populate trakt_client_id.txt and trakt_client_secret.txt.`
+
+**Cause**: The Trakt client credentials have not been properly configured.
+
+**Solution**:
+1. Run `make secrets-init` to create the credential files:
+   ```bash
+   make secrets-init
+   ```
+
+2. Edit the created files with your Trakt API credentials:
+   ```bash
+   # Add your Trakt client ID
+   echo "your_client_id_here" > docker/secrets/trakt_client_id.txt
+   
+   # Add your Trakt client secret  
+   echo "your_client_secret_here" > docker/secrets/trakt_client_secret.txt
+   ```
+
+3. Ensure the files contain valid values (not empty or whitespace-only)
+
+**Error**: `Trakt access token is required. Provide it using the --token option. See docs/trakt.md for instructions on obtaining a token.`
+
+**Cause**: The `--token` parameter was not provided or is empty.
+
+**Solution**:
+- Always provide a valid access token when using `list-watchlists` or `view` commands:
+  ```bash
+  corrupt-video-inspector trakt list-watchlists --token YOUR_ACCESS_TOKEN
+  corrupt-video-inspector trakt view --token YOUR_ACCESS_TOKEN
+  ```
+
+**Getting Trakt API Credentials**:
+1. Visit [Trakt.tv API Apps](https://trakt.tv/oauth/applications)
+2. Create a new application
+3. Note your **Client ID** and **Client Secret** 
+4. Generate an OAuth access token for API calls
+
 ### Debug Mode
 
 Use `--verbose` flag for detailed logging to help diagnose issues:

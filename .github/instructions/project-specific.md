@@ -42,6 +42,7 @@ This is the Corrupt Video Inspector project - a Python-based repository for vide
 - **`Dockerfile`**: Container configuration for FFmpeg-based scanning
 - **`requirements.txt`**: Python dependencies
 - **`.pre-commit-config.yaml`**: Pre-commit hook configuration for code quality
+- **[Workflow Instructions](../instructions/workflows.md)** - Guidelines for GitHub Actions and CI/CD workflows
 
 ### Testing Structure
 - **Unit tests**: Located in `tests/unit/`

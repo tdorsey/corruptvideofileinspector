@@ -4,8 +4,8 @@ CLI logging configuration and setup utilities.
 
 import logging
 
-from rich.console import Console  # type: ignore
-from rich.logging import RichHandler  # type: ignore
+from rich.console import Console
+from rich.logging import RichHandler
 
 # Setup rich console for beautiful output
 console = Console()

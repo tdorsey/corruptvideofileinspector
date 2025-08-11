@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from src.core.video_files import count_all_video_files
-from src.core.formatting import format_file_size
 from src.config.video_formats import get_video_extensions
+from src.core.formatting import format_file_size
+from src.core.video_files import count_all_video_files
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -114,13 +114,22 @@ class TestUtilsIntegration(unittest.TestCase):
         assert count == 0
 
     def test_format_file_size(self):
-        """Test file size formatting"""
+        """Test file size formatting with default trim_trailing_zero=True"""
         assert format_file_size(0) == "0 B"
         assert format_file_size(512) == "512 B"
-        assert format_file_size(1024) == "1.0 KB"
+        assert format_file_size(1024) == "1 KB"
         assert format_file_size(1536) == "1.5 KB"
-        assert format_file_size(1024 * 1024) == "1.0 MB"
-        assert format_file_size(1024 * 1024 * 1024) == "1.0 GB"
+        assert format_file_size(1024 * 1024) == "1 MB"
+        assert format_file_size(1024 * 1024 * 1024) == "1 GB"
+
+    def test_format_file_size_backward_compatibility(self):
+        """Test file size formatting with trim_trailing_zero=False for backward compatibility"""
+        assert format_file_size(0, trim_trailing_zero=False) == "0.0 B"
+        assert format_file_size(512, trim_trailing_zero=False) == "512.0 B"
+        assert format_file_size(1024, trim_trailing_zero=False) == "1.0 KB"
+        assert format_file_size(1536, trim_trailing_zero=False) == "1.5 KB"
+        assert format_file_size(1024 * 1024, trim_trailing_zero=False) == "1.0 MB"
+        assert format_file_size(1024 * 1024 * 1024, trim_trailing_zero=False) == "1.0 GB"
 
     def test_get_video_extensions(self):
         """Test getting video extensions list"""

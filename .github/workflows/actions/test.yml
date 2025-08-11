@@ -1,0 +1,146 @@
+---
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        required: false
+        default: '3.13'
+        type: string
+      test-type:
+        description: 'Type of tests to run (unit, integration, all)'
+        required: false
+        default: 'all'
+        type: string
+      coverage:
+        description: 'Generate coverage reports'
+        required: false
+        default: true
+        type: boolean
+      docker-image:
+        description: 'Docker image to test (optional)'
+        required: false
+        default: ''
+        type: string
+    outputs:
+      coverage-artifact:
+        description: 'Name of the coverage report artifact'
+        value: ${{ jobs.test-python.outputs.coverage-artifact }}
+      test-results:
+        description: 'Test results summary'
+        value: ${{ jobs.test-python.outputs.test-results }}
+
+jobs:
+  test-python:
+    name: Test Python Code
+    runs-on: ubuntu-latest
+    outputs:
+      coverage-artifact: ${{ steps.upload-coverage.outputs.artifact-id }}
+      test-results: ${{ steps.test.outputs.results }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          set -e
+          sudo apt-get install -y ffmpeg
+
+      - name: Setup test configuration
+        run: |
+          set -e
+          cp config.sample.yaml config.yaml
+
+      - name: Install dependencies
+        run: |
+          set -e
+          make install-dev
+
+      - name: Run tests
+        id: test
+        run: |
+          set -e
+          if [[ "${{ inputs.test-type }}" == "unit" ]]; then
+            TEST_CMD="pytest tests/unit/ -v"
+          elif [[ "${{ inputs.test-type }}" == "integration" ]]; then
+            TEST_CMD="pytest tests/integration/ -v"
+          else
+            TEST_CMD="make test"
+          fi
+
+          if [[ "${{ inputs.coverage }}" == "true" ]]; then
+            TEST_CMD="$TEST_CMD --cov=src --cov-report=xml --cov-report=html"
+          fi
+
+          echo "Running: $TEST_CMD"
+          $TEST_CMD
+
+          # Set test results output
+          echo "results=success" >> "$GITHUB_OUTPUT"
+
+      - name: Upload coverage reports
+        id: upload-coverage
+        if: ${{ inputs.coverage == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports-${{ inputs.python-version }}
+          path: |
+            htmlcov/
+            coverage.xml
+          retention-days: 7
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ inputs.python-version }}
+          path: |
+            .pytest_cache/
+            test-results.xml
+          retention-days: 7
+
+  test-docker:
+    name: Test Docker Image
+    runs-on: ubuntu-latest
+    if: ${{ inputs.docker-image != '' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test Docker image functionality
+        run: |
+          set -e
+          # Test basic CLI help
+          docker run --rm "${{ inputs.docker-image }}" --help
+
+          # Test CLI commands
+          docker run --rm "${{ inputs.docker-image }}" show-config
+          docker run --rm "${{ inputs.docker-image }}" test-ffmpeg
+
+          # Create test environment
+          mkdir -p test-videos test-output
+
+          # Test scan functionality with empty directory
+          docker run --rm \
+            -v "$(pwd)/test-videos:/app/videos:ro" \
+            -v "$(pwd)/test-output:/app/output" \
+            "${{ inputs.docker-image }}" \
+            scan --directory /app/videos --output /app/output/test-results.json
+
+          # Verify output file was created
+          if [[ -f test-output/test-results.json ]]; then
+            echo "✅ Docker scan test passed"
+          else
+            echo "❌ Docker scan test failed - no output file"
+            exit 1
+          fi

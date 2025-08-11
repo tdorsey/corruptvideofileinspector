@@ -1,0 +1,10 @@
+# CODEOWNERS for critical admin files only
+# Repository settings are protected but code owner reviews are disabled via settings.yaml
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/repository-ownership-and-permissions/about-code-owners
+
+# Critical configuration files for repository administration
+.github/settings.yaml @tdorsey
+.github/CODEOWNERS @tdorsey
+
+# Security-related documentation and policies  
+SECURITY.md @tdorsey

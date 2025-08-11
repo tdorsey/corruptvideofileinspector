@@ -1,0 +1,168 @@
+# Repository Settings Configuration
+# This file manages repository settings declaratively
+# Protected by CODEOWNERS - only trusted maintainers can modify
+
+repository:
+  # Repository basic settings
+  name: corruptvideofileinspector
+  owner: tdorsey
+  description: "A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support."
+  topics:
+    - python
+    - ffmpeg
+    - video-processing
+    - corruption-detection
+    - cli-tool
+    - docker
+    - trakt
+    - video-analysis
+
+  # Repository properties
+  homepage: "https://github.com/tdorsey/corruptvideofileinspector"
+  visibility: public
+  private: false
+  has_issues: true
+  has_projects: true
+  has_wiki: false
+  has_downloads: true
+  has_pages: false
+  allow_squash_merge: true
+  allow_merge_commit: false
+  allow_rebase_merge: true
+  allow_auto_merge: false
+  allow_forking: true
+  delete_branch_on_merge: true
+  enable_automated_security_fixes: true
+  enable_vulnerability_alerts: true
+  default_branch: main
+
+# Branch Protection Rules
+branches:
+  - name: main
+    protection:
+      required_status_checks:
+        strict: true
+        contexts:
+          - "Validate PR Title"
+          - "Lint, Format, and Type Check"
+          - "Run Tests"
+          - "Build and Test Docker Image"
+          - "Security Scan"
+          - "test"
+          - "docker"
+          - "security"
+          - "make check"
+          - "make test"
+          - "Validate Workflow Syntax"
+      required_pull_request_reviews:
+        required_approving_review_count: 0
+        dismiss_stale_reviews: true
+        require_code_owner_reviews: false  # Allow admins to merge without code owner review
+        restrict_pushes: false
+      enforce_admins: false  # Allow repository admins to bypass all protection rules
+      restrictions: null
+      allow_force_pushes: false
+      allow_deletions: false
+      required_linear_history: false
+      required_conversation_resolution: true
+
+
+# Labels for issue and PR management
+labels:
+  - name: "type: bug"
+    color: "d73a4a"
+    description: "Something isn't working"
+  - name: "type: feature"
+    color: "0075ca"
+    description: "New feature or request"
+  - name: "type: enhancement"
+    color: "a2eeef"
+    description: "Enhancement to existing functionality"
+  - name: "type: documentation"
+    color: "0052cc"
+    description: "Improvements or additions to documentation"
+  - name: "type: refactor"
+    color: "5319e7"
+    description: "Code refactoring"
+  - name: "type: test"
+    color: "1d76db"
+    description: "Testing related changes"
+  - name: "priority: critical"
+    color: "b60205"
+    description: "Critical priority"
+  - name: "priority: high"
+    color: "d93f0b"
+    description: "High priority"
+  - name: "priority: medium"
+    color: "fbca04"
+    description: "Medium priority"
+  - name: "priority: low"
+    color: "0e8a16"
+    description: "Low priority"
+  - name: "status: blocked"
+    color: "b60205"
+    description: "Blocked by external dependency"
+  - name: "status: in-progress"
+    color: "fbca04"
+    description: "Currently being worked on"
+  - name: "status: needs-review"
+    color: "0052cc"
+    description: "Needs code review"
+  - name: "status: needs-testing"
+    color: "1d76db"
+    description: "Needs testing"
+  - name: "component: cli"
+    color: "c2e0c6"
+    description: "Command line interface"
+  - name: "component: core"
+    color: "c2e0c6"
+    description: "Core business logic"
+  - name: "component: ffmpeg"
+    color: "c2e0c6"
+    description: "FFmpeg integration"
+  - name: "component: trakt"
+    color: "c2e0c6"
+    description: "Trakt.tv integration"
+  - name: "component: docker"
+    color: "c2e0c6"
+    description: "Docker configuration"
+  - name: "component: tests"
+    color: "c2e0c6"
+    description: "Test suite"
+  - name: "component: docs"
+    color: "c2e0c6"
+    description: "Documentation"
+  - name: "component: ci-cd"
+    color: "c2e0c6"
+    description: "CI/CD pipeline"
+  - name: "good first issue"
+    color: "7057ff"
+    description: "Good for newcomers"
+  - name: "help wanted"
+    color: "008672"
+    description: "Extra attention is needed"
+  - name: "dependencies"
+    color: "0366d6"
+    description: "Pull requests that update a dependency file"
+  - name: "security"
+    color: "b60205"
+    description: "Security related issue"
+  - name: "breaking-change"
+    color: "d73a4a"
+    description: "Breaking change"
+  - name: "needs-reproduction"
+    color: "fef2c0"
+    description: "Issue needs reproduction steps"
+
+# Security and analysis settings
+security:
+  secret_scanning: true
+  secret_scanning_push_protection: true
+  dependency_graph: true
+  dependabot_security_updates: true
+  dependabot_version_updates: true
+
+# CODEOWNERS integration
+codeowners:
+  enabled: true
+  file: .github/CODEOWNERS

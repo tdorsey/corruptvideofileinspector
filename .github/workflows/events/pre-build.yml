@@ -1,0 +1,56 @@
+---
+name: Pre-build Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Get labels for PR workflows
+  get-labels:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/internal/get-labels.yml
+
+  # Python code quality checks
+  code-quality:
+    name: Code Quality Validation
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft)
+    uses: ./.github/workflows/actions/python-quality.yml
+    with:
+      python-version: ${{ vars.PYTHON_VERSION || '3.13' }}
+      check-format: true
+      check-lint: true
+      check-types: true
+
+  # Security scanning
+  security-check:
+    name: Security Validation
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft)
+    uses: ./.github/workflows/actions/security-scan.yml
+    with:
+      python-version: ${{ vars.PYTHON_VERSION || '3.13' }}
+      scan-dependencies: true
+      scan-code: true
+      scan-docker: false
+
+  # Summary job to ensure all pre-build checks pass
+  pre-build-summary:
+    name: Pre-build Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality, security-check]
+    if: always() && (github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft))
+    steps:
+      - name: Check pre-build results
+        run: |
+          set -e
+          echo "Code Quality: ${{ needs.code-quality.result }}"
+          echo "Security Check: ${{ needs.security-check.result }}"
+
+          if [[ "${{ needs.code-quality.result }}" != "success" || "${{ needs.security-check.result }}" != "success" ]]; then
+            echo "❌ Pre-build validation failed"
+            exit 1
+          else
+            echo "✅ Pre-build validation passed"
+          fi
