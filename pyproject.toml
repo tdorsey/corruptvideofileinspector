@@ -64,6 +64,8 @@ dev = [
     "types-PyYAML>=6.0.0",
     "types-toml>=0.10.0",
     "poetry-dynamic-versioning>=1.0.0,<2.0.0",
+    "bandit[toml]>=1.7.0",
+    "safety>=3.0.0",
 ]
 
 [project.scripts]
@@ -241,3 +243,9 @@ format-jinja = """
 """
 metadata = true
 tagged-metadata = false
+
+# Bandit security linting configuration
+[tool.bandit]
+exclude_dirs = ["tests", "build", "dist"]
+skips = ["B101", "B601"]  # Skip assert_used and shell_injection for tests
+severity = "medium"
