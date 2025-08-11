@@ -9,44 +9,49 @@ The Trakt watchlist integration allows you to automatically sync your video coll
 ## Prerequisites
 
 1. **Trakt.tv Account**: You need a Trakt.tv account
-2. **API Credentials**: Client ID and Client Secret from your Trakt.tv application  
+2. **API Application**: Create a Trakt.tv API application to get client credentials
 3. **JSON Scan Results**: Video inspection results in JSON format
 
-## Getting Trakt API Credentials
+## Authentication Setup
+
+The application now uses config-based authentication with Docker secrets support instead of CLI tokens.
+
+### Getting Trakt API Credentials
 
 1. Visit [Trakt.tv API Apps](https://trakt.tv/oauth/applications)
 2. Create a new application or use an existing one
-3. Note your **Client ID** and **Client Secret** (not access token)
-4. Configure these credentials in your application (see Configuration section below)
+3. Note your **Client ID** and **Client Secret**
+4. Keep your credentials secure and never commit them to source code
 
-## Configuration
+### Setting up Authentication
 
-The application uses **configuration-based authentication** with Client ID and Client Secret instead of access tokens. You can configure Trakt credentials using any of these methods:
+#### Option 1: Docker Secrets (Recommended)
 
-### Method 1: Configuration File
+```bash
+# Initialize secret files
+make secrets-init
 
-Create or edit your `config.yaml` file:
+# Add your credentials to the secret files
+echo "your-client-id" > docker/secrets/trakt_client_id.txt
+echo "your-client-secret" > docker/secrets/trakt_client_secret.txt
+```
+
+#### Option 2: Configuration File
 
 ```yaml
+# config.yaml
 trakt:
-  client_id: your_client_id_here
-  client_secret: your_client_secret_here
+  client_id: "your-client-id"
+  client_secret: "your-client-secret"
+  default_watchlist: "my-default-list"  # Optional
+  include_statuses: ["healthy"]  # Default: only sync healthy files
 ```
 
-### Method 2: Environment Variables
+#### Option 3: Environment Variables
 
 ```bash
-export CVI_TRAKT_CLIENT_ID="your_client_id_here"
-export CVI_TRAKT_CLIENT_SECRET="your_client_secret_here"
-```
-
-### Method 3: Docker Secrets
-
-For containerized deployments:
-
-```bash
-echo "your_client_id_here" > docker/secrets/trakt_client_id.txt
-echo "your_client_secret_here" > docker/secrets/trakt_client_secret.txt
+export CVI_TRAKT_CLIENT_ID="your-client-id"
+export CVI_TRAKT_CLIENT_SECRET="your-client-secret"
 ```
 
 ## Usage
@@ -61,51 +66,53 @@ corrupt-video-inspector trakt sync scan_results.json
 ### Advanced Options
 
 ```bash
-# With verbose output and result saving
+# Sync to a specific watchlist with interactive mode
 corrupt-video-inspector trakt sync scan_results.json \
-  --verbose \
+  --watchlist "my-movies" \
+  --interactive \
   --output sync_results.json
 ```
 
-### List Watchlists Command
+### List and View Commands
 
 ```bash
-# List all available watchlists
+# List all your watchlists
 corrupt-video-inspector trakt list-watchlists
 
-# List in JSON format
-corrupt-video-inspector trakt list-watchlists --format json
+# View contents of a specific watchlist
+corrupt-video-inspector trakt view --watchlist "my-collection"
+
+# Save watchlist data to file
+corrupt-video-inspector trakt view --watchlist "favorites" --output watchlist.json
 ```
 
-### View Watchlist Command
+### Command Options
 
-```bash
-# View main watchlist
-corrupt-video-inspector trakt view
-
-# View specific watchlist
-corrupt-video-inspector trakt view --watchlist "my-custom-list"
-
-# View in JSON format
-corrupt-video-inspector trakt view --format json
-```
-
-### Command Options for Sync
-
-- `--client-id`: Optional - Override client ID from config
-- `--verbose` / `-v`: Enable detailed progress output
+#### For `trakt sync`:
+- `--watchlist` / `-w`: Target watchlist name or slug (default: main watchlist)
 - `--interactive` / `-i`: Enable interactive selection of search results
+- `--dry-run`: Show what would be synced without actually syncing
+- `--include-status`: File statuses to include (default: healthy only)
 - `--output` / `-o`: Save sync results to JSON file
+
+#### For `trakt list-watchlists`:
+- `--format`: Output format (table or json)
+- `--output` / `-o`: Save results to file
+
+#### For `trakt view`:
+- `--watchlist` / `-w`: Watchlist to view (default: main watchlist)
+- `--format`: Output format (table or json)
+- `--output` / `-o`: Save results to file
 
 ### Interactive Mode
 
-When using the `--interactive` flag with the sync command, the tool will prompt you to manually select the correct match when multiple search results are found:
+When using the `--interactive` flag, the tool will prompt you to manually select the correct match when multiple search results are found:
 
 ```bash
 # Enable interactive selection for ambiguous matches
 corrupt-video-inspector trakt sync scan_results.json \
   --interactive \
-  --verbose
+  --watchlist "to-review"
 ```
 
 **Interactive mode features:**
@@ -145,10 +152,11 @@ The tool processes **all files** from the scan results, regardless of their corr
 
 ## Example Workflow
 
-1. **Configure Trakt credentials** (one-time setup):
+1. **Set up authentication** (one-time setup):
    ```bash
-   export CVI_TRAKT_CLIENT_ID="your_client_id"
-   export CVI_TRAKT_CLIENT_SECRET="your_client_secret"
+   make secrets-init
+   echo "your-client-id" > docker/secrets/trakt_client_id.txt
+   echo "your-client-secret" > docker/secrets/trakt_client_secret.txt
    ```
 
 2. **Scan your video collection**:
@@ -244,21 +252,21 @@ Success rate: 66.7%
 
 ## Security Best Practices
 
-1. **Environment Variables**: Store your credentials in environment variables
+1. **Docker Secrets** (Recommended): Use Docker secrets for secure credential storage
+   ```bash
+   make secrets-init
+   echo "your-client-id" > docker/secrets/trakt_client_id.txt
+   echo "your-client-secret" > docker/secrets/trakt_client_secret.txt
+   ```
+
+2. **Environment Variables**: Alternative method for credential storage
    ```bash
    export CVI_TRAKT_CLIENT_ID="your_client_id"
    export CVI_TRAKT_CLIENT_SECRET="your_client_secret"
+   corrupt-video-inspector trakt sync scan.json
    ```
 
-2. **Configuration Files**: Use config files for permanent setup
-   ```yaml
-   # config.yaml
-   trakt:
-     client_id: your_client_id
-     client_secret: your_client_secret
-   ```
-
-3. **Never Commit Credentials**: Add credentials to your `.gitignore`
+3. **Never Commit Credentials**: Add credential files to your `.gitignore`
 
 4. **Credential Rotation**: Regularly rotate your API credentials
 
@@ -266,22 +274,17 @@ Success rate: 66.7%
 
 ### Common Issues
 
-1. **"Trakt credentials not configured"**: 
-   - Ensure you've set client_id and client_secret in your configuration
-   - Check environment variables: `CVI_TRAKT_CLIENT_ID` and `CVI_TRAKT_CLIENT_SECRET`
-   - Verify Docker secrets if using containers
-
-2. **"No media items found"**: Check that your JSON file contains valid scan results
-3. **"Authentication failed"**: Verify your client ID and secret are correct
-4. **"Rate limited"**: The tool automatically handles rate limits, but you may need to wait
-5. **"Not found on Trakt"**: Some obscure titles may not be in Trakt's database
+1. **"No media items found"**: Check that your JSON file contains valid scan results
+2. **"Authentication failed"**: Verify your access token is valid and not expired
+3. **"Rate limited"**: The tool automatically handles rate limits, but you may need to wait
+4. **"Not found on Trakt"**: Some obscure titles may not be in Trakt's database
 
 ### Debug Mode
 
 Use `--verbose` flag for detailed logging to help diagnose issues:
 
 ```bash
-corrupt-video-inspector trakt sync scan_results.json --verbose
+corrupt-video-inspector trakt sync scan.json --verbose
 ```
 
 ## API Rate Limits

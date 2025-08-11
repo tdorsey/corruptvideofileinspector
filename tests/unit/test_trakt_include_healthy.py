@@ -176,18 +176,19 @@ class TestTraktIncludeStatuses:
         """Test that TraktHandler correctly passes include_statuses parameter."""
         # Create a proper mock that returns the expected attributes
         mock_result = MagicMock()
-        mock_result.total = 1
-        mock_result.movies_added = 1
+        mock_result.total = 0
+        mock_result.movies_added = 0
         mock_result.shows_added = 0
         mock_result.failed = 0
-        mock_result.watchlist = "test_watchlist"
+        mock_result.watchlist = "test-watchlist"
         mock_result.results = []
+        mock_result.model_dump.return_value = {"test": "result"}
         mock_sync.return_value = mock_result
 
         handler = TraktHandler(mock_config)
 
-        # Test with default statuses (corrupt and suspicious)
-        result = handler.sync_to_watchlist(
+        # Test with config-specified statuses (corrupt and suspicious)
+        handler.sync_to_watchlist(
             scan_file=temp_scan_file,
         )
 

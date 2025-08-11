@@ -392,26 +392,25 @@ def sync(
 
     Processes a JSON scan results file and adds discovered movies and TV shows
     to your Trakt.tv watchlist using filename parsing and search matching.
+    Authentication is handled through configuration (config file, environment variables, or Docker secrets).
 
     Examples:
 
     \b
     # Basic sync to main watchlist
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
+    corrupt-video-inspector trakt sync results.json
 
     \b
     # Sync to a specific watchlist
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN \\
-        --watchlist "my-custom-list"
+    corrupt-video-inspector trakt sync results.json --watchlist "my-custom-list"
 
     \b
     # Interactive sync with output
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN \\
-        --interactive --output sync_results.json
+    corrupt-video-inspector trakt sync results.json --interactive --output sync_results.json
 
     \b
     # Dry run to see what would be synced
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --dry-run
+    corrupt-video-inspector trakt sync results.json --dry-run
     """
     # If no arguments are provided, show the help for the trakt sync subcommand
     if ctx.args == [] and scan_file is None:
@@ -476,7 +475,7 @@ def list_watchlists(output, output_format, config):
     List all available watchlists for the authenticated user.
 
     Shows all custom lists and the main watchlist that the user has access to.
-    Uses Trakt credentials from configuration (client_id/client_secret).
+    Authentication is handled through configuration (config file, environment variables, or Docker secrets).
 
     Examples:
 
@@ -559,7 +558,7 @@ def view(watchlist, output, output_format, config):
 
     Shows all movies and TV shows in the specified watchlist.
     If no watchlist is specified, shows items from the main watchlist.
-    Uses Trakt credentials from configuration (client_id/client_secret).
+    Authentication is handled through configuration (config file, environment variables, or Docker secrets).
 
     Examples:
 

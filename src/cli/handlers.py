@@ -520,6 +520,23 @@ class TraktHandler(BaseHandler):
             self._handle_error(e, f"Failed to fetch watchlist items for '{watchlist}'")
             return None
 
+    def _get_access_token_from_config(self) -> str:
+        """Get access token from configuration (config file, env vars, or Docker secrets)."""
+        # For now, this would need to be implemented based on the actual auth flow
+        # This is a placeholder - in practice, this might involve OAuth flow or stored tokens
+        client_id = self.config.trakt.client_id
+        client_secret = self.config.trakt.client_secret
+        
+        if not client_id or not client_secret:
+            raise ValueError("Trakt client_id and client_secret must be configured. Use 'make secrets-init' or set in config file.")
+        
+        # TODO: Implement actual OAuth token retrieval/refresh logic
+        # For now, raise an error indicating the limitation
+        raise NotImplementedError(
+            "Config-based authentication not fully implemented yet. "
+            "Please ensure you have valid OAuth tokens configured."
+        )
+
 
 class UtilityHandler(BaseHandler):
     """Handler for utility CLI operations."""
@@ -640,9 +657,9 @@ def get_all_video_object_files(
     directory: Path | str,
     recursive: bool = True,
     extensions: Sequence[str] | None = None,
-) -> list[Path]:
+) -> list[VideoFile]:
     """
-    Return list of video file objects (paths or models).
+    Return list of video file objects.
     Accepts Path for directory.
     """
     # Ensure directory is a Path
@@ -653,14 +670,7 @@ def get_all_video_object_files(
     video_files = scanner.get_video_files(
         directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
     )
-    result: list[Path] = []
-    for vf in video_files:
-        if hasattr(vf, "path") and vf.path is not None:
-            result.append(vf.path if isinstance(vf.path, Path) else Path(vf.path))
-        else:
-            # Handle case where vf might be a Path already
-            result.append(vf if isinstance(vf, Path) else Path(str(vf)))
-    return result
+    return video_files
 
 
 def list_video_files(
