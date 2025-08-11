@@ -17,6 +17,7 @@ from src.config.config import (
     ScanConfig,
     TraktConfig,
 )
+from src.core.credential_validator import CredentialValidationResult
 from src.core.models.scanning import FileStatus, ScanMode
 from src.core.watchlist import process_scan_file, sync_to_trakt_watchlist
 
@@ -171,10 +172,16 @@ class TestTraktIncludeStatuses:
         assert mock_parser.parse_filename.call_count == 4
         assert result.failed == 4  # All files not found on Trakt
 
-    @patch("src.cli.handlers.sync_to_trakt_watchlist")
-    def test_trakt_handler_passes_include_statuses(self, mock_sync, mock_config, temp_scan_file):
+    @patch("src.core.credential_validator.validate_trakt_secrets")
+    @patch("src.core.watchlist.sync_to_trakt_watchlist")
+    def test_trakt_handler_passes_include_statuses(self, mock_sync, mock_validate, mock_config, temp_scan_file):
         """Test that TraktHandler correctly passes include_statuses parameter."""
-        # Create a proper mock that returns the expected attributes
+        # Mock credential validation to return valid result
+        mock_validate.return_value = CredentialValidationResult(
+            is_valid=True, error_message=None, missing_files=[], empty_files=[]
+        )
+        
+        # Create a proper mock result that has the expected attributes
         mock_result = MagicMock()
         mock_result.total = 0
         mock_result.movies_added = 0
