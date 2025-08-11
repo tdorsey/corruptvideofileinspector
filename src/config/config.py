@@ -136,6 +136,15 @@ def load_config(config_path: Path | None = None) -> AppConfig:
     if env_video:
         config_data.setdefault("scan", {})["default_input_dir"] = env_video
 
+    # Environment overrides for Trakt credentials
+    env_trakt_client_id = os.environ.get("CVI_TRAKT_CLIENT_ID")
+    if env_trakt_client_id:
+        config_data.setdefault("trakt", {})["client_id"] = env_trakt_client_id
+    
+    env_trakt_client_secret = os.environ.get("CVI_TRAKT_CLIENT_SECRET")
+    if env_trakt_client_secret:
+        config_data.setdefault("trakt", {})["client_secret"] = env_trakt_client_secret
+
     # Validate and create config object using Pydantic
     _CONFIG_SINGLETON = AppConfig.model_validate(config_data)
     return _CONFIG_SINGLETON

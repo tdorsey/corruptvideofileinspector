@@ -451,23 +451,31 @@ class TraktHandler(BaseHandler):
             logger.warning(f"Failed to save sync results: {e}")
             click.echo(f"Warning: Could not save sync results: {e}", err=True)
 
-    def list_watchlists(self, access_token: str | None = None) -> list | None:
+    def list_watchlists(self) -> list | None:
         """
         List all available watchlists for the authenticated user.
 
-        Args:
-            access_token: Trakt API access token (if None, uses config-based auth)
+        Uses Trakt credentials from self.config.trakt (client_id/client_secret).
 
         Returns:
             List of watchlist information or None if failed
+
+        Raises:
+            ValueError: If Trakt credentials are not configured
         """
+        # Validate credentials first
+        if not self.config.trakt.client_id or not self.config.trakt.client_secret:
+            error_msg = (
+                "Trakt credentials not configured. Please set client_id and client_secret "
+                "in your configuration file, environment variables (CVI_TRAKT_CLIENT_ID, "
+                "CVI_TRAKT_CLIENT_SECRET), or Docker secrets."
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
         try:
             logger.info("Fetching user's watchlists from Trakt")
-            # Use config-based auth if no token provided
-            if access_token is None:
-                access_token = self._get_access_token_from_config()
-            
-            api = TraktAPI(access_token)
+            api = TraktAPI(self.config)
             watchlists = api.list_watchlists()
 
             return [w.model_dump() for w in watchlists]
@@ -476,26 +484,34 @@ class TraktHandler(BaseHandler):
             self._handle_error(e, "Failed to fetch watchlists")
             return None
 
-    def view_watchlist(self, access_token: str | None = None, watchlist: str | None = None) -> list | None:
+    def view_watchlist(self, watchlist: str | None = None) -> list | None:
         """
         View items in a specific watchlist.
 
         Args:
-            access_token: Trakt API access token (if None, uses config-based auth)
             watchlist: Watchlist name/slug to view (None for main watchlist)
 
         Returns:
             List of watchlist items or None if failed
+
+        Raises:
+            ValueError: If Trakt credentials are not configured
         """
+        # Validate credentials first
+        if not self.config.trakt.client_id or not self.config.trakt.client_secret:
+            error_msg = (
+                "Trakt credentials not configured. Please set client_id and client_secret "
+                "in your configuration file, environment variables (CVI_TRAKT_CLIENT_ID, "
+                "CVI_TRAKT_CLIENT_SECRET), or Docker secrets."
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
         try:
             watchlist_name = watchlist or "Main Watchlist"
             logger.info(f"Fetching items from watchlist: {watchlist_name}")
 
-            # Use config-based auth if no token provided
-            if access_token is None:
-                access_token = self._get_access_token_from_config()
-
-            api = TraktAPI(access_token)
+            api = TraktAPI(self.config)
             items = api.get_watchlist_items(watchlist)
 
             return [item.model_dump() for item in items]

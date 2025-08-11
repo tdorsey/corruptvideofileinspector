@@ -493,8 +493,7 @@ def list_watchlists(output, output_format, config):
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        # Note: access_token will be obtained from config/secrets in TraktHandler
-        watchlists = handler.list_watchlists(access_token=None)  # Will use config-based auth
+        watchlists = handler.list_watchlists()
 
         if not watchlists:
             click.echo("No watchlists found or failed to fetch watchlists.")
@@ -520,6 +519,17 @@ def list_watchlists(output, output_format, config):
                 json.dump({"watchlists": watchlists}, f, indent=2)
             click.echo(f"\nWatchlist data saved to: {output}")
 
+    except ValueError as e:
+        # Handle credential validation errors with user-friendly message
+        click.echo(f"Configuration Error: {e}", err=True)
+        click.echo("\nTo configure Trakt credentials:", err=True)
+        click.echo("1. Get your client ID and secret from https://trakt.tv/oauth/applications", err=True)
+        click.echo("2. Set them in your config file:", err=True)
+        click.echo("   trakt:", err=True)
+        click.echo("     client_id: your_client_id", err=True)
+        click.echo("     client_secret: your_client_secret", err=True)
+        click.echo("3. Or set environment variables: CVI_TRAKT_CLIENT_ID and CVI_TRAKT_CLIENT_SECRET", err=True)
+        sys.exit(1)
     except Exception as e:
         logger.exception("List watchlists command failed")
         click.echo(f"Error: {e}", err=True)
@@ -570,8 +580,7 @@ def view(watchlist, output, output_format, config):
 
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        # Note: access_token will be obtained from config/secrets in TraktHandler
-        items = handler.view_watchlist(access_token=None, watchlist=watchlist)  # Will use config-based auth
+        items = handler.view_watchlist(watchlist=watchlist)
 
         if not items:
             watchlist_name = watchlist or "Main Watchlist"
@@ -605,6 +614,17 @@ def view(watchlist, output, output_format, config):
                 json.dump({"watchlist": watchlist_name, "items": items}, f, indent=2)
             click.echo(f"\nWatchlist contents saved to: {output}")
 
+    except ValueError as e:
+        # Handle credential validation errors with user-friendly message
+        click.echo(f"Configuration Error: {e}", err=True)
+        click.echo("\nTo configure Trakt credentials:", err=True)
+        click.echo("1. Get your client ID and secret from https://trakt.tv/oauth/applications", err=True)
+        click.echo("2. Set them in your config file:", err=True)
+        click.echo("   trakt:", err=True)
+        click.echo("     client_id: your_client_id", err=True)
+        click.echo("     client_secret: your_client_secret", err=True)
+        click.echo("3. Or set environment variables: CVI_TRAKT_CLIENT_ID and CVI_TRAKT_CLIENT_SECRET", err=True)
+        sys.exit(1)
     except Exception as e:
         logger.exception("View watchlist command failed")
         click.echo(f"Error: {e}", err=True)
