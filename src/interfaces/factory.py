@@ -60,7 +60,11 @@ class InterfaceFactory:
     
     @classmethod
     def register_progress_reporter(
-        self, 
+        cls._result_handlers[interface_type] = handler_class
+    
+    @classmethod
+    def register_progress_reporter(
+        cls, 
         interface_type: InterfaceType, 
         reporter_class: Type[ProgressReporter]
     ) -> None:
