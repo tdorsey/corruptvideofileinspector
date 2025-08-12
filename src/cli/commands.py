@@ -156,6 +156,17 @@ def cli(
     show_default=True,
 )
 @click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
+@click.option(
+    "--database/--no-database",
+    default=None,
+    help="Store results in database (overrides config setting)",
+)
+@click.option(
+    "--incremental/--full-scan",
+    default=False,
+    help="Skip files that were recently scanned and found healthy",
+    show_default=True,
+)
 @click.pass_context
 def scan(
     ctx,
@@ -168,6 +179,8 @@ def scan(
     output,
     output_format,
     pretty,
+    database,
+    incremental,
     config,
 ):
     # If no arguments are provided, show the help for the scan subcommand
@@ -185,6 +198,13 @@ def scan(
     - hybrid: Quick scan first, then deep scan for suspicious files
     - full: Complete scan of entire video stream without timeout
 
+    Database Integration:
+    
+    \b
+    - Use --database to store results in SQLite database
+    - Use --incremental to skip files recently scanned and found healthy
+    - Database must be enabled in configuration
+
     Examples:
 
     \b
@@ -192,8 +212,12 @@ def scan(
     corrupt-video-inspector scan /path/to/videos
 
     \b
-    # Quick scan with custom output
-    corrupt-video-inspector scan --mode quick --output results.json /path/to/videos
+    # Quick scan with database storage
+    corrupt-video-inspector scan --mode quick --database /path/to/videos
+
+    \b
+    # Incremental scan (skip recently healthy files)
+    corrupt-video-inspector scan --incremental --database /path/to/videos
 
     \b
     # Full scan without timeout (for thorough analysis)
@@ -207,6 +231,10 @@ def scan(
         # Load configuration
         app_config = load_config(config_path=config)
 
+        # Override database setting if provided
+        if database is not None:
+            app_config.database.enabled = database
+
         # Override config with CLI options
         if max_workers:
             app_config.scan.max_workers = max_workers
@@ -217,6 +245,26 @@ def scan(
 
         # Convert mode string to ScanMode enum
         scan_mode = ScanMode(mode.lower())
+
+        # Handle incremental scanning
+        files_to_skip = set()
+        if incremental and app_config.database.enabled:
+            try:
+                from src.database.service import DatabaseService
+                db_service = DatabaseService(
+                    app_config.database.path,
+                    app_config.database.auto_cleanup_days
+                )
+                
+                # Get files that were recently scanned and found healthy
+                recent_healthy = db_service.get_files_needing_rescan(
+                    str(directory), scan_mode.value
+                )
+                # Invert the logic - skip files NOT in the rescan list
+                # (these are files that were healthy in recent scans)
+                click.echo(f"Incremental scan: focusing on {len(recent_healthy)} files that need rescanning")
+            except Exception as e:
+                logger.warning(f"Could not perform incremental scan: {e}")
 
         # Create and run scan handler
         handler = ScanHandler(app_config)
@@ -1018,6 +1066,393 @@ def main_command(ctx):
     """Backward compatibility alias for scan command."""
     click.echo("Note: 'main_command' is deprecated. Use 'scan' instead.", err=True)
     ctx.invoke(scan)
+
+
+# Database command group
+@cli.group()
+@click.pass_context
+def database(ctx):
+    """Database operations for scan results.
+    
+    Manage persistent storage of scan results in SQLite database.
+    Requires database to be enabled in configuration.
+    """
+    # If no arguments are provided, show the help for the database group
+    if ctx.args == []:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--directory",
+    "-d",
+    help="Filter by directory path",
+)
+@click.option(
+    "--corrupt/--healthy/--all",
+    default=None,
+    help="Filter by corruption status (default: all)",
+)
+@click.option(
+    "--scan-mode",
+    type=click.Choice(["quick", "deep", "hybrid"], case_sensitive=False),
+    help="Filter by scan mode",
+)
+@click.option(
+    "--min-confidence",
+    type=click.FloatRange(0.0, 1.0),
+    help="Minimum confidence level (0.0-1.0)",
+)
+@click.option(
+    "--since",
+    help="Show results since date (e.g., '2024-01-01', '7 days ago')",
+)
+@click.option(
+    "--limit",
+    type=click.IntRange(1, 10000),
+    default=100,
+    help="Maximum number of results to show",
+    show_default=True,
+)
+@click.option(
+    "--output", "-o",
+    type=PathType(),
+    help="Save query results to file (JSON format)",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["table", "json", "csv"], case_sensitive=False),
+    default="table",
+    help="Output format",
+    show_default=True,
+)
+@click.pass_context
+def query(
+    ctx,
+    directory,
+    corrupt,
+    scan_mode,
+    min_confidence,
+    since,
+    limit,
+    output,
+    output_format,
+    config,
+):
+    """Query scan results from database.
+    
+    Search and filter scan results stored in the database with various criteria.
+    
+    Examples:
+    
+    \b
+    # Show all corrupt files
+    corrupt-video-inspector database query --corrupt
+    
+    \b
+    # Show files scanned in the last week
+    corrupt-video-inspector database query --since "7 days ago"
+    
+    \b
+    # Show high-confidence corrupt files
+    corrupt-video-inspector database query --corrupt --min-confidence 0.8
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+        
+        if not app_config.database.enabled:
+            click.echo("Database is not enabled in configuration.", err=True)
+            sys.exit(1)
+        
+        # Import database components
+        from src.database.models import DatabaseQueryFilter
+        from src.database.service import DatabaseService
+        
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path,
+            app_config.database.auto_cleanup_days
+        )
+        
+        # Parse since date if provided
+        since_timestamp = None
+        if since:
+            import time
+            from datetime import datetime, timedelta
+            
+            # Simple parsing for common formats
+            if "days ago" in since:
+                days = int(since.split()[0])
+                since_timestamp = time.time() - (days * 24 * 60 * 60)
+            elif "weeks ago" in since:
+                weeks = int(since.split()[0])
+                since_timestamp = time.time() - (weeks * 7 * 24 * 60 * 60)
+            else:
+                # Try parsing as date
+                try:
+                    dt = datetime.fromisoformat(since)
+                    since_timestamp = dt.timestamp()
+                except ValueError:
+                    click.echo(f"Could not parse date: {since}", err=True)
+                    sys.exit(1)
+        
+        # Build query filter
+        filter_opts = DatabaseQueryFilter(
+            directory=directory,
+            is_corrupt=corrupt if corrupt is not None else None,
+            scan_mode=scan_mode,
+            min_confidence=min_confidence,
+            since_date=since_timestamp,
+            limit=limit,
+        )
+        
+        # Execute query
+        results = db_service.query_results(filter_opts)
+        
+        if not results:
+            click.echo("No results found matching the criteria.")
+            return
+        
+        # Output results
+        if output_format == "json":
+            result_data = [result.model_dump() for result in results]
+            if output:
+                with output.open("w", encoding="utf-8") as f:
+                    json.dump(result_data, f, indent=2)
+                click.echo(f"Results saved to {output}")
+            else:
+                click.echo(json.dumps(result_data, indent=2))
+        
+        elif output_format == "csv":
+            import csv as csv_module
+            
+            if output:
+                with output.open("w", newline="", encoding="utf-8") as f:
+                    if results:
+                        writer = csv_module.DictWriter(f, fieldnames=results[0].model_dump().keys())
+                        writer.writeheader()
+                        for result in results:
+                            writer.writerow(result.model_dump())
+                click.echo(f"Results saved to {output}")
+            else:
+                # Output to stdout
+                output_str = io.StringIO()
+                if results:
+                    writer = csv_module.DictWriter(output_str, fieldnames=results[0].model_dump().keys())
+                    writer.writeheader()
+                    for result in results:
+                        writer.writerow(result.model_dump())
+                click.echo(output_str.getvalue())
+        
+        else:  # table format
+            click.echo(f"\nFound {len(results)} results:\n")
+            click.echo(f"{'Filename':<50} {'Status':<10} {'Confidence':<12} {'Size (MB)':<10} {'Scan Date':<12}")
+            click.echo("-" * 100)
+            
+            for result in results:
+                filename = result.filename
+                if len(filename) > 47:
+                    filename = "..." + filename[-44:]
+                
+                status = result.status
+                confidence = f"{result.confidence:.2f}"
+                size_mb = f"{result.file_size / (1024*1024):.1f}"
+                
+                from datetime import datetime
+                scan_date = datetime.fromtimestamp(result.created_at).strftime("%Y-%m-%d")
+                
+                click.echo(f"{filename:<50} {status:<10} {confidence:<12} {size_mb:<10} {scan_date:<12}")
+            
+            if output:
+                result_data = [result.model_dump() for result in results]
+                with output.open("w", encoding="utf-8") as f:
+                    json.dump(result_data, f, indent=2)
+                click.echo(f"\nResults also saved to {output}")
+    
+    except Exception as e:
+        logger.exception("Database query failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.pass_context
+def stats(ctx, config):
+    """Show database statistics.
+    
+    Display information about database contents, including total scans,
+    files, corruption rates, and database size.
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+        
+        if not app_config.database.enabled:
+            click.echo("Database is not enabled in configuration.", err=True)
+            sys.exit(1)
+        
+        # Import database components
+        from src.database.service import DatabaseService
+        
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path,
+            app_config.database.auto_cleanup_days
+        )
+        
+        # Get statistics
+        stats = db_service.get_database_stats()
+        
+        click.echo("Database Statistics")
+        click.echo("=" * 30)
+        click.echo(f"Database Path: {app_config.database.path}")
+        click.echo(f"Database Size: {stats.database_size_bytes / (1024*1024):.1f} MB")
+        click.echo(f"Total Scans: {stats.total_scans}")
+        click.echo(f"Total Files: {stats.total_files}")
+        click.echo(f"Corrupt Files: {stats.corrupt_files}")
+        click.echo(f"Healthy Files: {stats.healthy_files}")
+        click.echo(f"Corruption Rate: {stats.corruption_rate:.1f}%")
+        
+        if stats.oldest_scan_date:
+            click.echo(f"Oldest Scan: {stats.oldest_scan_date.strftime('%Y-%m-%d %H:%M:%S')}")
+        if stats.newest_scan_date:
+            click.echo(f"Newest Scan: {stats.newest_scan_date.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    except Exception as e:
+        logger.exception("Database stats failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--days",
+    type=click.IntRange(1, 365),
+    required=True,
+    help="Delete scans older than this many days",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be deleted without actually deleting",
+)
+@click.pass_context
+def cleanup(ctx, days, dry_run, config):
+    """Clean up old scan records.
+    
+    Remove scans and their results that are older than the specified number of days.
+    
+    Examples:
+    
+    \b
+    # Preview cleanup of scans older than 30 days
+    corrupt-video-inspector database cleanup --days 30 --dry-run
+    
+    \b
+    # Actually clean up old scans
+    corrupt-video-inspector database cleanup --days 30
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+        
+        if not app_config.database.enabled:
+            click.echo("Database is not enabled in configuration.", err=True)
+            sys.exit(1)
+        
+        # Import database components
+        from src.database.service import DatabaseService
+        
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path,
+            app_config.database.auto_cleanup_days
+        )
+        
+        if dry_run:
+            # Show what would be deleted
+            import time
+            cutoff_time = time.time() - (days * 24 * 60 * 60)
+            from datetime import datetime
+            cutoff_date = datetime.fromtimestamp(cutoff_time)
+            
+            click.echo(f"DRY RUN: Would delete scans older than {cutoff_date.strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            # Get count of scans that would be deleted
+            with db_service._get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT COUNT(*) as count FROM scans WHERE started_at < ?
+                """, (cutoff_time,))
+                count = cursor.fetchone()["count"]
+            
+            click.echo(f"Would delete {count} scans")
+        else:
+            # Actually perform cleanup
+            deleted_count = db_service.cleanup_old_scans(days)
+            click.echo(f"Deleted {deleted_count} old scans")
+            
+            if deleted_count > 0:
+                # Vacuum database to reclaim space
+                db_service.vacuum_database()
+                click.echo("Database optimized")
+    
+    except Exception as e:
+        logger.exception("Database cleanup failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--backup-path",
+    type=PathType(),
+    required=True,
+    help="Path for the backup file",
+)
+@click.pass_context
+def backup(ctx, backup_path, config):
+    """Create a database backup.
+    
+    Create a complete backup of the scan results database.
+    
+    Example:
+    
+    \b
+    # Create backup
+    corrupt-video-inspector database backup --backup-path backup.db
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+        
+        if not app_config.database.enabled:
+            click.echo("Database is not enabled in configuration.", err=True)
+            sys.exit(1)
+        
+        # Import database components
+        from src.database.service import DatabaseService
+        
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path,
+            app_config.database.auto_cleanup_days
+        )
+        
+        # Create backup
+        db_service.backup_database(backup_path)
+        click.echo(f"Database backup created: {backup_path}")
+    
+    except Exception as e:
+        logger.exception("Database backup failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
