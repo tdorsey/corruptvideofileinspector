@@ -187,5 +187,8 @@ class InterfaceFactory:
         if interface_type not in self._error_handlers:
             raise KeyError(f"No error handler registered for {interface_type}")
         
-        handler_class = self._error_handlers[interface_type]
+        if interface_type not in cls._error_handlers:
+            raise KeyError(f"No error handler registered for {interface_type}")
+        
+        handler_class = cls._error_handlers[interface_type]
         return handler_class(*args, **kwargs)
