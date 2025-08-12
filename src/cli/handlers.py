@@ -567,17 +567,61 @@ class UtilityHandler(BaseHandler):
         directory: Path | str,
         recursive: bool = True,
         extensions: Sequence[str] | None = None,
-    ) -> list[VideoFile]:
+        as_paths: bool = False,
+    ) -> list[VideoFile] | list[Path]:
         """
-        Return list of video file objects.
-        Accepts Path for directory.
+        Return list of video file objects (VideoFile models by default, or paths if as_paths=True).
+        
+        Args:
+            directory: Path to directory to scan
+            recursive: Whether to scan subdirectories recursively
+            extensions: List of file extensions to include (defaults to config extensions)
+            as_paths: If True, return list[Path] for backward compatibility (deprecated)
+            
+        Returns:
+            list[VideoFile]: Video file objects with metadata (default)
+            list[Path]: Video file paths only (deprecated, when as_paths=True)
+            
+        Note:
+            The as_paths parameter is deprecated and will be removed in v0.6.0.
+            Use .path property on VideoFile objects instead.
         """
+        # Emit deprecation warning for as_paths usage
+        if as_paths:
+            import warnings
+            warnings.warn(
+                "The 'as_paths=True' parameter is deprecated and will be removed in v0.6.0. "
+                "Use the default behavior returning VideoFile objects and access .path property instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        
         # Ensure directory is a Path
         directory_path = Path(directory)
         # Pass extensions directly to get_video_files instead of mutating config
-        return self.scanner.get_video_files(
+        video_files = self.scanner.get_video_files(
             directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
         )
+        
+        # Convert to VideoFile objects if they aren't already
+        video_file_objects: list[VideoFile] = []
+        for vf in video_files:
+            if isinstance(vf, VideoFile):
+                video_file_objects.append(vf)
+            elif hasattr(vf, "path") and vf.path is not None:
+                # Create VideoFile from object with path attribute
+                path = vf.path if isinstance(vf.path, Path) else Path(vf.path)
+                video_file_objects.append(VideoFile(path=path))
+            else:
+                # Handle case where vf might be a Path already
+                path = vf if isinstance(vf, Path) else Path(str(vf))
+                video_file_objects.append(VideoFile(path=path))
+        
+        # Return paths if legacy mode requested, otherwise VideoFile objects
+        if as_paths:
+            return [vf.path for vf in video_file_objects]
+        else:
+            return video_file_objects
 
     def list_video_files_simple(
         self,
@@ -594,7 +638,7 @@ class UtilityHandler(BaseHandler):
             files = self.get_all_video_object_files(directory, recursive, extensions)
             if files:
                 for f in files:
-                    click.echo(f)
+                    click.echo(f.path)
             else:
                 click.echo("No video files found")
         except Exception:
@@ -647,19 +691,63 @@ def get_all_video_object_files(
     directory: Path | str,
     recursive: bool = True,
     extensions: Sequence[str] | None = None,
-) -> list[VideoFile]:
+    as_paths: bool = False,
+) -> list[VideoFile] | list[Path]:
     """
-    Return list of video file objects.
-    Accepts Path for directory.
+    Return list of video file objects (VideoFile models by default, or paths if as_paths=True).
+    
+    Args:
+        directory: Path to directory to scan
+        recursive: Whether to scan subdirectories recursively
+        extensions: List of file extensions to include (defaults to config extensions)
+        as_paths: If True, return list[Path] for backward compatibility (deprecated)
+        
+    Returns:
+        list[VideoFile]: Video file objects with metadata (default)
+        list[Path]: Video file paths only (deprecated, when as_paths=True)
+        
+    Note:
+        The as_paths parameter is deprecated and will be removed in v0.6.0.
+        Use .path property on VideoFile objects instead.
     """
+    # Emit deprecation warning for as_paths usage
+    if as_paths:
+        import warnings
+        warnings.warn(
+            "The 'as_paths=True' parameter is deprecated and will be removed in v0.6.0. "
+            "Use the default behavior returning VideoFile objects and access .path property instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+    
     # Ensure directory is a Path
     directory_path = Path(directory)
     config = load_config()
     scanner = VideoScanner(config)
     # Pass extensions directly to get_video_files instead of mutating config
-    return scanner.get_video_files(
+    video_files = scanner.get_video_files(
         directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
     )
+    
+    # Convert to VideoFile objects if they aren't already
+    video_file_objects: list[VideoFile] = []
+    for vf in video_files:
+        if isinstance(vf, VideoFile):
+            video_file_objects.append(vf)
+        elif hasattr(vf, "path") and vf.path is not None:
+            # Create VideoFile from object with path attribute
+            path = vf.path if isinstance(vf.path, Path) else Path(vf.path)
+            video_file_objects.append(VideoFile(path=path))
+        else:
+            # Handle case where vf might be a Path already
+            path = vf if isinstance(vf, Path) else Path(str(vf))
+            video_file_objects.append(VideoFile(path=path))
+    
+    # Return paths if legacy mode requested, otherwise VideoFile objects
+    if as_paths:
+        return [vf.path for vf in video_file_objects]
+    else:
+        return video_file_objects
 
 
 def list_video_files(
@@ -676,7 +764,7 @@ def list_video_files(
         files = get_all_video_object_files(directory, recursive, extensions)
         if files:
             for f in files:
-                click.echo(f)
+                click.echo(f.path)
         else:
             click.echo("No video files found")
     except Exception:
