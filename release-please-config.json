@@ -20,7 +20,7 @@
         {"type": "refactor", "section": "♻️ Code Refactoring", "hidden": false},
         {"type": "test", "section": "✅ Tests", "hidden": false},
         {"type": "chore", "section": "🔧 Miscellaneous Chores", "hidden": false},
-        {"type": "ci", "section": "🔧 Continuous Integration", "hidden": false}
+        {"type": "ci", "section": "👷 Continuous Integration", "hidden": false}
       ]
     }
   }
