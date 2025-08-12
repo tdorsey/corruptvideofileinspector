@@ -1,0 +1,19 @@
+---
+name: "Component/Domain"
+description: "Specify affected component or domain."
+labels: ['needs-triage']
+assignees: []
+---
+
+## Component/Domain
+- [ ] CLI
+- [ ] Core Logic
+- [ ] Configuration
+- [ ] Docker/Container
+- [ ] Security
+- [ ] Testing
+- [ ] Documentation
+- [ ] Other (describe below)
+
+## Description
+Describe the affected component or domain.

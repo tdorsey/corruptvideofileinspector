@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from src.config import load_config
 from src.config.config import AppConfig
+from src.core.credential_validator import handle_credential_error, validate_trakt_secrets
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import FileStatus, ScanMode, ScanProgress, ScanResult, ScanSummary
 from src.core.reporter import ReportService
@@ -196,7 +197,7 @@ class ScanHandler(BaseHandler):
 
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
-        with click.progressbar(  # type: ignore
+        with click.progressbar(
             length=progress.total_files,
             show_eta=True,
             show_percent=True,
@@ -373,6 +374,11 @@ class TraktHandler(BaseHandler):
             watchlist: Optional watchlist name/slug to sync to
             include_statuses: Optional list of file statuses to include
         """
+        # Validate Trakt credentials early
+        validation_result = validate_trakt_secrets()
+        if not validation_result.is_valid:
+            handle_credential_error(validation_result)
+
         try:
             logger.info(f"Syncing scan results from {scan_file} to Trakt.tv watchlist.")
 
@@ -451,11 +457,12 @@ class TraktHandler(BaseHandler):
             logger.warning(f"Failed to save sync results: {e}")
             click.echo(f"Warning: Could not save sync results: {e}", err=True)
 
-    def list_watchlists(self) -> list | None:
+    def list_watchlists(self, access_token: str | None = None) -> list | None:
         """
         List all available watchlists for the authenticated user.
 
-        Uses Trakt credentials from self.config.trakt (client_id/client_secret).
+        Args:
+            access_token: Trakt.tv OAuth access token
 
         Returns:
             List of watchlist information or None if failed
@@ -463,15 +470,10 @@ class TraktHandler(BaseHandler):
         Raises:
             ValueError: If Trakt credentials are not configured
         """
-        # Validate credentials first
-        if not self.config.trakt.client_id or not self.config.trakt.client_secret:
-            error_msg = (
-                "Trakt credentials not configured. Please set client_id and client_secret "
-                "in your configuration file, environment variables (CVI_TRAKT_CLIENT_ID, "
-                "CVI_TRAKT_CLIENT_SECRET), or Docker secrets."
-            )
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+        # Validate client credentials from config
+        secrets_validation = validate_trakt_secrets()
+        if not secrets_validation.is_valid:
+            handle_credential_error(secrets_validation)
 
         try:
             logger.info("Fetching user's watchlists from Trakt")
@@ -484,12 +486,13 @@ class TraktHandler(BaseHandler):
             self._handle_error(e, "Failed to fetch watchlists")
             return None
 
-    def view_watchlist(self, watchlist: str | None = None) -> list | None:
+    def view_watchlist(self, watchlist: str | None = None, access_token: str | None = None) -> list | None:
         """
         View items in a specific watchlist.
 
         Args:
             watchlist: Watchlist name/slug to view (None for main watchlist)
+            access_token: Trakt.tv OAuth access token
 
         Returns:
             List of watchlist items or None if failed
@@ -497,15 +500,10 @@ class TraktHandler(BaseHandler):
         Raises:
             ValueError: If Trakt credentials are not configured
         """
-        # Validate credentials first
-        if not self.config.trakt.client_id or not self.config.trakt.client_secret:
-            error_msg = (
-                "Trakt credentials not configured. Please set client_id and client_secret "
-                "in your configuration file, environment variables (CVI_TRAKT_CLIENT_ID, "
-                "CVI_TRAKT_CLIENT_SECRET), or Docker secrets."
-            )
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+        # Validate client credentials from config
+        secrets_validation = validate_trakt_secrets()
+        if not secrets_validation.is_valid:
+            handle_credential_error(secrets_validation)
 
         try:
             watchlist_name = watchlist or "Main Watchlist"
@@ -569,25 +567,17 @@ class UtilityHandler(BaseHandler):
         directory: Path | str,
         recursive: bool = True,
         extensions: Sequence[str] | None = None,
-    ) -> list[Path]:
+    ) -> list[VideoFile]:
         """
-        Return list of video file objects (paths or models).
+        Return list of video file objects.
         Accepts Path for directory.
         """
         # Ensure directory is a Path
         directory_path = Path(directory)
         # Pass extensions directly to get_video_files instead of mutating config
-        video_files = self.scanner.get_video_files(
+        return self.scanner.get_video_files(
             directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
         )
-        result: list[Path] = []
-        for vf in video_files:
-            if hasattr(vf, "path") and vf.path is not None:
-                result.append(vf.path if isinstance(vf.path, Path) else Path(vf.path))
-            else:
-                # Handle case where vf might be a Path already
-                result.append(vf if isinstance(vf, Path) else Path(str(vf)))
-        return result
 
     def list_video_files_simple(
         self,
@@ -667,10 +657,9 @@ def get_all_video_object_files(
     config = load_config()
     scanner = VideoScanner(config)
     # Pass extensions directly to get_video_files instead of mutating config
-    video_files = scanner.get_video_files(
+    return scanner.get_video_files(
         directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
     )
-    return video_files
 
 
 def list_video_files(

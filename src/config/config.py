@@ -39,11 +39,9 @@ class TraktConfig(BaseModel):
     client_secret: str = Field(default="")
     default_watchlist: str | None = Field(
         default=None,
-        description="Default watchlist name or slug for sync operations. If None, uses main watchlist."
+        description="Default watchlist name or slug for sync operations. If None, uses main watchlist.",
     )
-    include_statuses: list[FileStatus] = Field(
-        default_factory=lambda: [FileStatus.HEALTHY]
-    )
+    include_statuses: list[FileStatus] = Field(default_factory=lambda: [FileStatus.HEALTHY])
 
 
 class ScanConfig(BaseModel):
@@ -145,11 +143,10 @@ def load_config(config_path: Path | None = None, debug: bool = False) -> AppConf
     # Environment overrides for Trakt credentials
     env_trakt_client_id = os.environ.get("CVI_TRAKT_CLIENT_ID")
     if env_trakt_client_id:
-        config_data.setdefault("trakt", {})["client_id"] = env_trakt_client_id
-    
+        merged_config.setdefault("trakt", {})["client_id"] = env_trakt_client_id
     env_trakt_client_secret = os.environ.get("CVI_TRAKT_CLIENT_SECRET")
     if env_trakt_client_secret:
-        config_data.setdefault("trakt", {})["client_secret"] = env_trakt_client_secret
+        merged_config.setdefault("trakt", {})["client_secret"] = env_trakt_client_secret
 
     # Validate and create config object using Pydantic
     _CONFIG_SINGLETON = AppConfig.model_validate(merged_config)

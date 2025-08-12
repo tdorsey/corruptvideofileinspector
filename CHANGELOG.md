@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+
+#### ⚠️ **BREAKING CHANGE**: Trakt sync default behavior
+
+- **Changed default `include_statuses` for Trakt sync from `[CORRUPT, SUSPICIOUS]` to `[HEALTHY]`**
+  
+  **Impact**: Trakt sync operations will now sync healthy video files by default instead of corrupt/suspicious files.
+  
+  **Rationale**: 
+  - Users typically want to sync their working video files to Trakt watchlists
+  - Syncing corrupt files to a watchlist provides limited value
+  - Previous default was counterintuitive for most use cases
+  
+  **Migration**: To restore previous behavior, explicitly configure:
+  ```yaml
+  trakt:
+    include_statuses: [CORRUPT, SUSPICIOUS]
+  ```
+  
+  Or use CLI flag:
+  ```bash
+  corrupt-video-inspector trakt sync results.json --include-statuses CORRUPT SUSPICIOUS
+  ```
+
 - **BREAKING CHANGE**: Removed `--token` CLI option from `trakt list-watchlists` and `trakt view` commands
 - Trakt commands now use configuration-based authentication (client_id/client_secret from config file, environment variables, or Docker secrets)
 
@@ -15,8 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced error messages for missing Trakt credentials with configuration guidance
 - Runtime validation for Trakt credentials in CLI commands
 
+### Fixed
+- Updated test expectations to match new Trakt sync default behavior
+
 ### Deprecated
 - The `--token` CLI option for Trakt commands has been removed in favor of configuration-based authentication
+
+### Documentation
+- Updated CONFIG.md with Trakt configuration documentation
+- Updated trakt.md to clarify new default sync behavior
+- Added migration instructions for users requiring previous behavior
 
 ### Migration Guide
 **For users who previously used `--token` with Trakt commands:**

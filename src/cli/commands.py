@@ -490,10 +490,9 @@ def list_watchlists(output, output_format, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        watchlists = handler.list_watchlists()
+        watchlists = handler.list_watchlists(access_token=token)
 
         if not watchlists:
             click.echo("No watchlists found or failed to fetch watchlists.")
@@ -577,10 +576,9 @@ def view(watchlist, output, output_format, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        items = handler.view_watchlist(watchlist=watchlist)
+        items = handler.view_watchlist(watchlist=watchlist, access_token=token)
 
         if not items:
             watchlist_name = watchlist or "Main Watchlist"
@@ -790,7 +788,7 @@ def report(
 @click.option("--all-configs", is_flag=True, help="Show all configuration sources and values")
 @click.option("--debug", is_flag=True, help="Enable debug logging to see configuration overrides")
 @click.pass_context
-def show_config(ctx, all_configs, debug, config):
+def show_config(all_configs, debug, config):
     """
     Show current configuration settings.
 
@@ -821,9 +819,12 @@ def show_config(ctx, all_configs, debug, config):
             # Show detailed configuration
             config_dict = app_config.model_dump()
             # Mask sensitive information in output
-            if "trakt" in config_dict and "client_secret" in config_dict["trakt"]:
-                if config_dict["trakt"]["client_secret"]:
-                    config_dict["trakt"]["client_secret"] = "***MASKED***"
+            if (
+                "trakt" in config_dict
+                and "client_secret" in config_dict["trakt"]
+                and config_dict["trakt"]["client_secret"]
+            ):
+                config_dict["trakt"]["client_secret"] = "***MASKED***"
             click.echo(json.dumps(config_dict, indent=2, default=str))
         else:
             # Show key settings

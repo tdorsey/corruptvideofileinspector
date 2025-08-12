@@ -1,0 +1,116 @@
+---
+name: Pre-commit Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+  push:
+
+jobs:
+  # Code quality checks
+  quality:
+    name: Code Quality
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft)
+    uses: ./.github/workflows/actions/python-quality.yml
+    with:
+      python-version: ${{ vars.PYTHON_VERSION }}
+      check-format: true
+      check-lint: true
+      check-types: true
+
+  # Unit tests for feature branches and PRs with appropriate labels
+  other-branches:
+    name: Unit Tests (Feature Branches)
+    needs: quality
+    if: github.ref_name != 'main' && (github.event_name == 'push' || github.event_name == 'pull_request')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get PR Labels
+        id: get_labels
+        uses: ./.github/workflows/actions/get-labels.yml
+        with:
+          pr-number: ${{ github.event.pull_request.number }}
+
+      - name: Export labels to output
+        id: export_labels
+        run: |
+          echo "labels=${{ steps.get_labels.outputs.labels }}" >> "$GITHUB_OUTPUT"
+
+      - name: Check for code change labels
+        id: check_labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const CODE_LABELS = ["🐞 bug", "bug", "✨ feature", "enhancement", "🧪 test", "test"];
+            const prLabels = ${{ toJson(github.event.pull_request.labels) }};
+            const matched = CODE_LABELS.some(label =>
+              prLabels.map(l => l.name).includes(label)
+            );
+            core.setOutput("matched", matched ? "true" : "false");
+
+      - name: Run Unit Tests
+        if: steps.check_labels.outputs.matched == 'true'
+        uses: ./.github/workflows/actions/test.yml
+        with:
+          python-version: ${{ vars.PYTHON_VERSION }}
+          test-type: 'unit'
+          coverage: false
+
+      - name: Skip Unit Tests
+        if: steps.check_labels.outputs.matched != 'true'
+        run: echo "Unit tests skipped - no code change labels found"
+
+  # All tests for main branch
+  main-branch:
+    name: All Tests (Main Branch)
+    needs: quality
+    if: github.ref_name == 'main'
+    uses: ./.github/workflows/actions/test.yml
+    with:
+      python-version: ${{ vars.PYTHON_VERSION }}
+      test-type: 'all'
+      coverage: true
+
+  # Pre-commit summary
+  pre-commit-summary:
+    name: Pre-commit Summary
+    runs-on: ubuntu-latest
+    needs: [quality, other-branches, main-branch]
+    if: always()
+    steps:
+      - name: Check pre-commit results
+        run: |
+          set -e
+          echo "Quality: ${{ needs.quality.result }}"
+          echo "Unit Tests (Branches): ${{ needs.other-branches.result }}"
+          echo "All Tests (Main): ${{ needs.main-branch.result }}"
+
+          # Check if any required job failed
+          if [[ "${{ needs.quality.result }}" != "success" ]]; then
+            echo "❌ Pre-commit validation failed - Quality checks failed"
+            echo "Please fix code quality issues"
+            exit 1
+          fi
+
+          # Check branch-specific test results
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            if [[ "${{ needs.main-branch.result }}" != "success" ]]; then
+              echo "❌ Pre-commit validation failed - All tests failed on main branch"
+              echo "Please ensure all tests pass on main branch"
+              exit 1
+            fi
+          else
+            # For feature branches, only fail if tests ran and failed
+            if [[ "${{ needs.other-branches.result }}" == "failure" ]]; then
+              echo "❌ Pre-commit validation failed - Unit tests failed"
+              echo "Please fix failing unit tests"
+              exit 1
+            elif [[ "${{ needs.other-branches.result }}" == "skipped" ]]; then
+              echo "⚠️ Unit tests skipped - PR not labeled with code change labels"
+              echo "Consider adding labels: '🐞 bug', 'bug', '✨ feature', 'enhancement', '🧪 test', or 'test'"
+              echo "Only documentation or configuration changes should skip tests"
+            fi
+          fi
+
+          echo "✅ Pre-commit validation passed"
+          echo "Ready for full CI pipeline"

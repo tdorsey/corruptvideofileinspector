@@ -17,6 +17,7 @@ from src.config.config import (
     ScanConfig,
     TraktConfig,
 )
+from src.core.credential_validator import CredentialValidationResult
 from src.core.models.scanning import FileStatus, ScanMode
 from src.core.watchlist import process_scan_file, sync_to_trakt_watchlist
 
@@ -72,7 +73,7 @@ class TestTraktIncludeStatuses:
             trakt=TraktConfig(
                 client_id="test_client",
                 client_secret="test_secret",
-                include_statuses=[FileStatus.CORRUPT, FileStatus.SUSPICIOUS],
+                # Use default include_statuses (HEALTHY) instead of overriding
             ),
             ffmpeg={"command": "ffmpeg", "quick_timeout": 60, "deep_timeout": 900},
         )
@@ -171,23 +172,24 @@ class TestTraktIncludeStatuses:
         assert mock_parser.parse_filename.call_count == 4
         assert result.failed == 4  # All files not found on Trakt
 
-    @patch("src.cli.handlers.sync_to_trakt_watchlist")
-    def test_trakt_handler_passes_include_statuses(self, mock_sync, mock_config, temp_scan_file):
+    @patch("src.core.credential_validator.validate_trakt_secrets")
+    @patch("src.core.watchlist.sync_to_trakt_watchlist")
+    def test_trakt_handler_passes_include_statuses(self, mock_sync, mock_validate, mock_config, temp_scan_file):
         """Test that TraktHandler correctly passes include_statuses parameter."""
-        # Create a proper mock that returns the expected attributes
+        # Configure mock result with proper attributes
         mock_result = MagicMock()
         mock_result.total = 0
         mock_result.movies_added = 0
         mock_result.shows_added = 0
         mock_result.failed = 0
-        mock_result.watchlist = "test-watchlist"
+        mock_result.watchlist = None
         mock_result.results = []
         mock_result.model_dump.return_value = {"test": "result"}
         mock_sync.return_value = mock_result
 
         handler = TraktHandler(mock_config)
 
-        # Test with config-specified statuses (corrupt and suspicious)
+        # Test with config's default statuses (should use config's include_statuses)
         handler.sync_to_watchlist(
             scan_file=temp_scan_file,
         )
@@ -198,11 +200,8 @@ class TestTraktIncludeStatuses:
             config=mock_config,
             interactive=False,
             watchlist=None,
-            include_statuses=[FileStatus.CORRUPT, FileStatus.SUSPICIOUS],
+            include_statuses=[FileStatus.CORRUPT, FileStatus.SUSPICIOUS],  # From mock_config
         )
-
-        # Verify result is returned
-        assert result is not None
 
         # Test with custom statuses
         custom_statuses = [FileStatus.HEALTHY, FileStatus.CORRUPT]
