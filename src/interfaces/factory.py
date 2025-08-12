@@ -88,7 +88,11 @@ class InterfaceFactory:
     
     @classmethod
     def create_configuration_provider(
-        self, 
+        cls._error_handlers[interface_type] = handler_class
+    
+    @classmethod
+    def create_configuration_provider(
+        cls, 
         interface_type: InterfaceType, 
         *args, 
         **kwargs
