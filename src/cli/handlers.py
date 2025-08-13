@@ -457,12 +457,9 @@ class TraktHandler(BaseHandler):
             logger.warning(f"Failed to save sync results: {e}")
             click.echo(f"Warning: Could not save sync results: {e}", err=True)
 
-    def list_watchlists(self, access_token: str | None = None) -> list | None:
+    def list_watchlists(self) -> list | None:
         """
         List all available watchlists for the authenticated user.
-
-        Args:
-            access_token: Trakt.tv OAuth access token
 
         Returns:
             List of watchlist information or None if failed
@@ -486,13 +483,12 @@ class TraktHandler(BaseHandler):
             self._handle_error(e, "Failed to fetch watchlists")
             return None
 
-    def view_watchlist(self, watchlist: str | None = None, access_token: str | None = None) -> list | None:
+    def view_watchlist(self, watchlist: str | None = None) -> list | None:
         """
         View items in a specific watchlist.
 
         Args:
             watchlist: Watchlist name/slug to view (None for main watchlist)
-            access_token: Trakt.tv OAuth access token
 
         Returns:
             List of watchlist items or None if failed
@@ -518,22 +514,6 @@ class TraktHandler(BaseHandler):
             self._handle_error(e, f"Failed to fetch watchlist items for '{watchlist}'")
             return None
 
-    def _get_access_token_from_config(self) -> str:
-        """Get access token from configuration (config file, env vars, or Docker secrets)."""
-        # For now, this would need to be implemented based on the actual auth flow
-        # This is a placeholder - in practice, this might involve OAuth flow or stored tokens
-        client_id = self.config.trakt.client_id
-        client_secret = self.config.trakt.client_secret
-        
-        if not client_id or not client_secret:
-            raise ValueError("Trakt client_id and client_secret must be configured. Use 'make secrets-init' or set in config file.")
-        
-        # TODO: Implement actual OAuth token retrieval/refresh logic
-        # For now, raise an error indicating the limitation
-        raise NotImplementedError(
-            "Config-based authentication not fully implemented yet. "
-            "Please ensure you have valid OAuth tokens configured."
-        )
 
 
 class UtilityHandler(BaseHandler):
