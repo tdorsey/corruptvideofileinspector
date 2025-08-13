@@ -9,6 +9,7 @@ import os
 import subprocess
 import threading
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.config import load_config
@@ -23,7 +24,6 @@ from src.ffmpeg.corruption_detector import CorruptionDetector
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
-    from pathlib import Path
 
     from src.config.config import AppConfig
 
@@ -64,6 +64,7 @@ class VideoScanner:
         self.config = config
         self._shutdown_requested = False
         self._current_scan_summary: ScanSummary | None = None
+        self.corruption_detector = CorruptionDetector()
 
         logger.info("VideoScanner initialized with config: %s", config.scan)
 
@@ -521,30 +522,30 @@ class VideoScanner:
             List of scan results for each file
         """
         from src.ffmpeg.ffmpeg_client import FFmpegClient
-        
+
         # Create video files from paths
         video_files = []
         for path_str in file_paths:
             path = Path(path_str)
             if path.exists() and path.is_file():
                 video_files.append(VideoFile(path=path))
-        
+
         if not video_files:
             logger.warning("No valid video files found in provided paths")
             return []
-        
+
         # Initialize FFmpeg client
         ffmpeg_client = FFmpegClient(self.config.ffmpeg)
-        
+
         # Scan each file
         results = []
         for i, video_file in enumerate(video_files):
             if self.is_shutdown_requested:
                 logger.info("Scan cancelled by user request")
                 break
-                
+
             logger.debug("Scanning file %d/%d: %s", i + 1, len(video_files), video_file.path)
-            
+
             # Create progress update
             if progress_callback:
                 progress = ScanProgress(
@@ -555,7 +556,7 @@ class VideoScanner:
                     scan_mode=mode,
                 )
                 progress_callback(progress)
-            
+
             # Perform scan based on mode
             if mode == ScanMode.QUICK:
                 result = ffmpeg_client.inspect_quick(video_file)
@@ -571,11 +572,14 @@ class VideoScanner:
             else:
                 logger.error("Unknown scan mode: %s", mode)
                 continue
-                
+
             results.append(result)
-        
-        logger.info("File scan completed: %d files, %d corrupt", len(results), 
-                   sum(1 for r in results if r.is_corrupt))
+
+        logger.info(
+            "File scan completed: %d files, %d corrupt",
+            len(results),
+            sum(1 for r in results if r.is_corrupt),
+        )
         return results
 
     # Private methods

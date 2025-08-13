@@ -17,7 +17,6 @@ from src.config.config import (
     ScanConfig,
     TraktConfig,
 )
-from src.core.credential_validator import CredentialValidationResult
 from src.core.models.scanning import FileStatus, ScanMode
 from src.core.watchlist import process_scan_file, sync_to_trakt_watchlist
 
@@ -174,7 +173,9 @@ class TestTraktIncludeStatuses:
 
     @patch("src.core.credential_validator.validate_trakt_secrets")
     @patch("src.core.watchlist.sync_to_trakt_watchlist")
-    def test_trakt_handler_passes_include_statuses(self, mock_sync, mock_validate, mock_config, temp_scan_file):
+    def test_trakt_handler_passes_include_statuses(
+        self, mock_sync, mock_validate, mock_config, temp_scan_file
+    ):
         """Test that TraktHandler correctly passes include_statuses parameter."""
         # Configure mock result with proper attributes
         mock_result = MagicMock()

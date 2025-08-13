@@ -522,12 +522,17 @@ def list_watchlists(output, output_format, config):
         # Handle credential validation errors with user-friendly message
         click.echo(f"Configuration Error: {e}", err=True)
         click.echo("\nTo configure Trakt credentials:", err=True)
-        click.echo("1. Get your client ID and secret from https://trakt.tv/oauth/applications", err=True)
+        click.echo(
+            "1. Get your client ID and secret from https://trakt.tv/oauth/applications", err=True
+        )
         click.echo("2. Set them in your config file:", err=True)
         click.echo("   trakt:", err=True)
         click.echo("     client_id: your_client_id", err=True)
         click.echo("     client_secret: your_client_secret", err=True)
-        click.echo("3. Or set environment variables: CVI_TRAKT_CLIENT_ID and CVI_TRAKT_CLIENT_SECRET", err=True)
+        click.echo(
+            "3. Or set environment variables: CVI_TRAKT_CLIENT_ID and CVI_TRAKT_CLIENT_SECRET",
+            err=True,
+        )
         sys.exit(1)
     except Exception as e:
         logger.exception("List watchlists command failed")
@@ -616,12 +621,17 @@ def view(watchlist, output, output_format, config):
         # Handle credential validation errors with user-friendly message
         click.echo(f"Configuration Error: {e}", err=True)
         click.echo("\nTo configure Trakt credentials:", err=True)
-        click.echo("1. Get your client ID and secret from https://trakt.tv/oauth/applications", err=True)
+        click.echo(
+            "1. Get your client ID and secret from https://trakt.tv/oauth/applications", err=True
+        )
         click.echo("2. Set them in your config file:", err=True)
         click.echo("   trakt:", err=True)
         click.echo("     client_id: your_client_id", err=True)
         click.echo("     client_secret: your_client_secret", err=True)
-        click.echo("3. Or set environment variables: CVI_TRAKT_CLIENT_ID and CVI_TRAKT_CLIENT_SECRET", err=True)
+        click.echo(
+            "3. Or set environment variables: CVI_TRAKT_CLIENT_ID and CVI_TRAKT_CLIENT_SECRET",
+            err=True,
+        )
         sys.exit(1)
     except Exception as e:
         logger.exception("View watchlist command failed")
@@ -794,7 +804,7 @@ def show_config(all_configs, debug, config):
 
     Displays the effective configuration after loading from all sources
     (defaults, files, environment variables, etc.).
-    
+
     Use --debug to see detailed information about configuration overrides
     from environment variables and Docker secrets.
     """
@@ -803,7 +813,7 @@ def show_config(all_configs, debug, config):
         if debug:
             logging.getLogger("src.config.merge").setLevel(logging.DEBUG)
             handler = logging.StreamHandler()
-            handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+            handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
             logging.getLogger("src.config.merge").addHandler(handler)
             click.echo("Configuration Override Debug Log:")
             click.echo("-" * 50)
@@ -841,15 +851,19 @@ def show_config(all_configs, debug, config):
 
             if app_config.trakt.client_id:
                 click.echo(f"Trakt Client ID: {app_config.trakt.client_id[:8]}...")
-                click.echo(f"Trakt Client Secret: {'***SET***' if app_config.trakt.client_secret else 'Not set'}")
+                click.echo(
+                    f"Trakt Client Secret: {'***SET***' if app_config.trakt.client_secret else 'Not set'}"
+                )
                 if app_config.trakt.default_watchlist:
                     click.echo(f"Trakt Default Watchlist: {app_config.trakt.default_watchlist}")
-                click.echo(f"Trakt Include Statuses: {[status.value for status in app_config.trakt.include_statuses]}")
+                click.echo(
+                    f"Trakt Include Statuses: {[status.value for status in app_config.trakt.include_statuses]}"
+                )
             else:
                 click.echo("Trakt: Not configured")
 
             click.echo(f"Output Directory: {app_config.output.default_output_dir}")
-            if hasattr(app_config.scan, 'default_input_dir'):
+            if hasattr(app_config.scan, "default_input_dir"):
                 click.echo(f"Input Directory: {app_config.scan.default_input_dir}")
 
     except Exception as e:

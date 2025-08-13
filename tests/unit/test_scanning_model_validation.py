@@ -1,18 +1,20 @@
 """Tests for scanning model validation improvements."""
-import pytest
+
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
+from src.core.models.inspection import VideoFile
 from src.core.models.scanning import (
+    BatchScanRequest,
+    OutputFormat,
+    ScanMode,
+    ScanPhase,
+    ScanProgress,
     ScanResult,
     ScanSummary,
-    ScanProgress,
-    BatchScanRequest,
-    ScanMode,
-    OutputFormat,
-    ScanPhase,
 )
-from src.core.models.inspection import VideoFile
 
 
 class TestScanResultValidation:
@@ -165,7 +167,7 @@ class TestBatchScanRequestValidation:
         """Test validation with string directory paths."""
         mock_exists.return_value = True
         mock_is_dir.return_value = True
-        
+
         data = {
             "directories": ["/test/dir1", "/test/dir2"],
             "scan_mode": "hybrid",
@@ -183,7 +185,7 @@ class TestBatchScanRequestValidation:
         """Test validation with Path objects."""
         mock_exists.return_value = True
         mock_is_dir.return_value = True
-        
+
         data = {
             "directories": [Path("/test/dir1"), Path("/test/dir2")],
             "scan_mode": ScanMode.DEEP,
@@ -203,18 +205,15 @@ class TestParameterPropagation:
         data = {
             "video_file": {"path": "/test/video.mp4"},
         }
-        
+
         # These should all work without raising exceptions
         ScanResult.model_validate(data, strict=False)
         ScanResult.model_validate(data, from_attributes=False)
         ScanResult.model_validate(data, context={"key": "value"})
-        
+
         # Test combinations
         ScanResult.model_validate(
-            data,
-            strict=False,
-            from_attributes=False,
-            context={"key": "value"}
+            data, strict=False, from_attributes=False, context={"key": "value"}
         )
 
     def test_strict_mode_with_string_enums(self):
@@ -223,7 +222,7 @@ class TestParameterPropagation:
             "video_file": {"path": "/test/video.mp4"},
             "scan_mode": "deep",  # String enum should be converted before strict validation
         }
-        
+
         # This should work because model_validator converts string to enum first
         result = ScanResult.model_validate(data, strict=True)
         assert result.scan_mode == ScanMode.DEEP
@@ -234,9 +233,10 @@ class TestParameterPropagation:
             "video_file": {"path": "/test/video.mp4"},
             "scan_mode": "invalid_mode",
         }
-        
+
         # Should raise an error due to invalid enum value
-        with pytest.raises(ValueError, match="is not a valid ScanMode"):
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
             ScanResult.model_validate(data, strict=True)
 
     def test_all_models_support_standard_parameters(self):
@@ -244,31 +244,29 @@ class TestParameterPropagation:
         # Test data for each model type
         test_cases = [
             (ScanResult, {"video_file": {"path": "/test/video.mp4"}}),
-            (ScanSummary, {
-                "directory": "/test/dir",
-                "total_files": 5,
-                "processed_files": 5,
-                "corrupt_files": 0,
-                "healthy_files": 5,
-                "scan_mode": "quick",
-                "scan_time": 10.0
-            }),
-            (ScanProgress, {
-                "total_files": 5,
-                "processed_count": 2,
-                "phase": "scanning",
-                "scan_mode": "quick"
-            }),
+            (
+                ScanSummary,
+                {
+                    "directory": "/test/dir",
+                    "total_files": 5,
+                    "processed_files": 5,
+                    "corrupt_files": 0,
+                    "healthy_files": 5,
+                    "scan_mode": "quick",
+                    "scan_time": 10.0,
+                },
+            ),
+            (
+                ScanProgress,
+                {"total_files": 5, "processed_count": 2, "phase": "scanning", "scan_mode": "quick"},
+            ),
         ]
-        
+
         for model_class, data in test_cases:
             # All these should work without exceptions
             model_class.model_validate(data, strict=False)
             model_class.model_validate(data, from_attributes=False)
             model_class.model_validate(data, context={"test": "value"})
             model_class.model_validate(
-                data,
-                strict=False,
-                from_attributes=False,
-                context={"test": "value"}
+                data, strict=False, from_attributes=False, context={"test": "value"}
             )

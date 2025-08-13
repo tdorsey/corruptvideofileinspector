@@ -70,21 +70,21 @@ def load_config(config_path: Path | None = None, debug: bool = False) -> AppConf
     """
     Load configuration from a YAML file with centralized merge pipeline.
     Loads once and caches the result as a singleton.
-    
+
     Configuration precedence (highest to lowest):
     1. Environment variables (CVI_*, TRKT_*)
-    2. Docker secrets files  
+    2. Docker secrets files
     3. Configuration file (YAML)
     4. Model defaults (Pydantic)
-    
+
     Args:
         config_path: Optional path to the configuration file.
                      If None, the default config.yaml will be used.
         debug: Enable debug logging for configuration overrides
-                     
+
     Returns:
         AppConfig: Loaded configuration object with validation
-        
+
     Raises:
         FileNotFoundError: If no configuration file can be found
         ValueError: For invalid configuration (e.g., partial Trakt credentials)
@@ -135,9 +135,7 @@ def load_config(config_path: Path | None = None, debug: bool = False) -> AppConf
     # Use centralized merge pipeline
     secrets_dir = os.environ.get("CVI_SECRETS_DIR", "/run/secrets")
     merged_config = load_configuration_with_merge(
-        file_config=file_config,
-        secrets_dir=secrets_dir,
-        debug=debug
+        file_config=file_config, secrets_dir=secrets_dir, debug=debug
     )
 
     # Environment overrides for Trakt credentials
