@@ -301,8 +301,19 @@ class ConfigurationMerger:
             old_value: Previous value
             new_value: New value
         """
+        # List of fully qualified sensitive keys to always mask
+        SENSITIVE_KEYS = {
+            "trakt.client_secret",
+            "trakt.client_id",
+            # Add more fully qualified sensitive keys here as needed
+        }
         def mask_if_secret(k, v):
-            if "secret" in k.lower() or "password" in k.lower():
+            # Always mask if the key is in the sensitive set, or contains secret/password
+            if (
+                k.lower() in SENSITIVE_KEYS
+                or "secret" in k.lower()
+                or "password" in k.lower()
+            ):
                 return "<secret>"
             return v
         if self.debug:
