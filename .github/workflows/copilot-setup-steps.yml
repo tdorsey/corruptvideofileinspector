@@ -32,13 +32,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-ffmpeg
+          key: ${{ runner.os }}-apt-build-deps-v1
           restore-keys: |
             ${{ runner.os }}-apt-
 
       - name: Install system dependencies
-        if: steps.cache-apt.outputs.cache-hit == 'false'
-        run:           sudo apt-get install -y ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg build-essential
 
       - name: Install poetry
         run: pipx install poetry
@@ -46,19 +47,22 @@ jobs:
       - id: setup-python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ vars.DEFAULT_PYTHON_VERSION }}
+          python-version: ${{ vars.DEFAULT_PYTHON_VERSION || '3.13' }}
           cache: 'poetry'
 
       - name: Install dependencies (Poetry)
-        if: steps.setup-python.outputs.cache-hit == 'false'
         run: poetry install
 
-  #    - name: Install pre-commit hooks
-  #      run: make pre-commit-install
+      - name: Verify tools are available
+        run: |
+          ffmpeg -version | head -n 1
+          poetry run black --version
+          poetry run ruff --version
+          poetry run mypy --version
+          poetry run pytest --version
 
-   #   - name: Verify tools are available
-   #     run: |
-   #       black --version
-   #       ruff --version
-   #       mypy --version
-   #       pytest --version
+      - name: Setup test configuration
+        run: |
+          cp config.sample.yaml config.yaml
+
+

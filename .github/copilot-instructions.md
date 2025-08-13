@@ -222,16 +222,26 @@ Note: CLI requires a configuration file. Use the sample config from "Application
 
 ## Working Effectively
 
+### GitHub Copilot Agent Environment
+**All required dependencies are pre-installed in the Copilot agent environment:**
+- **System Dependencies**: FFmpeg and build-essential are pre-installed during agent setup
+- **Python Dependencies**: All development dependencies (black, ruff, mypy, pytest, etc.) are pre-installed
+- **No Network Access Required**: Testing, linting, and formatting work without network access
+
 ### Verified Commands (Network-Independent)
-These commands have been verified to work without network access:
+These commands work without network access in the Copilot environment:
 - `make help` - Show all available targets
 - `make clean` - Clean build artifacts
+- `make check` - Format, lint, and type check (requires pre-installed dev dependencies)
+- `make test` - Run all tests (requires pre-installed dev dependencies)
+- `make format` - Format code with black
+- `make lint` - Lint code with ruff  
+- `make type` - Type check with mypy
 - `make docker-env` - Generate Docker environment files
 - `make secrets-init` - Create Trakt secret files
-- `make setup` - Complete project setup (combines install + docker-env + secrets-init)
 - Basic Python module imports work with PYTHONPATH set to src/
 
-### Prerequisites and System Setup
+### Prerequisites and System Setup (For Local Development)
 - Install system dependencies first:
   ```bash
   sudo apt-get install -y ffmpeg build-essential
@@ -239,8 +249,8 @@ These commands have been verified to work without network access:
 - Verify FFmpeg installation: `ffmpeg -version`
 - Python 3.13+ is required and should be available
 
-### Installation and Environment Setup
-- **CRITICAL**: Network connectivity to PyPI is required. If you encounter SSL certificate errors or connection timeouts, these are environment-specific network issues that prevent package installation.
+### Installation and Environment Setup (For Local Development)
+- **Network connectivity to PyPI is required for local development**. In Copilot environments, dependencies are pre-installed.
 - Install development dependencies:
   ```bash
   make install-dev
@@ -377,8 +387,21 @@ Always manually validate changes by running these complete scenarios:
 - Check that output formats (JSON, CSV, YAML) are properly generated
 - Use `export PYTHONPATH=/path/to/repo/src` for testing without full installation
 
-### Quick Start Without Network Dependencies
-If network installation fails, you can still validate basic functionality:
+### Quick Start in Copilot Environment
+In the Copilot environment, all dependencies are pre-installed, so you can immediately start development:
+
+```bash
+# Basic functionality testing (all dependencies pre-installed)
+make docker-env && make secrets-init
+export PYTHONPATH=/path/to/repo/src
+
+# Create minimal config (copy from Application Validation section above)
+# Then test CLI functionality
+python3 cli_handler.py --config config.yaml --help
+```
+
+### Quick Start for Local Development
+If developing locally and network installation fails, you can still validate basic functionality:
 
 ```bash
 # System dependencies (requires network for initial setup)
@@ -488,49 +511,37 @@ tests/
 
 ## Critical Warnings and Timing
 
-### Network Dependencies
-- **CRITICAL**: All pip and Poetry commands require internet access to PyPI
-- **SSL Certificate Issues**: May occur in restricted network environments
-- **Fallback Strategy**: Use Docker development environment if pip fails
+### Dependencies in Copilot Environment
+- **Pre-installed**: All system dependencies (FFmpeg, build-essential) and Python dependencies are pre-installed
+- **No Network Access Required**: Testing, linting, formatting, and type checking work without network access
+- **Local Development**: Network connectivity to PyPI required only for local development environments
 
 ### Build and Test Timeouts
-- **Installation**: 2-5 minutes typically, but can take 10+ minutes in slow networks
-- **SSL Certificate Errors**: Connection failures occur within 15-30 seconds (confirmed: timeout after ~16 seconds)
 - **Testing**: Unit tests 30 sec-2 min, full test suite up to 15 minutes with video processing
-- **Docker Builds**: 5-15 minutes for multi-stage builds (fails quickly with same SSL issues)
 - **CLI Operations**: Basic commands (help, config validation) complete in <1 second
 - **Basic Scans**: Empty directory scans complete in <1 second
 - **NEVER CANCEL** long-running operations - video processing tests take time
 
 ### File Processing Notes
-- **Video Dependencies**: FFmpeg must be installed and accessible in PATH
+- **Video Dependencies**: FFmpeg is pre-installed and accessible in PATH
 - **Test Files**: Integration tests may require actual video files
 - **File Permissions**: Ensure read/write access to test directories and output paths
 
 ## Troubleshooting Common Issues
 
-### Network Connectivity Issues
-**Symptoms**: SSL certificate errors, connection timeouts to PyPI, "certificate verify failed" errors
-- **Root Cause**: Network environment blocking or filtering access to PyPI
-- **Commands Affected**: `make install-dev`, `make install`, `pip install`, Docker builds with Poetry
-- **Workarounds**:
-  - Use `pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org`
-  - Use pre-built Docker images if available
-  - Install dependencies manually from local wheels
-
-### Installation Failures
-- **Network timeouts**: Increase pip timeout: `pip install --timeout 300`
-- **SSL errors**: May indicate firewall/proxy issues - use Docker as fallback
-- **Poetry conflicts**: Clear cache: `pip cache purge` and retry
-- **Build system failures**: Ensure build-essential is installed: `sudo apt-get install build-essential`
-
-### Development Issues
+### Development Issues (Copilot Environment)
 - **Import errors**: Ensure PYTHONPATH includes src: `export PYTHONPATH=/path/to/repo/src`
-- **FFmpeg not found**: Install system package: `sudo apt-get install ffmpeg`
 - **Permission errors**: Check file/directory permissions for video processing
 - **CLI configuration errors**: CLI requires a valid config.yaml file. See "Application Validation" section for sample config
 - **Missing CLI entry point**: If cli_handler.py is empty, it has been fixed in recent updates
 - **Missing make targets**: `docker-test` and `security-scan` targets have been added as placeholders
+
+### Local Development Issues
+- **Network timeouts**: Increase pip timeout: `pip install --timeout 300`
+- **SSL errors**: May indicate firewall/proxy issues - use Docker as fallback
+- **Poetry conflicts**: Clear cache: `pip cache purge` and retry
+- **Build system failures**: Ensure build-essential is installed: `sudo apt-get install build-essential`
+- **FFmpeg not found**: Install system package: `sudo apt-get install ffmpeg`
 
 ### Testing Failures
 - **Missing test videos**: Some integration tests require actual video files
@@ -540,19 +551,20 @@ tests/
 
 ### Commands by Network Requirement
 
-**Network-Independent Commands** (Always work):
+**Network-Independent Commands** (Work in Copilot environment):
 ```bash
 make help, make clean, make docker-env, make secrets-init
+make check, make test, make format, make lint, make type  # Now work with pre-installed dependencies
 make docker-test, make security-scan  # Placeholder implementations
 PYTHONPATH=src python3 -c "import sys; print('PYTHONPATH test success')"  # Basic import test
 # CLI testing (requires config file)
 PYTHONPATH=src python3 cli_handler.py --config config.yaml --help
 ```
 
-**Network-Dependent Commands** (Require PyPI access):
+**Network-Dependent Commands** (For local development only):
 ```bash
-make install-dev, make install, make docker-build, make test
-make format, make lint, make type  # Require installed dependencies
+make install-dev, make install, make setup  # Local development setup requires PyPI access
+make docker-build  # Requires network for base image downloads
 ```
 
 Remember: This is a video processing application that requires actual video files for complete testing. Always validate with real video scanning workflows when possible.
