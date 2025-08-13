@@ -301,9 +301,13 @@ class ConfigurationMerger:
             old_value: Previous value
             new_value: New value
         """
+        def mask_if_secret(k, v):
+            if "secret" in k.lower() or "password" in k.lower():
+                return "<secret>"
+            return v
         if self.debug:
             logger.debug(
-                f"Config override [{source}]: {key} = {new_value} (was: {old_value})"
+                f"Config override [{source}]: {key} = {mask_if_secret(key, new_value)} (was: {mask_if_secret(key, old_value)})"
             )
 
 
