@@ -46,7 +46,11 @@ class InterfaceFactory:
     
     @classmethod
     def register_result_handler(
-        self, 
+        cls._config_providers[interface_type] = provider_class
+    
+    @classmethod
+    def register_result_handler(
+        cls, 
         interface_type: InterfaceType, 
         handler_class: Type[ResultHandler]
     ) -> None:
