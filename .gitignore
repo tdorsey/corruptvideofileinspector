@@ -83,6 +83,9 @@ output/
 test-larger/
 *.json
 
+# Testing artifacts
+test_copilot_setup.py
+
 # Configuration files
 config.local.yaml
 config.local.yml
