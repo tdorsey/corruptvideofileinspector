@@ -5,6 +5,8 @@ Video file operations and utilities.
 import logging
 from pathlib import Path
 
+from src.config.video_formats import get_video_extensions
+
 # Configure module logger
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ def count_all_video_files(
     Args:
         directory: Path to directory to scan
         recursive: Whether to scan subdirectories recursively
-        extensions: List of file extensions to include (defaults to common video formats)
+        extensions: List of file extensions to include (defaults to config extensions)
 
     Returns:
         int: Number of video files found
@@ -27,18 +29,8 @@ def count_all_video_files(
         Exception: If directory scanning fails
     """
     if extensions is None:
-        extensions = [
-            ".mp4",
-            ".avi",
-            ".mkv",
-            ".mov",
-            ".wmv",
-            ".flv",
-            ".webm",
-            ".m4v",
-            ".mpg",
-            ".mpeg",
-        ]
+        # Use same default extensions as config for consistency
+        extensions = get_video_extensions()
 
     logger.debug(f"Counting video files in {directory}, recursive={recursive}")
     logger.debug(f"Looking for extensions: {extensions}")
