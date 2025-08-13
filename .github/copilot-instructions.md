@@ -4,8 +4,6 @@ A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
-A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support.
-
 ## GitHub Copilot Usage Guidelines
 
 ### Primary Use Cases for GitHub Copilot Chat
@@ -105,6 +103,7 @@ This includes detailed guidance on:
 - All tests must pass before submitting changes
 - Follow existing code style and patterns in the repository
 
+>>>>>>> 90de438 (docs(copilot): merge development standards with Copilot usage guidelines (#148))
 ## Additional Resources
 
 For comprehensive guidance on specific aspects of development, refer to these specialized instruction files:
@@ -117,7 +116,7 @@ For comprehensive guidance on specific aspects of development, refer to these sp
 - **[Git & Version Control](instructions/git.md)** - Commit conventions, branching strategies, and version control
 - **[GitHub Actions & CI/CD](instructions/github-actions.md)** - Workflow patterns, marketplace actions, and automation
 - **[Project-Specific Guidelines](instructions/project-specific.md)** - Architecture, key entry points, and project-specific patterns
-- **[Workflow File Commit Instructions](../instructions/workflows.md)** - Commit message and review guidelines for workflow files
+- **[Workflow File Commit Instructions](.github/workflows/WORKFLOW_INSTRUCTIONS.md)** - Commit message and review guidelines for workflow files
 
 ## Recent Updates and Fixes
 

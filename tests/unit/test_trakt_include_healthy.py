@@ -184,7 +184,6 @@ class TestTraktIncludeStatuses:
         mock_result.failed = 0
         mock_result.watchlist = None
         mock_result.results = []
-        mock_result.model_dump.return_value = {"test": "result"}
         mock_sync.return_value = mock_result
 
         handler = TraktHandler(mock_config)
@@ -194,7 +193,6 @@ class TestTraktIncludeStatuses:
             scan_file=temp_scan_file,
         )
 
-        # Verify the sync was called with correct parameters
         mock_sync.assert_called_with(
             scan_file=str(temp_scan_file),
             config=mock_config,

@@ -599,29 +599,9 @@ class UtilityHandler(BaseHandler):
         # Ensure directory is a Path
         directory_path = Path(directory)
         # Pass extensions directly to get_video_files instead of mutating config
-        video_files = self.scanner.get_video_files(
+        return self.scanner.get_video_files(
             directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
         )
-        
-        # Convert to VideoFile objects if they aren't already
-        video_file_objects: list[VideoFile] = []
-        for vf in video_files:
-            if isinstance(vf, VideoFile):
-                video_file_objects.append(vf)
-            elif hasattr(vf, "path") and vf.path is not None:
-                # Create VideoFile from object with path attribute
-                path = vf.path if isinstance(vf.path, Path) else Path(vf.path)
-                video_file_objects.append(VideoFile(path=path))
-            else:
-                # Handle case where vf might be a Path already
-                path = vf if isinstance(vf, Path) else Path(str(vf))
-                video_file_objects.append(VideoFile(path=path))
-        
-        # Return paths if legacy mode requested, otherwise VideoFile objects
-        if as_paths:
-            return [vf.path for vf in video_file_objects]
-        else:
-            return video_file_objects
 
     def list_video_files_simple(
         self,
@@ -725,29 +705,9 @@ def get_all_video_object_files(
     config = load_config()
     scanner = VideoScanner(config)
     # Pass extensions directly to get_video_files instead of mutating config
-    video_files = scanner.get_video_files(
+    return scanner.get_video_files(
         directory_path, recursive=recursive, extensions=list(extensions) if extensions else None
     )
-    
-    # Convert to VideoFile objects if they aren't already
-    video_file_objects: list[VideoFile] = []
-    for vf in video_files:
-        if isinstance(vf, VideoFile):
-            video_file_objects.append(vf)
-        elif hasattr(vf, "path") and vf.path is not None:
-            # Create VideoFile from object with path attribute
-            path = vf.path if isinstance(vf.path, Path) else Path(vf.path)
-            video_file_objects.append(VideoFile(path=path))
-        else:
-            # Handle case where vf might be a Path already
-            path = vf if isinstance(vf, Path) else Path(str(vf))
-            video_file_objects.append(VideoFile(path=path))
-    
-    # Return paths if legacy mode requested, otherwise VideoFile objects
-    if as_paths:
-        return [vf.path for vf in video_file_objects]
-    else:
-        return video_file_objects
 
 
 def list_video_files(

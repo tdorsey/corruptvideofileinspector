@@ -25,11 +25,27 @@ This directory contains the restructured GitHub Actions workflows using an actio
 
 ## Action-Oriented Workflows (Reusable)
 
-### `actions/build.yml`
-- **Purpose**: Build Python packages and Docker images
-- **Inputs**: python-version, platforms, push, tags
-- **Outputs**: python-package-artifact, docker-image
-- **Used by**: CI pipeline, release workflows
+### pr-title-check.yml - Pull Request Validation
+Runs on pull request events (opened, edited, synchronize):
+
+- **Semantic PR Title Validation**: Uses `amannn/action-semantic-pull-request@v5` to ensure PR titles follow conventional commit format
+- **Issue Reference Validation**: Checks that PRs reference an issue number in title or body
+- **Automated Draft Conversion**: Sets PRs to draft status when validation fails
+- **User Feedback**: Posts detailed comments explaining validation failures and how to fix them
+- **Assignee Notifications**: Notifies PR assignees when validation fails
+
+**Supported PR Title Formats:**
+- `feat: add new feature (#123)`
+- `fix: resolve video corruption issue`
+- `docs: update API documentation`
+- `chore: update dependencies (#456)`
+
+**Required Issue References:**
+- In title: `feat: add feature (#123)`
+- In body: `Fixes #123`, `Closes #456`, or similar
+
+### release.yml - Release Automation
+Runs when version tags are pushed:
 
 ### `actions/test.yml`
 - **Purpose**: Execute project tests (unit, integration, or all) optionally using a pre-built Docker image
@@ -55,6 +71,7 @@ This directory contains the restructured GitHub Actions workflows using an actio
 - `DOCKER_USERNAME`: Docker Hub username
 - `DOCKER_PASSWORD`: Docker Hub password/token
 
+<<<<<<< HEAD
 ## Event-Oriented Workflows (Callers)
 
 ### `events/build-test.yml` (Main CI Pipeline)
@@ -172,11 +189,18 @@ Runs on pull request events (opened, edited, synchronize):
 - **New event workflows**: Added for better event handling and post-processing
 - **Backward compatibility**: Existing functionality is preserved with improved structure
 
+### Branch Protection
+Consider setting up branch protection rules for the main branch that require:
+- CI checks to pass
+- PR title validation to pass
+- Up-to-date branches before merging
+- At least one review for pull requests
 
 ### Workflow Permissions
 Each workflow uses minimal required permissions:
 - **ci.yml**: `contents: read` for repository access
 - **pr-title-check.yml**: `contents: read`, `pull-requests: write`, `issues: read` for PR management
+- **release.yml**: `contents: write`, `packages: write`, `id-token: write` for publishing
 - **release.yml**: `contents: write`, `packages: write`, `id-token: write` for publishing
 
 ## Development

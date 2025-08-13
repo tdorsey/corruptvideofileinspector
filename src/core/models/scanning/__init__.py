@@ -3,7 +3,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 from src.core.models.inspection import VideoFile
 
@@ -130,27 +130,27 @@ class ScanResult(BaseModel):
         data["confidence_percentage"] = self.confidence_percentage
         return data
 
-    @model_validator(mode='before')
     @classmethod
-    def _handle_legacy_input(cls, data: Any) -> Any:
-        """Handle legacy input formats and convert to modern format.
-        This validator handles:
-        - Legacy 'filename' field -> 'video_file' conversion
-        - Dict 'video_file' -> VideoFile object conversion
-        - String enum values -> proper enum conversion
-        """
-        if isinstance(data, dict):
-            data = dict(data)  # Create a copy to avoid mutating input
-            # Handle legacy filename field
-            if "filename" in data and "video_file" not in data:
-                data["video_file"] = {"path": data.pop("filename")}
-            # Convert video_file dict to VideoFile object if needed
+    def model_validate(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        from_attributes: bool | None = None,
+        context: Any | None = None,
+        **kwargs: Any,
+    ) -> "ScanResult":
+        # Accept both old and new formats
+        if isinstance(obj, dict):
+            data = dict(obj)
             if "video_file" in data and isinstance(data["video_file"], dict):
                 data["video_file"] = VideoFile.model_validate(data["video_file"])
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
-                data["scan_mode"] = ScanMode(data["scan_mode"])
-        return data
+            elif "filename" in data:
+                data["video_file"] = VideoFile(path=Path(data["filename"]))
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context, **kwargs
+        )
 
     def is_healthy(self) -> bool:
         """Check if file is healthy (not corrupt and doesn't need deep scan)."""
@@ -251,23 +251,29 @@ class ScanSummary(BaseModel):
         data["scan_mode"] = self.scan_mode.value
         return data
 
-    @model_validator(mode='before')
     @classmethod
-    def _handle_input_conversion(cls, data: Any) -> Any:
-        """Handle input data type conversions.
-        This validator handles:
-        - String directory paths -> Path objects
-        - String scan_mode values -> ScanMode enum objects
-        """
-        if isinstance(data, dict):
-            data = dict(data)  # Create a copy to avoid mutating input
-            # Convert string directory to Path
+    def model_validate(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        from_attributes: bool | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
+    ) -> "ScanSummary":
+        # Unused parameters to match pydantic signature
+        _ = by_alias, by_name
+        if isinstance(obj, dict):
+            data = dict(obj)
             if "directory" in data and not isinstance(data["directory"], Path):
                 data["directory"] = Path(data["directory"])
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+            if "scan_mode" in data and not isinstance(data["scan_mode"], ScanMode):
                 data["scan_mode"] = ScanMode(data["scan_mode"])
-        return data
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
     def get_status_summary(self) -> str:
         """Get a human-readable status summary.
@@ -392,23 +398,37 @@ class ScanProgress(BaseModel):
         data["scan_mode"] = self.scan_mode.value
         return data
 
-    @model_validator(mode='before')
     @classmethod
-    def _handle_enum_conversion(cls, data: Any) -> Any:
-        """Handle enum value conversions.
-        This validator handles:
-        - String phase values -> ScanPhase enum objects
-        - String scan_mode values -> ScanMode enum objects
-        """
-        if isinstance(data, dict):
-            data = dict(data)  # Create a copy to avoid mutating input
-            # Convert string phase to enum (if it's a string)
-            if "phase" in data and isinstance(data["phase"], str):
+    def model_validate(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        from_attributes: bool | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
+    ) -> "ScanProgress":
+        # Unused parameters to match pydantic signature
+        _ = by_alias, by_name
+        if isinstance(obj, dict):
+            data = dict(obj)
+            if (
+                "phase" in data
+                and not isinstance(data["phase"], ScanPhase)
+                and isinstance(data["phase"], str)
+            ):
                 data["phase"] = ScanPhase(data["phase"])
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+            if (
+                "scan_mode" in data
+                and not isinstance(data["scan_mode"], ScanMode)
+                and isinstance(data["scan_mode"], str)
+            ):
                 data["scan_mode"] = ScanMode(data["scan_mode"])
-        return data
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
     def get_eta_string(self) -> str:
         """Get estimated time remaining as human-readable string.
@@ -498,30 +518,41 @@ class BatchScanRequest(BaseModel):
         data["output_format"] = self.output_format.value
         return data
 
-    @model_validator(mode='before')
     @classmethod
-    def _handle_input_conversion(cls, data: Any) -> Any:
-        """Handle input data type conversions.
-        This validator handles:
-        - String directory paths -> Path objects
-        - String scan_mode values -> ScanMode enum objects
-        - String output_format values -> OutputFormat enum objects
-        """
-        if isinstance(data, dict):
-            data = dict(data)  # Create a copy to avoid mutating input
-            # Convert string directories to Path objects
+    def model_validate(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        from_attributes: bool | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
+    ) -> "BatchScanRequest":
+        # Unused parameters to match pydantic signature
+        _ = by_alias, by_name
+        if isinstance(obj, dict):
+            data = dict(obj)
             if "directories" in data:
                 data["directories"] = [
                     Path(d) if not isinstance(d, Path) else d for d in data["directories"]
                 ]
-            # Convert string scan_mode to enum (if it's a string)
-            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+            if (
+                "scan_mode" in data
+                and not isinstance(data["scan_mode"], ScanMode)
+                and isinstance(data["scan_mode"], str)
+            ):
                 data["scan_mode"] = ScanMode(data["scan_mode"])
-            # Convert string output_format to enum (if it's a string)
-            if "output_format" in data and isinstance(data["output_format"], str):
+            if (
+                "output_format" in data
+                and not isinstance(data["output_format"], OutputFormat)
+                and isinstance(data["output_format"], str)
+            ):
                 data["output_format"] = OutputFormat(data["output_format"])
-        return data
-        return data
+            obj = data
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
 
 class ScanFilter(BaseModel):

@@ -1,132 +1,16 @@
 # Configuration Guide
 
-The Corrupt Video Inspector supports flexible configuration through YAML files, environment variables, and Docker secrets with explicit precedence handling.
+The Corrupt Video Inspector supports flexible configuration through YAML files, environment variables, and Docker secrets with proper precedence handling.
 
 ## Configuration Precedence
 
 Settings are applied in this order (highest to lowest precedence):
 
-1. **Environment Variables (CVI_*, TRKT_*)** - Override everything
-2. **Docker Secrets** - Override config file and defaults  
-3. **Configuration File** - Override built-in defaults
-4. **Built-in Defaults** - Base configuration
-
-**Important**: Environment variables override Docker secrets for the same setting. Use `--debug` flag with the `show-config` command to see exactly which values are being overridden and from which source.
-
-## Environment Variables
-
-All configuration options can be overridden using environment variables with the `CVI_` prefix for general settings and `TRKT_` prefix for Trakt-specific settings:
-
-### Comprehensive Environment Variable Support
-
-#### Logging Configuration
-- `CVI_LOG_LEVEL` - Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-- `CVI_LOG_FORMAT` - Log message format
-- `CVI_LOG_DATE_FORMAT` - Date format for log messages  
-- `CVI_LOG_FILE` - Log file path
-
-#### FFmpeg Configuration
-- `CVI_FFMPEG_COMMAND` - FFmpeg command path
-- `CVI_FFMPEG_QUICK_TIMEOUT` - Quick scan timeout in seconds
-- `CVI_FFMPEG_DEEP_TIMEOUT` - Deep scan timeout in seconds
-
-#### Processing Configuration
-- `CVI_MAX_WORKERS` - Number of worker threads
-- `CVI_DEFAULT_MODE` - Default scan mode (quick, deep, hybrid)
-
-#### Output Configuration
-- `CVI_DEFAULT_JSON` - Generate JSON output by default (true/false)
-- `CVI_OUTPUT_DIR` - Default output directory
-- `CVI_OUTPUT_FILENAME` - Default output filename
-
-#### Scanning Configuration
-- `CVI_RECURSIVE` - Scan recursively (true/false)
-- `CVI_VIDEO_DIR` - Default input directory to scan
-- `CVI_SCAN_MODE` - Scan mode (quick, deep, hybrid)
-- `CVI_EXTENSIONS` - Comma-separated list of extensions (.mp4,.mkv,.avi)
-
-#### Trakt Configuration
-- `TRKT_CLIENT_ID` - Trakt.tv API client ID
-- `TRKT_CLIENT_SECRET` - Trakt.tv API client secret
-- `TRKT_DEFAULT_WATCHLIST` - Default watchlist name or slug
-- `TRKT_INCLUDE_STATUSES` - Comma-separated list of file statuses (healthy,corrupt,suspicious)
-
-#### Special Configuration
-- `CVI_SECRETS_DIR` - Docker secrets directory path (default: /run/secrets)
-
-### Type Conversion
-
-Environment variables are automatically converted to appropriate types:
-- **Booleans**: `true`, `1`, `yes`, `on` become True; everything else becomes False
-- **Integers**: Converted for timeout and worker count settings
-- **Paths**: Converted to Path objects for directory and file settings
-- **Lists**: Comma-separated values split into lists
-- **Enums**: Converted to appropriate ScanMode and FileStatus enums
-
-### Examples
-
-```bash
-# Set logging to debug and increase workers
-export CVI_LOG_LEVEL=DEBUG
-export CVI_MAX_WORKERS=16
-
-# Configure input and output directories
-export CVI_VIDEO_DIR=/path/to/videos
-export CVI_OUTPUT_DIR=/path/to/results
-
-# Configure Trakt integration
-export TRKT_CLIENT_ID=your_client_id
-export TRKT_CLIENT_SECRET=your_client_secret
-export TRKT_INCLUDE_STATUSES=healthy,suspicious
-
-# Set scan configuration
-export CVI_SCAN_MODE=deep
-export CVI_EXTENSIONS=mp4,mkv,avi
-
-# Run with environment overrides
-corrupt-video-inspector scan /videos --debug
-
-# One-time environment override
-CVI_LOG_LEVEL=ERROR CVI_MAX_WORKERS=2 corrupt-video-inspector scan /videos
-```
-
-## Docker Secrets
-
-For secure deployment, sensitive configuration can be provided via Docker secrets. **Environment variables override Docker secrets** for the same setting.
-
-### Supported Secrets
-
-- `trakt_client_id` - Trakt.tv API client ID
-- `trakt_client_secret` - Trakt.tv API client secret
-
-### Docker Compose Setup
-
-```yaml
-services:
-  video:
-    # ... other config
-    secrets:
-      - trakt_client_id
-      - trakt_client_secret
-      
-secrets:
-  trakt_client_id:
-    file: ./secrets/trakt_client_id.txt
-  trakt_client_secret:
-    file: ./secrets/trakt_client_secret.txt
-```
-
-### Creating Secret Files
-
-```bash
-# Create secret files
-echo "your_client_id" > secrets/trakt_client_id.txt
-echo "your_client_secret" > secrets/trakt_client_secret.txt
-```
-
-### Credential Validation
-
-**Important**: Trakt credentials must be provided together - both `client_id` and `client_secret` must be present, or neither. Partial credentials will cause configuration loading to fail with a clear error message.
+1. **Environment Variables** - Override everything
+2. **Command Line Flags** - Override config file and defaults  
+3. **Docker Secrets** - Override config file and defaults
+4. **Configuration File** - Override built-in defaults
+5. **Built-in Defaults** - Base configuration
 
 ## Configuration File
 
@@ -200,59 +84,6 @@ secrets:
   docker_secrets_path: "/run/secrets"
 ```
 
-## Trakt.tv Configuration
-
-The Trakt.tv integration supports flexible authentication and sync behavior configuration.
-
-### File Status Filtering
-
-The `include_statuses` option controls which files are included in Trakt sync operations:
-
-```yaml
-trakt:
-  include_statuses: ["healthy"]  # Default: only sync healthy files
-  # include_statuses: ["healthy", "suspicious"]  # Include healthy and suspicious
-  # include_statuses: ["healthy", "corrupt", "suspicious"]  # Include all files
-```
-
-**Default Behavior Change**: The default `include_statuses` is now `["healthy"]` (previously included all statuses). This change was made to:
-- Avoid adding potentially corrupted videos to watchlists by default
-- Provide safer default behavior for automatic syncing
-- Allow explicit configuration for users who want to include other statuses
-
-To override and include all file statuses (legacy behavior):
-```yaml
-trakt:
-  include_statuses: ["healthy", "corrupt", "suspicious"]
-```
-
-### Authentication Setup
-
-Trakt credentials can be configured through multiple methods:
-
-#### Method 1: Docker Secrets (Recommended)
-```bash
-# Initialize secret files
-make secrets-init
-
-# Add your credentials
-echo "your-client-id" > docker/secrets/trakt_client_id.txt
-echo "your-client-secret" > docker/secrets/trakt_client_secret.txt
-```
-
-#### Method 2: Configuration File
-```yaml
-trakt:
-  client_id: "your-client-id"
-  client_secret: "your-client-secret"
-```
-
-#### Method 3: Environment Variables
-```bash
-export CVI_TRAKT_CLIENT_ID="your-client-id"
-export CVI_TRAKT_CLIENT_SECRET="your-client-secret"
-```
-
 ## Environment Variables
 
 All configuration options can be overridden using environment variables with the `CVI_` prefix:
@@ -286,8 +117,6 @@ All configuration options can be overridden using environment variables with the
 - `CVI_TRAKT_CLIENT_SECRET` - Trakt API client secret
 - `CVI_TRAKT_DEFAULT_WATCHLIST` - Default watchlist name/slug
 - `CVI_TRAKT_INCLUDE_STATUSES` - Comma-separated file statuses (HEALTHY,CORRUPT,SUSPICIOUS)
-- `CVI_INPUT_DIR` - Default input directory to scan
-- `CVI_EXTENSIONS` - Comma-separated list of extensions (.mp4,.mkv,.avi)
 
 ### Secrets
 - `CVI_SECRETS_PATH` - Docker secrets directory path
@@ -503,7 +332,6 @@ corrupt-video-inspector trakt sync scan_results.json --token YOUR_TOKEN
 
 # 3. Sync specific file statuses
 corrupt-video-inspector trakt sync scan_results.json --token YOUR_TOKEN --include-statuses HEALTHY CORRUPT
->>>>>>> 785e46b (Update Trakt sync default behavior and documentation for include_statuses change (#103))
 ```
 
 ## Troubleshooting
@@ -515,36 +343,6 @@ corrupt-video-inspector trakt sync scan_results.json --token YOUR_TOKEN --includ
 3. **Type conversion errors**: Check data types match expected values
 4. **Permission denied**: Ensure read access to config files
 
-### Partial Trakt Credentials
-
-If you see this error:
-```
-ValueError: Partial Trakt credentials detected: client_id provided but client_secret missing
-```
-
-**Solution**: Provide both credentials or neither:
-- Set both `TRKT_CLIENT_ID` and `TRKT_CLIENT_SECRET`
-- Or remove both to disable Trakt integration
-- Or provide both via Docker secrets
-
-### Environment Variable Issues
-
-**Problem**: Environment variable not taking effect
-**Solution**: 
-1. Use `show-config --debug` to verify the variable is being read
-2. Check variable name spelling and prefix (`CVI_` or `TRKT_`)
-3. Ensure proper type conversion (use lowercase for booleans and enums)
-
-**Problem**: List environment variables not working
-**Solution**: Use comma-separated values without spaces:
-```bash
-# Correct
-export CVI_EXTENSIONS=mp4,mkv,avi
-
-# Incorrect  
-export CVI_EXTENSIONS="mp4, mkv, avi"  # spaces cause issues
-```
-
 ### Checking Current Configuration
 
 The application logs which configuration files were loaded:
@@ -553,23 +351,10 @@ The application logs which configuration files were loaded:
 INFO - Configuration loaded from: ['/app/config.yaml']
 ```
 
-Use the `--debug` flag to see detailed configuration loading:
+### Validation
+
+Use the `--verbose` flag to see detailed configuration loading:
 
 ```bash
-corrupt-video-inspector show-config --debug
+python cli_handler.py --verbose --config my-config.yaml /videos
 ```
-
-## Migration from Previous Versions
-
-### Removed Features
-
-As of this version, the following legacy features have been **permanently removed**:
-
-- **Legacy path-list return style**: The `as_paths` flag and similar backward compatibility shims are no longer supported
-- **Implicit configuration precedence**: All configuration precedence is now explicit and documented
-
-### Breaking Changes
-
-- **Trakt credential validation**: Partial credentials now cause startup failure instead of silent ignore
-- **Environment variable precedence**: Environment variables now consistently override Docker secrets
-- **Configuration validation**: Invalid configuration values now cause explicit errors instead of being silently ignored
