@@ -82,7 +82,11 @@ class InterfaceFactory:
     
     @classmethod
     def register_error_handler(
-        self, 
+        cls._progress_reporters[interface_type] = reporter_class
+    
+    @classmethod
+    def register_error_handler(
+        cls, 
         interface_type: InterfaceType, 
         handler_class: Type[ErrorHandler]
     ) -> None:
