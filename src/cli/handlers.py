@@ -567,35 +567,11 @@ class UtilityHandler(BaseHandler):
         directory: Path | str,
         recursive: bool = True,
         extensions: Sequence[str] | None = None,
-        as_paths: bool = False,
-    ) -> list[VideoFile] | list[Path]:
+    ) -> list[VideoFile]:
         """
-        Return list of video file objects (VideoFile models by default, or paths if as_paths=True).
-        
-        Args:
-            directory: Path to directory to scan
-            recursive: Whether to scan subdirectories recursively
-            extensions: List of file extensions to include (defaults to config extensions)
-            as_paths: If True, return list[Path] for backward compatibility (deprecated)
-            
-        Returns:
-            list[VideoFile]: Video file objects with metadata (default)
-            list[Path]: Video file paths only (deprecated, when as_paths=True)
-            
-        Note:
-            The as_paths parameter is deprecated and will be removed in v0.6.0.
-            Use .path property on VideoFile objects instead.
+        Return list of video file objects.
+        Accepts Path for directory.
         """
-        # Emit deprecation warning for as_paths usage
-        if as_paths:
-            import warnings
-            warnings.warn(
-                "The 'as_paths=True' parameter is deprecated and will be removed in v0.6.0. "
-                "Use the default behavior returning VideoFile objects and access .path property instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        
         # Ensure directory is a Path
         directory_path = Path(directory)
         # Pass extensions directly to get_video_files instead of mutating config
@@ -671,35 +647,11 @@ def get_all_video_object_files(
     directory: Path | str,
     recursive: bool = True,
     extensions: Sequence[str] | None = None,
-    as_paths: bool = False,
-) -> list[VideoFile] | list[Path]:
+) -> list[VideoFile]:
     """
-    Return list of video file objects (VideoFile models by default, or paths if as_paths=True).
-    
-    Args:
-        directory: Path to directory to scan
-        recursive: Whether to scan subdirectories recursively
-        extensions: List of file extensions to include (defaults to config extensions)
-        as_paths: If True, return list[Path] for backward compatibility (deprecated)
-        
-    Returns:
-        list[VideoFile]: Video file objects with metadata (default)
-        list[Path]: Video file paths only (deprecated, when as_paths=True)
-        
-    Note:
-        The as_paths parameter is deprecated and will be removed in v0.6.0.
-        Use .path property on VideoFile objects instead.
+    Return list of video file objects.
+    Accepts Path for directory.
     """
-    # Emit deprecation warning for as_paths usage
-    if as_paths:
-        import warnings
-        warnings.warn(
-            "The 'as_paths=True' parameter is deprecated and will be removed in v0.6.0. "
-            "Use the default behavior returning VideoFile objects and access .path property instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-    
     # Ensure directory is a Path
     directory_path = Path(directory)
     config = load_config()
