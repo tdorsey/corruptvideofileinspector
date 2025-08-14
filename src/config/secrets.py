@@ -26,7 +26,7 @@ def read_docker_secret(secret_name: str, secrets_dir: str = "/run/secrets") -> s
             return f.read().strip()
     except FileNotFoundError:
         logging.getLogger(__name__).warning(
-            f"Docker secret '{secret_name}' not found at {secret_path}"
+            "A Docker secret was not found at the expected location."
         )
     except Exception as e:
         logging.getLogger(__name__).warning(f"Error reading Docker secret '{secret_name}': {e}")
