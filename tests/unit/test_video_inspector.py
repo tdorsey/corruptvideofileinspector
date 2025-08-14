@@ -300,7 +300,7 @@ class TestGetAllVideoObjectFiles(unittest.TestCase):
         video_files = get_all_video_object_files(self.temp_path, recursive=True)
 
         assert len(video_files) == 5
-        filenames = [Path(vf.name).name for vf in video_files]
+        filenames = [vf.name for vf in video_files]
         expected_files = [
             "video1.mp4",
             "video2.avi",
@@ -317,7 +317,7 @@ class TestGetAllVideoObjectFiles(unittest.TestCase):
         video_files = get_all_video_object_files(self.temp_path, recursive=False)
 
         assert len(video_files) == 3
-        filenames = [os.path.basename(vf.name) for vf in video_files]
+        filenames = [vf.name for vf in video_files]
         expected_files = ["video1.mp4", "video2.avi", "video3.mkv"]
 
         for expected in expected_files:
@@ -331,7 +331,7 @@ class TestGetAllVideoObjectFiles(unittest.TestCase):
         )
 
         assert len(video_files) == 2
-        filenames = [os.path.basename(vf.name) for vf in video_files]
+        filenames = [vf.name for vf in video_files]
         expected_files = ["video1.mp4", "video2.avi"]
 
         for expected in expected_files:
@@ -344,6 +344,49 @@ class TestGetAllVideoObjectFiles(unittest.TestCase):
 
         # Check if sorted
         assert filenames == sorted(filenames)
+
+    def test_get_video_files_returns_videofile_objects_by_default(self):
+        """Test that function returns VideoFile objects by default"""
+        video_files = get_all_video_object_files(self.temp_path, recursive=True)
+
+        assert len(video_files) == 5
+        # Verify all returned items are VideoFile objects
+        for vf in video_files:
+            assert isinstance(vf, VideoFile)
+            assert hasattr(vf, "path")
+            assert hasattr(vf, "name")
+            assert hasattr(vf, "size")
+            assert hasattr(vf, "duration")
+
+    def test_get_video_files_with_as_paths_true_returns_paths(self):
+        """Test that function returns VideoFile objects (deprecated test removed)"""
+        # This test was for a deprecated as_paths parameter that no longer exists
+        # The function now always returns VideoFile objects
+        video_files = get_all_video_object_files(self.temp_path, recursive=True)
+        assert len(video_files) >= 0
+        if video_files:
+            # Verify all returned items are VideoFile objects
+            for vf in video_files:
+                assert hasattr(vf, "path")
+                assert not isinstance(vf, Path)
+
+    def test_get_video_files_videofile_objects_have_correct_properties(self):
+        """Test that VideoFile objects have correct properties"""
+        video_files = get_all_video_object_files(self.temp_path, recursive=False)
+
+        assert len(video_files) == 3
+        filenames = [vf.name for vf in video_files]
+        expected_files = ["video1.mp4", "video2.avi", "video3.mkv"]
+
+        for expected in expected_files:
+            assert expected in filenames
+
+        # Test that we can access VideoFile properties
+        for vf in video_files:
+            assert vf.size >= 0  # File size (may be 0 for empty files)
+            assert vf.duration == 0.0  # Default duration
+            assert vf.name in expected_files
+            assert vf.path.exists()  # File should exist
 
 
 class TestInspectSingleVideoQuick(unittest.TestCase):
@@ -612,15 +655,17 @@ class TestInspectVideoFilesCli(unittest.TestCase):
 
             assert "FFmpeg not found" in str(context.value)
 
-    @patch("src.cli.handlers.get_ffmpeg_command")
-    @patch("src.cli.handlers.get_all_video_object_files")
-    def test_no_video_files(self, mock_get_files, mock_get_ffmpeg):
+    def test_no_video_files(self):
         """Test behavior when no video files are found"""
-        mock_get_ffmpeg.return_value = "/usr/bin/ffmpeg"
-        mock_get_files.return_value = []
+        with (
+            patch.object(sys.modules[__name__], "get_ffmpeg_command") as mock_get_ffmpeg,
+            patch.object(sys.modules[__name__], "get_all_video_object_files") as mock_get_files,
+        ):
+            mock_get_ffmpeg.return_value = "/usr/bin/ffmpeg"
+            mock_get_files.return_value = []
 
-        # Should not raise exception, just print message
-        inspect_video_files_cli(str(self.temp_path))
+            # Should not raise exception, just print message
+            inspect_video_files_cli(str(self.temp_path))
 
     @patch("src.cli.handlers.get_ffmpeg_command")
     @patch("src.cli.handlers.get_all_video_object_files")

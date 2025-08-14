@@ -3,6 +3,7 @@ CLI command definitions using Click framework.
 """
 
 import csv
+import importlib.util
 import io
 import json
 import logging
@@ -337,16 +338,16 @@ def list_files(
 @cli.group()
 @click.pass_context
 def trakt(ctx):
-    # If no arguments are provided, show the help for the trakt group
-    if ctx.args == []:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     Trakt.tv integration commands.
 
     Sync scan results to your Trakt.tv watchlist by parsing filenames
     and matching them against Trakt's database.
     """
+    # If no subcommand is provided, show the help for the trakt group
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
 
 
 @trakt.command()
@@ -392,26 +393,25 @@ def sync(
 
     Processes a JSON scan results file and adds discovered movies and TV shows
     to your Trakt.tv watchlist using filename parsing and search matching.
+    Authentication is handled through configuration (config file, environment variables, or Docker secrets).
 
     Examples:
 
     \b
     # Basic sync to main watchlist
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
+    corrupt-video-inspector trakt sync results.json
 
     \b
     # Sync to a specific watchlist
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN \\
-        --watchlist "my-custom-list"
+    corrupt-video-inspector trakt sync results.json --watchlist "my-custom-list"
 
     \b
     # Interactive sync with output
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN \\
-        --interactive --output sync_results.json
+    corrupt-video-inspector trakt sync results.json --interactive --output sync_results.json
 
     \b
     # Dry run to see what would be synced
-    corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --dry-run
+    corrupt-video-inspector trakt sync results.json --dry-run
     """
     # If no arguments are provided, show the help for the trakt sync subcommand
     if ctx.args == [] and scan_file is None:
@@ -476,6 +476,7 @@ def list_watchlists(output, output_format, config):
     List all available watchlists for the authenticated user.
 
     Shows all custom lists and the main watchlist that the user has access to.
+    Authentication is handled through configuration (config file, environment variables, or Docker secrets).
 
     Examples:
 
@@ -492,7 +493,7 @@ def list_watchlists(output, output_format, config):
         app_config = load_config(config_path=config)
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        watchlists = handler.list_watchlists(access_token=token)
+        watchlists = handler.list_watchlists()
 
         if not watchlists:
             click.echo("No watchlists found or failed to fetch watchlists.")
@@ -518,6 +519,22 @@ def list_watchlists(output, output_format, config):
                 json.dump({"watchlists": watchlists}, f, indent=2)
             click.echo(f"\nWatchlist data saved to: {output}")
 
+    except ValueError as e:
+        # Handle credential validation errors with user-friendly message
+        click.echo(f"Configuration Error: {e}", err=True)
+        click.echo("\nTo configure Trakt credentials:", err=True)
+        click.echo(
+            "1. Get your client ID and secret from https://trakt.tv/oauth/applications", err=True
+        )
+        click.echo("2. Set them in your config file:", err=True)
+        click.echo("   trakt:", err=True)
+        click.echo("     client_id: your_client_id", err=True)
+        click.echo("     client_secret: your_client_secret", err=True)
+        click.echo(
+            "3. Or set environment variables: CVI_TRAKT_CLIENT_ID and CVI_TRAKT_CLIENT_SECRET",
+            err=True,
+        )
+        sys.exit(1)
     except Exception as e:
         logger.exception("List watchlists command failed")
         click.echo(f"Error: {e}", err=True)
@@ -546,6 +563,7 @@ def view(watchlist, output, output_format, config):
 
     Shows all movies and TV shows in the specified watchlist.
     If no watchlist is specified, shows items from the main watchlist.
+    Authentication is handled through configuration (config file, environment variables, or Docker secrets).
 
     Examples:
 
@@ -566,7 +584,7 @@ def view(watchlist, output, output_format, config):
         app_config = load_config(config_path=config)
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
-        items = handler.view_watchlist(watchlist=watchlist, access_token=token)
+        items = handler.view_watchlist(watchlist=watchlist)
 
         if not items:
             watchlist_name = watchlist or "Main Watchlist"
@@ -600,9 +618,163 @@ def view(watchlist, output, output_format, config):
                 json.dump({"watchlist": watchlist_name, "items": items}, f, indent=2)
             click.echo(f"\nWatchlist contents saved to: {output}")
 
+    except ValueError as e:
+        # Handle credential validation errors with user-friendly message
+        click.echo(f"Configuration Error: {e}", err=True)
+        click.echo("\nTo configure Trakt credentials:", err=True)
+        click.echo(
+            "1. Get your client ID and secret from https://trakt.tv/oauth/applications", err=True
+        )
+        click.echo("2. Set them in your config file:", err=True)
+        click.echo("   trakt:", err=True)
+        click.echo("     client_id: your_client_id", err=True)
+        click.echo("     client_secret: your_client_secret", err=True)
+        click.echo(
+            "3. Or set environment variables: CVI_TRAKT_CLIENT_ID and CVI_TRAKT_CLIENT_SECRET",
+            err=True,
+        )
+        sys.exit(1)
     except Exception as e:
         logger.exception("View watchlist command failed")
         click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@trakt.command()
+@click.option("--username", help="Trakt username (required for OAuth authentication)")
+@click.option(
+    "--store/--no-store",
+    default=True,
+    help="Store credentials in ~/.pytrakt.json for automatic loading",
+    show_default=True,
+)
+@click.option("--test-only", is_flag=True, help="Only test existing authentication")
+@global_options
+def auth(username, store, test_only, config):
+    """
+    Set up or test Trakt.tv OAuth authentication.
+
+    This command helps you authenticate with Trakt.tv using OAuth authentication.
+    You must provide your Trakt username for the OAuth flow.
+
+    \\b
+    Prerequisites:
+    1. Create a Trakt API application at: https://trakt.tv/oauth/applications
+    2. Store your client_id in: docker/secrets/trakt_client_id.txt
+    3. Store your client_secret in: docker/secrets/trakt_client_secret.txt
+
+    \\b
+    Examples:
+
+    \\b
+    # Test existing authentication
+    corrupt-video-inspector trakt auth --test-only
+
+    \\b
+    # Set up OAuth authentication
+    corrupt-video-inspector trakt auth --username=yourusername --store
+
+    \\b
+    # Set up without storing credentials (re-auth needed each time)
+    corrupt-video-inspector trakt auth --username=yourusername --no-store
+    """
+    # Check if PyTrakt library is available
+    if importlib.util.find_spec("trakt") is None:
+        click.echo("❌ PyTrakt library not found. Install with: pip install trakt>=3.4.0", err=True)
+        sys.exit(1)
+
+    click.echo("🎬 Trakt.tv OAuth Authentication Setup")
+    click.echo("=" * 40)
+
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Create TraktHandler for authentication operations
+        trakt_handler = TraktHandler(app_config)
+
+        # Validate that client credentials are configured
+        client_id = app_config.trakt.client_id
+        client_secret = app_config.trakt.client_secret
+
+        if not client_id or not client_secret:
+            click.echo("❌ Trakt client credentials not found in configuration", err=True)
+            click.echo("\n💡 To fix this:")
+            click.echo("   1. Visit: https://trakt.tv/oauth/applications")
+            click.echo("   2. Create a new application")
+            click.echo("   3. Copy the Client ID to: docker/secrets/trakt_client_id.txt")
+            click.echo("   4. Copy the Client Secret to: docker/secrets/trakt_client_secret.txt")
+            sys.exit(1)
+
+        click.echo("✅ Client credentials found")
+        click.echo(f"   Client ID: {client_id[:8]}...")
+
+        # Check if stored credentials exist
+        config_path = Path.home() / ".pytrakt.json"
+        if config_path.exists():
+            click.echo("✅ Stored credentials found at ~/.pytrakt.json")
+        else:
+            click.echo("i No stored credentials found")
+
+        # Test existing authentication if requested
+        if test_only:
+            click.echo("\n🧪 Testing existing authentication...")
+            try:
+                success, username = trakt_handler.test_authentication()
+                if success:
+                    click.echo(f"✅ Authentication test successful! Logged in as: {username}")
+                    return
+                click.echo("❌ Authentication test failed")
+                click.echo("Run without --test-only to authenticate.")
+                sys.exit(1)
+            except Exception as e:
+                click.echo(f"❌ Authentication test failed: {e}")
+                click.echo("Run without --test-only to authenticate.")
+                sys.exit(1)
+
+        # Perform OAuth authentication
+        if not username:
+            username = click.prompt("Enter your Trakt username", type=str)
+
+        click.echo(f"\n🔐 Starting OAuth authentication for user: {username}")
+
+        try:
+            success = trakt_handler.authenticate_oauth(username, store=store)
+
+            if not success:
+                click.echo("❌ OAuth authentication failed")
+                sys.exit(1)
+
+            # Test the authentication
+            click.echo("\n🧪 Testing authentication...")
+            success, authenticated_username = trakt_handler.test_authentication()
+            if success:
+                click.echo(f"✅ Authentication successful! Logged in as: {authenticated_username}")
+
+                if store:
+                    click.echo("✅ Credentials stored in ~/.pytrakt.json for automatic loading")
+                    click.echo("   Future commands will automatically use these credentials")
+                else:
+                    click.echo(
+                        "i Credentials not stored - you'll need to re-authenticate for each session"
+                    )
+
+                click.echo("\n🎉 Trakt authentication setup complete!")
+                click.echo("You can now use 'trakt sync' and other Trakt commands.")
+            else:
+                click.echo("❌ Authentication verification failed")
+                sys.exit(1)
+
+        except Exception as e:
+            click.echo(f"❌ OAuth authentication failed: {e}")
+            click.echo("\n💡 Troubleshooting:")
+            click.echo("   1. Verify your client credentials are correct")
+            click.echo("   2. Check your internet connection")
+            click.echo("   3. Ensure your Trakt username is correct")
+            sys.exit(1)
+
+    except Exception as e:
+        click.echo(f"❌ Configuration error: {e}")
         sys.exit(1)
 
 
@@ -763,41 +935,75 @@ def report(
 @cli.command()
 @global_options
 @click.option("--all-configs", is_flag=True, help="Show all configuration sources and values")
+@click.option("--debug", is_flag=True, help="Enable debug logging to see configuration overrides")
 @click.pass_context
-def show_config(ctx, all_configs, config):
-    # If no arguments are provided, show the help for the show-config subcommand
-    if ctx.args == []:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
+def show_config(all_configs, debug, config):
     """
     Show current configuration settings.
 
     Displays the effective configuration after loading from all sources
     (defaults, files, environment variables, etc.).
+
+    Use --debug to see detailed information about configuration overrides
+    from environment variables and Docker secrets.
     """
     try:
-        # Load configuration
-        app_config = load_config(config_path=config)
+        # Enable debug logging if requested
+        if debug:
+            logging.getLogger("src.config.merge").setLevel(logging.DEBUG)
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+            logging.getLogger("src.config.merge").addHandler(handler)
+            click.echo("Configuration Override Debug Log:")
+            click.echo("-" * 50)
+
+        # Load configuration with debug option
+        app_config = load_config(config_path=config, debug=debug)
+
+        if debug:
+            click.echo("-" * 50)
+            click.echo()
 
         if all_configs:
             # Show detailed configuration
             config_dict = app_config.model_dump()
-            click.echo(json.dumps(config_dict, indent=2))
+            # Mask sensitive information in output
+            if (
+                "trakt" in config_dict
+                and "client_secret" in config_dict["trakt"]
+                and config_dict["trakt"]["client_secret"]
+            ):
+                config_dict["trakt"]["client_secret"] = "***MASKED***"
+            click.echo(json.dumps(config_dict, indent=2, default=str))
         else:
             # Show key settings
-            click.echo("Current Configuration")
+            click.echo("Effective Configuration")
             click.echo("=" * 30)
             click.echo(f"Log Level: {app_config.logging.level}")
-            click.echo(f"Max Workers: {app_config.scan.max_workers}")
+            click.echo(f"Max Workers: {app_config.processing.max_workers}")
             click.echo(f"Default Scan Mode: {app_config.scan.mode}")
             click.echo(f"FFmpeg Command: {app_config.ffmpeg.command or 'auto-detect'}")
             click.echo(f"Quick Timeout: {app_config.ffmpeg.quick_timeout}s")
             click.echo(f"Deep Timeout: {app_config.ffmpeg.deep_timeout}s")
+            click.echo(f"Recursive Scan: {app_config.scan.recursive}")
+            click.echo(f"Extensions: {', '.join(app_config.scan.extensions)}")
 
             if app_config.trakt.client_id:
                 click.echo(f"Trakt Client ID: {app_config.trakt.client_id[:8]}...")
+                click.echo(
+                    f"Trakt Client Secret: {'***SET***' if app_config.trakt.client_secret else 'Not set'}"
+                )
+                if app_config.trakt.default_watchlist:
+                    click.echo(f"Trakt Default Watchlist: {app_config.trakt.default_watchlist}")
+                click.echo(
+                    f"Trakt Include Statuses: {[status.value for status in app_config.trakt.include_statuses]}"
+                )
             else:
-                click.echo("Trakt Client ID: Not configured")
+                click.echo("Trakt: Not configured")
+
+            click.echo(f"Output Directory: {app_config.output.default_output_dir}")
+            if hasattr(app_config.scan, "default_input_dir"):
+                click.echo(f"Input Directory: {app_config.scan.default_input_dir}")
 
     except Exception as e:
         logger.exception("Show config command failed")

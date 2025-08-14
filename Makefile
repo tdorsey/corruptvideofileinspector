@@ -126,6 +126,7 @@ test:             ## Run all tests with pytest (requires dev dependencies alread
 test-integration: ## Run integration tests only (requires dev dependencies already installed)
 	pytest tests/ -v -k "integration"
 
+
 test-cov:         ## Run tests with coverage report (requires dev dependencies already installed)
 	pytest tests/ --cov=. --cov-report=html --cov-report=term-missing
 

@@ -1,3 +1,4 @@
+import contextlib
 import time
 from enum import Enum
 from pathlib import Path
@@ -147,6 +148,10 @@ class ScanResult(BaseModel):
                 data["video_file"] = VideoFile.model_validate(data["video_file"])
             elif "filename" in data:
                 data["video_file"] = VideoFile(path=Path(data["filename"]))
+            # Handle string to enum conversion for scan_mode
+            if "scan_mode" in data and isinstance(data["scan_mode"], str):
+                with contextlib.suppress(ValueError):
+                    data["scan_mode"] = ScanMode(data["scan_mode"])
             obj = data
         return super().model_validate(
             obj, strict=strict, from_attributes=from_attributes, context=context, **kwargs

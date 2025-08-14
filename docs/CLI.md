@@ -77,11 +77,21 @@ corrupt-video-inspector scan --mode hybrid --max-workers 8 /path/to/videos
 ### Trakt Integration
 
 ```bash
+# Set up Trakt credentials first
+make secrets-init  # Create secret files
+# Edit docker/secrets/trakt_client_id.txt and trakt_client_secret.txt
+
 # Sync scan results to Trakt
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN
+corrupt-video-inspector trakt sync results.json
 
 # Interactive mode for manual selection
-corrupt-video-inspector trakt sync results.json --token YOUR_TOKEN --interactive
+corrupt-video-inspector trakt sync results.json --interactive
+
+# List available watchlists
+corrupt-video-inspector trakt list-watchlists
+
+# View watchlist contents
+corrupt-video-inspector trakt view --watchlist "my-movies"
 ```
 
 ### Configuration Management
@@ -138,6 +148,54 @@ CLI components are tested through:
 - **Unit tests**: Individual function testing in `tests/test_cli_*.py`
 - **Integration tests**: End-to-end command execution
 - **Mock testing**: External dependency isolation
+
+## API Changes and Migration
+
+### get_all_video_object_files() Return Type Change
+
+**⚠️ Breaking Change in v0.6.0**: The `get_all_video_object_files()` function now returns `list[VideoFile]` instead of `list[Path]`.
+
+#### Migration Required
+
+**Before (v0.5.x and earlier):**
+```python
+from src.cli.handlers import get_all_video_object_files
+
+# Returned list[Path]
+video_paths = get_all_video_object_files("/path/to/videos")
+for path in video_paths:
+    print(f"Video: {path}")
+    print(f"Size: {path.stat().st_size}")
+```
+
+**After (v0.6.x and later):**
+```python
+from src.cli.handlers import get_all_video_object_files
+
+# Now returns list[VideoFile] by default
+video_files = get_all_video_object_files("/path/to/videos")
+for video_file in video_files:
+    print(f"Video: {video_file.path}")
+    print(f"Size: {video_file.size}")
+    print(f"Duration: {video_file.duration}")
+    print(f"Name: {video_file.name}")
+```
+
+#### Backward Compatibility (Deprecated)
+
+For temporary compatibility, use the `as_paths=True` parameter (will be removed in v0.6.0):
+
+```python
+# Deprecated - will issue warning and be removed in v0.6.0
+video_paths = get_all_video_object_files("/path/to/videos", as_paths=True)
+```
+
+#### Benefits of New API
+
+- **Rich Metadata**: VideoFile objects provide additional properties like `size`, `duration`, `name`
+- **Type Safety**: Better type hints and IDE support
+- **Extensibility**: Easier to add new video file properties in the future
+- **Consistency**: Aligns with other parts of the API that work with VideoFile objects
 
 ## Dependencies
 

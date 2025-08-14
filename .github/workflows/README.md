@@ -172,7 +172,6 @@ Runs on pull request events (opened, edited, synchronize):
 - **New event workflows**: Added for better event handling and post-processing
 - **Backward compatibility**: Existing functionality is preserved with improved structure
 
-
 ### Workflow Permissions
 Each workflow uses minimal required permissions:
 - **ci.yml**: `contents: read` for repository access

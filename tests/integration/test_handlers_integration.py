@@ -69,7 +69,9 @@ class TestHandlersIntegration(unittest.TestCase):
     @patch("click.echo")
     def test_list_video_files_function(self, mock_echo, mock_get_files):
         """Test that list_video_files function works correctly."""
-        mock_get_files.return_value = [Path(self.test_path / "video1.mp4")]
+        from src.core.models.inspection import VideoFile
+
+        mock_get_files.return_value = [VideoFile(path=Path(self.test_path / "video1.mp4"))]
 
         # This should not raise an exception
         list_video_files(self.test_path)
