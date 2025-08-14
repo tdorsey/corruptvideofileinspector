@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 import trakt  # type: ignore[import-untyped]
 import trakt.core  # type: ignore[import-untyped]
+import trakt.users  # type: ignore[import-untyped]
 
 from src.core.models.scanning import FileStatus
 from src.core.models.watchlist import (
@@ -98,9 +99,7 @@ def test_trakt_authentication() -> tuple[bool, str | None]:
         with suppress(Exception):
             trakt.core.load_config()
 
-        from trakt import users
-
-        user = users.User.me()
+        user = trakt.users.User.me()
         logger.info(f"Authentication test successful for user: {user.username}")
         return True, user.username
 

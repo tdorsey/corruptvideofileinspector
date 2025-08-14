@@ -21,6 +21,7 @@ from src.core.models.scanning import (
     ScanSummary,
 )
 from src.ffmpeg.corruption_detector import CorruptionDetector
+from src.ffmpeg.ffmpeg_client import FFmpegClient
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -521,8 +522,6 @@ class VideoScanner:
         Returns:
             List of scan results for each file
         """
-        from src.ffmpeg.ffmpeg_client import FFmpegClient
-
         # Create video files from paths
         video_files = []
         for path_str in file_paths:
