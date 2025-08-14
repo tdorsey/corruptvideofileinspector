@@ -1,33 +1,8 @@
-# Project setup: install dependencies, create env files, and secrets
-setup: install-system-deps install-dev install docker-env secrets-init  ## Set up project: install deps, env, secrets
+# Project setup: install dependencies, create env files, and secrets (NETWORK REQUIRED)
+setup: install-system-deps install-dev install docker-env secrets-init  ## Set up project: install deps, env, secrets (requires network)
 	@echo "Project setup complete. Edit docker/secrets/* and docker/.env as needed."
 
-# Install system dependencies (FFmpeg)
-install-system-deps:  ## Install system dependencies including FFmpeg
-	@echo "Installing system dependencies..."
-	@if command -v apt-get >/dev/null 2>&1; then \
-		sudo apt-get update && sudo apt-get install -y ffmpeg; \
-	elif command -v brew >/dev/null 2>&1; then \
-		brew install ffmpeg; \
-	elif command -v yum >/dev/null 2>&1; then \
-		sudo yum install -y ffmpeg; \
-	elif command -v dnf >/dev/null 2>&1; then \
-		sudo dnf install -y ffmpeg; \
-	else \
-		echo "Package manager not detected. Please install FFmpeg manually."; \
-		echo "Ubuntu/Debian: sudo apt-get install ffmpeg"; \
-		echo "macOS: brew install ffmpeg"; \
-		echo "CentOS/RHEL: sudo yum install ffmpeg"; \
-		echo "Fedora: sudo dnf install ffmpeg"; \
-		exit 1; \
-	fi
-	@echo "System dependencies installed successfully!"
 
-# Test FFmpeg installation
-test-ffmpeg:  ## Test FFmpeg installation and show version
-	@echo "Testing FFmpeg installation..."
-	@ffmpeg -version | head -n 1 || (echo "FFmpeg not found! Run 'make install-system-deps' first." && exit 1)
-	@echo "FFmpeg is available and working!"
 # Generate required secret files for project setup
 secrets-init:  ## Create required secret files in docker/secrets
 	@mkdir -p docker/secrets
@@ -85,48 +60,75 @@ help:             ## Show this help message and list all targets.
 	@echo "Targets:"
 	@fgrep "##" Makefile | fgrep -v fgrep
 
-# Installation
-install:          ## Install the package
+# Installation (NETWORK REQUIRED)
+install:          ## Install the package (requires network)
 	pip install -e .
 
-install-dev:      ## Install package with development dependencies
+install-dev:      ## Install package with development dependencies (requires network)
 	pip install -e ".[dev]"
 	@echo "Now run 'make pre-commit-install' to set up pre-commit hooks"
 
-# Pre-commit hooks
-pre-commit-install: ## Install pre-commit hooks
+install-system-deps:  ## Install system dependencies including FFmpeg (requires network)
+	@echo "Installing system dependencies..."
+	@if command -v apt-get >/dev/null 2>&1; then \
+		sudo apt-get update && sudo apt-get install -y ffmpeg; \
+	elif command -v brew >/dev/null 2>&1; then \
+		brew install ffmpeg; \
+	elif command -v yum >/dev/null 2>&1; then \
+		sudo yum install -y ffmpeg; \
+	elif command -v dnf >/dev/null 2>&1; then \
+		sudo dnf install -y ffmpeg; \
+	else \
+		echo "Package manager not detected. Please install FFmpeg manually."; \
+		echo "Ubuntu/Debian: sudo apt-get install ffmpeg"; \
+		echo "macOS: brew install ffmpeg"; \
+		echo "CentOS/RHEL: sudo yum install ffmpeg"; \
+		echo "Fedora: sudo dnf install ffmpeg"; \
+		exit 1; \
+	fi
+	@echo "System dependencies installed successfully!"
+
+# Test FFmpeg installation
+test-ffmpeg:  ## Test FFmpeg installation and show version
+	@echo "Testing FFmpeg installation..."
+	@ffmpeg -version | head -n 1 || (echo "FFmpeg not found! Run 'make install-system-deps' first." && exit 1)
+	@echo "FFmpeg is available and working!"
+
+# Pre-commit hooks (requires pre-installed dependencies)
+pre-commit-install: ## Install pre-commit hooks (requires dev dependencies already installed)
 	pre-commit install
 	@echo "Pre-commit hooks installed successfully!"
 
-pre-commit-run:   ## Run pre-commit on all files
+pre-commit-run:   ## Run pre-commit on all files (requires dev dependencies already installed)
 	pre-commit run --all-files
 	pytest tests/ -v -m "unit"
 
 # NOTE: Mark all unit tests with @pytest.mark.unit in your test files.
 
-# Code quality
-format:           ## Format code with black and lint
+# Code quality (requires pre-installed dependencies)
+format:           ## Format code with black and lint (requires dev dependencies already installed)
 	black .
 	$(MAKE) lint
 
-lint:             ## Lint code with ruff
+lint:             ## Lint code with ruff (requires dev dependencies already installed)
 	ruff check --fix --unsafe-fixes .
 
-type:             ## Type check with mypy
+type:             ## Type check with mypy (requires dev dependencies already installed)
 	mypy .
 
-check: format type ## Run all checks (format, lint, type)
+check: format type ## Run all checks (format, lint, type) (requires dev dependencies already installed)
 	@echo "All checks passed!"
 
-# Testing
-test:             ## Run all tests with pytest
+# Testing (requires pre-installed dependencies)
+test:             ## Run all tests with pytest (requires dev dependencies already installed)
 	pytest tests/ -v
 
-test-integration: ## Run integration tests only
+test-integration: ## Run integration tests only (requires dev dependencies already installed)
 	pytest tests/ -v -k "integration"
 
-test-cov:         ## Run tests with coverage report
-	pytest tests/ --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml
+
+test-cov:         ## Run tests with coverage report (requires dev dependencies already installed)
+	pytest tests/ --cov=. --cov-report=html --cov-report=term-missing
 
 # Build and clean
 clean:            ## Clean build artifacts
