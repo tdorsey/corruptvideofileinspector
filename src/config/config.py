@@ -34,6 +34,14 @@ class OutputConfig(BaseModel):
     default_filename: str = Field(default="scan_results.json")
 
 
+class DatabaseConfig(BaseModel):
+    enabled: bool = Field(default=False, description="Enable database storage for scan results")
+    path: Path = Field(
+        default=Path("scan_results.db"), description="Path to SQLite database file"
+    )
+    auto_create: bool = Field(default=True, description="Automatically create database if it doesn't exist")
+
+
 class TraktConfig(BaseModel):
     client_id: str = Field(default="")
     client_secret: str = Field(default="")
@@ -61,6 +69,7 @@ class AppConfig(BaseModel):
     output: OutputConfig
     scan: ScanConfig
     trakt: TraktConfig
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
 
 _CONFIG_SINGLETON: AppConfig | None = None

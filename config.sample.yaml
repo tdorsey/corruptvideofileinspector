@@ -40,3 +40,9 @@ trakt:
   default_watchlist: null
   include_statuses:
     - "healthy"
+
+# Database configuration for storing scan results
+database:
+  enabled: false  # Set to true to enable database storage
+  path: "scan_results.db"  # Path to SQLite database file
+  auto_create: true  # Automatically create database if it doesn't exist
