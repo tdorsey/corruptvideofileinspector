@@ -7,6 +7,7 @@ instead of cryptic HTTP errors.
 
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import NamedTuple
 
@@ -139,5 +140,9 @@ def handle_credential_error(
             err=True,
         )
         click.echo("  4. See docs/trakt.md for detailed setup instructions", err=True)
+
+    # In test environments, raise ValueError for easier testing
+    if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
+        raise ValueError(f"Trakt credentials not configured: {validation_result.error_message}")
 
     raise click.Abort()

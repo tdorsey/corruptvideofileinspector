@@ -236,13 +236,16 @@ class TestParameterPropagation:
 
         # Should raise an error due to invalid enum value
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             ScanResult.model_validate(data, strict=True)
 
     def test_all_models_support_standard_parameters(self):
         """Test that all models support standard Pydantic parameters."""
+        from typing import Any
+
         # Test data for each model type
-        test_cases = [
+        test_cases: list[tuple[type[ScanResult | ScanSummary | ScanProgress], dict[str, Any]]] = [
             (ScanResult, {"video_file": {"path": "/test/video.mp4"}}),
             (
                 ScanSummary,

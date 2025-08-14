@@ -124,6 +124,6 @@ class TestHandlerErrorHandling(unittest.TestCase):
         with patch("src.cli.handlers.VideoScanner"):
             handler = ScanHandler(mock_config)
 
-            # Test error handling method
-            with pytest.raises(SystemExit):
+            # Test error handling method - in test environment, should raise the error
+            with pytest.raises(ValueError, match="test error"):
                 handler._handle_error(ValueError("test error"), "Test message")

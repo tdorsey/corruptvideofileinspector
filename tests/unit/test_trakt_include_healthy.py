@@ -172,11 +172,16 @@ class TestTraktIncludeStatuses:
         assert result.failed == 4  # All files not found on Trakt
 
     @patch("src.core.credential_validator.validate_trakt_secrets")
-    @patch("src.core.watchlist.sync_to_trakt_watchlist")
+    @patch("src.cli.handlers.sync_to_trakt_watchlist")
     def test_trakt_handler_passes_include_statuses(
         self, mock_sync, mock_validate, mock_config, temp_scan_file
     ):
         """Test that TraktHandler correctly passes include_statuses parameter."""
+        # Configure mock validation to pass
+        mock_validation_result = MagicMock()
+        mock_validation_result.is_valid = True
+        mock_validate.return_value = mock_validation_result
+
         # Configure mock result with proper attributes
         mock_result = MagicMock()
         mock_result.total = 0
@@ -199,7 +204,7 @@ class TestTraktIncludeStatuses:
             config=mock_config,
             interactive=False,
             watchlist=None,
-            include_statuses=[FileStatus.CORRUPT, FileStatus.SUSPICIOUS],  # From mock_config
+            include_statuses=[FileStatus.HEALTHY],  # From mock_config default
         )
 
         # Test with custom statuses

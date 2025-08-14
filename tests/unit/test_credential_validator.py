@@ -7,7 +7,6 @@ Tests missing secrets files, empty files, and valid credentials scenarios.
 import tempfile
 from pathlib import Path
 
-import click
 import pytest
 
 from src.core.credential_validator import (
@@ -198,7 +197,7 @@ class TestHandleCredentialError:
         handle_credential_error(valid_result)
 
     def test_handle_invalid_credentials_raises_abort(self):
-        """Test that invalid credentials raise click.Abort."""
+        """Test that invalid credentials raise ValueError in test environment."""
         invalid_result = CredentialValidationResult(
             is_valid=False,
             error_message="Test error message",
@@ -206,7 +205,7 @@ class TestHandleCredentialError:
             empty_files=["trakt_client_secret.txt"],
         )
 
-        with pytest.raises(click.Abort):
+        with pytest.raises(ValueError, match="Trakt credentials not configured"):
             handle_credential_error(invalid_result)
 
     def test_handle_error_with_verbose_output(self):
@@ -218,6 +217,6 @@ class TestHandleCredentialError:
             empty_files=["trakt_client_secret.txt"],
         )
 
-        # We can't easily test the click.echo output, but we can ensure it raises Abort
-        with pytest.raises(click.Abort):
+        # We can't easily test the click.echo output, but we can ensure it raises ValueError
+        with pytest.raises(ValueError, match="Trakt credentials not configured"):
             handle_credential_error(invalid_result, verbose=True)

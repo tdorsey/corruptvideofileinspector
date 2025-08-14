@@ -1,5 +1,6 @@
 """
-Unit tests for configuration merge functionality.
+Unit tests for configuration mer        # Convert back to string for use with merger methods that expect str
+        self.secrets_dir_str: str = str(self.secrets_dir) functionality.
 
 Tests the centralized configuration loading and merge pipeline including:
 - Environment variable overrides
@@ -28,12 +29,17 @@ class TestConfigurationMerger(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
+        from typing import Any
+
         self.temp_dir = tempfile.mkdtemp()
-        self.secrets_dir = os.path.join(self.temp_dir, "secrets")
-        os.makedirs(self.secrets_dir, exist_ok=True)
+        self.secrets_dir = Path(self.temp_dir) / "secrets"
+        self.secrets_dir.mkdir(parents=True, exist_ok=True)
+
+        # Convert back to string for use with merger methods that expect str
+        self.secrets_dir_str: str = str(self.secrets_dir)
 
         # Base configuration for testing
-        self.base_config = {
+        self.base_config: dict[str, Any] = {
             "logging": {"level": "INFO"},
             "ffmpeg": {"command": "/usr/bin/ffmpeg", "quick_timeout": 60},
             "processing": {"max_workers": 4, "default_mode": "quick"},
@@ -55,7 +61,7 @@ class TestConfigurationMerger(unittest.TestCase):
     def test_merge_configurations_basic(self):
         """Test basic configuration merging without overrides."""
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         # Should return the base config unchanged
         assert result["logging"]["level"] == "INFO"
@@ -66,7 +72,7 @@ class TestConfigurationMerger(unittest.TestCase):
     def test_environment_variable_overrides(self):
         """Test that environment variables override configuration."""
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         # Environment variables should override config
         assert result["logging"]["level"] == "DEBUG"
@@ -79,7 +85,7 @@ class TestConfigurationMerger(unittest.TestCase):
     def test_boolean_conversions(self):
         """Test boolean environment variable conversions."""
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         assert not result["scan"]["recursive"]
         assert result["output"]["default_json"]
@@ -88,7 +94,7 @@ class TestConfigurationMerger(unittest.TestCase):
     def test_list_and_path_conversions(self):
         """Test list and path environment variable conversions."""
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         assert result["scan"]["extensions"] == ["mp4", "avi", "mkv"]
         assert result["output"]["default_output_dir"] == Path("/custom/output")
@@ -97,7 +103,7 @@ class TestConfigurationMerger(unittest.TestCase):
     def test_empty_list_conversion(self):
         """Test that empty string creates empty list (explicit override)."""
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         # Empty string should create empty list, not None
         assert result["scan"]["extensions"] == []
@@ -106,7 +112,7 @@ class TestConfigurationMerger(unittest.TestCase):
     def test_scan_mode_conversion(self):
         """Test ScanMode enum conversion."""
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         assert result["scan"]["mode"] == ScanMode.DEEP
 
@@ -114,7 +120,7 @@ class TestConfigurationMerger(unittest.TestCase):
     def test_file_status_list_conversion(self):
         """Test FileStatus enum list conversion."""
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         expected = [FileStatus.HEALTHY, FileStatus.CORRUPT]
         assert result["trakt"]["include_statuses"] == expected
@@ -131,7 +137,7 @@ class TestConfigurationMerger(unittest.TestCase):
             f.write("client456")
 
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         assert result["trakt"]["client_secret"] == "secret123"
         assert result["trakt"]["client_id"] == "client456"
@@ -149,7 +155,7 @@ class TestConfigurationMerger(unittest.TestCase):
             f.write("file_id")
 
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         # Environment variables should win
         assert result["trakt"]["client_secret"] == "env_secret"
@@ -163,8 +169,8 @@ class TestConfigurationMerger(unittest.TestCase):
 
         merger = ConfigurationMerger()
 
-        with pytest.raises(ValueError) as context:
-            merger.merge_configurations(config, self.secrets_dir)
+        with pytest.raises(ValueError, match="Partial Trakt credentials") as context:
+            merger.merge_configurations(config, self.secrets_dir_str)
 
         assert "Partial Trakt credentials" in str(context.value)
 
@@ -172,7 +178,7 @@ class TestConfigurationMerger(unittest.TestCase):
     def test_complete_trakt_credentials_success(self):
         """Test that complete Trakt credentials pass validation."""
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         # Should not raise an exception
         assert result["trakt"]["client_id"] == "env_id"
@@ -183,14 +189,14 @@ class TestConfigurationMerger(unittest.TestCase):
         merger = ConfigurationMerger(debug=True)
 
         # This should not raise an exception
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
         assert result is not None
 
     @patch.dict(os.environ, {"CVI_MAX_WORKERS": "invalid"})
     def test_invalid_integer_conversion(self):
         """Test handling of invalid integer values."""
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         # Invalid integer should be kept as string and let Pydantic handle validation
         assert result["processing"]["max_workers"] == "invalid"
@@ -199,7 +205,7 @@ class TestConfigurationMerger(unittest.TestCase):
     def test_invalid_scan_mode_conversion(self):
         """Test handling of invalid scan mode values."""
         merger = ConfigurationMerger()
-        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir)
+        result = merger.merge_configurations(self.base_config.copy(), self.secrets_dir_str)
 
         # Invalid scan mode should be kept as string
         assert result["scan"]["mode"] == "invalid_mode"
@@ -211,7 +217,7 @@ class TestConfigurationMerger(unittest.TestCase):
         merger = ConfigurationMerger()
 
         with patch.dict(os.environ, {"CVI_LOG_LEVEL": "DEBUG", "CVI_FFMPEG_QUICK_TIMEOUT": "30"}):
-            result = merger.merge_configurations(config, self.secrets_dir)
+            result = merger.merge_configurations(config, self.secrets_dir_str)
 
         # Both original and new values should be present
         assert result["logging"]["level"] == "DEBUG"
@@ -225,17 +231,17 @@ class TestConfigurationMerger(unittest.TestCase):
         merger = ConfigurationMerger()
 
         # No environment override - None should be preserved
-        result = merger.merge_configurations(config, self.secrets_dir)
+        result = merger.merge_configurations(config, self.secrets_dir_str)
         assert result["scan"]["extensions"] is None
 
         # Empty string environment override - should become empty list
         with patch.dict(os.environ, {"CVI_EXTENSIONS": ""}):
-            result = merger.merge_configurations(config, self.secrets_dir)
+            result = merger.merge_configurations(config, self.secrets_dir_str)
             assert result["scan"]["extensions"] == []
 
     def test_load_configuration_with_merge_function(self):
         """Test the convenience function load_configuration_with_merge."""
-        result = load_configuration_with_merge(self.base_config.copy(), self.secrets_dir)
+        result = load_configuration_with_merge(self.base_config.copy(), self.secrets_dir_str)
 
         assert result["logging"]["level"] == "INFO"
         assert result["processing"]["max_workers"] == 4
@@ -244,7 +250,7 @@ class TestConfigurationMerger(unittest.TestCase):
     def test_load_configuration_with_merge_debug(self):
         """Test the convenience function with debug enabled."""
         result = load_configuration_with_merge(
-            self.base_config.copy(), self.secrets_dir, debug=True
+            self.base_config.copy(), self.secrets_dir_str, debug=True
         )
 
         # Environment override should be applied

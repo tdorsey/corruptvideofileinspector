@@ -538,7 +538,7 @@ class VideoScanner:
         ffmpeg_client = FFmpegClient(self.config.ffmpeg)
 
         # Scan each file
-        results = []
+        results: list[ScanResult] = []
         for i, video_file in enumerate(video_files):
             if self.is_shutdown_requested:
                 logger.info("Scan cancelled by user request")
@@ -548,16 +548,18 @@ class VideoScanner:
 
             # Create progress update
             if progress_callback:
+                corrupt_count = sum(1 for r in results if r.is_corrupt)
                 progress = ScanProgress(
                     current_file=str(video_file.path),
                     processed_files=i,
                     total_files=len(video_files),
-                    corrupt_files=sum(1 for r in results if r.is_corrupt),
+                    corrupt_files=corrupt_count,
                     scan_mode=mode,
                 )
                 progress_callback(progress)
 
             # Perform scan based on mode
+            result = None
             if mode == ScanMode.QUICK:
                 result = ffmpeg_client.inspect_quick(video_file)
             elif mode == ScanMode.DEEP:
@@ -569,11 +571,13 @@ class VideoScanner:
                     result = ffmpeg_client.inspect_deep(video_file)
             elif mode == ScanMode.FULL:
                 result = ffmpeg_client.inspect_full(video_file)
-            else:
-                logger.error("Unknown scan mode: %s", mode)
+            else:  # pragma: no cover
+                logger.error("Unknown scan mode: %s", mode)  # type: ignore[unreachable]
+                # Skip this file if unknown mode
                 continue
 
-            results.append(result)
+            if result is not None:
+                results.append(result)
 
         logger.info(
             "File scan completed: %d files, %d corrupt",

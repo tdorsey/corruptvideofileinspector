@@ -61,7 +61,6 @@ class ConfigurationMerger:
         # Validate and post-process
         return self._post_process_configuration(merged_config)
 
-
     def _apply_secrets_layer(self, config: dict[str, Any], secrets_dir: str) -> dict[str, Any]:
         """Apply Docker secrets to configuration.
 
@@ -143,12 +142,12 @@ class ConfigurationMerger:
         for env_var, (section, key) in env_mappings.items():
             env_value = os.environ.get(env_var)
             if env_value is not None:
-                merged = self._apply_env_override(merged, section, key, env_value, env_var)
+                merged = self._apply_env_override(merged, section, key, env_value)
 
         return merged
 
     def _apply_env_override(
-        self, config: dict[str, Any], section: str, key: str, env_value: str, env_var: str
+        self, config: dict[str, Any], section: str, key: str, env_value: str
     ) -> dict[str, Any]:
         """Apply a single environment variable override.
 
@@ -157,7 +156,6 @@ class ConfigurationMerger:
             section: Configuration section name
             key: Configuration key name
             env_value: Environment variable value
-            env_var: Environment variable name (for logging)
 
         Returns:
             Modified configuration dictionary
@@ -178,7 +176,7 @@ class ConfigurationMerger:
 
         return config
 
-    def _convert_env_value(self, key: str, value: str) -> Any:
+    def _convert_env_value(self, key: str, value: str) -> Any:  # noqa: PLR0911
         """Convert environment variable string to appropriate type.
 
         Args:
@@ -188,32 +186,41 @@ class ConfigurationMerger:
         Returns:
             Converted value with appropriate type
         """
-        # Boolean conversions
-        if key in ("recursive", "default_json"):
-            return value.lower() in ("true", "1", "yes", "on")
+        # Define conversion mapping
+        conversion_map = {
+            # Boolean keys
+            **{
+                k: lambda v: v.lower() in ("true", "1", "yes", "on")
+                for k in ("recursive", "default_json")
+            },
+            # Path keys
+            **{
+                k: lambda v: Path(v) if v else None
+                for k in ("command", "file", "default_output_dir", "default_input_dir")
+            },
+        }
 
-        # Integer conversions
+        # Check if we have a direct mapping
+        if key in conversion_map:
+            return conversion_map[key](value)
+
+        # Handle complex conversions that need special logic
         if key in ("max_workers", "quick_timeout", "deep_timeout"):
+            # Integer conversions
             try:
                 return int(value)
             except ValueError:
                 logger.warning(f"Invalid integer value for {key}: {value}, using as string")
                 return value
-
-        # Path conversions
-        if key in ("command", "file", "default_output_dir", "default_input_dir"):
-            return Path(value) if value else None
-
-        # Scan mode conversion
-        if key == "mode":
+        elif key == "mode":
+            # Scan mode conversion
             try:
                 return ScanMode(value.lower())
             except ValueError:
                 logger.warning(f"Invalid scan mode: {value}, using as string")
                 return value
-
-        # List conversions (comma-separated)
-        if key in ("extensions", "include_statuses"):
+        elif key in ("extensions", "include_statuses"):
+            # List conversions (comma-separated)
             if not value.strip():
                 return []  # Explicit empty list
             if key == "include_statuses":
@@ -225,9 +232,9 @@ class ConfigurationMerger:
                         logger.warning(f"Invalid file status: {status_str}")
                 return statuses
             return [ext.strip() for ext in value.split(",") if ext.strip()]
-
-        # Default: return as string
-        return value
+        else:
+            # Default: return as string
+            return value
 
     def _post_process_configuration(self, config: dict[str, Any]) -> dict[str, Any]:
         """Post-process configuration after all merges.

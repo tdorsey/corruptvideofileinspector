@@ -130,4 +130,5 @@ class TestCorruptionDetector:
         analysis = detector.analyze_ffmpeg_output(output, exit_code=1, is_quick_scan=False)
         assert analysis.is_corrupt
         assert analysis.confidence > 0.5
+        assert analysis.detected_issues is not None
         assert len(analysis.detected_issues) > 1

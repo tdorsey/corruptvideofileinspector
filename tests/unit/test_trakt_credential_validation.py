@@ -79,7 +79,7 @@ class TestTraktCredentialValidation:
         """Test that list_watchlists raises ValueError when credentials are missing."""
         handler = TraktHandler(mock_config_missing_credentials)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Trakt credentials not configured") as exc_info:
             handler.list_watchlists()
 
         error_message = str(exc_info.value)
@@ -91,7 +91,7 @@ class TestTraktCredentialValidation:
         """Test that list_watchlists raises ValueError when only partial credentials provided."""
         handler = TraktHandler(mock_config_partial_credentials)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Trakt credentials not configured") as exc_info:
             handler.list_watchlists()
 
         error_message = str(exc_info.value)
@@ -101,7 +101,7 @@ class TestTraktCredentialValidation:
         """Test that view_watchlist raises ValueError when credentials are missing."""
         handler = TraktHandler(mock_config_missing_credentials)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Trakt credentials not configured") as exc_info:
             handler.view_watchlist()
 
         error_message = str(exc_info.value)
@@ -112,7 +112,7 @@ class TestTraktCredentialValidation:
         """Test that view_watchlist raises ValueError when only partial credentials provided."""
         handler = TraktHandler(mock_config_partial_credentials)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Trakt credentials not configured") as exc_info:
             handler.view_watchlist()
 
         error_message = str(exc_info.value)
@@ -124,7 +124,7 @@ class TestTraktCredentialValidation:
         """Test that error message includes all configuration options."""
         handler = TraktHandler(mock_config_missing_credentials)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Trakt credentials not configured") as exc_info:
             handler.list_watchlists()
 
         error_message = str(exc_info.value)

@@ -1,29 +1,46 @@
-# Trakt.tv Integration
+# Trakt.tv Integration Guide
 
-This document describes how to use the Trakt.tv watchlist integration feature to automatically sync your video collection to your Trakt.tv watchlist.
+This comprehensive guide covers everything you need to know about integrating the Corrupt Video Inspector with Trakt.tv, including authentication setup, watchlist management, and advanced usage scenarios.
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Prerequisites](#prerequisites)
+3. [Authentication Setup](#authentication-setup)
+4. [Basic Usage](#basic-usage)
+5. [Watchlist Management](#watchlist-management)
+6. [Advanced Features](#advanced-features)
+7. [Workflow Examples](#workflow-examples)
+8. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-The Trakt watchlist integration allows you to automatically sync your video collection to your Trakt.tv watchlist by processing JSON scan results from the video inspector and using intelligent filename parsing.
+The Trakt.tv integration allows you to automatically sync your video collection to your Trakt.tv watchlists by processing JSON scan results from the video inspector and using intelligent filename parsing. The integration supports multiple watchlists, interactive selection, and various authentication methods.
 
 ## Prerequisites
 
-1. **Trakt.tv Account**: You need a Trakt.tv account
-2. **API Application**: Create a Trakt.tv API application to get client credentials
-3. **JSON Scan Results**: Video inspection results in JSON format
+1. **Trakt.tv Account**: You need a free account at [trakt.tv](https://trakt.tv)
+2. **API Application**: Create a Trakt.tv API application to get your credentials
+3. **JSON Scan Results**: Video inspection results in JSON format from the video scanner
 
 ## Authentication Setup
 
-The application now uses config-based authentication with Docker secrets support instead of CLI tokens.
+### Step 1: Create a Trakt API Application
 
-### Getting Trakt API Credentials
+1. Visit [Trakt OAuth Applications](https://trakt.tv/oauth/applications)
+2. Log in to your Trakt account
+3. Click "New Application"
+4. Fill out the form:
+   - **Name**: Choose a name (e.g., "Corrupt Video Inspector")
+   - **Description**: Brief description of your app
+   - **Redirect URI**: For OAuth auth, you can use `urn:ietf:wg:oauth:2.0:oob`
+   - **Permissions**: Select what you need (at minimum: scopes for reading and writing to watchlists)
 
-1. Visit [Trakt.tv API Apps](https://trakt.tv/oauth/applications)
-2. Create a new application or use an existing one
-3. Note your **Client ID** and **Client Secret**
-4. Keep your credentials secure and never commit them to source code
+5. After creating the application, note down:
+   - **Client ID**: A long alphanumeric string
+   - **Client Secret**: Another long alphanumeric string
 
-### Setting up Authentication
+### Step 2: Configure Your Credentials
 
 #### Option 1: Docker Secrets (Recommended)
 
@@ -32,8 +49,8 @@ The application now uses config-based authentication with Docker secrets support
 make secrets-init
 
 # Add your credentials to the secret files
-echo "your-client-id" > docker/secrets/trakt_client_id.txt
-echo "your-client-secret" > docker/secrets/trakt_client_secret.txt
+echo "YOUR_CLIENT_ID_HERE" > docker/secrets/trakt_client_id.txt
+echo "YOUR_CLIENT_SECRET_HERE" > docker/secrets/trakt_client_secret.txt
 ```
 
 #### Option 2: Configuration File
@@ -54,36 +71,102 @@ export CVI_TRAKT_CLIENT_ID="your-client-id"
 export CVI_TRAKT_CLIENT_SECRET="your-client-secret"
 ```
 
-## Usage
+### Step 3: Authenticate with Trakt
+
+The project includes built-in Trakt authentication commands in the main CLI:
+
+#### OAuth Authentication (Recommended)
+
+```bash
+# Run the authentication setup with OAuth method
+corrupt-video-inspector trakt auth --username=YOUR_TRAKT_USERNAME --store
+
+# This will:
+# 1. Validate your client credentials
+# 2. Display an authorization URL to visit
+# 3. Prompt you to enter the authorization code
+# 4. Test the authentication
+# 5. Store credentials in ~/.pytrakt.json for future use
+```
+
+#### Authentication without storing credentials
+
+```bash
+# Run authentication without storing credentials
+corrupt-video-inspector trakt auth --username=YOUR_TRAKT_USERNAME --no-store
+
+# You'll need to re-authenticate each time you use Trakt features
+```
+
+#### CLI Authentication Options
+
+- `--username`: Your Trakt username (required)
+- `--store/--no-store`: Whether to save credentials to `~/.pytrakt.json`
+- `--config`: Path to config file (default: `config.yaml`)
+- `--test-only`: Only test existing authentication without re-authenticating
+
+### Step 4: Test Your Authentication
+
+After setting up authentication, test it:
+
+```bash
+# Test existing authentication
+corrupt-video-inspector trakt auth --test-only
+
+# Should show: "✅ Already authenticated! No setup needed."
+```
+
+## Basic Usage
 
 ### Basic Sync Command
 
 ```bash
-# Sync scan results to Trakt watchlist
+# Sync scan results to your main Trakt watchlist
 corrupt-video-inspector trakt sync scan_results.json
 ```
 
-### Advanced Options
+### Enhanced Sync with Watchlist Selection
 
 ```bash
-# Sync to a specific watchlist with interactive mode
-corrupt-video-inspector trakt sync scan_results.json \
-  --watchlist "my-movies" \
-  --interactive \
-  --output sync_results.json
+# Sync to main watchlist (default behavior)
+corrupt-video-inspector trakt sync results.json
+
+# Sync to a specific custom list
+corrupt-video-inspector trakt sync results.json --watchlist "my-movies"
+
+# Interactive sync to a custom list
+corrupt-video-inspector trakt sync results.json --watchlist "to-watch" --interactive
 ```
 
-### List and View Commands
+## Watchlist Management
+
+### List Available Watchlists
 
 ```bash
-# List all your watchlists
+# List watchlists in table format
 corrupt-video-inspector trakt list-watchlists
 
-# View contents of a specific watchlist
-corrupt-video-inspector trakt view --watchlist "my-collection"
+# List watchlists in JSON format
+corrupt-video-inspector trakt list-watchlists --format json
 
-# Save watchlist data to file
-corrupt-video-inspector trakt view --watchlist "favorites" --output watchlist.json
+# Save watchlist info to file
+corrupt-video-inspector trakt list-watchlists --output watchlists.json
+```
+
+### View Watchlist Contents
+
+```bash
+# View main watchlist
+corrupt-video-inspector trakt view
+
+# View a specific custom list
+corrupt-video-inspector trakt view --watchlist "my-movies"
+
+# View watchlist in JSON format
+corrupt-video-inspector trakt view --watchlist "favorites" --format json
+
+# Save watchlist contents to file
+corrupt-video-inspector trakt view --watchlist "to-watch" --output contents.json
 ```
 
 ### Command Options
@@ -103,6 +186,8 @@ corrupt-video-inspector trakt view --watchlist "favorites" --output watchlist.js
 - `--watchlist` / `-w`: Watchlist to view (default: main watchlist)
 - `--format`: Output format (table or json)
 - `--output` / `-o`: Save results to file
+
+## Advanced Features
 
 ### Interactive Mode
 
@@ -131,29 +216,76 @@ Found 2 matches for 'The Matrix' (1999):
 Select an option [0-2]: 1
 ```
 
-## Supported Filename Formats
+### Advanced Sync Options
+
+```bash
+# Sync to a specific watchlist with interactive mode
+corrupt-video-inspector trakt sync scan_results.json \
+  --watchlist "my-movies" \
+  --interactive \
+  --output sync_results.json
+```
+
+### Supported Filename Formats
 
 The filename parser automatically detects and handles various naming conventions:
 
-### Movies
+#### Movies
 - `The.Matrix.1999.1080p.BluRay.x264.mkv` → "The Matrix" (1999)
 - `Inception (2010) [1080p].mp4` → "Inception" (2010)
 - `Movie.Name.2023.mkv` → "Movie Name" (2023)
 - `Unknown.Movie.mkv` → "Unknown Movie" (no year)
 
-### TV Shows
+#### TV Shows
 - `Breaking.Bad.S01E01.Pilot.2008.mkv` → "Breaking Bad" S1E1 (2008)
 - `Game.of.Thrones.1x01.Winter.Is.Coming.mkv` → "Game of Thrones" S1E1
 - `Show Name S02E05 Episode Title.mp4` → "Show Name" S2E5
 
-## Process Files by Status
+## Workflow Examples
+
+### Discover and organize your collection:
+1. **Set up Trakt credentials**: `make secrets-init` (then edit secret files)
+2. **Scan your video library**: `corrupt-video-inspector scan /path/to/videos --output scan_results.json`
+3. **List your watchlists**: `corrupt-video-inspector trakt list-watchlists`
+4. **Sync healthy files to a specific list**: `corrupt-video-inspector trakt sync scan_results.json --watchlist "my-collection"`
+5. **View what was added**: `corrupt-video-inspector trakt view --watchlist "my-collection"`
+
+### Multiple watchlists for different categories:
+1. **Sync movies to a movies list**: `corrupt-video-inspector trakt sync movie_scan.json --watchlist "my-movies"`
+2. **Sync TV shows to a shows list**: `corrupt-video-inspector trakt sync tv_scan.json --watchlist "my-shows"`
+3. **Use interactive mode for uncertain matches**: `corrupt-video-inspector trakt sync uncertain_scan.json --watchlist "to-review" --interactive`
+
+### Complete workflow example:
+```bash
+# Set up authentication (one-time setup)
+make secrets-init
+echo "your-client-id" > docker/secrets/trakt_client_id.txt
+echo "your-client-secret" > docker/secrets/trakt_client_secret.txt
+
+# Authenticate with Trakt
+corrupt-video-inspector trakt auth --username=YOUR_USERNAME --store
+
+# Scan your video collection
+corrupt-video-inspector scan /path/to/videos --output scan_results.json
+
+# List available watchlists
+corrupt-video-inspector trakt list-watchlists
+
+# Sync to specific watchlists
+corrupt-video-inspector trakt sync scan_results.json --watchlist "my-collection" --verbose
+
+# Review what was added
+corrupt-video-inspector trakt view --watchlist "my-collection"
+```
+
+### Process Files by Status
 
 **Default Behavior (v2.0+)**: The tool processes **healthy files only** by default, as specified by the `include_statuses` configuration. This ensures only working video files are synced to your Trakt watchlist.
 
 **Configurable Processing**: You can customize which file statuses to include:
 
 - **HEALTHY**: Non-corrupt files that passed video inspection
-- **CORRUPT**: Files identified as corrupted during scanning  
+- **CORRUPT**: Files identified as corrupted during scanning
 - **SUSPICIOUS**: Files that require deep scanning or show corruption indicators
 
 **Configuration Examples**:
@@ -329,8 +461,8 @@ Success rate: 66.7%
    ```bash
    # Add your Trakt client ID
    echo "your_client_id_here" > docker/secrets/trakt_client_id.txt
-   
-   # Add your Trakt client secret  
+
+   # Add your Trakt client secret
    echo "your_client_secret_here" > docker/secrets/trakt_client_secret.txt
    ```
 
@@ -345,13 +477,31 @@ Success rate: 66.7%
   ```bash
   corrupt-video-inspector trakt list-watchlists --token YOUR_ACCESS_TOKEN
   corrupt-video-inspector trakt view --token YOUR_ACCESS_TOKEN
-  ```
+## Troubleshooting
 
-**Getting Trakt API Credentials**:
-1. Visit [Trakt.tv API Apps](https://trakt.tv/oauth/applications)
-2. Create a new application
-3. Note your **Client ID** and **Client Secret** 
-4. Generate an OAuth access token for API calls
+### Common Issues
+
+1. **"Client ID not found"**
+   - Check that `docker/secrets/trakt_client_id.txt` exists and contains your Client ID
+   - Ensure no extra whitespace or newlines
+
+2. **"Invalid client credentials"**
+   - Verify your Client ID and Secret are correct
+   - Check that your Trakt application is active
+
+3. **"Authentication failed"**
+   - Ensure you're using the correct Trakt username
+   - Verify the authorization code was copied correctly
+   - Your credentials may be invalid or expired - try re-running the authentication process
+
+4. **"Watchlist not found"**
+   - Use `corrupt-video-inspector trakt list-watchlists` to see available watchlists
+   - Check the exact spelling and case of the watchlist name
+   - Some watchlists may use slugs (URL-friendly names) instead of display names
+
+5. **"Rate limit exceeded"**
+   - The tool automatically handles rate limits with backoff
+   - If issues persist, wait a few minutes before retrying
 
 ### Debug Mode
 
@@ -361,12 +511,44 @@ Use `--verbose` flag for detailed logging to help diagnose issues:
 corrupt-video-inspector trakt sync scan.json --verbose
 ```
 
+### Manual Configuration
+
+If the authentication commands don't work, you can manually configure PyTrakt:
+
+```python
+import trakt
+import trakt.core
+
+# For OAuth authentication
+trakt.core.AUTH_METHOD = trakt.core.OAUTH_AUTH
+trakt.init('your_username', client_id='your_client_id',
+          client_secret='your_client_secret', store=True)
+```
+
+## Technical Details
+
+- **Backward Compatibility**: All existing sync operations continue to work exactly as before
+- **Main Watchlist**: Use `--watchlist "watchlist"` or omit the parameter to sync to the main watchlist
+- **Custom Lists**: Use the slug or name of any custom list you have access to
+- **Error Handling**: Clear error messages for invalid watchlist names or API issues
+- **Output Formats**: Both table and JSON formats supported for all view commands
+- **Authentication**: Uses config-based authentication with Docker secrets support
+- **File Status Filtering**: Default behavior only syncs healthy files (configurable via `include_statuses`)
+
 ## API Rate Limits
 
 The tool respects Trakt API rate limits:
 - Automatic retry with exponential backoff
 - Built-in delay handling for 429 responses
 - Graceful degradation during high-traffic periods
+
+## Security Best Practices
+
+1. **Never commit secrets**: Keep Client ID/Secret out of version control
+2. **Use environment variables**: For production deployments
+3. **Rotate credentials**: Periodically regenerate your API keys
+4. **Limit permissions**: Only grant necessary scopes to your application
+5. **Store securely**: Use proper secret management in production
 
 ## Integration with Video Inspector
 
@@ -377,3 +559,10 @@ This tool is designed to work seamlessly with the existing video inspector:
 corrupt-video-inspector scan /videos --output scan_results.json && \
 corrupt-video-inspector trakt sync scan_results.json
 ```
+
+## Related Documentation
+
+For more details on related topics, see:
+- [CLI Usage Guide](CLI.md)
+- [Configuration Reference](config.md)
+- [Docker Integration](DOCKER_TRAKT.md)

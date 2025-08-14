@@ -11,10 +11,12 @@ from __future__ import annotations
 import json
 import logging
 import re
+from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 import trakt  # type: ignore[import-untyped]
+import trakt.core  # type: ignore[import-untyped]
 
 from src.core.models.scanning import FileStatus
 from src.core.models.watchlist import (
@@ -44,9 +46,67 @@ def init_trakt_client(config: AppConfig) -> None:
         config: AppConfig instance with trakt credentials
     """
     try:
-        trakt.init(client_id=config.trakt.client_id, client_secret=config.trakt.client_secret)
+        trakt.core.init(client_id=config.trakt.client_id, client_secret=config.trakt.client_secret)
     except Exception:
         logger.exception("Failed to initialize Trakt client")
+
+
+def authenticate_trakt_oauth(
+    username: str, client_id: str, client_secret: str, store: bool = True
+) -> bool:
+    """
+    Authenticate with Trakt.tv using OAuth method.
+
+    Args:
+        username: Trakt username
+        client_id: Trakt API client ID
+        client_secret: Trakt API client secret
+        store: Whether to store credentials in ~/.pytrakt.json
+
+    Returns:
+        True if authentication successful, False otherwise
+
+    Raises:
+        Exception: If authentication fails
+    """
+    try:
+        # Set OAuth auth method
+        trakt.core.AUTH_METHOD = trakt.core.OAUTH_AUTH
+
+        # Initialize with OAuth
+        trakt.core.init(username, client_id=client_id, client_secret=client_secret, store=store)
+
+        logger.info(f"OAuth authentication successful for user: {username}")
+        return True
+
+    except Exception:
+        logger.exception("OAuth authentication failed")
+        raise
+
+
+def test_trakt_authentication() -> tuple[bool, str | None]:
+    """
+    Test if Trakt authentication is working by making a simple API call.
+
+    Returns:
+        Tuple of (success: bool, username: str | None)
+        If successful, returns (True, username)
+        If failed, returns (False, None)
+    """
+    try:
+        # Try to load stored config first
+        with suppress(Exception):
+            trakt.core.load_config()
+
+        from trakt import users
+
+        user = users.User.me()
+        logger.info(f"Authentication test successful for user: {user.username}")
+        return True, user.username
+
+    except Exception as e:
+        logger.warning(f"Authentication test failed: {e}")
+        return False, None
 
 
 class TraktAPI:
@@ -63,7 +123,7 @@ class TraktAPI:
         self.client_secret = config.trakt.client_secret
 
         # Set up Trakt authentication using client credentials
-        trakt.configuration.defaults.client(id=self.client_id, secret=self.client_secret)
+        trakt.core.init(client_id=self.client_id, client_secret=self.client_secret)
         logger.info("TraktAPI client initialized with client credentials")
 
     def search_movie(self, title: str, year: int | None = None, limit: int = 1) -> list[TraktItem]:

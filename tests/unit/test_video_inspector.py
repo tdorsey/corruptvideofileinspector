@@ -367,7 +367,7 @@ class TestGetAllVideoObjectFiles(unittest.TestCase):
         if video_files:
             # Verify all returned items are VideoFile objects
             for vf in video_files:
-                assert hasattr(vf, 'path')
+                assert hasattr(vf, "path")
                 assert not isinstance(vf, Path)
 
     def test_get_video_files_videofile_objects_have_correct_properties(self):
@@ -655,15 +655,17 @@ class TestInspectVideoFilesCli(unittest.TestCase):
 
             assert "FFmpeg not found" in str(context.value)
 
-    @patch("src.cli.handlers.get_ffmpeg_command")
-    @patch("src.cli.handlers.get_all_video_object_files")
-    def test_no_video_files(self, mock_get_files, mock_get_ffmpeg):
+    def test_no_video_files(self):
         """Test behavior when no video files are found"""
-        mock_get_ffmpeg.return_value = "/usr/bin/ffmpeg"
-        mock_get_files.return_value = []
+        with (
+            patch.object(sys.modules[__name__], "get_ffmpeg_command") as mock_get_ffmpeg,
+            patch.object(sys.modules[__name__], "get_all_video_object_files") as mock_get_files,
+        ):
+            mock_get_ffmpeg.return_value = "/usr/bin/ffmpeg"
+            mock_get_files.return_value = []
 
-        # Should not raise exception, just print message
-        inspect_video_files_cli(str(self.temp_path))
+            # Should not raise exception, just print message
+            inspect_video_files_cli(str(self.temp_path))
 
     @patch("src.cli.handlers.get_ffmpeg_command")
     @patch("src.cli.handlers.get_all_video_object_files")
