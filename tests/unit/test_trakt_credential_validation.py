@@ -3,6 +3,7 @@ Tests for Trakt credential validation in CLI commands.
 """
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -75,8 +76,21 @@ class TestTraktCredentialValidation:
             ),
         )
 
-    def test_list_watchlists_missing_credentials(self, mock_config_missing_credentials):
+    @patch("src.cli.handlers.validate_trakt_secrets")
+    def test_list_watchlists_missing_credentials(
+        self, mock_validate, mock_config_missing_credentials
+    ):
         """Test that list_watchlists raises ValueError when credentials are missing."""
+        # Mock validation to return invalid result with old-style error message
+        from src.core.credential_validator import CredentialValidationResult
+
+        mock_validate.return_value = CredentialValidationResult(
+            is_valid=False,
+            error_message="client_id and client_secret must be provided via configuration file, environment variables (CVI_TRAKT_CLIENT_ID, CVI_TRAKT_CLIENT_SECRET), or Docker secrets",
+            missing_files=[],
+            empty_files=[],
+        )
+
         handler = TraktHandler(mock_config_missing_credentials)
 
         with pytest.raises(ValueError, match="Trakt credentials not configured") as exc_info:
@@ -87,8 +101,21 @@ class TestTraktCredentialValidation:
         assert "client_id and client_secret" in error_message
         assert "environment variables" in error_message
 
-    def test_list_watchlists_partial_credentials(self, mock_config_partial_credentials):
+    @patch("src.cli.handlers.validate_trakt_secrets")
+    def test_list_watchlists_partial_credentials(
+        self, mock_validate, mock_config_partial_credentials
+    ):
         """Test that list_watchlists raises ValueError when only partial credentials provided."""
+        # Mock validation to return invalid result
+        from src.core.credential_validator import CredentialValidationResult
+
+        mock_validate.return_value = CredentialValidationResult(
+            is_valid=False,
+            error_message="client_id and client_secret must be provided via configuration file, environment variables, or Docker secrets",
+            missing_files=[],
+            empty_files=[],
+        )
+
         handler = TraktHandler(mock_config_partial_credentials)
 
         with pytest.raises(ValueError, match="Trakt credentials not configured") as exc_info:
@@ -97,8 +124,21 @@ class TestTraktCredentialValidation:
         error_message = str(exc_info.value)
         assert "Trakt credentials not configured" in error_message
 
-    def test_view_watchlist_missing_credentials(self, mock_config_missing_credentials):
+    @patch("src.cli.handlers.validate_trakt_secrets")
+    def test_view_watchlist_missing_credentials(
+        self, mock_validate, mock_config_missing_credentials
+    ):
         """Test that view_watchlist raises ValueError when credentials are missing."""
+        # Mock validation to return invalid result
+        from src.core.credential_validator import CredentialValidationResult
+
+        mock_validate.return_value = CredentialValidationResult(
+            is_valid=False,
+            error_message="client_id and client_secret must be provided via configuration file, environment variables (CVI_TRAKT_CLIENT_ID, CVI_TRAKT_CLIENT_SECRET), or Docker secrets",
+            missing_files=[],
+            empty_files=[],
+        )
+
         handler = TraktHandler(mock_config_missing_credentials)
 
         with pytest.raises(ValueError, match="Trakt credentials not configured") as exc_info:
@@ -108,8 +148,21 @@ class TestTraktCredentialValidation:
         assert "Trakt credentials not configured" in error_message
         assert "client_id and client_secret" in error_message
 
-    def test_view_watchlist_partial_credentials(self, mock_config_partial_credentials):
+    @patch("src.cli.handlers.validate_trakt_secrets")
+    def test_view_watchlist_partial_credentials(
+        self, mock_validate, mock_config_partial_credentials
+    ):
         """Test that view_watchlist raises ValueError when only partial credentials provided."""
+        # Mock validation to return invalid result
+        from src.core.credential_validator import CredentialValidationResult
+
+        mock_validate.return_value = CredentialValidationResult(
+            is_valid=False,
+            error_message="client_id and client_secret must be provided via configuration file, environment variables, or Docker secrets",
+            missing_files=[],
+            empty_files=[],
+        )
+
         handler = TraktHandler(mock_config_partial_credentials)
 
         with pytest.raises(ValueError, match="Trakt credentials not configured") as exc_info:
@@ -118,10 +171,21 @@ class TestTraktCredentialValidation:
         error_message = str(exc_info.value)
         assert "Trakt credentials not configured" in error_message
 
+    @patch("src.cli.handlers.validate_trakt_secrets")
     def test_credentials_validation_error_message_completeness(
-        self, mock_config_missing_credentials
+        self, mock_validate, mock_config_missing_credentials
     ):
         """Test that error message includes all configuration options."""
+        # Mock validation to return invalid result with complete error message
+        from src.core.credential_validator import CredentialValidationResult
+
+        mock_validate.return_value = CredentialValidationResult(
+            is_valid=False,
+            error_message="client_id and client_secret must be provided via configuration file, environment variables (CVI_TRAKT_CLIENT_ID, CVI_TRAKT_CLIENT_SECRET), or Docker secrets",
+            missing_files=[],
+            empty_files=[],
+        )
+
         handler = TraktHandler(mock_config_missing_credentials)
 
         with pytest.raises(ValueError, match="Trakt credentials not configured") as exc_info:

@@ -171,7 +171,7 @@ class TestTraktIncludeStatuses:
         assert mock_parser.parse_filename.call_count == 4
         assert result.failed == 4  # All files not found on Trakt
 
-    @patch("src.core.credential_validator.validate_trakt_secrets")
+    @patch("src.cli.handlers.validate_trakt_secrets")
     @patch("src.cli.handlers.sync_to_trakt_watchlist")
     def test_trakt_handler_passes_include_statuses(
         self, mock_sync, mock_validate, mock_config, temp_scan_file
