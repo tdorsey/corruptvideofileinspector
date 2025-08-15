@@ -154,6 +154,8 @@ class DatabaseService:
             )
 
             scan_id = cursor.lastrowid
+            if scan_id is None:
+                raise RuntimeError("Failed to retrieve scan ID after insertion")
             conn.commit()
 
             logger.info(f"Stored scan {scan_id} for directory {scan.directory}")
@@ -359,7 +361,7 @@ class DatabaseService:
 
             return scans
 
-    def get_files_needing_rescan(self, directory: str, scan_mode: str = "quick") -> list[str]:
+    def get_files_needing_rescan(self, directory: str, _scan_mode: str = "quick") -> list[str]:
         """Get files that need rescanning based on last scan results.
 
         This is used for incremental scanning to skip files that were
@@ -367,7 +369,7 @@ class DatabaseService:
 
         Args:
             directory: Directory being scanned
-            scan_mode: Scan mode being used
+            _scan_mode: Scan mode being used (reserved for future use)
 
         Returns:
             List of filenames that should be rescanned
@@ -510,9 +512,8 @@ class DatabaseService:
         """
         backup_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with self._get_connection() as conn:
-            with sqlite3.connect(str(backup_path)) as backup_conn:
-                conn.backup(backup_conn)
+        with self._get_connection() as conn, sqlite3.connect(str(backup_path)) as backup_conn:
+            conn.backup(backup_conn)
 
         logger.info(f"Database backed up to {backup_path}")
 

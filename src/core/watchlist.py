@@ -15,9 +15,9 @@ from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-import trakt  # type: ignore[import-untyped]
-import trakt.core  # type: ignore[import-untyped]
-import trakt.users  # type: ignore[import-untyped]
+import trakt
+import trakt.core
+import trakt.users
 
 from src.core.models.scanning import FileStatus
 from src.core.models.watchlist import (
@@ -461,7 +461,7 @@ class TraktAPI:
 
             return item
 
-        for _i, item in enumerate(items, 1):
+        for _i, _item in enumerate(items, 1):
             pass
 
         while True:

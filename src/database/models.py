@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from src.core.models.inspection import VideoFile
 from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
 
 
@@ -119,8 +120,6 @@ class ScanResultDatabaseModel(BaseModel):
         Returns:
             ScanResult instance
         """
-        from src.core.models.inspection import VideoFile
-
         video_file = VideoFile(path=Path(self.filename))
 
         return ScanResult(
@@ -156,7 +155,7 @@ class DatabaseQueryFilter(BaseModel):
             Tuple of (where_clause, parameters)
         """
         conditions = []
-        params = {}
+        params: dict[str, Any] = {}
 
         if self.directory is not None:
             conditions.append("s.directory = :directory")

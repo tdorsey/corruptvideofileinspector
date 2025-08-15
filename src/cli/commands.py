@@ -33,8 +33,6 @@ def get_database_imports():
         return None, None
 
 
-from src.ffmpeg.ffmpeg_client import FFmpegClient
-
 logger = logging.getLogger(__name__)
 
 

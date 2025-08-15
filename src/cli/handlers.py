@@ -11,6 +11,7 @@ import time
 from collections.abc import Sequence
 from pathlib import Path
 from shutil import which
+from typing import Any
 
 import click
 import typer
@@ -222,12 +223,13 @@ class ScanHandler(BaseHandler):
 
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
-        with click.progressbar(
+        bar: Any = click.progressbar(
             length=progress.total_files,
             show_eta=True,
             show_percent=True,
             show_pos=True,
-        ) as bar:
+        )
+        with bar:
             bar.update(progress.processed_count)
 
     def _show_scan_results(self, summary: ScanSummary) -> None:
