@@ -833,6 +833,78 @@ def test_ffmpeg(ctx, config):
 
 @cli.command()
 @global_options
+@click.argument("video_file", type=PathType(exists=True))
+def test_ffprobe(app_config, video_file):
+    """Test FFprobe functionality on a specific video file."""
+    try:
+        setup_logging(0)
+        
+        # Import FFprobe client  
+        from src.ffmpeg.ffprobe_client import FFprobeClient
+        from src.core.models.inspection import VideoFile
+        
+        # Test FFprobe installation
+        ffprobe = FFprobeClient(app_config.ffmpeg)
+        install_results = ffprobe.test_installation()
+        
+        click.echo("FFprobe Installation Test")
+        click.echo("=" * 40)
+        
+        click.echo(f"FFprobe Path: {install_results['ffprobe_path'] or 'Not found'}")
+        click.echo(f"FFprobe Available: {'✓' if install_results['ffprobe_available'] else '✗'}")
+        click.echo(f"JSON Output: {'✓' if install_results['can_parse_json'] else '✗'}")
+        
+        if install_results["version_info"]:
+            click.echo(f"Version: {install_results['version_info']}")
+        
+        if not install_results["ffprobe_available"]:
+            click.echo("\nFFprobe is not available.")
+            sys.exit(1)
+        
+        # Test probe on actual file
+        click.echo(f"\nProbing file: {video_file}")
+        click.echo("=" * 40)
+        
+        video_file_obj = VideoFile(path=video_file)
+        probe_result = ffprobe.probe_file(video_file_obj)
+        
+        if probe_result.success:
+            click.echo("✓ Probe successful")
+            click.echo(f"Duration: {probe_result.duration}s" if probe_result.duration else "Duration: Unknown")
+            click.echo(f"File size: {probe_result.file_size} bytes")
+            click.echo(f"Video streams: {len(probe_result.video_streams)}")
+            click.echo(f"Audio streams: {len(probe_result.audio_streams)}")
+            click.echo(f"Valid video file: {'✓' if probe_result.is_valid_video_file else '✗'}")
+            
+            if probe_result.streams:
+                click.echo("\nStreams:")
+                for stream in probe_result.streams:
+                    stream_info = f"  Stream {stream.index}: {stream.codec_type.value}"
+                    if stream.codec_name:
+                        stream_info += f" ({stream.codec_name})"
+                    if stream.width and stream.height:
+                        stream_info += f" {stream.width}x{stream.height}"
+                    click.echo(stream_info)
+            
+            if probe_result.format_info:
+                click.echo(f"\nFormat: {probe_result.format_info.format_name}")
+                if probe_result.format_info.format_long_name:
+                    click.echo(f"Description: {probe_result.format_info.format_long_name}")
+        else:
+            click.echo("✗ Probe failed")
+            click.echo(f"Error: {probe_result.error_message}")
+            sys.exit(1)
+        
+        click.echo("\nFFprobe test completed successfully! ✓")
+        
+    except Exception as e:
+        logger.exception("FFprobe test command failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@global_options
 @click.option(
     "--scan-file",
     "-s",

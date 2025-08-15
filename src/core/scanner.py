@@ -663,12 +663,29 @@ class VideoScanner:
         Returns:
             List of scan results for each file
         """
-        # Create video files from paths
+        # Create video files from paths and probe if enabled
         video_files = []
+        probe_results: dict[str, ProbeResult] = {}
+        
         for path_str in file_paths:
             path = Path(path_str)
             if path.exists() and path.is_file():
-                video_files.append(VideoFile(path=path))
+                video_file = VideoFile(path=path)
+                
+                # Probe the file if probe-before-scan is enabled
+                if self.config.ffmpeg.require_probe_before_scan:
+                    can_scan, reason = self._can_scan_file(video_file)
+                    if can_scan:
+                        # Get probe result for later use
+                        probe_result = self._probe_file(video_file)
+                        if probe_result:
+                            probe_results[path_str] = probe_result
+                        video_files.append(video_file)
+                        logger.debug(f"File eligible for scanning: {path}")
+                    else:
+                        logger.info(f"Skipping file (not eligible): {path} - {reason}")
+                else:
+                    video_files.append(video_file)
 
         if not video_files:
             logger.warning("No valid video files found in provided paths")
@@ -698,19 +715,23 @@ class VideoScanner:
                 )
                 progress_callback(progress)
 
+            # Get probe result for this file
+            file_path_str = str(video_file.path)
+            probe_result = probe_results.get(file_path_str)
+            
             # Perform scan based on mode
             result = None
             if mode == ScanMode.QUICK:
-                result = ffmpeg_client.inspect_quick(video_file)
+                result = ffmpeg_client.inspect_quick(video_file, probe_result)
             elif mode == ScanMode.DEEP:
-                result = ffmpeg_client.inspect_deep(video_file)
+                result = ffmpeg_client.inspect_deep(video_file, probe_result=probe_result)
             elif mode == ScanMode.HYBRID:
                 # First try quick scan
-                result = ffmpeg_client.inspect_quick(video_file)
+                result = ffmpeg_client.inspect_quick(video_file, probe_result)
                 if result.needs_deep_scan:
-                    result = ffmpeg_client.inspect_deep(video_file)
+                    result = ffmpeg_client.inspect_deep(video_file, probe_result=probe_result)
             elif mode == ScanMode.FULL:
-                result = ffmpeg_client.inspect_full(video_file)
+                result = ffmpeg_client.inspect_full(video_file, probe_result)
             else:  # pragma: no cover
                 logger.error("Unknown scan mode: %s", mode)  # type: ignore[unreachable]
                 # Skip this file if unknown mode
