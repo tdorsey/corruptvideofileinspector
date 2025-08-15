@@ -16,9 +16,9 @@ import click
 import typer
 from pydantic import BaseModel, Field
 
+from src.cli.credential_utils import handle_credential_error
 from src.config import load_config
 from src.config.config import AppConfig
-from src.cli.credential_utils import handle_credential_error
 from src.core.credential_validator import validate_trakt_secrets
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import FileStatus, ScanMode, ScanProgress, ScanResult, ScanSummary

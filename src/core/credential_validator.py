@@ -3,9 +3,6 @@ Credential validation utilities for Trakt.tv integration.
 
 Provides early validation of credentials to give clear error messages
 instead of cryptic HTTP errors.
-
-This module is interface-agnostic and does not depend on any specific
-presentation layer (CLI, web, GUI, etc.).
 """
 
 import logging
@@ -129,10 +126,10 @@ def format_credential_error_details(
     if validation_result.is_valid:
         return {"message": "", "missing_files": [], "empty_files": [], "fix_instructions": []}
 
-    details = {
+    details: dict[str, str | list[str]] = {
         "message": validation_result.error_message or "Credential validation failed",
-        "missing_files": validation_result.missing_files,
-        "empty_files": validation_result.empty_files,
+        "missing_files": list(validation_result.missing_files),
+        "empty_files": list(validation_result.empty_files),
         "fix_instructions": [],
     }
 

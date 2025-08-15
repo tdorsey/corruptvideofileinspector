@@ -26,7 +26,7 @@ import sys
 
 from src.version import __version__
 
-# Import only interface-agnostic core modules by default
+# Import only core modules by default
 # CLI modules are imported only when explicitly needed
 from .core.errors.errors import (
     ConfigurationError,
@@ -58,7 +58,7 @@ __author_email__ = "contact@example.com"
 __license__ = "MIT"
 __copyright__ = "Copyright 2024 tdorsey"
 
-# Explicit public API for interface-agnostic usage
+# Explicit public API
 __all__ = [
     "AppConfig",
     "ConfigurationError",
@@ -98,4 +98,5 @@ def get_version() -> str:
 if __name__ == "__main__":
     # Import CLI main only when running as script
     from .cli.main import main
+
     sys.exit(main())
