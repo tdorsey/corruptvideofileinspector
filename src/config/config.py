@@ -52,6 +52,18 @@ class ScanConfig(BaseModel):
     extensions: list[str] = Field(
         default_factory=lambda: [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv"]
     )
+    use_content_detection: bool = Field(
+        default=True,
+        description="Use FFprobe content analysis instead of extension-based detection"
+    )
+    ffprobe_timeout: int = Field(
+        default=30,
+        description="Timeout in seconds for FFprobe content analysis"
+    )
+    extension_filter: list[str] = Field(
+        default_factory=list,
+        description="Optional file extensions to pre-filter before content analysis (performance optimization)"
+    )
 
 
 class AppConfig(BaseModel):
