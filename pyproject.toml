@@ -152,6 +152,13 @@ ignore = [
     "PTH110",  # os.path.exists -> Path.exists()
     "PTH119",  # os.path.basename -> Path.name
 ]
+"src/output.py" = [
+    "PLC0415", # conditional database imports - optional functionality
+]
+"src/cli/commands.py" = [
+    "PLC0415", # conditional database imports - optional functionality
+    "ARG001",  # Click context parameters required but not used
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli_handler", "video_inspector", "utils"]

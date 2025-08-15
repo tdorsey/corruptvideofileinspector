@@ -19,16 +19,17 @@ class MediaItem(BaseModel):
     original_filename: str = ""
 
     @field_validator("title")
-    def clean_title(cls, v):
+    def clean_title(self, v):
         """Clean up title by removing dots, underscores, and normalizing whitespace."""
         if not v:
-            raise ValueError("Title cannot be empty")
+            msg = "Title cannot be empty"
+            raise ValueError(msg)
         # Clean up title (remove dots, underscores, etc.)
         cleaned = re.sub(r"[._]", " ", v).strip()
         return re.sub(r"\s+", " ", cleaned)  # Normalize whitespace
 
     @field_validator("media_type")
-    def validate_media_type(cls, v):
+    def validate_media_type(self, v):
         """Ensure media_type is valid."""
         if v not in ["movie", "show"]:
             return "movie"  # Default fallback
@@ -52,17 +53,19 @@ class TraktItem(BaseModel):
     tvdb_id: int | None = Field(default=None, ge=1)
 
     @field_validator("title")
-    def validate_title(cls, v):
+    def validate_title(self, v):
         """Ensure title is not empty."""
         if not v or not v.strip():
-            raise ValueError("Title cannot be empty")
+            msg = "Title cannot be empty"
+            raise ValueError(msg)
         return v.strip()
 
     @field_validator("imdb_id")
-    def validate_imdb_id(cls, v: str | None) -> str | None:
+    def validate_imdb_id(self, v: str | None) -> str | None:
         """Validate imdb_id format if present."""
         if v is not None and not re.match(r"^tt\d+$", v):
-            raise ValueError("imdb_id must match the pattern ^tt\\d+$")
+            msg = "imdb_id must match the pattern ^tt\\d+$"
+            raise ValueError(msg)
         return v
 
     @classmethod
@@ -116,22 +119,23 @@ class WatchlistInfo(BaseModel):
     like_count: int = Field(default=0, ge=0)
 
     @field_validator("name")
-    def validate_name(cls, v: str) -> str:
+    def validate_name(self, v: str) -> str:
         """Ensure name is not empty."""
         if not v or not v.strip():
-            raise ValueError("Watchlist name cannot be empty")
+            msg = "Watchlist name cannot be empty"
+            raise ValueError(msg)
         return v.strip()
 
     @field_validator("slug")
-    def validate_slug(cls, v: str) -> str:
+    def validate_slug(self, v: str) -> str:
         """Validate slug format."""
         if not v or not v.strip():
-            raise ValueError("Watchlist slug cannot be empty")
+            msg = "Watchlist slug cannot be empty"
+            raise ValueError(msg)
         # Basic slug validation - should be URL-safe
         if not re.match(r"^[a-z0-9\-_]+$", v):
-            raise ValueError(
-                "Slug must contain only lowercase letters, numbers, hyphens, and underscores"
-            )
+            msg = "Slug must contain only lowercase letters, numbers, hyphens, and underscores"
+            raise ValueError(msg)
         return v.strip()
 
     @classmethod
@@ -144,13 +148,13 @@ class WatchlistInfo(BaseModel):
         # Parse datetime strings if present
         if data.get("created_at"):
             try:
-                created_at = datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
+                created_at = datetime.fromisoformat(data["created_at"])
             except ValueError as e:
                 logger.warning(f"Failed to parse created_at datetime: {data['created_at']!r} ({e})")
 
         if data.get("updated_at"):
             try:
-                updated_at = datetime.fromisoformat(data["updated_at"].replace("Z", "+00:00"))
+                updated_at = datetime.fromisoformat(data["updated_at"])
             except ValueError as e:
                 logger.warning(f"Failed to parse updated_at datetime: {data['updated_at']!r} ({e})")
 
@@ -192,7 +196,7 @@ class WatchlistItem(BaseModel):
         listed_at = None
         if data.get("listed_at"):
             try:
-                listed_at = datetime.fromisoformat(data["listed_at"].replace("Z", "+00:00"))
+                listed_at = datetime.fromisoformat(data["listed_at"])
             except ValueError as e:
                 logger.warning(
                     "Failed to parse listed_at datetime from value '%s': %s", data["listed_at"], e
@@ -208,7 +212,8 @@ class WatchlistItem(BaseModel):
             media_data = data["show"]
             trakt_item = TraktItem.from_show_response(media_data)
         else:
-            raise ValueError("Response must contain either 'movie' or 'show' data")
+            msg = "Response must contain either 'movie' or 'show' data"
+            raise ValueError(msg)
 
         return cls(
             rank=data.get("rank"),
@@ -236,10 +241,11 @@ class SyncResultItem(BaseModel):
     watchlist: str | None = Field(default=None, description="Name or slug of the target watchlist")
 
     @field_validator("title")
-    def validate_title(cls, v: str) -> str:
+    def validate_title(self, v: str) -> str:
         """Ensure title is not empty."""
         if not v or not v.strip():
-            raise ValueError("Title cannot be empty")
+            msg = "Title cannot be empty"
+            raise ValueError(msg)
         return v.strip()
 
 

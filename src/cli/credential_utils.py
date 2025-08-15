@@ -20,7 +20,8 @@ def handle_credential_error(
     validation_result: CredentialValidationResult, verbose: bool = False
 ) -> None:
     """
-    Handle credential validation errors by showing CLI-appropriate messages and exiting.
+    Handle credential validation errors by showing CLI-appropriate messages
+    and exiting.
 
     This is a CLI-specific wrapper around the core credential validation.
 
@@ -38,7 +39,8 @@ def handle_credential_error(
     click.echo(f"Error: {error_details['message']}", err=True)
 
     # Show additional details in verbose mode
-    if verbose and (error_details["missing_files"] or error_details["empty_files"]):
+    verbose_conditions = error_details["missing_files"] or error_details["empty_files"]
+    if verbose and verbose_conditions:
         click.echo("\nDetailed information:", err=True)
         if error_details["missing_files"]:
             missing = ", ".join(error_details["missing_files"])
@@ -53,6 +55,7 @@ def handle_credential_error(
 
     # In test environments, raise ValueError for easier testing
     if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
-        raise ValueError(f"Trakt credentials not configured: {validation_result.error_message}")
+        msg = f"Trakt credentials not configured: {validation_result.error_message}"
+        raise ValueError(msg)
 
-    raise click.Abort()
+    raise click.Abort

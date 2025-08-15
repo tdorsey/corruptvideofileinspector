@@ -21,7 +21,13 @@ from src.config import load_config
 from src.config.config import AppConfig
 from src.core.credential_validator import validate_trakt_secrets
 from src.core.models.inspection import VideoFile
-from src.core.models.scanning import FileStatus, ScanMode, ScanProgress, ScanResult, ScanSummary
+from src.core.models.scanning import (
+    FileStatus,
+    ScanMode,
+    ScanProgress,
+    ScanResult,
+    ScanSummary,
+)
 from src.core.reporter import ReportService
 from src.core.scanner import VideoScanner
 from src.core.watchlist import (
@@ -54,7 +60,8 @@ class BaseHandler:
         if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
             if isinstance(error, ValueError | KeyError | FileNotFoundError):
                 raise error
-            raise RuntimeError(f"{message}: {error}")
+            msg = f"{message}: {error}"
+            raise RuntimeError(msg)
 
         sys.exit(1)
 
@@ -69,7 +76,8 @@ class BaseHandler:
         try:
             # Determine target output file path
             if output_file:
-                # If a directory is provided, warn and use default output directory
+                # If a directory is provided, warn and use default
+                # output directory
                 if output_file.is_dir():
                     logger.warning(
                         f"Specified output path {output_file} is a directory; "
@@ -98,7 +106,8 @@ class BaseHandler:
             else:
                 logger.warning(f"Unsupported output format: {output_format}")
         except Exception as e:
-            # Initial write failed, log and attempt fallback to configured output dir
+            # Initial write failed, log and attempt fallback to configured
+            # output dir
             logger.warning(
                 f"Failed to save output to {target_file}: {e}. "
                 "Attempting to save to default output directory"
@@ -419,7 +428,8 @@ class TraktHandler(BaseHandler):
                 results=getattr(result_summary, "results", []),
             )
             logger.info(
-                f"Trakt sync complete. Movies added: {result.movies_added}, Shows added: {result.shows_added}."
+                f"Trakt sync complete. Movies added: {result.movies_added}, "
+                f"Shows added: {result.shows_added}."
             )
             if output_file:
                 self._save_sync_results(result, output_file)
@@ -566,16 +576,16 @@ class TraktHandler(BaseHandler):
         client_secret = self.config.trakt.client_secret
 
         if not client_id or not client_secret:
-            raise ValueError(
-                "Trakt client_id and client_secret must be configured. Use 'make secrets-init' or set in config file."
-            )
+            msg = "Trakt client_id and client_secret must be configured. Use 'make secrets-init' or set in config file."
+            raise ValueError(msg)
 
         # TODO: Implement actual OAuth token retrieval/refresh logic
         # For now, raise an error indicating the limitation
-        raise NotImplementedError(
+        msg = (
             "Config-based authentication not fully implemented yet. "
             "Please ensure you have valid OAuth tokens configured."
         )
+        raise NotImplementedError(msg)
 
     def authenticate_oauth(self, username: str, store: bool = True) -> bool:
         """
@@ -776,7 +786,3 @@ def list_video_files(
     except Exception:
         logger.exception("Error listing video files")
         sys.exit(1)
-
-
-# Typer app for CLI entry point
-app = typer.Typer()

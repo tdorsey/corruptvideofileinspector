@@ -99,7 +99,7 @@ This includes detailed guidance on:
 - Templates ensure required information is provided and consistent formatting
 
 ### Code Quality Standards
-- Run `make check` before every commit to ensure formatting, linting, and type checking pass
+- **⚠️ CRITICAL: `make check` MUST pass successfully before every commit** - ensures formatting, linting, and type checking pass
 - All tests must pass before submitting changes
 - Follow existing code style and patterns in the repository
 

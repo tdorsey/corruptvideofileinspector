@@ -456,17 +456,13 @@ class TraktAPI:
 
         if len(items) == 1:
             item = items[0]
-            print(f"\nFound 1 match for '{media_item.title}' ({media_item.year}):")
 
             logger.info(f"Successfully added movie to watchlist: {item.title}")
 
             return item
-        print(f"\nFound {len(items)} matches for '{media_item.title}' ({media_item.year}):")
-        print("  0. Skip (don't add to watchlist)")
 
-        for i, item in enumerate(items, 1):
-            year_str = f"({item.year})" if item.year else "(no year)"
-            print(f"  {i}. {item.title} {year_str} [{item.media_type}]")
+        for _i, item in enumerate(items, 1):
+            pass
 
         while True:
             try:
@@ -484,12 +480,10 @@ class TraktAPI:
                     selected_item = items[choice_num - 1]
                     logger.info(f"User selected: {selected_item.title} ({selected_item.year})")
                     return selected_item
-                print(f"Please enter a number between 0 and {len(items)}.")
 
             except ValueError:
-                print(f"Please enter a valid number between 0 and {len(items)}.")
+                pass
             except KeyboardInterrupt:
-                print("\nSelection cancelled.")
                 logger.info(f"User cancelled selection for: {media_item.title}")
                 return None
 
@@ -621,7 +615,8 @@ def process_scan_file(
 
     file_path_obj = Path(file_path)
     if not file_path_obj.exists():
-        raise FileNotFoundError(f"Scan file not found: {file_path}")
+        msg = f"Scan file not found: {file_path}"
+        raise FileNotFoundError(msg)
 
     try:
         with file_path_obj.open(encoding="utf-8") as f:
@@ -726,12 +721,10 @@ def sync_to_trakt_watchlist(
     logger.info("Starting Trakt watchlist sync")
 
     if verbose:
-        print("Starting Trakt watchlist sync...")
-        print(f"Processing scan file: {scan_file}")
         if watchlist:
-            print(f"Target watchlist: {watchlist}")
+            pass
         else:
-            print("Target: Main watchlist")
+            pass
 
     # Initialize API client
     try:
@@ -754,7 +747,7 @@ def sync_to_trakt_watchlist(
     if not media_items:
         logger.warning("No media items found to sync")
         if verbose:
-            print("No media items found to sync")
+            pass
         return TraktSyncSummary(
             total=0, movies_added=0, shows_added=0, failed=0, watchlist=watchlist, results=[]
         )
@@ -769,19 +762,12 @@ def sync_to_trakt_watchlist(
         results=[],
     )
 
-    if verbose:
-        print(f"Found {len(media_items)} media items to sync")
-        if interactive:
-            print("Interactive mode enabled - you will be prompted to select matches")
-        print("Searching and adding to watchlist...")
+    if verbose and interactive:
+        pass
 
     for i, media_item in enumerate(media_items, 1):
         if verbose:
-            progress = f"({i}/{len(media_items)})"
-            print(
-                f"  {progress} Processing: {media_item.title} "
-                f"({media_item.year}) [{media_item.media_type}]"
-            )
+            f"({i}/{len(media_items)})"
 
         try:
             # Search for the item
@@ -812,7 +798,7 @@ def sync_to_trakt_watchlist(
             if not trakt_item:
                 logger.warning(f"No Trakt match found for: {media_item.title}")
                 if verbose:
-                    print("    ❌ Not found on Trakt" if not interactive else "    ❌ Skipped")
+                    pass
                 summary.failed += 1
                 summary.results.append(
                     SyncResultItem(
@@ -838,7 +824,7 @@ def sync_to_trakt_watchlist(
                     summary.shows_added += 1
 
                 if verbose:
-                    print("    ✅ Added to watchlist")
+                    pass
 
                 summary.results.append(
                     SyncResultItem(
@@ -854,7 +840,7 @@ def sync_to_trakt_watchlist(
             else:
                 summary.failed += 1
                 if verbose:
-                    print("    ❌ Failed to add")
+                    pass
 
                 summary.results.append(
                     SyncResultItem(
@@ -871,7 +857,7 @@ def sync_to_trakt_watchlist(
             logger.exception(f"Error processing {media_item.title}")
             summary.failed += 1
             if verbose:
-                print(f"    ❌ Error: {e}")
+                pass
 
             summary.results.append(
                 SyncResultItem(
@@ -887,14 +873,7 @@ def sync_to_trakt_watchlist(
 
     # Print summary
     if verbose or logger.isEnabledFor(logging.INFO):
-        print("\n" + "=" * 50)
-        print("TRAKT SYNC SUMMARY")
-        print("=" * 50)
-        print(f"Total items processed: {summary.total}")
-        print(f"Movies added: {summary.movies_added}")
-        print(f"Shows added: {summary.shows_added}")
-        print(f"Failed/Not found: {summary.failed}")
-        print(f"Success rate: {summary.success_rate:.1f}%")
+        pass
 
     logger.info(
         "Trakt sync completed: "

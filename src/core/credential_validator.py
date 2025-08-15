@@ -22,12 +22,16 @@ class CredentialValidationResult(NamedTuple):
     empty_files: list[str]
 
 
-def validate_trakt_secrets(secrets_dir: Path | None = None) -> CredentialValidationResult:
+def validate_trakt_secrets(
+    secrets_dir: Path | None = None,
+) -> CredentialValidationResult:
     """
     Validate Trakt secret files exist and contain content.
 
     Args:
-        secrets_dir: Path to directory containing secret files. If None, uses the TRAKT_SECRETS_DIR environment variable or defaults to 'docker/secrets'.
+        secrets_dir: Path to directory containing secret files. If None, uses
+            the TRAKT_SECRETS_DIR environment variable or defaults to
+            'docker/secrets'.
 
     Returns:
         CredentialValidationResult with validation status and details
@@ -63,7 +67,8 @@ def validate_trakt_secrets(secrets_dir: Path | None = None) -> CredentialValidat
 
         error_message = (
             f"Trakt credentials not configured. {' '.join(error_parts)}. "
-            f"Run `make secrets-init` then populate trakt_client_id.txt and trakt_client_secret.txt."
+            "Run `make secrets-init` then populate trakt_client_id.txt and "
+            "trakt_client_secret.txt."
         )
 
         return CredentialValidationResult(
@@ -78,7 +83,9 @@ def validate_trakt_secrets(secrets_dir: Path | None = None) -> CredentialValidat
     )
 
 
-def validate_trakt_access_token(token: str | None) -> CredentialValidationResult:
+def validate_trakt_access_token(
+    token: str | None,
+) -> CredentialValidationResult:
     """
     Validate that an access token is provided and not empty.
 
@@ -95,7 +102,10 @@ def validate_trakt_access_token(token: str | None) -> CredentialValidationResult
             "See docs/trakt.md for instructions on obtaining a token."
         )
         return CredentialValidationResult(
-            is_valid=False, error_message=error_message, missing_files=[], empty_files=[]
+            is_valid=False,
+            error_message=error_message,
+            missing_files=[],
+            empty_files=[],
         )
 
     return CredentialValidationResult(
@@ -124,10 +134,15 @@ def format_credential_error_details(
         - fix_instructions: List of fix instructions (if verbose)
     """
     if validation_result.is_valid:
-        return {"message": "", "missing_files": [], "empty_files": [], "fix_instructions": []}
+        return {
+            "message": "",
+            "missing_files": [],
+            "empty_files": [],
+            "fix_instructions": [],
+        }
 
     details: dict[str, str | list[str]] = {
-        "message": validation_result.error_message or "Credential validation failed",
+        "message": (validation_result.error_message or "Credential validation failed"),
         "missing_files": list(validation_result.missing_files),
         "empty_files": list(validation_result.empty_files),
         "fix_instructions": [],

@@ -37,7 +37,8 @@ class VideoScanner:
         output_dir = self.config.output.default_output_dir
         output_dir.mkdir(parents=True, exist_ok=True)
         if not os.access(output_dir, os.W_OK):
-            raise OSError(f"Output directory is not writable: {output_dir}")
+            msg = f"Output directory is not writable: {output_dir}"
+            raise OSError(msg)
         # Use a unique name for each scan directory
         safe_dir = directory.resolve().as_posix().replace("/", "_").lstrip("_")
         return output_dir / f".scan_resume_{safe_dir}.json"
@@ -632,15 +633,15 @@ def validate_scan_results(results: list[ScanResult]) -> list[str]:
         if not result.video_file.path:
             issues.append(f"Result {i}: Invalid file path")
         if result.inspection_time < 0:
-            issues.append(f"Result {i}: Negative inspection time: " f"{result.inspection_time}")
+            issues.append(f"Result {i}: Negative inspection time: {result.inspection_time}")
         if result.confidence < 0 or result.confidence > 1:
-            issues.append(f"Result {i}: Invalid confidence value: " f"{result.confidence}")
+            issues.append(f"Result {i}: Invalid confidence value: {result.confidence}")
         if result.is_corrupt and result.needs_deep_scan:
-            issues.append(f"Result {i}: File marked as both corrupt " f"and needing deep scan")
+            issues.append(f"Result {i}: File marked as both corrupt and needing deep scan")
         if (
             result.deep_scan_completed
             and not result.needs_deep_scan
             and result.scan_mode == ScanMode.QUICK
         ):
-            issues.append(f"Result {i}: Deep scan completed but not needed " f"and mode is quick")
+            issues.append(f"Result {i}: Deep scan completed but not needed and mode is quick")
     return issues
