@@ -20,6 +20,10 @@ class FFmpegConfig(BaseModel):
     command: Path = Field(default=Path("/usr/bin/ffmpeg"))
     quick_timeout: int = Field(default=30)
     deep_timeout: int = Field(default=1800)
+    probe_timeout: int = Field(default=15)
+    enable_probe_cache: bool = Field(default=True)
+    probe_cache_max_age_hours: float = Field(default=24.0)
+    require_probe_before_scan: bool = Field(default=True)
 
 
 class ProcessingConfig(BaseModel):

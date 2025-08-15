@@ -1,8 +1,17 @@
 # FFmpeg Integration Documentation
 
-The FFmpeg integration module (`src/ffmpeg/`) provides the video analysis capabilities that power the corruption detection system. It manages FFmpeg execution, output parsing, and corruption pattern analysis.
+The FFmpeg integration module (`src/ffmpeg/`) provides the video analysis capabilities that power the corruption detection system. It manages FFmpeg execution, output parsing, and corruption pattern analysis, with integrated FFprobe support for enhanced file validation.
 
 ## Architecture
+
+### Core Components
+- **FFmpegClient**: Executes FFmpeg commands for corruption detection
+- **FFprobeClient**: Executes FFprobe commands for metadata extraction  
+- **CorruptionDetector**: Analyzes FFmpeg output for corruption patterns
+- **ProbeResult Models**: Track FFprobe analysis results and metadata
+
+### Probe-Before-Scan Workflow
+The system now supports an optional probe-before-scan workflow that uses FFprobe to validate files before corruption scanning. See [PROBE.md](PROBE.md) for detailed documentation.
 
 ```
 src/ffmpeg/
