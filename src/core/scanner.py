@@ -597,18 +597,61 @@ class VideoScanner:
         if extensions is None:
             extensions = self.config.scan.extensions
 
-        logger.debug("Scanning for video files with extensions: %s", extensions)
+        use_content_detection = self.config.scan.use_content_detection
+        logger.debug(f"Scanning for video files, content_detection={use_content_detection}")
+        if not use_content_detection:
+            logger.debug("Using extension-based detection with extensions: %s", extensions)
 
         video_files: list[VideoFile] = []
 
         # Use asyncio to make file system operations non-blocking
         def _scan_directory() -> Iterator[VideoFile]:
+            nonlocal use_content_detection  # Allow modification in nested function
             pattern = "**/*" if recursive else "*"
             logger.debug(f"Scanning directory: {directory}, pattern: {pattern}")
-            logger.debug(f"Using extensions: {extensions}")
+            
+            # Initialize FFmpeg client for content detection if needed
+            ffmpeg_client = None
+            if use_content_detection:
+                try:
+                    ffmpeg_client = FFmpegClient(self.config.ffmpeg)
+                    logger.debug("FFmpeg client initialized for content detection")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize FFmpeg client for content detection: {e}")
+                    logger.warning("Falling back to extension-based detection")
+                    use_content_detection = False
+            
             for file_path in directory.glob(pattern):
-                logger.debug(f"Found file: {file_path} (suffix: {file_path.suffix.lower()})")
-                if file_path.is_file() and file_path.suffix.lower() in extensions:
+                if not file_path.is_file():
+                    continue
+                    
+                logger.debug(f"Checking file: {file_path}")
+                
+                # Apply extension pre-filter if configured (performance optimization)
+                if (use_content_detection and 
+                    self.config.scan.extension_filter and 
+                    file_path.suffix.lower() not in self.config.scan.extension_filter):
+                    logger.debug(f"Skipped by extension filter: {file_path}")
+                    continue
+                
+                is_video = False
+                if use_content_detection and ffmpeg_client:
+                    # Use FFprobe content analysis
+                    try:
+                        is_video = ffmpeg_client.is_video_file(
+                            file_path, 
+                            timeout=self.config.scan.ffprobe_timeout
+                        )
+                        logger.debug(f"Content analysis result for {file_path}: {is_video}")
+                    except Exception as e:
+                        logger.debug(f"Content analysis failed for {file_path}: {e}, using extension fallback")
+                        # Fall back to extension check for this file
+                        is_video = file_path.suffix.lower() in extensions
+                else:
+                    # Use extension-based detection
+                    is_video = file_path.suffix.lower() in extensions
+                    
+                if is_video:
                     logger.debug(f"Accepted as video file: {file_path}")
                     yield VideoFile(path=file_path)
                 else:

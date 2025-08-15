@@ -33,6 +33,13 @@ scan:
     - ".mov"
     - ".wmv"
     - ".flv"
+  
+  # Content-based detection settings (new in v1.x)
+  use_content_detection: true           # Use FFprobe to analyze file content instead of extensions
+  ffprobe_timeout: 30                   # Timeout in seconds for FFprobe analysis
+  extension_filter: []                  # Optional: Pre-filter by extensions before content analysis
+                                       # Example: [".mp4", ".mkv"] to only analyze these types
+                                       # Empty list = analyze all files (slower but more accurate)
 
 trakt:
   client_id: ""
