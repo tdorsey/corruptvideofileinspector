@@ -457,12 +457,20 @@ class TraktAPI:
         if len(items) == 1:
             item = items[0]
 
-            logger.info(f"Successfully added movie to watchlist: {item.title}")
+            print(f"Found 1 match for '{media_item.title}' ({media_item.year or 'no year'}):")
+            print(f"  {item.title} ({item.year or 'no year'}) [{item.media_type}]")
 
             return item
 
-        for _i, _item in enumerate(items, 1):
-            pass
+        # Multiple items - show interactive selection
+        print(
+            f"\nFound {len(items)} matches for '{media_item.title}' ({media_item.year or 'no year'}):"
+        )
+        print("  0. Skip (don't add to watchlist)")
+
+        for i, item in enumerate(items, 1):
+            year_str = f"({item.year})" if item.year else "(no year)"
+            print(f"  {i}. {item.title} {year_str} [{item.media_type}]")
 
         while True:
             try:

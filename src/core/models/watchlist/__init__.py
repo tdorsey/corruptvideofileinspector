@@ -19,7 +19,8 @@ class MediaItem(BaseModel):
     original_filename: str = ""
 
     @field_validator("title")
-    def clean_title(self, v):
+    @classmethod
+    def clean_title(cls, v):
         """Clean up title by removing dots, underscores, and normalizing whitespace."""
         if not v:
             msg = "Title cannot be empty"
@@ -29,7 +30,8 @@ class MediaItem(BaseModel):
         return re.sub(r"\s+", " ", cleaned)  # Normalize whitespace
 
     @field_validator("media_type")
-    def validate_media_type(self, v):
+    @classmethod
+    def validate_media_type(cls, v):
         """Ensure media_type is valid."""
         if v not in ["movie", "show"]:
             return "movie"  # Default fallback
@@ -53,7 +55,8 @@ class TraktItem(BaseModel):
     tvdb_id: int | None = Field(default=None, ge=1)
 
     @field_validator("title")
-    def validate_title(self, v):
+    @classmethod
+    def validate_title(cls, v):
         """Ensure title is not empty."""
         if not v or not v.strip():
             msg = "Title cannot be empty"
@@ -61,7 +64,8 @@ class TraktItem(BaseModel):
         return v.strip()
 
     @field_validator("imdb_id")
-    def validate_imdb_id(self, v: str | None) -> str | None:
+    @classmethod
+    def validate_imdb_id(cls, v: str | None) -> str | None:
         """Validate imdb_id format if present."""
         if v is not None and not re.match(r"^tt\d+$", v):
             msg = "imdb_id must match the pattern ^tt\\d+$"
@@ -119,7 +123,8 @@ class WatchlistInfo(BaseModel):
     like_count: int = Field(default=0, ge=0)
 
     @field_validator("name")
-    def validate_name(self, v: str) -> str:
+    @classmethod
+    def validate_name(cls, v: str) -> str:
         """Ensure name is not empty."""
         if not v or not v.strip():
             msg = "Watchlist name cannot be empty"
@@ -127,7 +132,8 @@ class WatchlistInfo(BaseModel):
         return v.strip()
 
     @field_validator("slug")
-    def validate_slug(self, v: str) -> str:
+    @classmethod
+    def validate_slug(cls, v: str) -> str:
         """Validate slug format."""
         if not v or not v.strip():
             msg = "Watchlist slug cannot be empty"
@@ -241,7 +247,8 @@ class SyncResultItem(BaseModel):
     watchlist: str | None = Field(default=None, description="Name or slug of the target watchlist")
 
     @field_validator("title")
-    def validate_title(self, v: str) -> str:
+    @classmethod
+    def validate_title(cls, v: str) -> str:
         """Ensure title is not empty."""
         if not v or not v.strip():
             msg = "Title cannot be empty"
