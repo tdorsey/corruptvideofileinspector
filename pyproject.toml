@@ -187,6 +187,13 @@ severity = "Warning"
 module = "tests.*"
 disallow_untyped_defs = false
 
+[[tool.mypy.overrides]]
+module = [
+    "trakt",
+    "trakt.*",
+]
+ignore_missing_imports = true
+
 # Pytest configuration
 [tool.pytest.ini_options]
 minversion = "7.0"
