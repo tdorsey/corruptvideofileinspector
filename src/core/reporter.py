@@ -480,9 +480,8 @@ class ReportService:
             IOError: If report cannot be written
         """
         if format not in self._generators:
-            raise ValueError(
-                f"Unsupported format: {format}. Must be one of {list(self._generators.keys())}"
-            )
+            msg = f"Unsupported format: {format}. Must be one of {list(self._generators.keys())}"
+            raise ValueError(msg)
 
         # Generate output path if not provided
         if output_path is None:
@@ -521,7 +520,8 @@ class ReportService:
 
         except Exception as e:
             logger.exception(f"Failed to generate {format} report")
-            raise OSError(f"Failed to generate report: {e}") from e
+            msg = f"Failed to generate report: {e}"
+            raise OSError(msg) from e
 
     def generate_multiple_formats(
         self: "ReportService",

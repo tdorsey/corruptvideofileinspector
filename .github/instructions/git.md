@@ -23,14 +23,55 @@ This project follows the [Conventional Commits](https://www.conventionalcommits.
 - **refactor**: A code change that neither fixes a bug nor adds a feature
 - **perf**: A code change that improves performance
 - **test**: Adding missing tests or correcting existing tests
+- **build**: Changes that affect the build system or external dependencies (pip, poetry, npm, etc.)
 - **chore**: Changes to the build process or auxiliary tools and libraries such as documentation generation
 
+### Description Format Rules
+- **Description must start with lowercase letter** (after the type and scope)
+- **Description must NOT end with punctuation** (no period, exclamation mark, etc.)
+- **Only use valid commit types** from the list above
+
 ### Examples
+
+#### ✅ Passing Commits
 - `feat(auth): add login functionality`
 - `fix(video): resolve playback issue`
 - `docs(readme): update installation instructions`
 - `test(utils): add unit tests for file processing`
-- `chore(deps): update dependencies to latest versions`
+- `build(deps): update python dependencies to latest versions`
+
+#### ❌ Failing Commits
+- `feat(auth): Add login functionality` (description starts with capital letter)
+- `fix(video): resolve playback issue.` (description ends with punctuation)
+- `feature(auth): add login functionality` (invalid type - should be `feat`)
+- `fix(video): Resolve playback issue!` (capital letter AND punctuation)
+- `chore(deps): update dependencies` (invalid type - should be `build` for dependencies)
+
+### Breaking Changes
+For commits that introduce breaking changes, use the `!` suffix after the type/scope and include `BREAKING CHANGE:` in the footer:
+
+#### Format for Breaking Changes
+```
+<type>[optional scope]!: <description>
+
+[optional body]
+
+BREAKING CHANGE: <description of the breaking change>
+```
+
+#### Examples of Breaking Change Commits
+- `feat(api)!: remove deprecated endpoint`
+- `refactor(config)!: change configuration file format`
+- `fix(auth)!: update authentication method`
+
+#### Full Breaking Change Example
+```
+feat(trakt)!: change default sync behavior from corrupt to healthy files
+
+BREAKING CHANGE: The default `include_statuses` for Trakt sync operations
+has changed from `[CORRUPT, SUSPICIOUS]` to `[HEALTHY]`. Users who want
+the previous behavior must explicitly configure the old statuses.
+```
 
 ### Atomic Commits (REQUIRED)
 - **Each commit should represent a single, focused change**
@@ -55,16 +96,17 @@ Using Conventional Commits helps:
 
 ### Branch Naming
 - Use descriptive branch names that indicate the purpose
+- **Include issue number in branch names** for traceability
 - Follow patterns like:
-  - `feature/feature-name`
-  - `fix/bug-description`
-  - `docs/documentation-update`
-  - `refactor/component-name`
+  - `feature/123-feature-name` (for issue #123)
+  - `fix/456-bug-description` (for issue #456)
+  - `docs/789-documentation-update` (for issue #789)
+  - `refactor/101-component-name` (for issue #101)
 
 ### Pull Request Guidelines
 - Keep pull requests focused on a single feature or fix
 - Include descriptive titles and detailed descriptions
-- Reference related issues when applicable
+- **Reference related issues in PR description** using `#issue-number` (e.g., "Fixes #123" or "Addresses #456")
 - Ensure all checks pass before requesting review
 
 ## Pre-commit Considerations

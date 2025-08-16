@@ -18,9 +18,11 @@ def create_video_file_from_path(path: str | Path) -> VideoFile:
     """Create a VideoFile instance from a file path."""
     path_obj = Path(path) if isinstance(path, str) else path
     if not path_obj.exists():
-        raise FileNotFoundError(f"Video file not found: {path_obj}")
+        msg = f"Video file not found: {path_obj}"
+        raise FileNotFoundError(msg)
     if not path_obj.is_file():
-        raise ValueError(f"Path is not a file: {path_obj}")
+        msg = f"Path is not a file: {path_obj}"
+        raise ValueError(msg)
     return VideoFile(path=path_obj)
 
 
@@ -53,7 +55,8 @@ def merge_scan_summaries(summaries: list[ScanSummary]) -> ScanSummary:
         ValueError: If no summaries provided
     """
     if not summaries:
-        raise ValueError("No summaries provided for merging")
+        msg = "No summaries provided for merging"
+        raise ValueError(msg)
 
     if len(summaries) == 1:
         return summaries[0]
@@ -119,7 +122,8 @@ def sort_scan_results(
     """
     valid_fields = {"path", "size", "corruption", "confidence", "scan_time"}
     if sort_by not in valid_fields:
-        raise ValueError(f"Invalid sort field: {sort_by}. Must be one of {valid_fields}")
+        msg = f"Invalid sort field: {sort_by}. Must be one of {valid_fields}"
+        raise ValueError(msg)
 
     if sort_by == "path":
 
@@ -258,20 +262,20 @@ def validate_scan_results(results: list[ScanResult]) -> list[str]:
 
         # Check for negative values
         if result.inspection_time < 0:
-            issues.append(f"Result {i}: Negative inspection time: " f"{result.inspection_time}")
+            issues.append(f"Result {i}: Negative inspection time: {result.inspection_time}")
 
         if result.confidence < 0 or result.confidence > 1:
             issues.append(f"Result {i}: Invalid confidence value: {result.confidence}")
 
         # Check for logical inconsistencies
         if result.is_corrupt and result.needs_deep_scan:
-            issues.append(f"Result {i}: File marked as both corrupt and " f"needing deep scan")
+            issues.append(f"Result {i}: File marked as both corrupt and needing deep scan")
 
         if (
             result.deep_scan_completed
             and not result.needs_deep_scan
             and result.scan_mode == ScanMode.QUICK
         ):
-            issues.append(f"Result {i}: Deep scan completed but not needed " f"and mode is quick")
+            issues.append(f"Result {i}: Deep scan completed but not needed and mode is quick")
 
     return issues

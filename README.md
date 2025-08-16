@@ -27,9 +27,30 @@ make setup
 # Scan a directory for corrupt videos
 corrupt-video-inspector scan /path/to/videos --mode hybrid --output results.json
 
+# Scan with database storage for historical tracking
+corrupt-video-inspector scan /path/to/videos --database --mode hybrid
+
+# Incremental scan (skip recently healthy files)
+corrupt-video-inspector scan /path/to/videos --incremental --database
+
+# Query database for corrupt files
+corrupt-video-inspector database query --corrupt --since "7 days ago"
+
 # View help for all commands
 corrupt-video-inspector --help
 ```
+
+### 🗄️ Database Support (New!)
+
+Optional SQLite database support enables persistent storage and advanced analysis:
+
+- **Historical Tracking**: Maintain scan history across multiple runs
+- **Incremental Scanning**: Skip recently scanned healthy files for faster scans
+- **Advanced Querying**: SQL-like filters for corruption status, dates, confidence levels
+- **Trend Analysis**: Track corruption rates and file health changes over time
+- **Zero Configuration**: Embedded SQLite database requires no server setup
+
+**See [Database Documentation](docs/DATABASE.md) for complete details and examples.**
 
 **Note**: FFmpeg is a critical system dependency required for video analysis. The `make install-system-deps` command will install it automatically on most systems, or see [FFmpeg Installation](https://ffmpeg.org/download.html) for manual installation.
 
@@ -43,6 +64,7 @@ corrupt_video_inspector/
 │   ├── cli/                    # Command-line interface → See docs/CLI.md
 │   ├── core/                   # Core business logic → See docs/CORE.md
 │   ├── config/                 # Configuration management → See docs/CONFIG.md
+│   ├── database/               # SQLite database support → See docs/DATABASE.md
 │   ├── ffmpeg/                 # FFmpeg integration → See docs/FFMPEG.md
 │   └── utils/                  # Shared utilities → See docs/UTILS.md
 ├── tests/                      # Test suite → See docs/tests.md
@@ -50,6 +72,7 @@ corrupt_video_inspector/
 │   ├── CLI.md                  # Command-line interface documentation
 │   ├── CORE.md                 # Core module documentation
 │   ├── CONFIG.md               # Configuration system guide
+│   ├── DATABASE.md             # SQLite database features and usage
 │   ├── FFMPEG.md               # FFmpeg integration details
 │   ├── UTILS.md                # Utilities documentation
 │   ├── trakt.md                # Trakt.tv integration guide

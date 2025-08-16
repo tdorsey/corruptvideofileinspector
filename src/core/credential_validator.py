@@ -7,11 +7,8 @@ instead of cryptic HTTP errors.
 
 import logging
 import os
-import sys
 from pathlib import Path
 from typing import NamedTuple
-
-import click
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +22,16 @@ class CredentialValidationResult(NamedTuple):
     empty_files: list[str]
 
 
-def validate_trakt_secrets(secrets_dir: Path | None = None) -> CredentialValidationResult:
+def validate_trakt_secrets(
+    secrets_dir: Path | None = None,
+) -> CredentialValidationResult:
     """
     Validate Trakt secret files exist and contain content.
 
     Args:
-        secrets_dir: Path to directory containing secret files. If None, uses the TRAKT_SECRETS_DIR environment variable or defaults to 'docker/secrets'.
+        secrets_dir: Path to directory containing secret files. If None, uses
+            the TRAKT_SECRETS_DIR environment variable or defaults to
+            'docker/secrets'.
 
     Returns:
         CredentialValidationResult with validation status and details
@@ -66,7 +67,8 @@ def validate_trakt_secrets(secrets_dir: Path | None = None) -> CredentialValidat
 
         error_message = (
             f"Trakt credentials not configured. {' '.join(error_parts)}. "
-            f"Run `make secrets-init` then populate trakt_client_id.txt and trakt_client_secret.txt."
+            "Run `make secrets-init` then populate trakt_client_id.txt and "
+            "trakt_client_secret.txt."
         )
 
         return CredentialValidationResult(
@@ -81,7 +83,9 @@ def validate_trakt_secrets(secrets_dir: Path | None = None) -> CredentialValidat
     )
 
 
-def validate_trakt_access_token(token: str | None) -> CredentialValidationResult:
+def validate_trakt_access_token(
+    token: str | None,
+) -> CredentialValidationResult:
     """
     Validate that an access token is provided and not empty.
 
@@ -98,7 +102,10 @@ def validate_trakt_access_token(token: str | None) -> CredentialValidationResult
             "See docs/trakt.md for instructions on obtaining a token."
         )
         return CredentialValidationResult(
-            is_valid=False, error_message=error_message, missing_files=[], empty_files=[]
+            is_valid=False,
+            error_message=error_message,
+            missing_files=[],
+            empty_files=[],
         )
 
     return CredentialValidationResult(
@@ -106,43 +113,47 @@ def validate_trakt_access_token(token: str | None) -> CredentialValidationResult
     )
 
 
-def handle_credential_error(
+def format_credential_error_details(
     validation_result: CredentialValidationResult, verbose: bool = False
-) -> None:
+) -> dict[str, str | list[str]]:
     """
-    Handle credential validation errors by showing user-friendly messages and exiting.
+    Format credential validation error details for presentation.
+
+    This function returns structured error information that can be used
+    by any presentation layer to display appropriate error messages.
 
     Args:
         validation_result: Result from credential validation
-        verbose: Whether to show additional detail
+        verbose: Whether to include additional detail
+
+    Returns:
+        Dictionary containing error information:
+        - message: Main error message
+        - missing_files: List of missing files (if any)
+        - empty_files: List of empty files (if any)
+        - fix_instructions: List of fix instructions (if verbose)
     """
     if validation_result.is_valid:
-        return
+        return {
+            "message": "",
+            "missing_files": [],
+            "empty_files": [],
+            "fix_instructions": [],
+        }
 
-    # Show main error message
-    click.echo(f"Error: {validation_result.error_message}", err=True)
+    details: dict[str, str | list[str]] = {
+        "message": (validation_result.error_message or "Credential validation failed"),
+        "missing_files": list(validation_result.missing_files),
+        "empty_files": list(validation_result.empty_files),
+        "fix_instructions": [],
+    }
 
-    # Show additional details in verbose mode
-    if verbose and (validation_result.missing_files or validation_result.empty_files):
-        click.echo("\nDetailed information:", err=True)
-        if validation_result.missing_files:
-            click.echo(f"  Missing files: {', '.join(validation_result.missing_files)}", err=True)
-        if validation_result.empty_files:
-            click.echo(f"  Empty files: {', '.join(validation_result.empty_files)}", err=True)
+    if verbose:
+        details["fix_instructions"] = [
+            "Run: make secrets-init",
+            "Edit docker/secrets/trakt_client_id.txt with your Trakt client ID",
+            "Edit docker/secrets/trakt_client_secret.txt with your Trakt client secret",
+            "See docs/trakt.md for detailed setup instructions",
+        ]
 
-        click.echo("\nTo fix this:", err=True)
-        click.echo("  1. Run: make secrets-init", err=True)
-        click.echo(
-            "  2. Edit docker/secrets/trakt_client_id.txt with your Trakt client ID", err=True
-        )
-        click.echo(
-            "  3. Edit docker/secrets/trakt_client_secret.txt with your Trakt client secret",
-            err=True,
-        )
-        click.echo("  4. See docs/trakt.md for detailed setup instructions", err=True)
-
-    # In test environments, raise ValueError for easier testing
-    if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
-        raise ValueError(f"Trakt credentials not configured: {validation_result.error_message}")
-
-    raise click.Abort()
+    return details

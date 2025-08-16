@@ -59,7 +59,8 @@ class FFmpegClient:
             logger.info(f"Found FFmpeg via which: {which_result}")
             return
 
-        raise FFmpegError("FFmpeg command not found. Please install FFmpeg or configure the path.")
+        msg = "FFmpeg command not found. Please install FFmpeg or configure the path."
+        raise FFmpegError(msg)
 
     def _validate_ffmpeg_command(self, command: str) -> bool:
         """Validate that a command is a working FFmpeg installation."""
@@ -91,7 +92,8 @@ class FFmpegClient:
         """
         # Assumption: Quick scan reads first 10 seconds, disables audio, minimal output
         if self._ffmpeg_path is None:
-            raise FFmpegError("FFmpeg path is not set.")
+            msg = "FFmpeg path is not set."
+            raise FFmpegError(msg)
         return [
             str(self._ffmpeg_path),
             "-v",
@@ -205,7 +207,8 @@ class FFmpegClient:
             list[str]: FFmpeg command as list
         """
         if self._ffmpeg_path is None:
-            raise FFmpegError("FFmpeg path is not set.")
+            msg = "FFmpeg path is not set."
+            raise FFmpegError(msg)
         return [
             str(self._ffmpeg_path),
             "-v",

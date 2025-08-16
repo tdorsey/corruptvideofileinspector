@@ -34,6 +34,18 @@ class OutputConfig(BaseModel):
     default_filename: str = Field(default="scan_results.json")
 
 
+class DatabaseConfig(BaseModel):
+    enabled: bool = Field(default=False, description="Enable SQLite database storage")
+    path: Path = Field(
+        default=Path.home() / ".corrupt-video-inspector" / "scans.db",
+        description="Database file location",
+    )
+    auto_cleanup_days: int = Field(
+        default=0, description="Auto-delete scans older than X days (0 = disabled)"
+    )
+    create_backup: bool = Field(default=True, description="Create backups before schema changes")
+
+
 class TraktConfig(BaseModel):
     client_id: str = Field(default="")
     client_secret: str = Field(default="")
@@ -61,6 +73,7 @@ class AppConfig(BaseModel):
     output: OutputConfig
     scan: ScanConfig
     trakt: TraktConfig
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
 
 _CONFIG_SINGLETON: AppConfig | None = None
@@ -113,20 +126,23 @@ def load_config(config_path: Path | None = None, debug: bool = False) -> AppConf
                     if xdg_path.is_file():
                         config_path = xdg_path
                     else:
-                        raise FileNotFoundError(
+                        msg = (
                             f"No config file found at /app/config.yaml, {project_config}, or {xdg_path}. "
                             "Please provide a config file."
                         )
+                        raise FileNotFoundError(msg)
                 else:
-                    raise FileNotFoundError(
+                    msg = (
                         f"No config file found at /app/config.yaml or {project_config}, and XDG_CONFIG_HOME is not set. "
                         "Please provide a config file."
                     )
+                    raise FileNotFoundError(msg)
         else:
-            raise FileNotFoundError(
+            msg = (
                 "No config file found at /app/config.yaml and no pyproject.toml found to locate project root. "
                 "Please provide a config file."
             )
+            raise FileNotFoundError(msg)
 
     # Load YAML configuration file
     with config_path.open("r", encoding="utf-8") as f:

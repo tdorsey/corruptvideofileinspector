@@ -29,6 +29,8 @@ def test_generate_output_uses_output_dir(tmp_path):
     config.output = MagicMock()
     config.output.default_output_dir = tmp_path
     config.output.default_filename = "results.json"
+    config.database = MagicMock()
+    config.database.enabled = False
 
     # Create a mock handler with our config
     handler = BaseHandler(config)

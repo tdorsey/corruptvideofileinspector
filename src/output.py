@@ -18,29 +18,56 @@ class OutputFormatter:
     def __init__(self, config: AppConfig):
         """Initialize output formatter with configuration."""
         self.config = config
+        self._database_service = None
+
+        # Initialize database service if enabled
+        if config.database.enabled:
+            try:
+                from src.database.service import DatabaseService
+
+                self._database_service = DatabaseService(
+                    config.database.path, config.database.auto_cleanup_days
+                )
+                logger.info(f"Database storage enabled at {config.database.path}")
+            except ImportError as e:
+                logger.warning(f"Database dependencies not available: {e}")
+                self._database_service = None
+            except Exception:
+                logger.exception("Failed to initialize database service")
+                self._database_service = None
 
     def write_scan_results(
         self,
         summary: Any,
-        output_file: Path,
+        scan_results: list[Any] | None = None,
+        output_file: Path | None = None,
         format: str = "json",
         pretty_print: bool = True,
+        store_in_database: bool = True,
     ) -> None:
         """
-        Write scan results to output file.
+        Write scan results to output file and optionally to database.
 
         Args:
             summary: Scan summary object with results
-            output_file: Path to output file
+            scan_results: Optional list of individual scan results
+            output_file: Path to output file (if None, uses database only)
             format: Output format (json, yaml, csv)
             pretty_print: Whether to pretty-print output
+            store_in_database: Whether to store in database (if enabled)
         """
         try:
-            if format.lower() == "json":
-                self._write_json_results(summary, output_file, pretty_print)
-            else:
-                logger.warning(f"Output format '{format}' not implemented, using JSON")
-                self._write_json_results(summary, output_file, pretty_print)
+            # Store in database if enabled and requested
+            if store_in_database and self._database_service and self.config.database.enabled:
+                self._store_scan_in_database(summary, scan_results)
+
+            # Write to file if output path provided
+            if output_file:
+                if format.lower() == "json":
+                    self._write_json_results(summary, output_file, pretty_print)
+                else:
+                    logger.warning(f"Output format '{format}' not implemented, using JSON")
+                    self._write_json_results(summary, output_file, pretty_print)
 
         except Exception:
             logger.exception("Failed to write scan results")
@@ -71,6 +98,60 @@ class OutputFormatter:
         except Exception:
             logger.exception("Failed to write file list")
             raise
+
+    def _store_scan_in_database(
+        self, summary: Any, scan_results: list[Any] | None = None
+    ) -> int | None:
+        """Store scan summary and results in database.
+
+        Args:
+            summary: Scan summary object
+            scan_results: Optional list of individual scan results
+
+        Returns:
+            Scan ID if successfully stored, None otherwise
+        """
+        if not self._database_service:
+            return None
+
+        try:
+            from src.database.models import ScanDatabaseModel, ScanResultDatabaseModel
+
+            # Convert summary to database model
+            db_scan = ScanDatabaseModel.from_scan_summary(summary)
+            scan_id = self._database_service.store_scan(db_scan)
+
+            # Store individual results if provided
+            if scan_results:
+                db_results = []
+                for result in scan_results:
+                    db_result = ScanResultDatabaseModel.from_scan_result(result, scan_id)
+                    db_results.append(db_result)
+
+                self._database_service.store_scan_results(scan_id, db_results)
+                logger.info(f"Stored {len(db_results)} scan results in database")
+
+            # Perform auto-cleanup if configured
+            if self.config.database.auto_cleanup_days > 0:
+                deleted_count = self._database_service.cleanup_old_scans(
+                    self.config.database.auto_cleanup_days
+                )
+                if deleted_count > 0:
+                    logger.info(f"Auto-cleanup removed {deleted_count} old scans")
+
+            return scan_id
+
+        except Exception:
+            logger.exception("Failed to store scan results in database")
+            return None
+
+    def get_database_service(self):
+        """Get the database service instance if available.
+
+        Returns:
+            DatabaseService instance or None if not available
+        """
+        return self._database_service
 
     def _write_json_results(self, summary: Any, output_file: Path, pretty_print: bool) -> None:
         """Write scan results as JSON using ScanOutputModel."""

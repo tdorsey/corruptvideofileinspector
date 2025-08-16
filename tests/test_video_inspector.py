@@ -141,7 +141,8 @@ def inspect_video_files_cli(path, scan_mode=None, json_output=False):
     if ff_cmd is None:
         # Only error when no specific mode or JSON output
         if scan_mode is None and not json_output:
-            raise RuntimeError("FFmpeg not found")
+            msg = "FFmpeg not found"
+            raise RuntimeError(msg)
         # default to placeholder command
         cmd = "ffmpeg"
     else:

@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
+from src.cli.credential_utils import handle_credential_error
 from src.core.credential_validator import (
     CredentialValidationResult,
-    handle_credential_error,
     validate_trakt_access_token,
     validate_trakt_secrets,
 )

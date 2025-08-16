@@ -34,6 +34,12 @@ scan:
     - ".wmv"
     - ".flv"
 
+database:
+  enabled: false  # Enable SQLite database storage
+  path: "~/.corrupt-video-inspector/scans.db"  # Database file location
+  auto_cleanup_days: 0  # Auto-delete scans older than X days (0 = disabled)
+  create_backup: true  # Create backups before schema changes
+
 trakt:
   client_id: ""
   client_secret: ""

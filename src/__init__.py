@@ -26,7 +26,8 @@ import sys
 
 from src.version import __version__
 
-from .cli.main import main
+# Import only core modules by default
+# CLI modules are imported only when explicitly needed
 from .core.errors.errors import (
     ConfigurationError,
     FFmpegError,
@@ -95,4 +96,7 @@ def get_version() -> str:
 
 
 if __name__ == "__main__":
+    # Import CLI main only when running as script
+    from .cli.main import main
+
     sys.exit(main())

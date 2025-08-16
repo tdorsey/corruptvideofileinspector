@@ -42,15 +42,14 @@ class ReportConfiguration:
     def __post_init__(self) -> None:
         """Validate report configuration."""
         if self.format not in self.VALID_FORMATS:
-            raise ValueError(
-                f"Invalid format: {self.format}. Must be one of " f"{self.VALID_FORMATS}"
-            )
+            msg = f"Invalid format: {self.format}. Must be one of {self.VALID_FORMATS}"
+            raise ValueError(msg)
         if self.sort_by not in self.VALID_SORT_FIELDS:
-            raise ValueError(
-                f"Invalid sort field: {self.sort_by}. Must be one of " f"{self.VALID_SORT_FIELDS}"
-            )
+            msg = f"Invalid sort field: {self.sort_by}. Must be one of {self.VALID_SORT_FIELDS}"
+            raise ValueError(msg)
         if self.template_path and not self.template_path.exists():
-            raise FileNotFoundError(f"Template file not found: {self.template_path}")
+            msg = f"Template file not found: {self.template_path}"
+            raise FileNotFoundError(msg)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
