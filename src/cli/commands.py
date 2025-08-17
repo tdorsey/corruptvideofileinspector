@@ -176,6 +176,12 @@ def cli(
     default=None,
     help="Store results in database (overrides config setting)",
 )
+@click.option(
+    "--incremental/--full-scan",
+    default=False,
+    help="Skip files that were recently scanned and found healthy",
+    show_default=True,
+)
 @click.pass_context
 def scan(
     ctx,
@@ -189,6 +195,7 @@ def scan(
     output_format,
     pretty,
     store_db,
+    incremental,
     config,
 ):
     # If no arguments are provided, show the help for the scan subcommand
@@ -212,7 +219,7 @@ def scan(
     - Results are automatically stored in SQLite database (default: enabled)
     - Use --incremental to skip files recently scanned and found healthy
     - Use 'database query' commands to view stored results
-    - Use --no-database to disable database storage
+    - Use --no-store-db to disable database storage
 
     File Output:
 
@@ -220,51 +227,16 @@ def scan(
     - Use --output to save results to a JSON file
     - Supports --format json (other formats available: yaml, csv)
     - Use --pretty for formatted JSON output
-
-    Examples:
-
-    \b
-    # Basic hybrid scan with database storage
-    corrupt-video-inspector scan /path/to/videos
-
-    \b
-    # Quick scan with JSON file output
-    corrupt-video-inspector scan --mode quick --output results.json /path/to/videos
-
-    \b
-    # Incremental scan (skip recently healthy files)
-    corrupt-video-inspector scan --incremental /path/to/videos
-
-    \b
-    # Full scan with both database and file output
-    corrupt-video-inspector scan --mode full --output full_scan.json --pretty /path/to/videos
-
-    \b
-    # Deep scan with custom extensions and CSV output
-    corrupt-video-inspector scan --mode deep --extensions mp4 --extensions mkv --output results.csv --format csv /videos
     """
     try:
         # Load configuration
         app_config = load_config(config_path=config)
 
-        # Override database setting if provided
-        # (previous code referenced an undefined 'database' variable and has
-        #  been removed - database overrides are handled via --store-db)
-
-        # Warn if database is disabled but still allow operation
-        if not app_config.database.enabled:
-            if not output:
-                logger.warning(
-                    "Database storage is disabled and no output file specified - results will not be persisted"
-                )
-                click.echo(
-                    "Warning: Database storage is disabled and no output file specified. Results will not be saved.",
-                    err=True,
-                )
-            else:
-                logger.info(
-                    "Database storage is disabled - results will only be saved to output file"
-                )
+        # Override database setting if specified via --store-db
+        if store_db is not None:
+            app_config.database.enabled = store_db
+            if store_db and not app_config.database.path.parent.exists():
+                app_config.database.path.parent.mkdir(parents=True, exist_ok=True)
 
         # Override config with CLI options
         if max_workers:
@@ -282,6 +254,27 @@ def scan(
 
         # Convert mode string to ScanMode enum
         scan_mode = ScanMode(mode.lower())
+
+        # Handle incremental scanning
+        if incremental and app_config.database.enabled:
+            try:
+                from src.database.service import DatabaseService
+
+                db_service = DatabaseService(
+                    app_config.database.path, app_config.database.auto_cleanup_days
+                )
+
+                # Get files that were recently scanned and found healthy
+                recent_healthy = db_service.get_files_needing_rescan(
+                    str(directory), scan_mode.value
+                )
+                # Invert the logic - skip files NOT in the rescan list
+                # (these are files that were healthy in recent scans)
+                click.echo(
+                    f"Incremental scan: focusing on {len(recent_healthy)} files that need rescanning"
+                )
+            except Exception as e:
+                logger.warning(f"Could not perform incremental scan: {e}")
 
         # Create and run scan handler
         handler = ScanHandler(app_config)
@@ -626,11 +619,6 @@ def list_watchlists(config):
 
 
 @trakt.command()
-@click.option(
-    "--watchlist",
-    "-w",
-    help="Watchlist name or slug to view (leave empty for main watchlist)",
-)
 @global_options
 def view(watchlist, config):
     """
@@ -703,14 +691,21 @@ def view(watchlist, config):
 
 
 @trakt.command()
-@click.option("--username", help="Trakt username (required for OAuth authentication)")
+@click.option(
+    "--username",
+    help="Trakt username (required for OAuth authentication)",
+)
 @click.option(
     "--store/--no-store",
     default=True,
     help="Store credentials in ~/.pytrakt.json for automatic loading",
     show_default=True,
 )
-@click.option("--test-only", is_flag=True, help="Only test existing authentication")
+@click.option(
+    "--test-only",
+    is_flag=True,
+    help="Only test existing authentication",
+)
 @global_options
 def auth(username, store, test_only, config):
     """

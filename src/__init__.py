@@ -27,6 +27,8 @@ import sys
 
 from src.version import __version__
 
+# Import only core modules by default
+# CLI modules are imported only when explicitly needed
 from .core.errors.errors import (
     ConfigurationError,
     FFmpegError,

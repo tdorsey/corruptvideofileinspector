@@ -74,24 +74,21 @@ class BaseHandler:
     ) -> Path | None:
         """Helper to generate output files for handlers and tests.
 
-        Writes summary.model_dump() or dict(summary) as JSON using OutputFormatter.
+        Writes summary.model_dump() or dict(summary) as JSON using
+        OutputFormatter and returns the path written to.
         """
-        # Determine target
-        if output_file and output_file.exists() and output_file.is_dir():
-            logger.warning("Output path is a directory; using default output directory")
-            target = Path(self.config.output.default_output_dir) / getattr(
-                self.config.output, "default_filename", "scan_results.json"
-            )
-        elif output_file:
+        # Determine target output path
+        if output_file:
             target = output_file
         else:
             target = Path(self.config.output.default_output_dir) / getattr(
                 self.config.output, "default_filename", "scan_results.json"
             )
 
+        # Ensure parent directory exists
         target.parent.mkdir(parents=True, exist_ok=True)
 
-        data = None
+        # Prepare serializable data from summary
         try:
             if hasattr(summary, "model_dump"):
                 data = summary.model_dump()
@@ -102,10 +99,13 @@ class BaseHandler:
         except Exception:
             data = {"summary": str(summary)}
 
-        # Keep output_format available for compatibility with callers/tests
-        _ = output_format
+        # Only JSON is currently supported by OutputFormatter._write_json_results
+        if output_format.lower() != "json":
+            logger.warning("Unsupported output format: %s", output_format)
 
+        # Delegate actual file writing to the OutputFormatter
         self.output_formatter._write_json_results(data, target, pretty_print)
+
         return target
 
 

@@ -51,6 +51,18 @@ class DatabaseConfig(BaseModel):
     create_backup: bool = Field(default=True, description="Create backups before schema changes")
 
 
+class DatabaseConfig(BaseModel):
+    enabled: bool = Field(default=False, description="Enable SQLite database storage")
+    path: Path = Field(
+        default=Path.home() / ".corrupt-video-inspector" / "scans.db",
+        description="Database file location",
+    )
+    auto_cleanup_days: int = Field(
+        default=0, description="Auto-delete scans older than X days (0 = disabled)"
+    )
+    create_backup: bool = Field(default=True, description="Create backups before schema changes")
+
+
 class TraktConfig(BaseModel):
     client_id: str = Field(default="")
     client_secret: str = Field(default="")
