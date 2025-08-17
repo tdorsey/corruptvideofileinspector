@@ -287,7 +287,7 @@ class ScanSummary(BaseModel):
             Status summary string
         """
         if not self.is_complete:
-            return f"In progress: {self.processed_files}/" f"{self.total_files} files processed"
+            return f"In progress: {self.processed_files}/{self.total_files} files processed"
 
         status_parts = [
             f"{self.total_files} files scanned",
@@ -306,7 +306,7 @@ class ScanSummary(BaseModel):
         Returns:
             Performance summary string
         """
-        return f"Completed in {self.scan_time:.2f}s " f"({self.files_per_second:.1f} files/sec)"
+        return f"Completed in {self.scan_time:.2f}s ({self.files_per_second:.1f} files/sec)"
 
     def get_detailed_summary(self) -> str:
         """Get detailed summary with all statistics.
@@ -318,13 +318,13 @@ class ScanSummary(BaseModel):
             f"Directory: {self.directory}",
             f"Status: {'Complete' if self.is_complete else 'In Progress'}",
             f"Files: {self.processed_files}/{self.total_files} processed",
-            f"Results: {self.healthy_files} healthy, " f"{self.corrupt_files} corrupt",
+            f"Results: {self.healthy_files} healthy, {self.corrupt_files} corrupt",
             f"Performance: {self.files_per_second:.1f} files/sec",
             f"Success Rate: {self.success_rate:.1f}%",
         ]
 
         if self.deep_scans_needed > 0:
-            lines.append(f"Deep Scans: {self.deep_scans_completed}/" f"{self.deep_scans_needed}")
+            lines.append(f"Deep Scans: {self.deep_scans_completed}/{self.deep_scans_needed}")
 
         if self.was_resumed:
             lines.append("Note: This scan was resumed from a previous session")
@@ -509,12 +509,15 @@ class BatchScanRequest(BaseModel):
     def __init__(self, **data: Any):
         super().__init__(**data)
         if not self.directories:
-            raise ValueError("At least one directory must be specified")
+            msg = "At least one directory must be specified"
+            raise ValueError(msg)
         for directory in self.directories:
             if not directory.exists():
-                raise FileNotFoundError(f"Directory not found: {directory}")
+                msg = f"Directory not found: {directory}"
+                raise FileNotFoundError(msg)
             if not directory.is_dir():
-                raise NotADirectoryError(f"Path is not a directory: {directory}")
+                msg = f"Path is not a directory: {directory}"
+                raise NotADirectoryError(msg)
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         data = super().model_dump(**kwargs)

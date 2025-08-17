@@ -261,10 +261,11 @@ class ConfigurationMerger:
         if has_id != has_secret:
             missing = "client_secret" if has_id else "client_id"
             provided = "client_id" if has_id else "client_secret"
-            raise ValueError(
+            msg = (
                 f"Partial Trakt credentials detected: {provided} provided but {missing} missing. "
                 "Both client_id and client_secret must be provided together, or neither."
             )
+            raise ValueError(msg)
 
         if has_id and has_secret:
             self._log_override("post_process", "trakt.credentials", "partial", "complete")

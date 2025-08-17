@@ -86,6 +86,7 @@ This includes detailed guidance on:
 **All commits MUST follow the [Conventional Commits](https://www.conventionalcommits.org/) standard:**
 - Use format: `<type>[optional scope]: <description>`
 - Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
+- **Description format**: After the type and scope, the brief description should begin in lowercase
 - Examples: `feat(cli): add video scan command`, `fix(config): resolve YAML parsing error`
 - **Atomic commits**: Each commit should represent a single, focused change. Avoid combining unrelated changes in one commit.
 - See [Git & Version Control](instructions/git.md) for detailed commit guidelines
@@ -98,7 +99,7 @@ This includes detailed guidance on:
 - Templates ensure required information is provided and consistent formatting
 
 ### Code Quality Standards
-- Run `make check` before every commit to ensure formatting, linting, and type checking pass
+- **⚠️ CRITICAL: `make check` MUST pass successfully before every commit** - ensures formatting, linting, and type checking pass
 - All tests must pass before submitting changes
 - Follow existing code style and patterns in the repository
 
@@ -124,12 +125,9 @@ For comprehensive guidance on specific aspects of development, refer to these sp
 - **[Workflow File Commit Instructions](../instructions/workflows.md)** - Commit message and review guidelines for workflow files
 >>>>>>> origin/main
 
-## Recent Updates and Fixes
+## Changelog
 
-✅ **CLI Entry Point Fixed**: cli_handler.py now has proper implementation
-✅ **Missing Make Targets Added**: `docker-test` and `security-scan` targets added to Makefile
-✅ **Configuration Requirements**: CLI requires config.yaml file (sample provided below)
-✅ **Validation Completed**: All commands and scenarios tested and verified working
+For the latest updates, fixes, and changes, see the [CHANGELOG.md](../CHANGELOG.md).
 
 ## GitHub Actions and Automation Guidelines
 
@@ -240,7 +238,7 @@ These commands work without network access in the Copilot environment:
 - `make check` - Format, lint, and type check (requires pre-installed dev dependencies)
 - `make test` - Run all tests (requires pre-installed dev dependencies)
 - `make format` - Format code with black
-- `make lint` - Lint code with ruff  
+- `make lint` - Lint code with ruff
 - `make type` - Type check with mypy
 - `make docker-env` - Generate Docker environment files
 - `make secrets-init` - Create Trakt secret files
