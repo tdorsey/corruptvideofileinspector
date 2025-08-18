@@ -73,7 +73,8 @@ class VideoFile(BaseModel):
         if not self.sha256_hash:
             return "no-hash"
         if len(self.sha256_hash) >= self.MIN_HASH_LENGTH:
-            return f"{self.sha256_hash[:8]}...{self.sha256_hash[-4:]}"
+        if len(self.sha256_hash) >= (self.SHORT_HASH_PREFIX_LEN + self.SHORT_HASH_SUFFIX_LEN):
+            return f"{self.sha256_hash[:self.SHORT_HASH_PREFIX_LEN]}...{self.sha256_hash[-self.SHORT_HASH_SUFFIX_LEN:]}"
         return self.sha256_hash
 
 
