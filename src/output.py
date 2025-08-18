@@ -109,3 +109,11 @@ class OutputFormatter:
         except Exception:
             logger.exception("Failed to store scan results in database")
             return None
+
+    def get_database_service(self):
+        """Get the database service instance if available.
+
+        Returns:
+            DatabaseService instance or None if not available
+        """
+        return self._database_service
