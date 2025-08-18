@@ -381,7 +381,8 @@ class FFmpegClient:
                 data = json.loads(result.stdout)
                 return data
             except json.JSONDecodeError:
-                logger.warning(f"Failed to parse FFprobe JSON output for {file_path}")
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse FFprobe JSON output for {file_path}: {e}")
                 return {"streams": []}
                 
         except subprocess.TimeoutExpired:
