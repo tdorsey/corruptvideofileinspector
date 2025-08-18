@@ -36,36 +36,25 @@ class DatabaseManager:
 
     @contextmanager
     def _get_connection(self) -> Generator[sqlite3.Connection, None, None]:
-        """Get database connection with proper error handling."""
-        conn = None
-        try:
-            conn = sqlite3.connect(self.db_path, timeout=30.0)
-            conn.execute("PRAGMA foreign_keys = ON")
-            conn.execute("PRAGMA journal_mode = WAL")
-            yield conn
-        except Exception as e:
-            if conn:
-                conn.rollback()
-            logger.error(f"Database operation failed: {e}")
-            raise
-        finally:
-            if conn:
-                conn.close()
         """Get database connection with proper error handling and retry logic."""
         conn = None
         max_attempts = 3
         attempt = 0
+        
         while attempt < max_attempts:
             try:
-                conn = sqlite3.connect(self.db_path, timeout=5.0)
+                conn = sqlite3.connect(self.db_path, timeout=30.0)
                 conn.execute("PRAGMA foreign_keys = ON")
                 conn.execute("PRAGMA journal_mode = WAL")
                 yield conn
                 break
             except sqlite3.OperationalError as e:
-                if "database is locked" in str(e):
+                if "database is locked" in str(e) and attempt < max_attempts - 1:
                     logger.warning(f"Database is locked, retrying ({attempt+1}/{max_attempts})...")
                     attempt += 1
+                    if conn:
+                        conn.close()
+                        conn = None
                     time.sleep(1)
                 else:
                     if conn:
@@ -78,9 +67,10 @@ class DatabaseManager:
                 logger.error(f"Database operation failed: {e}")
                 raise
             finally:
-                if conn:
+                if conn and attempt == max_attempts - 1:
                     conn.close()
-        else:
+        
+        if attempt >= max_attempts:
             logger.error("Failed to acquire database connection after multiple attempts due to lock.")
             raise sqlite3.OperationalError("Failed to acquire database connection after multiple attempts due to lock.")
     def _create_tables(self, conn: sqlite3.Connection) -> None:

@@ -21,6 +21,9 @@ from src.ffmpeg.ffmpeg_client import FFmpegClient
 
 logger = logging.getLogger(__name__)
 
+# Constants
+MAX_DIRECTORY_DISPLAY_LENGTH = 40
+
 
 # Custom Click types
 class ScanModeChoice(click.Choice):
