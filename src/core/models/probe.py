@@ -188,12 +188,11 @@ class ProbeResult(BaseModel):
         )
 
 
-class ScanPrerequisites:
+class ScanPrerequisites(BaseModel):
     """Helper class to check scan prerequisites based on probe results."""
     
-    def __init__(self, require_video_streams: bool = True, require_format_info: bool = True):
-        self.require_video_streams = require_video_streams
-        self.require_format_info = require_format_info
+    require_video_streams: bool = True
+    require_format_info: bool = True
     
     def can_scan(self, probe_result: Optional[ProbeResult]) -> bool:
         """Check if file can be scanned based on probe result."""

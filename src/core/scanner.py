@@ -359,7 +359,6 @@ class VideoScanner:
         """
         logger.info("Starting directory scan: %s", directory)
         logger.info("Scan mode: %s, recursive: %s", scan_mode.value, recursive)
-        start_time: float = time.time()
 
         # Get video files
         video_files = self.get_video_files(directory, recursive=recursive)
@@ -422,6 +421,7 @@ class VideoScanner:
         video_files = eligible_files
         if not video_files:
             logger.warning("No eligible video files found after probe phase")
+            start_time: float = time.time()
             return ScanSummary(
                 directory=directory,
                 total_files=len(eligible_files),
@@ -433,6 +433,7 @@ class VideoScanner:
                 was_resumed=was_resumed,
             )
         
+        start_time: float = time.time()
         resume_path = self._get_resume_path(directory)
         processed_files: set[str] = set()
         was_resumed = False

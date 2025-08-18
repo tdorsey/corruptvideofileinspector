@@ -3,6 +3,7 @@ Unit tests for FFprobe client functionality.
 """
 
 import pytest
+import subprocess
 import tempfile
 import json
 from pathlib import Path
@@ -216,7 +217,3 @@ class TestFFprobeClient:
             assert results["ffprobe_path"] == "/usr/bin/ffprobe"
             assert "version 4.4.0" in results["version_info"]
             assert results["can_parse_json"] is True
-
-
-# Import subprocess for the timeout test
-import subprocess

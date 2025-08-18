@@ -122,21 +122,22 @@ class ProbeResultCache:
     def clear_expired(self) -> int:
         """
         Remove all expired entries from cache.
-        
+
         Returns:
             Number of entries removed
         """
         removed_count = 0
         
         with self._lock:
-            expired_keys = []
+            # Use a single pass approach - build list of valid items
+            valid_cache = {}
             for key, probe_result in self._cache.items():
-                if probe_result.is_expired(self.max_age_hours):
-                    expired_keys.append(key)
+                if not probe_result.is_expired(self.max_age_hours):
+                    valid_cache[key] = probe_result
+                else:
+                    removed_count += 1
             
-            for key in expired_keys:
-                del self._cache[key]
-                removed_count += 1
+            self._cache = valid_cache
         
         if removed_count > 0:
             logger.info(f"Removed {removed_count} expired entries from probe cache")
