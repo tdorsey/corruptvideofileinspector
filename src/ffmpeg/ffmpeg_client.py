@@ -121,7 +121,7 @@ class FFmpegClient:
         Returns:
             ScanResult: Quick inspection results
         """
-        logger.debug(f"Quick scan: {video_file.path}")
+        logger.debug(f"[SHA256: {video_file.short_hash}] Quick scan: {video_file.path}")
 
         # Build FFmpeg command for quick scan
         cmd = self._build_quick_scan_command(video_file)
@@ -145,7 +145,7 @@ class FFmpegClient:
                 error_message="Quick scan timed out - needs deep scan",
             )
         except Exception as e:
-            logger.exception(f"Quick scan failed: {video_file.path}")
+            logger.exception(f"[SHA256: {video_file.short_hash}] Quick scan failed: {video_file.path}")
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=True,
@@ -163,7 +163,7 @@ class FFmpegClient:
         Returns:
             ScanResult: Deep inspection results
         """
-        logger.debug(f"Deep scan: {video_file.path}")
+        logger.debug(f"[SHA256: {video_file.short_hash}] Deep scan: {video_file.path}")
 
         # Build FFmpeg command for deep scan
         cmd = self._build_deep_scan_command(video_file)
@@ -189,7 +189,7 @@ class FFmpegClient:
                 error_message="Deep scan timed out",
             )
         except Exception as e:
-            logger.exception(f"Deep scan failed: {video_file.path}")
+            logger.exception(f"[SHA256: {video_file.short_hash}] Deep scan failed: {video_file.path}")
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=False,
@@ -230,7 +230,7 @@ class FFmpegClient:
         Returns:
             ScanResult: Full inspection results
         """
-        logger.debug(f"Full scan (no timeout): {video_file.path}")
+        logger.debug(f"[SHA256: {video_file.short_hash}] Full scan (no timeout): {video_file.path}")
 
         # Build FFmpeg command for full scan (same as deep scan)
         cmd = self._build_deep_scan_command(video_file)
@@ -246,7 +246,7 @@ class FFmpegClient:
             )
             return self._process_ffmpeg_result(video_file, result, is_quick=False)
         except Exception as e:
-            logger.exception(f"Full scan failed: {video_file.path}")
+            logger.exception(f"[SHA256: {video_file.short_hash}] Full scan failed: {video_file.path}")
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=False,
