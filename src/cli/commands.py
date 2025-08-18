@@ -2,9 +2,7 @@
 CLI command definitions using Click framework.
 """
 
-import csv
 import importlib.util
-import io
 import json
 import logging
 import sys
@@ -155,24 +153,10 @@ def cli(
     show_default=True,
 )
 @click.option(
-    "--output",
-    "-o",
-    type=click.Path(path_type=Path, dir_okay=False),
-    help="Output file path for results (must be a file, not a directory)",
-)
-@click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["json", "yaml", "csv"], case_sensitive=False),
-    default="json",
-    help="Output format",
-    show_default=True,
-)
-@click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
-@click.option(
     "--database/--no-database",
-    default=None,
-    help="Store results in database (overrides config setting)",
+    default=True,
+    help="Store results in database (default: enabled)",
+    show_default=True,
 )
 @click.option(
     "--incremental/--full-scan",
@@ -189,9 +173,6 @@ def scan(
     recursive,
     extensions,
     resume,
-    output,
-    output_format,
-    pretty,
     database,
     incremental,
     config,
@@ -211,26 +192,27 @@ def scan(
     - hybrid: Quick scan first, then deep scan for suspicious files
     - full: Complete scan of entire video stream without timeout
 
-    Database Integration:
+    Database Integration (Required):
 
     \b
-    - Use --database to store results in SQLite database
+    - Results are automatically stored in SQLite database
     - Use --incremental to skip files recently scanned and found healthy
     - Database must be enabled in configuration
+    - Use 'database query' commands to view stored results
 
     Examples:
 
     \b
-    # Basic hybrid scan
+    # Basic hybrid scan with database storage
     corrupt-video-inspector scan /path/to/videos
 
     \b
     # Quick scan with database storage
-    corrupt-video-inspector scan --mode quick --database /path/to/videos
+    corrupt-video-inspector scan --mode quick /path/to/videos
 
     \b
     # Incremental scan (skip recently healthy files)
-    corrupt-video-inspector scan --incremental --database /path/to/videos
+    corrupt-video-inspector scan --incremental /path/to/videos
 
     \b
     # Full scan without timeout (for thorough analysis)
@@ -247,6 +229,11 @@ def scan(
         # Override database setting if provided
         if database is not None:
             app_config.database.enabled = database
+
+        # Ensure database is enabled for storage
+        if not app_config.database.enabled:
+            logger.warning("Database storage is disabled - results will not be persisted")
+            click.echo("Warning: Database storage is disabled. Enable database in config to store scan results.", err=True)
 
         # Override config with CLI options
         if max_workers:
@@ -287,13 +274,14 @@ def scan(
             scan_mode=scan_mode,
             recursive=recursive,
             resume=resume,
-            output_file=output,
-            output_format=output_format,
-            pretty_print=pretty,
         )
         if summary is not None:
             click.echo("\nScan Summary:")
-            click.echo(json.dumps(summary.model_dump(), indent=2 if pretty else None))
+            click.echo(json.dumps(summary.model_dump(), indent=2))
+            
+            if app_config.database.enabled:
+                click.echo(f"\nResults stored in database: {app_config.database.path}")
+                click.echo("Use 'corrupt-video-inspector database query' to view results")
         else:
             click.echo("No video files found to scan.")
 
@@ -314,23 +302,12 @@ def scan(
     show_default=True,
 )
 @click.option("--extensions", multiple=True, help="Video file extensions to include")
-@click.option("--output", "-o", type=PathType(), help="Output file path for file list")
-@click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["text", "json", "csv"], case_sensitive=False),
-    default="text",
-    help="Output format",
-    show_default=True,
-)
 @click.pass_context
 def list_files(
     ctx,
     directory,
     recursive,
     extensions,
-    output,
-    output_format,
     config,
 ):
     # If no arguments are provided, show the help for the list-files subcommand
@@ -340,8 +317,8 @@ def list_files(
     """
     List all video files in a directory without scanning.
 
-    Useful for previewing what files would be scanned or generating
-    file inventories.
+    Displays all video files found in the specified directory.
+    Useful for previewing what files would be scanned.
 
     Examples:
 
@@ -350,8 +327,8 @@ def list_files(
     corrupt-video-inspector list-files /path/to/videos
 
     \b
-    # List specific extensions to JSON
-    corrupt-video-inspector list-files --extensions mp4 --format json /videos
+    # List specific extensions only
+    corrupt-video-inspector list-files --extensions mp4 --extensions mkv /videos
     """
     try:
         # Load configuration
@@ -370,20 +347,9 @@ def list_files(
         video_files = handler.list_files(
             directory=directory,
             recursive=recursive,
-            output_file=output,
-            output_format=output_format,
         )
         if not video_files:
             click.echo("No video files found in the specified directory.")
-        elif output_format == "json":
-            click.echo(json.dumps([vf.model_dump() for vf in video_files], indent=2))
-        elif output_format == "csv":
-            output_str = io.StringIO()
-            writer = csv.DictWriter(output_str, fieldnames=video_files[0].model_dump().keys())
-            writer.writeheader()
-            for vf in video_files:
-                writer.writerow(vf.model_dump())
-            click.echo(output_str.getvalue())
         else:
             click.echo(f"\nFound {len(video_files)} video files:")
             for i, vf in enumerate(video_files, 1):
@@ -423,7 +389,6 @@ def trakt(ctx):
     show_default=True,
 )
 @click.option("--dry-run", is_flag=True, help="Show what would be synced without actually syncing")
-@click.option("--output", "-o", type=PathType(), help="Save sync results to file")
 @click.option(
     "--watchlist",
     "-w",
@@ -445,7 +410,6 @@ def sync(
     client_id,
     interactive,
     dry_run,
-    output,
     watchlist,
     include_status,
     config,
@@ -468,8 +432,8 @@ def sync(
     corrupt-video-inspector trakt sync results.json --watchlist "my-custom-list"
 
     \b
-    # Interactive sync with output
-    corrupt-video-inspector trakt sync results.json --interactive --output sync_results.json
+    # Interactive sync
+    corrupt-video-inspector trakt sync results.json --interactive
 
     \b
     # Dry run to see what would be synced
@@ -502,7 +466,6 @@ def sync(
         result = handler.sync_to_watchlist(
             scan_file=scan_file,
             interactive=interactive,
-            output_file=output,
             watchlist=watchlist,
             include_statuses=include_statuses,
         )
@@ -523,17 +486,8 @@ def sync(
 
 
 @trakt.command()
-@click.option("--output", "-o", type=PathType(), help="Save watchlist info to file")
-@click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["json", "table"], case_sensitive=False),
-    default="table",
-    help="Output format",
-    show_default=True,
-)
 @global_options
-def list_watchlists(output, output_format, config):
+def list_watchlists(config):
     """
     List all available watchlists for the authenticated user.
 
@@ -543,12 +497,8 @@ def list_watchlists(output, output_format, config):
     Examples:
 
     \b
-    # List watchlists in table format
+    # List watchlists
     corrupt-video-inspector trakt list-watchlists
-
-    \b
-    # List watchlists in JSON format
-    corrupt-video-inspector trakt list-watchlists --format json
     """
     try:
         # Load configuration
@@ -561,25 +511,16 @@ def list_watchlists(output, output_format, config):
             click.echo("No watchlists found or failed to fetch watchlists.")
             return
 
-        if output_format == "json":
-            output_data = {"watchlists": watchlists}
-            click.echo(json.dumps(output_data, indent=2))
-        else:
-            # Table format
-            click.echo(f"\nFound {len(watchlists)} watchlists:\n")
-            click.echo(f"{'Name':<30} {'Slug':<20} {'Items':<8} {'Privacy':<10}")
-            click.echo("-" * 70)
-            for wl in watchlists:
-                name = wl.get("name", "Unknown")[:29]
-                slug = wl.get("slug", "")[:19]
-                items = wl.get("item_count", 0)
-                privacy = wl.get("privacy", "private")[:9]
-                click.echo(f"{name:<30} {slug:<20} {items:<8} {privacy:<10}")
-
-        if output:
-            with output.open("w", encoding="utf-8") as f:
-                json.dump({"watchlists": watchlists}, f, indent=2)
-            click.echo(f"\nWatchlist data saved to: {output}")
+        # Table format
+        click.echo(f"\nFound {len(watchlists)} watchlists:\n")
+        click.echo(f"{'Name':<30} {'Slug':<20} {'Items':<8} {'Privacy':<10}")
+        click.echo("-" * 70)
+        for wl in watchlists:
+            name = wl.get("name", "Unknown")[:29]
+            slug = wl.get("slug", "")[:19]
+            items = wl.get("item_count", 0)
+            privacy = wl.get("privacy", "private")[:9]
+            click.echo(f"{name:<30} {slug:<20} {items:<8} {privacy:<10}")
 
     except ValueError as e:
         # Handle credential validation errors with user-friendly message
@@ -609,17 +550,8 @@ def list_watchlists(output, output_format, config):
     "-w",
     help="Watchlist name or slug to view (leave empty for main watchlist)",
 )
-@click.option("--output", "-o", type=PathType(), help="Save watchlist contents to file")
-@click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["json", "table"], case_sensitive=False),
-    default="table",
-    help="Output format",
-    show_default=True,
-)
 @global_options
-def view(watchlist, output, output_format, config):
+def view(watchlist, config):
     """
     View items in a specific watchlist.
 
@@ -636,10 +568,6 @@ def view(watchlist, output, output_format, config):
     \b
     # View a specific custom list
     corrupt-video-inspector trakt view --watchlist "my-list"
-
-    \b
-    # View watchlist in JSON format
-    corrupt-video-inspector trakt view --format json
     """
     try:
         # Load configuration
@@ -655,30 +583,21 @@ def view(watchlist, output, output_format, config):
 
         watchlist_name = watchlist or "Main Watchlist"
 
-        if output_format == "json":
-            output_data = {"watchlist": watchlist_name, "items": items}
-            click.echo(json.dumps(output_data, indent=2))
-        else:
-            # Table format
-            click.echo(f"\nItems in '{watchlist_name}' ({len(items)} total):\n")
-            click.echo(f"{'#':<4} {'Title':<40} {'Year':<6} {'Type':<6}")
-            click.echo("-" * 58)
-            for item in items:
-                rank = item.get("rank", "")
-                rank_str = str(rank) if rank else ""
+        # Table format
+        click.echo(f"\nItems in '{watchlist_name}' ({len(items)} total):\n")
+        click.echo(f"{'#':<4} {'Title':<40} {'Year':<6} {'Type':<6}")
+        click.echo("-" * 58)
+        for item in items:
+            rank = item.get("rank", "")
+            rank_str = str(rank) if rank else ""
 
-                trakt_item = item.get("trakt_item", {})
-                title = trakt_item.get("title", "Unknown")[:39]
-                year = trakt_item.get("year", "")
-                year_str = str(year) if year else ""
-                media_type = trakt_item.get("media_type", "unknown")[:5]
+            trakt_item = item.get("trakt_item", {})
+            title = trakt_item.get("title", "Unknown")[:39]
+            year = trakt_item.get("year", "")
+            year_str = str(year) if year else ""
+            media_type = trakt_item.get("media_type", "unknown")[:5]
 
-                click.echo(f"{rank_str:<4} {title:<40} {year_str:<6} {media_type:<6}")
-
-        if output:
-            with output.open("w", encoding="utf-8") as f:
-                json.dump({"watchlist": watchlist_name, "items": items}, f, indent=2)
-            click.echo(f"\nWatchlist contents saved to: {output}")
+            click.echo(f"{rank_str:<4} {title:<40} {year_str:<6} {media_type:<6}")
 
     except ValueError as e:
         # Handle credential validation errors with user-friendly message

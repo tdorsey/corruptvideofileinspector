@@ -72,7 +72,6 @@ class VideoFile(BaseModel):
         """Get shortened SHA-256 hash for logging and display."""
         if not self.sha256_hash:
             return "no-hash"
-        if len(self.sha256_hash) >= self.MIN_HASH_LENGTH:
         if len(self.sha256_hash) >= (self.SHORT_HASH_PREFIX_LEN + self.SHORT_HASH_SUFFIX_LEN):
             return f"{self.sha256_hash[:self.SHORT_HASH_PREFIX_LEN]}...{self.sha256_hash[-self.SHORT_HASH_SUFFIX_LEN:]}"
         return self.sha256_hash

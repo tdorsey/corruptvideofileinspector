@@ -124,9 +124,7 @@ class ConfigurationMerger:
             "CVI_MAX_WORKERS": ("processing", "max_workers"),
             "CVI_DEFAULT_MODE": ("processing", "default_mode"),
             # Output configuration
-            "CVI_DEFAULT_JSON": ("output", "default_json"),
             "CVI_OUTPUT_DIR": ("output", "default_output_dir"),
-            "CVI_OUTPUT_FILENAME": ("output", "default_filename"),
             # Scan configuration
             "CVI_RECURSIVE": ("scan", "recursive"),
             "CVI_VIDEO_DIR": ("scan", "default_input_dir"),
@@ -191,7 +189,7 @@ class ConfigurationMerger:
             # Boolean keys
             **{
                 k: lambda v: v.lower() in ("true", "1", "yes", "on")
-                for k in ("recursive", "default_json")
+                for k in ("recursive",)
             },
             # Path keys
             **{

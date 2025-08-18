@@ -28,10 +28,8 @@ class ProcessingConfig(BaseModel):
 
 
 class OutputConfig(BaseModel):
-    default_json: bool = Field(default=True)
+    # Directory for temporary files (like resume state)
     default_output_dir: Path = Field(...)
-    # Default filename for scan results output
-    default_filename: str = Field(default="scan_results.json")
 
 
 class DatabaseConfig(BaseModel):
