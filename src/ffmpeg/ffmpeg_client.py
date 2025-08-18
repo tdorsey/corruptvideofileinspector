@@ -2,9 +2,11 @@
 FFmpeg client for video file inspection and corruption detection.
 """
 
+import json
 import logging
 import shutil
 import subprocess
+from pathlib import Path
 from typing import Any
 
 from src.config.config import FFmpegConfig
@@ -338,6 +340,93 @@ class FFmpegClient:
             results["ffprobe_available"] = False
 
         return results
+
+    def _get_ffprobe_command(self) -> str:
+        """Get FFprobe command path."""
+        if self._ffmpeg_path:
+            return self._ffmpeg_path.replace("ffmpeg", "ffprobe")
+        return "ffprobe"
+
+    def analyze_streams(self, file_path: Path, timeout: int = 30) -> dict[str, Any]:
+        """
+        Analyze file streams using FFprobe to determine if it's a video file.
+        
+        Args:
+            file_path: Path to file to analyze
+            timeout: Analysis timeout in seconds
+            
+        Returns:
+            dict: FFprobe output with stream information
+            
+        Raises:
+            FFmpegError: If FFprobe analysis fails
+        """
+        ffprobe_cmd = self._get_ffprobe_command()
+        
+        cmd = [
+            ffprobe_cmd,
+            "-v", "quiet",  # Minimal output
+            "-print_format", "json",  # JSON output for easier parsing
+            "-show_streams",  # Show stream information
+            str(file_path)
+        ]
+        
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+            
+            if result.returncode != 0:
+                # FFprobe failed - file is likely not a valid media file
+                logger.debug(f"FFprobe failed for {file_path}: {result.stderr}")
+                return {"streams": []}
+            
+            # Parse JSON output
+            try:
+                data = json.loads(result.stdout)
+                return data
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse FFprobe JSON output for {file_path}: {e}")
+                return {"streams": []}
+                
+        except subprocess.TimeoutExpired:
+            logger.warning(f"FFprobe timeout analyzing {file_path}")
+            raise FFmpegError(f"FFprobe timeout analyzing {file_path}")
+        except Exception as e:
+            logger.error(f"FFprobe analysis failed for {file_path}: {e}")
+            raise FFmpegError(f"FFprobe analysis failed: {e}")
+
+    def is_video_file(self, file_path: Path, timeout: int = 30) -> bool:
+        """
+        Determine if a file is a video file by analyzing its content with FFprobe.
+        
+        Args:
+            file_path: Path to file to check
+            timeout: Analysis timeout in seconds
+            
+        Returns:
+            bool: True if file contains video streams, False otherwise
+        """
+        try:
+            result = self.analyze_streams(file_path, timeout)
+            
+            # Check if any stream is a video stream
+            for stream in result.get("streams", []):
+                if stream.get("codec_type") == "video":
+                    logger.debug(f"Video stream found in {file_path}: {stream.get('codec_name')}")
+                    return True
+            
+            logger.debug(f"No video streams found in {file_path}")
+            return False
+            
+        except FFmpegError:
+            # If FFprobe fails, assume it's not a video file
+            logger.debug(f"FFprobe analysis failed for {file_path}, assuming not a video file")
+            return False
 
     def _process_ffmpeg_result(
         self,
