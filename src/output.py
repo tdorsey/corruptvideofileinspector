@@ -35,6 +35,7 @@ class OutputFormatter:
         output_file: Path,
         format: str = "json",
         pretty_print: bool = True,
+        *,
         scan_results: list[ScanResult] | None = None,
     ) -> None:
         """
