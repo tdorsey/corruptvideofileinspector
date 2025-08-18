@@ -12,23 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 def count_all_video_files(
-    directory: str, recursive: bool = True, extensions: list[str] | None = None
-) -> int:
-    """
-    Count all video files in a directory.
-
-    Args:
-        directory: Path to directory to scan
-        recursive: Whether to scan subdirectories recursively
-        extensions: List of file extensions to include (defaults to config extensions)
-
-    Returns:
-        int: Number of video files found
-
-    Raises:
-        Exception: If directory scanning fails
-    """
-def count_all_video_files(
     directory: str, 
     recursive: bool = True, 
     extensions: list[str] | None = None,
