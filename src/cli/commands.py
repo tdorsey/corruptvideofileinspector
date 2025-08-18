@@ -887,7 +887,7 @@ def db_history(config, directory, limit, output_format):
             for summary in summaries:
                 from datetime import datetime
                 date_str = datetime.fromtimestamp(summary.started_at).strftime("%Y-%m-%d %H:%M")
-                directory_str = str(summary.directory)[-39:] if len(str(summary.directory)) > 39 else str(summary.directory)
+                directory_str = str(summary.directory)[-MAX_DIRECTORY_DISPLAY_LENGTH:] if len(str(summary.directory)) > MAX_DIRECTORY_DISPLAY_LENGTH else str(summary.directory)
                 
                 click.echo(
                     f"{directory_str:<40} {summary.scan_mode.value:<8} "
