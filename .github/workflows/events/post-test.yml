@@ -5,7 +5,7 @@ on:
   workflow_run:
     workflows: ["CI Pipeline"]
     types: [completed]
-    branches: [main, develop]
+    branches: [main, develop, next]
 
 jobs:
   # Deploy to staging after successful CI on develop
@@ -24,6 +24,23 @@ jobs:
           echo "🚀 Deploying to staging environment"
           # Add staging deployment logic here
           echo "Staging deployment completed"
+
+  # Deploy alpha version after successful CI on next
+  deploy-alpha:
+    name: Deploy Alpha
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'next'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy alpha version
+        run: |
+          set -e
+          echo "🧪 Deploying alpha version"
+          # Add alpha deployment logic here
+          echo "Alpha deployment completed"
 
   # Generate release notes and prepare for release
   prepare-release:

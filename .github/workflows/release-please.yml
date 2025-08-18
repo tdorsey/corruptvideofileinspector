@@ -2,7 +2,7 @@ name: Release Please
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, next ]
 
 permissions:
   contents: write
@@ -63,7 +63,9 @@ jobs:
         images: tdorsey/corrupt-video-inspector
         tags: |
           type=semver,pattern={{version}},value=${{ steps.release.outputs.tag_name }}
-          type=semver,pattern={{major}}.{{minor}},value=${{ steps.release.outputs.tag_name }}
+          type=semver,pattern={{major}}.{{minor}},value=${{ steps.release.outputs.tag_name }},enable={{is_default_branch}}
+          type=raw,value=alpha,enable={{is_prerelease}}
+          type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push Docker image
       if: steps.release.outputs.release_created
@@ -76,9 +78,17 @@ jobs:
         platforms: linux/amd64,linux/arm64
 
     - name: Upload Python package to PyPI
-      if: steps.release.outputs.release_created
+      if: steps.release.outputs.release_created && !contains(steps.release.outputs.tag_name, 'alpha')
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         twine upload dist/*
+
+    - name: Upload Python package to Test PyPI (Alpha releases)
+      if: steps.release.outputs.release_created && contains(steps.release.outputs.tag_name, 'alpha')
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+      run: |
+        twine upload --repository testpypi dist/* || { echo "Test PyPI upload failed with exit code $?"; exit 1; }

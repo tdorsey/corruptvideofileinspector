@@ -3,9 +3,9 @@ name: Pre-build Validation
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, next ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, next ]
 
 jobs:
   # Get labels for PR workflows
