@@ -121,7 +121,9 @@ class TestHashFormatting(unittest.TestCase):
 
     def test_format_hash_for_logging_medium_hash(self):
         """Test formatting with medium-length hash"""
-        medium_hash = "abcdef1234567"  # 13 chars, just over minimum for shortening
+        MIN_HASH_SHORTEN_LENGTH = 13  # Should match the threshold in production code
+        # Construct a hash just over the minimum threshold for shortening
+        medium_hash = "abcdef12" + "34567"  # 8 + 5 = 13 chars
 
         result = format_hash_for_logging(medium_hash, short=True)
 
