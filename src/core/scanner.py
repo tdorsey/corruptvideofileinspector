@@ -20,7 +20,7 @@ from src.core.models.scanning import (
     ScanResult,
     ScanSummary,
 )
-from src.core.utils import calculate_sha256_hash
+from src.core.prober import VideoProber
 from src.ffmpeg.corruption_detector import CorruptionDetector
 from src.ffmpeg.ffmpeg_client import FFmpegClient
 
@@ -68,30 +68,10 @@ class VideoScanner:
         self._shutdown_requested = False
         self._current_scan_summary: ScanSummary | None = None
         self.corruption_detector = CorruptionDetector()
+        self.prober = VideoProber()
 
         logger.info("VideoScanner initialized with config: %s", config.scan)
 
-    def _create_video_file_with_hash(self, path: Path) -> VideoFile:
-        """Create a VideoFile object with SHA-256 hash calculated.
-        
-        Args:
-            path: Path to the video file
-            
-        Returns:
-            VideoFile with hash calculated
-            
-        Raises:
-            IOError: If hash calculation fails
-        """
-        try:
-            sha256_hash = calculate_sha256_hash(path)
-            video_file = VideoFile(path=path, sha256_hash=sha256_hash)
-            logger.debug(f"Created VideoFile with hash [SHA256: {video_file.short_hash}]: {path.name}")
-            return video_file
-        except Exception as e:
-            logger.warning(f"Failed to calculate hash for {path}: {e}")
-            # Create VideoFile without hash if calculation fails
-            return VideoFile(path=path, sha256_hash="")
 
     async def locate_video_files_async(
         self,
@@ -203,7 +183,7 @@ class VideoScanner:
         Returns:
             List of found video files
         """
-        video_files = [self._create_video_file_with_hash(path) for path in file_paths if path.exists()]
+        video_files = [self.prober.create_video_file_with_hash(path) for path in file_paths if path.exists()]
         progress = ScanProgress(
             total_files=len(video_files),
             scan_mode="locate",
@@ -551,7 +531,7 @@ class VideoScanner:
         for path_str in file_paths:
             path = Path(path_str)
             if path.exists() and path.is_file():
-                video_files.append(self._create_video_file_with_hash(path))
+                video_files.append(self.prober.create_video_file_with_hash(path))
 
         if not video_files:
             logger.warning("No valid video files found in provided paths")
@@ -634,7 +614,7 @@ class VideoScanner:
                 logger.debug(f"Found file: {file_path} (suffix: {file_path.suffix.lower()})")
                 if file_path.is_file() and file_path.suffix.lower() in extensions:
                     logger.debug(f"Accepted as video file: {file_path}")
-                    yield self._create_video_file_with_hash(file_path)
+                    yield self.prober.create_video_file_with_hash(file_path)
                 else:
                     logger.debug(f"Skipped: {file_path}")
 
