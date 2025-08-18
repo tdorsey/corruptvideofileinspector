@@ -138,18 +138,18 @@ class FFmpegClient:
             return self._process_ffmpeg_result(video_file, result, is_quick=True)
 
         except subprocess.TimeoutExpired:
-            logger.warning(f"Quick scan timeout: {video_file.path}")
+            logger.warning(f"[SHA256: {video_file.short_hash}] Quick scan timeout: {video_file.path}")
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=True,
-                error_message="Quick scan timed out - needs deep scan",
+                error_message=f"[SHA256: {video_file.short_hash}] Quick scan timed out - needs deep scan",
             )
         except Exception as e:
             logger.exception(f"[SHA256: {video_file.short_hash}] Quick scan failed: {video_file.path}")
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=True,
-                error_message=f"Quick scan failed: {e}",
+                error_message=f"[SHA256: {video_file.short_hash}] Quick scan failed: {e}",
             )
 
     def inspect_deep(self, video_file: VideoFile, timeout: int | None = None) -> ScanResult:
@@ -182,18 +182,18 @@ class FFmpegClient:
             )
             return self._process_ffmpeg_result(video_file, result, is_quick=False)
         except subprocess.TimeoutExpired:
-            logger.warning(f"Deep scan timeout: {video_file.path}")
+            logger.warning(f"[SHA256: {video_file.short_hash}] Deep scan timeout: {video_file.path}")
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=False,
-                error_message="Deep scan timed out",
+                error_message=f"[SHA256: {video_file.short_hash}] Deep scan timed out",
             )
         except Exception as e:
             logger.exception(f"[SHA256: {video_file.short_hash}] Deep scan failed: {video_file.path}")
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=False,
-                error_message=f"Deep scan failed: {e}",
+                error_message=f"[SHA256: {video_file.short_hash}] Deep scan failed: {e}",
             )
 
     def _build_deep_scan_command(self, video_file: VideoFile) -> list[str]:
@@ -250,7 +250,7 @@ class FFmpegClient:
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=False,
-                error_message=f"Full scan failed: {e}",
+                error_message=f"[SHA256: {video_file.short_hash}] Full scan failed: {e}",
             )
 
     def test_installation(self) -> dict[str, Any]:
@@ -357,7 +357,11 @@ class FFmpegClient:
 
         error_message: str | None = analysis.error_message or None
         if result.returncode != 0 and not error_message:
-            error_message = error_output.strip() or "FFmpeg reported errors"
+            error_message = f"[SHA256: {video_file.short_hash}] {error_output.strip() or 'FFmpeg reported errors'}"
+        elif error_message:
+            # Prepend hash to existing error message if it doesn't already contain it
+            if not error_message.startswith("[SHA256:"):
+                error_message = f"[SHA256: {video_file.short_hash}] {error_message}"
 
         return ScanResult(
             video_file=video_file,
