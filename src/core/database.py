@@ -180,7 +180,7 @@ class DatabaseManager:
             logger.info(f"Stored scan summary with ID {summary_id} for directory {summary.directory}")
             return summary_id
 
-    def store_scan_results(self, results: list[ScanResult], summary_id: int | None = None) -> None:
+    def store_scan_results(self, results: list[ScanResult], summary_id: int) -> None:
         """Store scan results in database."""
         if not results:
             return
