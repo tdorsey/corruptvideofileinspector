@@ -28,7 +28,7 @@ def calculate_sha256_hash(file_path: Path) -> str:
     try:
         with open(file_path, "rb") as f:
             # Read file in chunks to handle large files efficiently
-            for chunk in iter(lambda: f.read(8192), b""):
+            for chunk in iter(lambda: f.read(CHUNK_SIZE), b""):
                 sha256_hash.update(chunk)
     except IOError as e:
         raise IOError(f"Error reading file {file_path}: {e}") from e
