@@ -22,6 +22,9 @@ from src.ffmpeg.ffmpeg_client import FFmpegClient
 
 logger = logging.getLogger(__name__)
 
+# Constants
+MAX_DIRECTORY_DISPLAY_LENGTH = 40
+
 
 # Custom Click types
 class ScanModeChoice(click.Choice):
@@ -156,6 +159,11 @@ def cli(
     show_default=True,
 )
 @click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
+@click.option(
+    "--store-db/--no-store-db",
+    default=None,
+    help="Store results in database (overrides config setting)",
+)
 @click.pass_context
 def scan(
     ctx,
@@ -168,6 +176,7 @@ def scan(
     output,
     output_format,
     pretty,
+    store_db,
     config,
 ):
     # If no arguments are provided, show the help for the scan subcommand
@@ -214,6 +223,12 @@ def scan(
             app_config.scan.extensions = [
                 f".{ext}" if not ext.startswith(".") else ext for ext in extensions
             ]
+        
+        # Override database setting if specified
+        if store_db is not None:
+            app_config.database.enabled = store_db
+            if store_db and not app_config.database.path.parent.exists():
+                app_config.database.path.parent.mkdir(parents=True, exist_ok=True)
 
         # Convert mode string to ScanMode enum
         scan_mode = ScanMode(mode.lower())
@@ -1079,6 +1094,127 @@ def show_config(all_configs, debug, config):
 
     except Exception as e:
         logger.exception("Show config command failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@global_options
+@click.option(
+    "--directory",
+    "-d",
+    type=PathType(exists=True, file_okay=False, dir_okay=True),
+    help="Filter results by directory path",
+)
+@click.option(
+    "--limit",
+    "-l",
+    type=int,
+    default=10,
+    help="Maximum number of results to show (default: 10)",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["table", "json"], case_sensitive=False),
+    default="table",
+    help="Output format (default: table)",
+)
+def db_history(config, directory, limit, output_format):
+    """Show scan history from database.
+    
+    Display previous scan summaries stored in the database.
+    
+    Examples:
+    
+    \b
+    # Show last 10 scans
+    corrupt-video-inspector db-history
+    
+    \b
+    # Show scans for specific directory
+    corrupt-video-inspector db-history --directory /path/to/videos
+    
+    \b
+    # Show results in JSON format
+    corrupt-video-inspector db-history --format json
+    """
+    try:
+        app_config = load_config(config_path=config)
+        
+        if not app_config.database.enabled:
+            click.echo("Database is not enabled in configuration", err=True)
+            sys.exit(1)
+            
+        from src.output import OutputFormatter
+        formatter = OutputFormatter(app_config)
+        
+        summaries = formatter.get_scan_history(directory, limit)
+        
+        if not summaries:
+            location = f" in {directory}" if directory else ""
+            click.echo(f"No scan history found{location}")
+            return
+            
+        if output_format == "json":
+            output_data = [summary.model_dump() for summary in summaries]
+            click.echo(json.dumps(output_data, indent=2))
+        else:
+            # Table format
+            click.echo(f"\nScan History ({len(summaries)} results):\n")
+            click.echo(f"{'Directory':<40} {'Mode':<8} {'Files':<8} {'Corrupt':<8} {'Time':<12} {'Date'}")
+            click.echo("-" * 90)
+            
+            for summary in summaries:
+                from datetime import datetime
+                date_str = datetime.fromtimestamp(summary.started_at).strftime("%Y-%m-%d %H:%M")
+                directory_str = str(summary.directory)[-MAX_DIRECTORY_DISPLAY_LENGTH:] if len(str(summary.directory)) > MAX_DIRECTORY_DISPLAY_LENGTH else str(summary.directory)
+                
+                click.echo(
+                    f"{directory_str:<40} {summary.scan_mode.value:<8} "
+                    f"{summary.processed_files:<8} {summary.corrupt_files:<8} "
+                    f"{summary.scan_time:<12.1f} {date_str}"
+                )
+                
+    except Exception as e:
+        logger.exception("Database history command failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@global_options
+def db_stats(config):
+    """Show database statistics.
+    
+    Display information about the database including number of scans,
+    file counts, and database size.
+    """
+    try:
+        app_config = load_config(config_path=config)
+        
+        from src.output import OutputFormatter
+        formatter = OutputFormatter(app_config)
+        
+        stats = formatter.get_database_stats()
+        
+        if not stats.get("enabled"):
+            click.echo("Database is not enabled in configuration", err=True)
+            sys.exit(1)
+            
+        click.echo("\nDatabase Statistics:")
+        click.echo("=" * 20)
+        click.echo(f"Database Path: {stats['database_path']}")
+        click.echo(f"Database Size: {stats['database_size_mb']:.2f} MB")
+        click.echo(f"Total Scans: {stats['total_summaries']}")
+        click.echo(f"Completed Scans: {stats['completed_summaries']}")
+        click.echo(f"Incomplete Scans: {stats['incomplete_summaries']}")
+        click.echo(f"Total File Results: {stats['total_results']}")
+        click.echo(f"Corrupt Files Found: {stats['corrupt_files']}")
+        click.echo(f"Healthy Files: {stats['healthy_files']}")
+        
+    except Exception as e:
+        logger.exception("Database stats command failed")
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 

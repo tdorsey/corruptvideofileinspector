@@ -26,7 +26,12 @@ import sys
 
 from src.version import __version__
 
-from .cli.main import main
+# Only import CLI components when explicitly requested to avoid dependencies
+def get_main():
+    """Import and return the main CLI function."""
+    from .cli.main import main
+    return main
+
 from .core.errors.errors import (
     ConfigurationError,
     FFmpegError,
