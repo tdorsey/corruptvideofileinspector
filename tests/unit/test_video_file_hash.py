@@ -67,7 +67,13 @@ class TestVideoFileWithHash(unittest.TestCase):
         medium_hash = "abcdef1234567890abc"  # 19 chars
         video_file = VideoFile(path=self.test_file, sha256_hash=medium_hash)
 
-        expected_short = "abcdef12...0abc"
+        # Construct a medium-length hash based on the threshold
+        prefix = "abcdef12"
+        suffix = "0abc"
+        medium_hash = prefix + "x" * (MIN_HASH_LENGTH - len(prefix) - len(suffix)) + suffix
+        video_file = VideoFile(path=self.test_file, sha256_hash=medium_hash)
+
+        expected_short = f"{prefix}...{suffix}"
         self.assertEqual(video_file.short_hash, expected_short)
 
     def test_video_file_backwards_compatibility(self):
