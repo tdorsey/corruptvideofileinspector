@@ -153,6 +153,21 @@ def cli(
     show_default=True,
 )
 @click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path, dir_okay=False),
+    help="Output file path for results (must be a file, not a directory)",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["json", "yaml", "csv"], case_sensitive=False),
+    default="json",
+    help="Output format",
+    show_default=True,
+)
+@click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
+@click.option(
     "--database/--no-database",
     default=True,
     help="Store results in database (default: enabled)",
@@ -173,6 +188,9 @@ def scan(
     recursive,
     extensions,
     resume,
+    output,
+    output_format,
+    pretty,
     database,
     incremental,
     config,
@@ -192,13 +210,20 @@ def scan(
     - hybrid: Quick scan first, then deep scan for suspicious files
     - full: Complete scan of entire video stream without timeout
 
-    Database Integration (Required):
+    Database Integration:
 
     \b
-    - Results are automatically stored in SQLite database
+    - Results are automatically stored in SQLite database (default: enabled)
     - Use --incremental to skip files recently scanned and found healthy
-    - Database must be enabled in configuration
     - Use 'database query' commands to view stored results
+    - Use --no-database to disable database storage
+
+    File Output:
+
+    \b
+    - Use --output to save results to a JSON file
+    - Supports --format json (other formats available: yaml, csv)
+    - Use --pretty for formatted JSON output
 
     Examples:
 
@@ -207,20 +232,20 @@ def scan(
     corrupt-video-inspector scan /path/to/videos
 
     \b
-    # Quick scan with database storage
-    corrupt-video-inspector scan --mode quick /path/to/videos
+    # Quick scan with JSON file output
+    corrupt-video-inspector scan --mode quick --output results.json /path/to/videos
 
     \b
     # Incremental scan (skip recently healthy files)
     corrupt-video-inspector scan --incremental /path/to/videos
 
     \b
-    # Full scan without timeout (for thorough analysis)
-    corrupt-video-inspector scan --mode full /path/to/videos
+    # Full scan with both database and file output
+    corrupt-video-inspector scan --mode full --output full_scan.json --pretty /path/to/videos
 
     \b
-    # Deep scan with custom extensions
-    corrupt-video-inspector scan --mode deep --extensions mp4 --extensions mkv /videos
+    # Deep scan with custom extensions and CSV output
+    corrupt-video-inspector scan --mode deep --extensions mp4 --extensions mkv --output results.csv --format csv /videos
     """
     try:
         # Load configuration
@@ -230,10 +255,13 @@ def scan(
         if database is not None:
             app_config.database.enabled = database
 
-        # Ensure database is enabled for storage
+        # Warn if database is disabled but still allow operation
         if not app_config.database.enabled:
-            logger.warning("Database storage is disabled - results will not be persisted")
-            click.echo("Warning: Database storage is disabled. Enable database in config to store scan results.", err=True)
+            if not output:
+                logger.warning("Database storage is disabled and no output file specified - results will not be persisted")
+                click.echo("Warning: Database storage is disabled and no output file specified. Results will not be saved.", err=True)
+            else:
+                logger.info("Database storage is disabled - results will only be saved to output file")
 
         # Override config with CLI options
         if max_workers:
@@ -274,14 +302,20 @@ def scan(
             scan_mode=scan_mode,
             recursive=recursive,
             resume=resume,
+            output_file=output,
+            output_format=output_format,
+            pretty_print=pretty,
         )
         if summary is not None:
             click.echo("\nScan Summary:")
-            click.echo(json.dumps(summary.model_dump(), indent=2))
+            click.echo(json.dumps(summary.model_dump(), indent=2 if pretty else None))
             
+            # Show where results were stored
             if app_config.database.enabled:
                 click.echo(f"\nResults stored in database: {app_config.database.path}")
                 click.echo("Use 'corrupt-video-inspector database query' to view results")
+            if output:
+                click.echo(f"Results also saved to file: {output}")
         else:
             click.echo("No video files found to scan.")
 
@@ -302,12 +336,28 @@ def scan(
     show_default=True,
 )
 @click.option("--extensions", multiple=True, help="Video file extensions to include")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path, dir_okay=False),
+    help="Output file path for file list (must be a file, not a directory)",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["text", "json", "csv"], case_sensitive=False),
+    default="text",
+    help="Output format",
+    show_default=True,
+)
 @click.pass_context
 def list_files(
     ctx,
     directory,
     recursive,
     extensions,
+    output,
+    output_format,
     config,
 ):
     # If no arguments are provided, show the help for the list-files subcommand
@@ -329,6 +379,14 @@ def list_files(
     \b
     # List specific extensions only
     corrupt-video-inspector list-files --extensions mp4 --extensions mkv /videos
+    
+    \b
+    # Save file list to JSON
+    corrupt-video-inspector list-files --output files.json --format json /videos
+    
+    \b
+    # Save file list to CSV
+    corrupt-video-inspector list-files --output files.csv --format csv /videos
     """
     try:
         # Load configuration
@@ -351,11 +409,25 @@ def list_files(
         if not video_files:
             click.echo("No video files found in the specified directory.")
         else:
-            click.echo(f"\nFound {len(video_files)} video files:")
-            for i, vf in enumerate(video_files, 1):
-                rel_path = vf.path.relative_to(directory)
-                size_mb = vf.size / (1024 * 1024) if vf.size > 0 else 0
-                click.echo(f"  {i:3d}: {rel_path} ({size_mb:.1f} MB)")
+            # Write to output file if specified
+            if output:
+                handler.output_formatter.write_file_list(
+                    video_files=video_files,
+                    directory=directory,
+                    output_file=output,
+                    format=output_format,
+                )
+                click.echo(f"File list saved to: {output}")
+            
+            # Always display to console unless output format is not text
+            if not output or output_format == "text":
+                click.echo(f"\nFound {len(video_files)} video files:")
+                for i, vf in enumerate(video_files, 1):
+                    rel_path = vf.path.relative_to(directory)
+                    size_mb = vf.size / (1024 * 1024) if vf.size > 0 else 0
+                    click.echo(f"  {i:3d}: {rel_path} ({size_mb:.1f} MB)")
+            elif output:
+                click.echo(f"Found {len(video_files)} video files, saved to {output}")
 
     except Exception as e:
         logger.exception("List command failed")
@@ -389,6 +461,7 @@ def trakt(ctx):
     show_default=True,
 )
 @click.option("--dry-run", is_flag=True, help="Show what would be synced without actually syncing")
+@click.option("--output", "-o", type=PathType(), help="Save sync results to file")
 @click.option(
     "--watchlist",
     "-w",
@@ -410,6 +483,7 @@ def sync(
     client_id,
     interactive,
     dry_run,
+    output,
     watchlist,
     include_status,
     config,
@@ -438,6 +512,10 @@ def sync(
     \b
     # Dry run to see what would be synced
     corrupt-video-inspector trakt sync results.json --dry-run
+    
+    \b
+    # Save sync results to file
+    corrupt-video-inspector trakt sync results.json --output sync_results.json
     """
     # If no arguments are provided, show the help for the trakt sync subcommand
     if ctx.args == [] and scan_file is None:
@@ -475,9 +553,24 @@ def sync(
 
         click.echo("\nTrakt Sync Result:")
         if result is not None:
-            click.echo(json.dumps(result.model_dump(), indent=2))
+            result_json = json.dumps(result.model_dump(), indent=2)
+            click.echo(result_json)
+            
+            # Save to output file if specified
+            if output:
+                output.parent.mkdir(parents=True, exist_ok=True)
+                with output.open("w", encoding="utf-8") as f:
+                    f.write(result_json)
+                click.echo(f"Sync results also saved to: {output}")
         else:
             click.echo("No sync result returned.")
+            
+            # Create empty result file if output specified
+            if output:
+                output.parent.mkdir(parents=True, exist_ok=True)
+                with output.open("w", encoding="utf-8") as f:
+                    json.dump({"message": "No sync result returned"}, f, indent=2)
+                click.echo(f"Empty result saved to: {output}")
 
     except Exception as e:
         logger.exception("Trakt sync command failed")

@@ -81,10 +81,22 @@ class ScanHandler(BaseHandler):
         scan_mode: ScanMode,
         recursive: bool = True,
         resume: bool = True,
+        output_file: Path | None = None,
+        output_format: str = "json",
+        pretty_print: bool = True,
     ) -> ScanSummary | None:
         """
         Run a video corruption scan and return ScanSummary.
         Results are automatically stored in the database if enabled.
+        
+        Args:
+            directory: Directory to scan
+            scan_mode: Scan mode to use
+            recursive: Whether to scan recursively
+            resume: Whether to resume interrupted scans
+            output_file: Optional output file path
+            output_format: Output file format (json, yaml, csv)
+            pretty_print: Whether to pretty-print output files
         """
         try:
             video_files = self.scanner.get_video_files(directory, recursive=recursive)
@@ -103,15 +115,22 @@ class ScanHandler(BaseHandler):
                 ),
             )
             
-            # Store results in database if enabled
-            if self.config.database.enabled:
-                scan_id = self.output_formatter.store_scan_results(summary)
-                if scan_id:
-                    logger.info(f"Scan results stored in database with ID: {scan_id}")
-                else:
-                    logger.warning("Failed to store scan results in database")
+            # Store results using OutputFormatter (handles both database and file output)
+            if output_file or self.config.database.enabled:
+                self.output_formatter.write_scan_results(
+                    summary=summary,
+                    output_file=output_file,
+                    format=output_format,
+                    pretty_print=pretty_print,
+                    store_in_database=self.config.database.enabled,
+                )
+                
+                if self.config.database.enabled:
+                    logger.info("Scan results stored in database")
+                if output_file:
+                    logger.info(f"Scan results written to {output_file}")
             else:
-                logger.warning("Database storage is disabled - scan results will not be persisted")
+                logger.warning("No storage configured - scan results will not be persisted")
             
             return summary
         except KeyboardInterrupt:
