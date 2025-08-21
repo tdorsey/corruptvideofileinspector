@@ -24,21 +24,20 @@ class OutputFormatter:
         # core DatabaseManager implementation
         self._database_service = None
 
-        # Initialize database service if enabled
-        if config.database.enabled:
-            try:
-                from src.database.service import DatabaseService
+        # Initialize database service (now always enabled)
+        try:
+            from src.database.service import DatabaseService
 
-                self._database_service = DatabaseService(
-                    config.database.path, config.database.auto_cleanup_days
-                )
-                logger.info(f"Database storage enabled at {config.database.path}")
-            except ImportError as e:
-                logger.warning(f"Database dependencies not available: {e}")
-                self._database_service = None
-            except Exception:
-                logger.exception("Failed to initialize database service")
-                self._database_service = None
+            self._database_service = DatabaseService(
+                config.database.path, config.database.auto_cleanup_days
+            )
+            logger.info(f"Database storage initialized at {config.database.path}")
+        except ImportError as e:
+            logger.warning(f"Database dependencies not available: {e}")
+            self._database_service = None
+        except Exception:
+            logger.exception("Failed to initialize database service")
+            self._database_service = None
 
     def write_scan_results(
         self,
@@ -58,11 +57,11 @@ class OutputFormatter:
             output_file: Path to output file (if None, uses configured default)
             format: Output format (json, yaml, csv)
             pretty_print: Whether to pretty-print output
-            store_in_database: Whether to store in database (if enabled)
+            store_in_database: Whether to store in database
         """
         try:
-            # Store in database if enabled and requested
-            if store_in_database and self._database_service and self.config.database.enabled:
+            # Store in database if service available and requested
+            if store_in_database and self._database_service:
                 self._store_scan_in_database(summary, scan_results)
 
             # Write to file if output path provided (or use default)

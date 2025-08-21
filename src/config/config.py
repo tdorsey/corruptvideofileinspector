@@ -52,7 +52,6 @@ class DatabaseConfig(BaseModel):
 
 
 class DatabaseConfig(BaseModel):
-    enabled: bool = Field(default=False, description="Enable SQLite database storage")
     path: Path = Field(
         default=Path.home() / ".corrupt-video-inspector" / "scans.db",
         description="Database file location",

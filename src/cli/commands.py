@@ -172,11 +172,6 @@ def cli(
 )
 @click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
 @click.option(
-    "--store-db/--no-store-db",
-    default=None,
-    help="Store results in database (overrides config setting)",
-)
-@click.option(
     "--incremental/--full-scan",
     default=False,
     help="Skip files that were recently scanned and found healthy",
@@ -194,7 +189,6 @@ def scan(
     output,
     output_format,
     pretty,
-    store_db,
     incremental,
     config,
 ):
@@ -216,10 +210,9 @@ def scan(
     Database Integration:
 
     \b
-    - Results are automatically stored in SQLite database (default: enabled)
+    - Results are automatically stored in SQLite database
     - Use --incremental to skip files recently scanned and found healthy
-    - Use 'database query' commands to view stored results
-    - Use --no-store-db to disable database storage
+    - Database is automatically created on first run
 
     File Output:
 
@@ -232,12 +225,6 @@ def scan(
         # Load configuration
         app_config = load_config(config_path=config)
 
-        # Override database setting if specified via --store-db
-        if store_db is not None:
-            app_config.database.enabled = store_db
-            if store_db and not app_config.database.path.parent.exists():
-                app_config.database.path.parent.mkdir(parents=True, exist_ok=True)
-
         # Override config with CLI options
         if max_workers:
             app_config.scan.max_workers = max_workers
@@ -246,17 +233,11 @@ def scan(
                 f".{ext}" if not ext.startswith(".") else ext for ext in extensions
             ]
 
-        # Override database setting if specified
-        if store_db is not None:
-            app_config.database.enabled = store_db
-            if store_db and not app_config.database.path.parent.exists():
-                app_config.database.path.parent.mkdir(parents=True, exist_ok=True)
-
         # Convert mode string to ScanMode enum
         scan_mode = ScanMode(mode.lower())
 
         # Handle incremental scanning
-        if incremental and app_config.database.enabled:
+        if incremental:
             try:
                 from src.database.service import DatabaseService
 
@@ -1290,7 +1271,7 @@ def database(ctx):
     """Database operations for scan results.
 
     Manage persistent storage of scan results in SQLite database.
-    Requires database to be enabled in configuration.
+    Database is automatically initialized on first use.
     """
     # If no arguments are provided, show the help for the database group
     if ctx.args == []:
@@ -1379,10 +1360,6 @@ def query(
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
 
         # Import database components
         from src.database.models import DatabaseQueryFilter
@@ -1514,9 +1491,6 @@ def stats(ctx, config):
         # Load configuration
         app_config = load_config(config_path=config)
 
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
 
         # Import database components
         from src.database.service import DatabaseService
@@ -1583,9 +1557,6 @@ def cleanup(ctx, days, dry_run, config):
         # Load configuration
         app_config = load_config(config_path=config)
 
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
 
         # Import database components
         from src.database.service import DatabaseService
@@ -1659,9 +1630,6 @@ def backup(ctx, backup_path, config):
         # Load configuration
         app_config = load_config(config_path=config)
 
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
 
         # Import database components
         from src.database.service import DatabaseService
