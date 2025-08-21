@@ -22,12 +22,11 @@ Example:
 
 from __future__ import annotations
 
+import importlib
 import sys
 
 from src.version import __version__
 
-# Import only core modules by default
-# CLI modules are imported only when explicitly needed
 from .core.errors.errors import (
     ConfigurationError,
     FFmpegError,
@@ -48,6 +47,14 @@ from .core.models.scanning import (
     ScanSummary,
 )
 from .core.scanner import VideoScanner
+
+
+# Only import CLI components when explicitly requested to avoid dependencies
+def get_main():
+    """Import and return the main CLI function."""
+    module = importlib.import_module("src.cli.main")
+    return module.main
+
 
 # Package metadata
 __title__ = "corrupt-video-inspector"

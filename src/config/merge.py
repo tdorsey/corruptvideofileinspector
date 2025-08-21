@@ -187,10 +187,7 @@ class ConfigurationMerger:
         # Define conversion mapping
         conversion_map = {
             # Boolean keys
-            **{
-                k: lambda v: v.lower() in ("true", "1", "yes", "on")
-                for k in ("recursive",)
-            },
+            **{k: lambda v: v.lower() in ("true", "1", "yes", "on") for k in ("recursive",)},
             # Path keys
             **{
                 k: lambda v: Path(v) if v else None

@@ -20,6 +20,10 @@ class FFmpegConfig(BaseModel):
     command: Path = Field(default=Path("/usr/bin/ffmpeg"))
     quick_timeout: int = Field(default=30)
     deep_timeout: int = Field(default=1800)
+    probe_timeout: int = Field(default=15)
+    enable_probe_cache: bool = Field(default=True)
+    probe_cache_max_age_hours: float = Field(default=24.0)
+    require_probe_before_scan: bool = Field(default=True)
 
 
 class ProcessingConfig(BaseModel):
@@ -33,10 +37,13 @@ class OutputConfig(BaseModel):
 
 
 class DatabaseConfig(BaseModel):
-    enabled: bool = Field(default=False, description="Enable SQLite database storage")
+    enabled: bool = Field(default=False, description="Enable database storage for scan results")
     path: Path = Field(
         default=Path.home() / ".corrupt-video-inspector" / "scans.db",
         description="Database file location",
+    )
+    auto_create: bool = Field(
+        default=True, description="Automatically create database and tables if missing"
     )
     auto_cleanup_days: int = Field(
         default=0, description="Auto-delete scans older than X days (0 = disabled)"
@@ -61,6 +68,17 @@ class ScanConfig(BaseModel):
     default_input_dir: Path = Field(...)
     extensions: list[str] = Field(
         default_factory=lambda: [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv"]
+    )
+    use_content_detection: bool = Field(
+        default=True,
+        description="Use FFprobe content analysis instead of extension-based detection",
+    )
+    ffprobe_timeout: int = Field(
+        default=30, description="Timeout in seconds for FFprobe content analysis"
+    )
+    extension_filter: list[str] = Field(
+        default_factory=list,
+        description="Optional file extensions to pre-filter before content analysis (performance optimization)",
     )
 
 

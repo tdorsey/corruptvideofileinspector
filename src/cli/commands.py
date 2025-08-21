@@ -3,6 +3,7 @@ CLI command definitions using Click framework.
 """
 
 import importlib.util
+import io
 import json
 import logging
 import sys
@@ -32,6 +33,9 @@ def get_database_imports():
 
 
 logger = logging.getLogger(__name__)
+
+# Constants
+MAX_DIRECTORY_DISPLAY_LENGTH = 40
 
 
 # Custom Click types
@@ -168,16 +172,9 @@ def cli(
 )
 @click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
 @click.option(
-    "--database/--no-database",
-    default=True,
-    help="Store results in database (default: enabled)",
-    show_default=True,
-)
-@click.option(
-    "--incremental/--full-scan",
-    default=False,
-    help="Skip files that were recently scanned and found healthy",
-    show_default=True,
+    "--store-db/--no-store-db",
+    default=None,
+    help="Store results in database (overrides config setting)",
 )
 @click.pass_context
 def scan(
@@ -191,8 +188,7 @@ def scan(
     output,
     output_format,
     pretty,
-    database,
-    incremental,
+    store_db,
     config,
 ):
     # If no arguments are provided, show the help for the scan subcommand
@@ -252,16 +248,23 @@ def scan(
         app_config = load_config(config_path=config)
 
         # Override database setting if provided
-        if database is not None:
-            app_config.database.enabled = database
+        # (previous code referenced an undefined 'database' variable and has
+        #  been removed - database overrides are handled via --store-db)
 
         # Warn if database is disabled but still allow operation
         if not app_config.database.enabled:
             if not output:
-                logger.warning("Database storage is disabled and no output file specified - results will not be persisted")
-                click.echo("Warning: Database storage is disabled and no output file specified. Results will not be saved.", err=True)
+                logger.warning(
+                    "Database storage is disabled and no output file specified - results will not be persisted"
+                )
+                click.echo(
+                    "Warning: Database storage is disabled and no output file specified. Results will not be saved.",
+                    err=True,
+                )
             else:
-                logger.info("Database storage is disabled - results will only be saved to output file")
+                logger.info(
+                    "Database storage is disabled - results will only be saved to output file"
+                )
 
         # Override config with CLI options
         if max_workers:
@@ -271,29 +274,14 @@ def scan(
                 f".{ext}" if not ext.startswith(".") else ext for ext in extensions
             ]
 
+        # Override database setting if specified
+        if store_db is not None:
+            app_config.database.enabled = store_db
+            if store_db and not app_config.database.path.parent.exists():
+                app_config.database.path.parent.mkdir(parents=True, exist_ok=True)
+
         # Convert mode string to ScanMode enum
         scan_mode = ScanMode(mode.lower())
-
-        # Handle incremental scanning
-        if incremental and app_config.database.enabled:
-            try:
-                from src.database.service import DatabaseService
-
-                db_service = DatabaseService(
-                    app_config.database.path, app_config.database.auto_cleanup_days
-                )
-
-                # Get files that were recently scanned and found healthy
-                recent_healthy = db_service.get_files_needing_rescan(
-                    str(directory), scan_mode.value
-                )
-                # Invert the logic - skip files NOT in the rescan list
-                # (these are files that were healthy in recent scans)
-                click.echo(
-                    f"Incremental scan: focusing on {len(recent_healthy)} files that need rescanning"
-                )
-            except Exception as e:
-                logger.warning(f"Could not perform incremental scan: {e}")
 
         # Create and run scan handler
         handler = ScanHandler(app_config)
@@ -309,7 +297,7 @@ def scan(
         if summary is not None:
             click.echo("\nScan Summary:")
             click.echo(json.dumps(summary.model_dump(), indent=2 if pretty else None))
-            
+
             # Show where results were stored
             if app_config.database.enabled:
                 click.echo(f"\nResults stored in database: {app_config.database.path}")
@@ -379,11 +367,11 @@ def list_files(
     \b
     # List specific extensions only
     corrupt-video-inspector list-files --extensions mp4 --extensions mkv /videos
-    
+
     \b
     # Save file list to JSON
     corrupt-video-inspector list-files --output files.json --format json /videos
-    
+
     \b
     # Save file list to CSV
     corrupt-video-inspector list-files --output files.csv --format csv /videos
@@ -418,7 +406,7 @@ def list_files(
                     format=output_format,
                 )
                 click.echo(f"File list saved to: {output}")
-            
+
             # Always display to console unless output format is not text
             if not output or output_format == "text":
                 click.echo(f"\nFound {len(video_files)} video files:")
@@ -512,7 +500,7 @@ def sync(
     \b
     # Dry run to see what would be synced
     corrupt-video-inspector trakt sync results.json --dry-run
-    
+
     \b
     # Save sync results to file
     corrupt-video-inspector trakt sync results.json --output sync_results.json
@@ -555,7 +543,7 @@ def sync(
         if result is not None:
             result_json = json.dumps(result.model_dump(), indent=2)
             click.echo(result_json)
-            
+
             # Save to output file if specified
             if output:
                 output.parent.mkdir(parents=True, exist_ok=True)
@@ -564,7 +552,7 @@ def sync(
                 click.echo(f"Sync results also saved to: {output}")
         else:
             click.echo("No sync result returned.")
-            
+
             # Create empty result file if output specified
             if output:
                 output.parent.mkdir(parents=True, exist_ok=True)
@@ -907,6 +895,82 @@ def test_ffmpeg(ctx, config):
 
 @cli.command()
 @global_options
+@click.argument("video_file", type=PathType(exists=True))
+def test_ffprobe(app_config, video_file):
+    """Test FFprobe functionality on a specific video file."""
+    try:
+        setup_logging(0)
+
+        # Import FFprobe client
+        from src.core.models.inspection import VideoFile
+        from src.ffmpeg.ffprobe_client import FFprobeClient
+
+        # Test FFprobe installation
+        ffprobe = FFprobeClient(app_config.ffmpeg)
+        install_results = ffprobe.test_installation()
+
+        click.echo("FFprobe Installation Test")
+        click.echo("=" * 40)
+
+        click.echo(f"FFprobe Path: {install_results['ffprobe_path'] or 'Not found'}")
+        click.echo(f"FFprobe Available: {'✓' if install_results['ffprobe_available'] else '✗'}")
+        click.echo(f"JSON Output: {'✓' if install_results['can_parse_json'] else '✗'}")
+
+        if install_results["version_info"]:
+            click.echo(f"Version: {install_results['version_info']}")
+
+        if not install_results["ffprobe_available"]:
+            click.echo("\nFFprobe is not available.")
+            sys.exit(1)
+
+        # Test probe on actual file
+        click.echo(f"\nProbing file: {video_file}")
+        click.echo("=" * 40)
+
+        video_file_obj = VideoFile(path=video_file)
+        probe_result = ffprobe.probe_file(video_file_obj)
+
+        if probe_result.success:
+            click.echo("✓ Probe successful")
+            click.echo(
+                f"Duration: {probe_result.duration}s"
+                if probe_result.duration
+                else "Duration: Unknown"
+            )
+            click.echo(f"File size: {probe_result.file_size} bytes")
+            click.echo(f"Video streams: {len(probe_result.video_streams)}")
+            click.echo(f"Audio streams: {len(probe_result.audio_streams)}")
+            click.echo(f"Valid video file: {'✓' if probe_result.is_valid_video_file else '✗'}")
+
+            if probe_result.streams:
+                click.echo("\nStreams:")
+                for stream in probe_result.streams:
+                    stream_info = f"  Stream {stream.index}: {stream.codec_type.value}"
+                    if stream.codec_name:
+                        stream_info += f" ({stream.codec_name})"
+                    if stream.width and stream.height:
+                        stream_info += f" {stream.width}x{stream.height}"
+                    click.echo(stream_info)
+
+            if probe_result.format_info:
+                click.echo(f"\nFormat: {probe_result.format_info.format_name}")
+                if probe_result.format_info.format_long_name:
+                    click.echo(f"Description: {probe_result.format_info.format_long_name}")
+        else:
+            click.echo("✗ Probe failed")
+            click.echo(f"Error: {probe_result.error_message}")
+            sys.exit(1)
+
+        click.echo("\nFFprobe test completed successfully! ✓")
+
+    except Exception as e:
+        logger.exception("FFprobe test command failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@global_options
 @click.option(
     "--scan-file",
     "-s",
@@ -1081,6 +1145,136 @@ def show_config(all_configs, debug, config):
 
     except Exception as e:
         logger.exception("Show config command failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@global_options
+@click.option(
+    "--directory",
+    "-d",
+    type=PathType(exists=True, file_okay=False, dir_okay=True),
+    help="Filter results by directory path",
+)
+@click.option(
+    "--limit",
+    "-l",
+    type=int,
+    default=10,
+    help="Maximum number of results to show (default: 10)",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["table", "json"], case_sensitive=False),
+    default="table",
+    help="Output format (default: table)",
+)
+def db_history(config, directory, limit, output_format):
+    """Show scan history from database.
+
+    Display previous scan summaries stored in the database.
+
+    Examples:
+
+    \b
+    # Show last 10 scans
+    corrupt-video-inspector db-history
+
+    \b
+    # Show scans for specific directory
+    corrupt-video-inspector db-history --directory /path/to/videos
+
+    \b
+    # Show results in JSON format
+    corrupt-video-inspector db-history --format json
+    """
+    try:
+        app_config = load_config(config_path=config)
+
+        if not app_config.database.enabled:
+            click.echo("Database is not enabled in configuration", err=True)
+            sys.exit(1)
+
+        from src.output import OutputFormatter
+
+        formatter = OutputFormatter(app_config)
+
+        summaries = formatter.get_scan_history(directory, limit)
+
+        if not summaries:
+            location = f" in {directory}" if directory else ""
+            click.echo(f"No scan history found{location}")
+            return
+
+        if output_format == "json":
+            output_data = [summary.model_dump() for summary in summaries]
+            click.echo(json.dumps(output_data, indent=2))
+        else:
+            # Table format
+            click.echo(f"\nScan History ({len(summaries)} results):\n")
+            click.echo(
+                f"{'Directory':<40} {'Mode':<8} {'Files':<8} {'Corrupt':<8} {'Time':<12} {'Date'}"
+            )
+            click.echo("-" * 90)
+
+            for summary in summaries:
+                from datetime import datetime
+
+                date_str = datetime.fromtimestamp(summary.started_at).strftime("%Y-%m-%d %H:%M")
+                directory_str = (
+                    str(summary.directory)[-MAX_DIRECTORY_DISPLAY_LENGTH:]
+                    if len(str(summary.directory)) > MAX_DIRECTORY_DISPLAY_LENGTH
+                    else str(summary.directory)
+                )
+
+                click.echo(
+                    f"{directory_str:<40} {summary.scan_mode.value:<8} "
+                    f"{summary.processed_files:<8} {summary.corrupt_files:<8} "
+                    f"{summary.scan_time:<12.1f} {date_str}"
+                )
+
+    except Exception as e:
+        logger.exception("Database history command failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@global_options
+def db_stats(config):
+    """Show database statistics.
+
+    Display information about the database including number of scans,
+    file counts, and database size.
+    """
+    try:
+        app_config = load_config(config_path=config)
+
+        from src.output import OutputFormatter
+
+        formatter = OutputFormatter(app_config)
+
+        stats = formatter.get_database_stats()
+
+        if not stats.get("enabled"):
+            click.echo("Database is not enabled in configuration", err=True)
+            sys.exit(1)
+
+        click.echo("\nDatabase Statistics:")
+        click.echo("=" * 20)
+        click.echo(f"Database Path: {stats['database_path']}")
+        click.echo(f"Database Size: {stats['database_size_mb']:.2f} MB")
+        click.echo(f"Total Scans: {stats['total_summaries']}")
+        click.echo(f"Completed Scans: {stats['completed_summaries']}")
+        click.echo(f"Incomplete Scans: {stats['incomplete_summaries']}")
+        click.echo(f"Total File Results: {stats['total_results']}")
+        click.echo(f"Corrupt Files Found: {stats['corrupt_files']}")
+        click.echo(f"Healthy Files: {stats['healthy_files']}")
+
+    except Exception as e:
+        logger.exception("Database stats command failed")
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 

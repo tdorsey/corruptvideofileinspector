@@ -3,7 +3,6 @@ Command handlers for CLI operations.
 """
 
 import importlib.util
-import json
 import logging
 import os
 import sys
@@ -66,6 +65,49 @@ class BaseHandler:
 
         sys.exit(1)
 
+    def _generate_output(
+        self,
+        summary: Any,
+        output_file: Path | None = None,
+        pretty_print: bool = True,
+        output_format: str = "json",
+    ) -> Path | None:
+        """Helper to generate output files for handlers and tests.
+
+        Writes summary.model_dump() or dict(summary) as JSON using OutputFormatter.
+        """
+        # Determine target
+        if output_file and output_file.exists() and output_file.is_dir():
+            logger.warning("Output path is a directory; using default output directory")
+            target = Path(self.config.output.default_output_dir) / getattr(
+                self.config.output, "default_filename", "scan_results.json"
+            )
+        elif output_file:
+            target = output_file
+        else:
+            target = Path(self.config.output.default_output_dir) / getattr(
+                self.config.output, "default_filename", "scan_results.json"
+            )
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        data = None
+        try:
+            if hasattr(summary, "model_dump"):
+                data = summary.model_dump()
+            elif hasattr(summary, "dict"):
+                data = summary.dict()
+            else:
+                data = dict(summary)
+        except Exception:
+            data = {"summary": str(summary)}
+
+        # Keep output_format available for compatibility with callers/tests
+        _ = output_format
+
+        self.output_formatter._write_json_results(data, target, pretty_print)
+        return target
+
 
 class ScanHandler(BaseHandler):
     def __init__(self, config: AppConfig):
@@ -88,7 +130,7 @@ class ScanHandler(BaseHandler):
         """
         Run a video corruption scan and return ScanSummary.
         Results are automatically stored in the database if enabled.
-        
+
         Args:
             directory: Directory to scan
             scan_mode: Scan mode to use
@@ -104,7 +146,7 @@ class ScanHandler(BaseHandler):
                 logger.info("No video files found to scan.")
                 return None
             logger.info(f"Found {len(video_files)} video files to scan.")
-            
+
             summary = self.scanner.scan_directory(
                 directory=directory,
                 scan_mode=scan_mode,
@@ -114,7 +156,7 @@ class ScanHandler(BaseHandler):
                     self._progress_callback if self.config.logging.level != "QUIET" else None
                 ),
             )
-            
+
             # Store results using OutputFormatter (handles both database and file output)
             if output_file or self.config.database.enabled:
                 self.output_formatter.write_scan_results(
@@ -124,14 +166,14 @@ class ScanHandler(BaseHandler):
                     pretty_print=pretty_print,
                     store_in_database=self.config.database.enabled,
                 )
-                
+
                 if self.config.database.enabled:
                     logger.info("Scan results stored in database")
                 if output_file:
                     logger.info(f"Scan results written to {output_file}")
             else:
                 logger.warning("No storage configured - scan results will not be persisted")
-            
+
             return summary
         except KeyboardInterrupt:
             logger.warning("Scan interrupted by user.")
@@ -230,7 +272,7 @@ class ScanHandler(BaseHandler):
         self,
         summary: ScanSummary,
         results: list[ScanResult],
-        output_file: Path | None = None,
+        output_file: Path | None,
         output_format: str = "json",
         include_healthy: bool = False,
         include_metadata: bool = True,
@@ -285,10 +327,7 @@ class ListHandler(BaseHandler):
                 return []
             logger.info(f"Found {len(video_files)} video files in directory {directory}.")
             # Convert to VideoFile Pydantic models if not already
-            video_file_models = [
-                vf if isinstance(vf, VideoFile) else VideoFile(path=vf) for vf in video_files
-            ]
-            return video_file_models
+            return [vf if isinstance(vf, VideoFile) else VideoFile(path=vf) for vf in video_files]
         except Exception as e:
             self._handle_error(e, "Failed to list files")
             return []

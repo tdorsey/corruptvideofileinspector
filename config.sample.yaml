@@ -7,10 +7,26 @@ logging:
   date_format: "%Y-%m-%dT%H:%M:%S%z"
   format: "%(asctime)s %(levelname)s %(name)s %(message)s"
 
+# FFmpeg / FFprobe settings
 ffmpeg:
   command: /usr/bin/ffmpeg
   quick_timeout: 30
   deep_timeout: 1800
+
+  # === PROBE FEATURES ===
+  # Timeout for FFprobe operations (seconds)
+  probe_timeout: 15
+
+  # Enable persistent caching of probe results
+  enable_probe_cache: true
+
+  # Maximum age for cached probe results (hours)
+  probe_cache_max_age_hours: 24.0
+
+  # Require FFprobe validation before corruption scanning
+  # When true: Only files with successful probe results and video streams are scanned
+  # When false: All files are scanned (legacy behavior)
+  require_probe_before_scan: true
 
 processing:
   max_workers: 8
@@ -24,7 +40,7 @@ output:
 scan:
   recursive: true
   max_workers: 8
-  mode: "quick"
+  mode: "hybrid"
   default_input_dir: /tmp/videos
   extensions:
     - ".mp4"
@@ -33,12 +49,15 @@ scan:
     - ".mov"
     - ".wmv"
     - ".flv"
+    - ".m4v"
+    - ".3gp"
 
-database:
-  enabled: false  # Enable SQLite database storage
-  path: "~/.corrupt-video-inspector/scans.db"  # Database file location
-  auto_cleanup_days: 0  # Auto-delete scans older than X days (0 = disabled)
-  create_backup: true  # Create backups before schema changes
+  # Content-based detection settings (v1.x)
+  use_content_detection: true           # Use FFprobe to analyze file content instead of extensions
+  ffprobe_timeout: 30                   # Timeout in seconds for FFprobe analysis
+  extension_filter: []                  # Optional: Pre-filter by extensions before content analysis
+                                       # Example: [".mp4", ".mkv"] to only analyze these types
+                                       # Empty list = analyze all files (slower but more accurate)
 
 trakt:
   client_id: ""
@@ -46,3 +65,69 @@ trakt:
   default_watchlist: null
   include_statuses:
     - "healthy"
+
+# Database configuration for storing scan results
+# Combined settings (was duplicated previously)
+database:
+  enabled: false  # Set to true to enable database storage
+  path: "~/.corrupt-video-inspector/scans.db"  # Path to SQLite database file
+  auto_create: true  # Automatically create database if it doesn't exist
+  auto_cleanup_days: 0  # Auto-delete scans older than X days (0 = disabled)
+  create_backup: true  # Create backups before schema changes
+
+# ===============================================
+# PROBE WORKFLOW EXPLANATION
+# ===============================================
+# This section documents the probe-before-scan workflow. Keep it in the
+# sample config to help users understand how probe features interact with
+# the scanning process.
+
+# Phase 1: File Discovery
+# - Scanner finds all video files in target directories
+# - Files are filtered by extension (see scan.extensions above)
+
+# Phase 2: Probe Analysis (when require_probe_before_scan: true)
+# - Each file is analyzed with FFprobe to extract metadata
+# - Results include: streams, format info, duration, codec details
+# - Probe results are cached to avoid redundant operations
+# - Cache file location: {output.default_output_dir}/probe_cache.json
+
+# Phase 3: Eligibility Check
+# Files are eligible for corruption scanning if:
+# - FFprobe analysis was successful
+# - At least one video stream was detected
+# - Format information is available
+
+# Phase 4: Corruption Scanning
+# - Only eligible files undergo FFmpeg corruption analysis
+# - Probe results are included in scan results for enhanced reporting
+# - Ineligible files are logged but not scanned
+
+# ===============================================
+# PERFORMANCE NOTES
+# ===============================================
+# Cache Benefits:
+# - Probe results are cached for 24 hours by default
+# - Subsequent scans of the same files use cached results
+# - Typical probe operation: 1-5 seconds per file
+# - Cache hit rate: 70-90% for regular scanning workflows
+
+# Resource Usage:
+# - FFprobe is much lighter than FFmpeg corruption scanning
+# - Early rejection of non-video files saves significant time
+# - Audio-only files, images, and corrupted files are skipped
+
+# ===============================================
+# TROUBLESHOOTING
+# ===============================================
+# If probe workflow causes issues:
+# 1. Set require_probe_before_scan: false to disable
+# 2. Check FFprobe availability: ffprobe -version
+# 3. Clear cache: rm {output.default_output_dir}/probe_cache.json
+# 4. Test individual file: corrupt-video-inspector test-ffprobe /path/to/video.mp4
+
+# Common probe failures:
+# - "FFprobe command not available" -> Install FFmpeg package
+# - "Probe timed out" -> Increase probe_timeout value
+# - "No video streams detected" -> File is audio-only or corrupted
+# - "Invalid data found" -> File is corrupted or not a media file

@@ -18,20 +18,22 @@ class VideoProber:
 
     def create_video_file_with_hash(self, path: Path) -> VideoFile:
         """Create a VideoFile object with SHA-256 hash calculated.
-        
+
         Args:
             path: Path to the video file
-            
+
         Returns:
             VideoFile with hash calculated
-            
+
         Raises:
             IOError: If hash calculation fails critically
         """
         try:
             sha256_hash = calculate_sha256_hash(path)
             video_file = VideoFile(path=path, sha256_hash=sha256_hash)
-            logger.debug(f"Created VideoFile with hash [SHA256: {video_file.short_hash}]: {path.name}")
+            logger.debug(
+                f"Created VideoFile with hash [SHA256: {video_file.short_hash}]: {path.name}"
+            )
             return video_file
         except Exception as e:
             logger.warning(f"Failed to calculate hash for {path}: {e}")
@@ -40,13 +42,13 @@ class VideoProber:
 
     def probe_video_file(self, path: Path) -> VideoFile:
         """Probe a video file and extract basic information including hash.
-        
+
         This is the main entry point for video file probing. Currently focuses
         on hash calculation, but can be extended for other metadata extraction.
-        
+
         Args:
             path: Path to the video file
-            
+
         Returns:
             VideoFile with probing information populated
         """
@@ -54,10 +56,10 @@ class VideoProber:
 
     def calculate_file_hash(self, path: Path) -> str:
         """Calculate SHA-256 hash for a video file.
-        
+
         Args:
             path: Path to the file
-            
+
         Returns:
             SHA-256 hash as hexadecimal string, empty string if calculation fails
         """

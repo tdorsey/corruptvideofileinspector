@@ -39,8 +39,8 @@ class TestSha256Hash(unittest.TestCase):
         # Test function
         result_hash = calculate_sha256_hash(test_file)
 
-        self.assertEqual(result_hash, expected_hash)
-        self.assertEqual(len(result_hash), 64)  # SHA-256 hash should be 64 hex chars
+        assert result_hash == expected_hash
+        assert len(result_hash) == 64  # SHA-256 hash should be 64 hex chars
 
     def test_calculate_sha256_hash_empty_file(self):
         """Test SHA-256 hash calculation for an empty file"""
@@ -52,7 +52,7 @@ class TestSha256Hash(unittest.TestCase):
 
         result_hash = calculate_sha256_hash(test_file)
 
-        self.assertEqual(result_hash, expected_hash)
+        assert result_hash == expected_hash
 
     def test_calculate_sha256_hash_large_file(self):
         """Test SHA-256 hash calculation for a larger file (tests chunking)"""
@@ -66,13 +66,13 @@ class TestSha256Hash(unittest.TestCase):
 
         result_hash = calculate_sha256_hash(test_file)
 
-        self.assertEqual(result_hash, expected_hash)
+        assert result_hash == expected_hash
 
     def test_calculate_sha256_hash_nonexistent_file(self):
         """Test SHA-256 hash calculation for non-existent file"""
         nonexistent_file = self.temp_path / "does_not_exist.txt"
 
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             calculate_sha256_hash(nonexistent_file)
 
     def test_calculate_sha256_hash_video_like_content(self):
@@ -87,7 +87,7 @@ class TestSha256Hash(unittest.TestCase):
 
         result_hash = calculate_sha256_hash(test_file)
 
-        self.assertEqual(result_hash, expected_hash)
+        assert result_hash == expected_hash
 
 
 class TestHashFormatting(unittest.TestCase):
@@ -100,7 +100,7 @@ class TestHashFormatting(unittest.TestCase):
 
         result = format_hash_for_logging(full_hash, short=True)
 
-        self.assertEqual(result, expected_short)
+        assert result == expected_short
 
     def test_format_hash_for_logging_full(self):
         """Test full hash formatting"""
@@ -108,7 +108,7 @@ class TestHashFormatting(unittest.TestCase):
 
         result = format_hash_for_logging(full_hash, short=False)
 
-        self.assertEqual(result, full_hash)
+        assert result == full_hash
 
     def test_format_hash_for_logging_short_hash_input(self):
         """Test formatting with short hash input"""
@@ -117,18 +117,17 @@ class TestHashFormatting(unittest.TestCase):
         # Should return the full hash if it's too short for shortening
         result = format_hash_for_logging(short_hash, short=True)
 
-        self.assertEqual(result, short_hash)
+        assert result == short_hash
 
     def test_format_hash_for_logging_medium_hash(self):
         """Test formatting with medium-length hash"""
-        MIN_HASH_SHORTEN_LENGTH = 13  # Should match the threshold in production code
         # Construct a hash just over the minimum threshold for shortening
         medium_hash = "abcdef12" + "34567"  # 8 + 5 = 13 chars
 
         result = format_hash_for_logging(medium_hash, short=True)
 
         expected = "abcdef12...567"  # Should be shortened
-        self.assertEqual(result, expected)
+        assert result == expected
 
 
 if __name__ == "__main__":

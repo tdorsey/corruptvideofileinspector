@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from src.core.models.inspection import VideoFile
+from src.core.models.probe import ProbeResult
 
 
 class ScanMode(Enum):
@@ -85,6 +86,7 @@ class ScanResult(BaseModel):
         deep_scan_completed: Whether deep scan was performed
         timestamp: When the scan was performed
         confidence: Confidence level of corruption detection (0.0-1.0)
+        probe_result: FFprobe analysis result (None if probe was skipped)
     """
 
     video_file: VideoFile
@@ -97,6 +99,7 @@ class ScanResult(BaseModel):
     deep_scan_completed: bool = False
     timestamp: float = Field(default_factory=time.time)
     confidence: float = 0.0
+    probe_result: ProbeResult | None = None
 
     @property
     def filename(self) -> str:
@@ -129,6 +132,17 @@ class ScanResult(BaseModel):
         data["file_size"] = self.file_size
         data["status"] = self.status
         data["confidence_percentage"] = self.confidence_percentage
+        # Add probe-related information
+        if self.probe_result:
+            data["probe_success"] = self.probe_result.success
+            data["has_video_streams"] = self.probe_result.has_video_streams
+            data["probe_duration"] = self.probe_result.duration
+            data["probe_summary"] = self.probe_result.get_summary()
+        else:
+            data["probe_success"] = None
+            data["has_video_streams"] = None
+            data["probe_duration"] = None
+            data["probe_summary"] = "No probe result"
         return data
 
     @classmethod
@@ -152,6 +166,9 @@ class ScanResult(BaseModel):
             if "scan_mode" in data and isinstance(data["scan_mode"], str):
                 with contextlib.suppress(ValueError):
                     data["scan_mode"] = ScanMode(data["scan_mode"])
+            # Handle probe_result if present
+            if "probe_result" in data and isinstance(data["probe_result"], dict):
+                data["probe_result"] = ProbeResult.from_dict(data["probe_result"])
             obj = data
         return super().model_validate(
             obj, strict=strict, from_attributes=from_attributes, context=context, **kwargs
@@ -180,6 +197,20 @@ class ScanResult(BaseModel):
         if self.needs_deep_scan:
             return "SUSPICIOUS"
         return "NONE"
+
+    def was_probed(self) -> bool:
+        """Check if file was probed before scanning."""
+        return self.probe_result is not None
+
+    def probe_was_successful(self) -> bool:
+        """Check if probe was successful."""
+        return self.probe_result is not None and self.probe_result.success
+
+    def get_probe_summary(self) -> str:
+        """Get probe result summary."""
+        if self.probe_result is None:
+            return "No probe performed"
+        return self.probe_result.get_summary()
 
 
 class ScanSummary(BaseModel):

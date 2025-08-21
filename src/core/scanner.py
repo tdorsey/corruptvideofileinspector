@@ -14,15 +14,19 @@ from typing import TYPE_CHECKING
 
 from src.config import load_config
 from src.core.models.inspection import VideoFile
+from src.core.models.probe import ProbeResult, ScanPrerequisites
 from src.core.models.scanning import (
     ScanMode,
+    ScanPhase,
     ScanProgress,
     ScanResult,
     ScanSummary,
 )
+from src.core.probe_cache import ProbeResultCache
 from src.core.prober import VideoProber
 from src.ffmpeg.corruption_detector import CorruptionDetector
 from src.ffmpeg.ffmpeg_client import FFmpegClient
+from src.ffmpeg.ffprobe_client import FFprobeClient
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -68,10 +72,89 @@ class VideoScanner:
         self._shutdown_requested = False
         self._current_scan_summary: ScanSummary | None = None
         self.corruption_detector = CorruptionDetector()
-        self.prober = VideoProber()
+
+        # Initialize probe-related components
+        self._ffprobe_client: FFprobeClient | None = None
+        self._probe_cache: ProbeResultCache | None = None
+        self._scan_prerequisites = ScanPrerequisites()
+
+        if config.ffmpeg.enable_probe_cache:
+            cache_file = config.output.default_output_dir / "probe_cache.json"
+            self._probe_cache = ProbeResultCache(
+                cache_file, max_age_hours=config.ffmpeg.probe_cache_max_age_hours
+            )
+
+        if config.ffmpeg.require_probe_before_scan:
+            try:
+                self._ffprobe_client = FFprobeClient(config.ffmpeg)
+                logger.info("FFprobe client initialized for probe-before-scan workflow")
+            except Exception as e:
+                logger.warning(f"Failed to initialize FFprobe client: {e}")
+                if config.ffmpeg.require_probe_before_scan:
+                    logger.exception("Probe-before-scan is required but FFprobe unavailable")
 
         logger.info("VideoScanner initialized with config: %s", config.scan)
+        # Initialize prober used to create VideoFile objects with hashes
+        self.prober = VideoProber()
 
+    def _probe_file(self, video_file: VideoFile) -> ProbeResult | None:
+        """
+        Probe a video file to extract metadata and validate it for scanning.
+
+        Args:
+            video_file: Video file to probe
+
+        Returns:
+            ProbeResult if probing is enabled, None otherwise
+        """
+        if not self._ffprobe_client:
+            return None
+
+        # Check cache first
+        if self._probe_cache:
+            cached_result = self._probe_cache.get(video_file.path)
+            if cached_result:
+                logger.debug(f"Using cached probe result for: {video_file.path}")
+                return cached_result
+
+        # Perform probe
+        logger.debug(f"Probing file: {video_file.path}")
+        probe_result = self._ffprobe_client.probe_file(
+            video_file, timeout=self.config.ffmpeg.probe_timeout
+        )
+
+        # Cache the result
+        if self._probe_cache:
+            self._probe_cache.put(probe_result)
+
+        return probe_result
+
+    def _can_scan_file(
+        self, video_file: VideoFile, probe_result: ProbeResult | None = None
+    ) -> tuple[bool, str]:
+        """
+        Check if a file can be scanned based on probe results and prerequisites.
+
+        Args:
+            video_file: Video file to check
+            probe_result: Probe result (will probe if None and probing enabled)
+
+        Returns:
+            Tuple of (can_scan, reason)
+        """
+        # If probe-before-scan is disabled, allow all files
+        if not self.config.ffmpeg.require_probe_before_scan:
+            return True, "Probe requirement disabled"
+
+        # Get probe result if not provided
+        if probe_result is None:
+            probe_result = self._probe_file(video_file)
+
+        # Check prerequisites
+        if self._scan_prerequisites.can_scan(probe_result):
+            return True, "Prerequisites met"
+        reason = self._scan_prerequisites.get_rejection_reason(probe_result)
+        return False, reason
 
     async def locate_video_files_async(
         self,
@@ -183,7 +266,9 @@ class VideoScanner:
         Returns:
             List of found video files
         """
-        video_files = [self.prober.create_video_file_with_hash(path) for path in file_paths if path.exists()]
+        video_files = [
+            self.prober.create_video_file_with_hash(path) for path in file_paths if path.exists()
+        ]
         progress = ScanProgress(
             total_files=len(video_files),
             scan_mode="locate",
@@ -295,9 +380,71 @@ class VideoScanner:
             )
 
         logger.info("Found %d video files to scan", len(video_files))
+
+        # Phase 0: Probe files (if probe-before-scan is enabled)
+        probe_results: dict[str, ProbeResult] = {}
+        eligible_files: list[VideoFile] = []
+
+        if self.config.ffmpeg.require_probe_before_scan and self._ffprobe_client:
+            logger.info("Starting probe phase for %d files", len(video_files))
+
+            for i, video_file in enumerate(video_files):
+                if self._shutdown_requested:
+                    break
+
+                # Update progress for probe phase
+                if progress_callback:
+                    probe_progress = ScanProgress(
+                        current_file=str(video_file.path),
+                        total_files=len(video_files),
+                        processed_count=i,
+                        phase=ScanPhase.SCANNING,
+                        scan_mode=scan_mode,
+                    )
+                    progress_callback(probe_progress)
+
+                # Probe the file
+                probe_result = self._probe_file(video_file)
+                if probe_result:
+                    probe_results[str(video_file.path)] = probe_result
+
+                # Check if file can be scanned
+                can_scan, reason = self._can_scan_file(video_file, probe_result)
+                if can_scan:
+                    eligible_files.append(video_file)
+                    logger.debug(f"File eligible for scanning: {video_file.path}")
+                else:
+                    logger.info(f"Skipping file (not eligible): {video_file.path} - {reason}")
+
+            logger.info(
+                f"Probe phase complete: {len(eligible_files)}/{len(video_files)} files eligible for scanning"
+            )
+        else:
+            # If probing disabled, all files are eligible
+            eligible_files = video_files
+            logger.info("Probe-before-scan disabled, all files eligible")
+
+        # Use eligible files for scanning
+        video_files = eligible_files
+        if not video_files:
+            logger.warning("No eligible video files found after probe phase")
+            start_time = time.time()
+            return ScanSummary(
+                directory=directory,
+                total_files=len(eligible_files),
+                processed_files=0,
+                corrupt_files=0,
+                healthy_files=0,
+                scan_mode=scan_mode,
+                scan_time=time.time() - start_time,
+                was_resumed=False,  # No files to resume
+            )
+
+        start_time = time.time()
         resume_path = self._get_resume_path(directory)
         processed_files: set[str] = set()
         was_resumed = False
+
         if resume and resume_path.exists():
             processed_files = self._load_resume_state(resume_path)
             if processed_files:
@@ -312,7 +459,6 @@ class VideoScanner:
             corrupt_count=0,
             scan_mode=scan_mode.value,
         )
-        start_time: float = time.time()
         detector: CorruptionDetector = CorruptionDetector()
         deep_scans_needed: int = 0
         deep_scans_completed: int = 0
@@ -526,12 +672,29 @@ class VideoScanner:
         Returns:
             List of scan results for each file
         """
-        # Create video files from paths
+        # Create video files from paths and probe if enabled
         video_files = []
+        probe_results: dict[str, ProbeResult] = {}
+
         for path_str in file_paths:
             path = Path(path_str)
             if path.exists() and path.is_file():
-                video_files.append(self.prober.create_video_file_with_hash(path))
+                video_file = VideoFile(path=path)
+
+                # Probe the file if probe-before-scan is enabled
+                if self.config.ffmpeg.require_probe_before_scan:
+                    can_scan, reason = self._can_scan_file(video_file)
+                    if can_scan:
+                        # Get probe result for later use
+                        probe_result = self._probe_file(video_file)
+                        if probe_result:
+                            probe_results[path_str] = probe_result
+                        video_files.append(video_file)
+                        logger.debug(f"File eligible for scanning: {path}")
+                    else:
+                        logger.info(f"Skipping file (not eligible): {path} - {reason}")
+                else:
+                    video_files.append(video_file)
 
         if not video_files:
             logger.warning("No valid video files found in provided paths")
@@ -561,19 +724,23 @@ class VideoScanner:
                 )
                 progress_callback(progress)
 
+            # Get probe result for this file
+            file_path_str = str(video_file.path)
+            probe_result = probe_results.get(file_path_str)
+
             # Perform scan based on mode
             result = None
             if mode == ScanMode.QUICK:
-                result = ffmpeg_client.inspect_quick(video_file)
+                result = ffmpeg_client.inspect_quick(video_file, probe_result)
             elif mode == ScanMode.DEEP:
-                result = ffmpeg_client.inspect_deep(video_file)
+                result = ffmpeg_client.inspect_deep(video_file, probe_result=probe_result)
             elif mode == ScanMode.HYBRID:
                 # First try quick scan
-                result = ffmpeg_client.inspect_quick(video_file)
+                result = ffmpeg_client.inspect_quick(video_file, probe_result)
                 if result.needs_deep_scan:
-                    result = ffmpeg_client.inspect_deep(video_file)
+                    result = ffmpeg_client.inspect_deep(video_file, probe_result=probe_result)
             elif mode == ScanMode.FULL:
-                result = ffmpeg_client.inspect_full(video_file)
+                result = ffmpeg_client.inspect_full(video_file, probe_result)
             else:  # pragma: no cover
                 logger.error("Unknown scan mode: %s", mode)  # type: ignore[unreachable]
                 # Skip this file if unknown mode
@@ -601,18 +768,64 @@ class VideoScanner:
         if extensions is None:
             extensions = self.config.scan.extensions
 
-        logger.debug("Scanning for video files with extensions: %s", extensions)
+        use_content_detection = self.config.scan.use_content_detection
+        logger.debug(f"Scanning for video files, content_detection={use_content_detection}")
+        if not use_content_detection:
+            logger.debug("Using extension-based detection with extensions: %s", extensions)
 
         video_files: list[VideoFile] = []
 
         # Use asyncio to make file system operations non-blocking
         def _scan_directory() -> Iterator[VideoFile]:
+            nonlocal use_content_detection  # Allow modification in nested function
             pattern = "**/*" if recursive else "*"
             logger.debug(f"Scanning directory: {directory}, pattern: {pattern}")
-            logger.debug(f"Using extensions: {extensions}")
+
+            # Initialize FFmpeg client for content detection if needed
+            ffmpeg_client = None
+            if use_content_detection:
+                try:
+                    ffmpeg_client = FFmpegClient(self.config.ffmpeg)
+                    logger.debug("FFmpeg client initialized for content detection")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize FFmpeg client for content detection: {e}")
+                    logger.warning("Falling back to extension-based detection")
+                    use_content_detection = False
+
             for file_path in directory.glob(pattern):
-                logger.debug(f"Found file: {file_path} (suffix: {file_path.suffix.lower()})")
-                if file_path.is_file() and file_path.suffix.lower() in extensions:
+                if not file_path.is_file():
+                    continue
+
+                logger.debug(f"Checking file: {file_path}")
+
+                # Apply extension pre-filter if configured (performance optimization)
+                if (
+                    use_content_detection
+                    and self.config.scan.extension_filter
+                    and file_path.suffix.lower() not in self.config.scan.extension_filter
+                ):
+                    logger.debug(f"Skipped by extension filter: {file_path}")
+                    continue
+
+                is_video = False
+                if use_content_detection and ffmpeg_client:
+                    # Use FFprobe content analysis
+                    try:
+                        is_video = ffmpeg_client.is_video_file(
+                            file_path, timeout=self.config.scan.ffprobe_timeout
+                        )
+                        logger.debug(f"Content analysis result for {file_path}: {is_video}")
+                    except Exception as e:
+                        logger.debug(
+                            f"Content analysis failed for {file_path}: {e}, using extension fallback"
+                        )
+                        # Fall back to extension check for this file
+                        is_video = file_path.suffix.lower() in extensions
+                else:
+                    # Use extension-based detection
+                    is_video = file_path.suffix.lower() in extensions
+
+                if is_video:
                     logger.debug(f"Accepted as video file: {file_path}")
                     yield self.prober.create_video_file_with_hash(file_path)
                 else:
