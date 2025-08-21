@@ -146,11 +146,6 @@ def cli(
     show_default=True,
 )
 @click.option(
-    "--extensions",
-    multiple=True,
-    help="Video file extensions to scan (e.g., --extensions mp4 --extensions mkv)",
-)
-@click.option(
     "--resume/--no-resume",
     default=True,
     help="Enable/disable resume functionality",
@@ -184,7 +179,6 @@ def scan(
     mode,
     max_workers,
     recursive,
-    extensions,
     resume,
     output,
     output_format,
@@ -217,9 +211,28 @@ def scan(
     File Output:
 
     \b
+<<<<<<< HEAD
     - Use --output to save results to a JSON file
     - Supports --format json (other formats available: yaml, csv)
     - Use --pretty for formatted JSON output
+=======
+    # Basic hybrid scan
+    corrupt-video-inspector scan /path/to/videos
+
+    \b
+    # Quick scan with automatic database storage
+    corrupt-video-inspector scan --mode quick /path/to/videos
+
+    \b
+    # Incremental scan (skip recently healthy files)
+    corrupt-video-inspector scan --incremental /path/to/videos
+
+    \b
+    # Full scan without timeout (for thorough analysis)
+    corrupt-video-inspector scan --mode full /path/to/videos
+
+    Note: All files are probed to determine if they are video files (no extension filtering).
+>>>>>>> f0f3451 (Phase 3: Remove extension-based filtering, implement probe-based file detection)
     """
     try:
         # Load configuration
@@ -228,10 +241,6 @@ def scan(
         # Override config with CLI options
         if max_workers:
             app_config.scan.max_workers = max_workers
-        if extensions:
-            app_config.scan.extensions = [
-                f".{ext}" if not ext.startswith(".") else ext for ext in extensions
-            ]
 
         # Convert mode string to ScanMode enum
         scan_mode = ScanMode(mode.lower())
@@ -297,6 +306,7 @@ def scan(
     help="Recursively scan subdirectories",
     show_default=True,
 )
+<<<<<<< HEAD
 @click.option("--extensions", multiple=True, help="Video file extensions to include")
 @click.option(
     "--output",
@@ -304,6 +314,9 @@ def scan(
     type=click.Path(path_type=Path, dir_okay=False),
     help="Output file path for file list (must be a file, not a directory)",
 )
+=======
+@click.option("--output", "-o", type=PathType(), help="Output file path for file list")
+>>>>>>> f0f3451 (Phase 3: Remove extension-based filtering, implement probe-based file detection)
 @click.option(
     "--format",
     "output_format",
@@ -317,7 +330,6 @@ def list_files(
     ctx,
     directory,
     recursive,
-    extensions,
     output,
     output_format,
     config,
@@ -335,10 +347,11 @@ def list_files(
     Examples:
 
     \b
-    # List all video files
+    # List all video files in directory (probe-based detection)
     corrupt-video-inspector list-files /path/to/videos
 
     \b
+<<<<<<< HEAD
     # List specific extensions only
     corrupt-video-inspector list-files --extensions mp4 --extensions mkv /videos
 
@@ -349,16 +362,14 @@ def list_files(
     \b
     # Save file list to CSV
     corrupt-video-inspector list-files --output files.csv --format csv /videos
+=======
+    # List files to JSON output
+    corrupt-video-inspector list-files --format json /videos
+>>>>>>> f0f3451 (Phase 3: Remove extension-based filtering, implement probe-based file detection)
     """
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
-        # Override config with CLI options
-        if extensions:
-            app_config.scan.extensions = [
-                f".{ext}" if not ext.startswith(".") else ext for ext in extensions
-            ]
 
         # Setup logging
 

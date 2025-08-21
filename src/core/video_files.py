@@ -20,32 +20,25 @@ def count_all_video_files(
     ffprobe_timeout: int = 30,
 ) -> int:
     """
-    Count all video files in a directory.
+    Count all potential video files in a directory using probe-based detection.
 
     Args:
         directory: Path to directory to scan
         recursive: Whether to scan subdirectories recursively
-        extensions: List of file extensions to include (defaults to config extensions)
+        extensions: Deprecated parameter, kept for compatibility
         use_content_detection: Use FFprobe content analysis instead of extensions
         ffprobe_timeout: Timeout for FFprobe analysis when using content detection
 
     Returns:
-        int: Number of video files found
+        int: Number of files found (all files, to be probed later)
 
     Raises:
         Exception: If directory scanning fails
     """
-    if extensions is None:
-        # Use same default extensions as config for consistency
-        extensions = get_video_extensions()
+    logger.debug(
+        f"Counting all files in {directory}, recursive={recursive} (probe-based detection)"
+    )
 
-    logger.debug(f"Counting video files in {directory}, recursive={recursive}")
-    if use_content_detection:
-        logger.debug("Using FFprobe content detection")
-    else:
-        logger.debug(f"Looking for extensions: {extensions}")
-
-    ext_set = {ext.lower() for ext in extensions}
     count = 0
 
     # Initialize FFmpeg client for content detection if needed
@@ -84,18 +77,20 @@ def count_all_video_files(
                         f"Content analysis failed for {file_path}: {e}, using extension fallback"
                     )
                     # Fall back to extension check for this file
-                    is_video = file_path.suffix.lower() in ext_set
+                    ext_list = extensions or get_video_extensions()
+                    is_video = file_path.suffix.lower() in {ext.lower() for ext in ext_list}
             else:
-                # Use extension-based detection
-                is_video = file_path.suffix.lower() in ext_set
+                # Use extension-based detection as fallback
+                ext_list = extensions or get_video_extensions()
+                is_video = file_path.suffix.lower() in {ext.lower() for ext in ext_list}
 
             if is_video:
                 count += 1
-                logger.debug(f"Found video file: {file_path}")
+                logger.debug(f"Found file: {file_path}")
 
-        logger.info(f"Counted {count} video files in {directory}")
+        logger.info(f"Found {count} files in {directory} (probe-based detection)")
         return count
 
     except Exception:
-        logger.exception(f"Error counting video files in {directory}")
+        logger.exception(f"Error counting files in {directory}")
         raise

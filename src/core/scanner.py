@@ -168,12 +168,12 @@ class VideoScanner:
 
         Args:
             directory: Directory to search
-            recursive: Whether to search subdirectories
-            extensions: File extensions to include (defaults to config)
+            recursive: Whether to search subdirectories  
+            extensions: Deprecated parameter, kept for compatibility
             progress_callback: Optional callback for progress updates
 
         Returns:
-            List of found video files
+            List of found potential video files (all files, probed to determine if video)
         """
         logger.info("Locating video files in: %s", directory)
         video_files = await self._find_video_files_async(directory, recursive, extensions)
@@ -202,12 +202,12 @@ class VideoScanner:
 
         Args:
             directory: Directory to search
-            recursive: Whether to search subdirectories
-            extensions: File extensions to include
+            recursive: Whether to search subdirectories  
+            extensions: Deprecated parameter, kept for compatibility
             progress_callback: Optional callback for progress updates
 
         Returns:
-            List of found video files
+            List of found potential video files (all files, probed to determine if video)
         """
         try:
             try:
@@ -292,10 +292,10 @@ class VideoScanner:
         Args:
             directory: Directory to search
             recursive: Whether to search subdirectories
-            extensions: File extensions to include
+            extensions: Deprecated parameter, kept for compatibility
 
         Returns:
-            List of video files found
+            List of potential video files found (all files, probed to determine if video)
         """
         try:
             try:
@@ -762,35 +762,34 @@ class VideoScanner:
         self,
         directory: Path,
         recursive: bool,
-        extensions: list[str] | None,
+        extensions: list[str] | None = None,  # Deprecated parameter, kept for compatibility
     ) -> list[VideoFile]:
-        """Find all video files in directory asynchronously."""
-        if extensions is None:
-            extensions = self.config.scan.extensions
+        """Find all potential video files in directory using probe-based detection."""
+        logger.debug("Scanning directory for all files (probe-based video detection)")
 
         use_content_detection = self.config.scan.use_content_detection
         logger.debug(f"Scanning for video files, content_detection={use_content_detection}")
-        if not use_content_detection:
-            logger.debug("Using extension-based detection with extensions: %s", extensions)
-
-        video_files: list[VideoFile] = []
 
         # Use asyncio to make file system operations non-blocking
         def _scan_directory() -> Iterator[VideoFile]:
-            nonlocal use_content_detection  # Allow modification in nested function
             pattern = "**/*" if recursive else "*"
             logger.debug(f"Scanning directory: {directory}, pattern: {pattern}")
 
+            # Make a local mutable flag to avoid touching outer scope
+            local_use_content = use_content_detection
+
             # Initialize FFmpeg client for content detection if needed
             ffmpeg_client = None
-            if use_content_detection:
+            if local_use_content:
                 try:
                     ffmpeg_client = FFmpegClient(self.config.ffmpeg)
                     logger.debug("FFmpeg client initialized for content detection")
                 except Exception as e:
-                    logger.warning(f"Failed to initialize FFmpeg client for content detection: {e}")
+                    logger.warning(
+                        f"Failed to initialize FFmpeg client for content detection: {e}"
+                    )
                     logger.warning("Falling back to extension-based detection")
-                    use_content_detection = False
+                    local_use_content = False
 
             for file_path in directory.glob(pattern):
                 if not file_path.is_file():
@@ -800,7 +799,7 @@ class VideoScanner:
 
                 # Apply extension pre-filter if configured (performance optimization)
                 if (
-                    use_content_detection
+                    local_use_content
                     and self.config.scan.extension_filter
                     and file_path.suffix.lower() not in self.config.scan.extension_filter
                 ):
@@ -808,7 +807,7 @@ class VideoScanner:
                     continue
 
                 is_video = False
-                if use_content_detection and ffmpeg_client:
+                if local_use_content and ffmpeg_client:
                     # Use FFprobe content analysis
                     try:
                         is_video = ffmpeg_client.is_video_file(
@@ -820,10 +819,12 @@ class VideoScanner:
                             f"Content analysis failed for {file_path}: {e}, using extension fallback"
                         )
                         # Fall back to extension check for this file
-                        is_video = file_path.suffix.lower() in extensions
+                        ext_list = extensions or []
+                        is_video = file_path.suffix.lower() in [ext.lower() for ext in ext_list]
                 else:
-                    # Use extension-based detection
-                    is_video = file_path.suffix.lower() in extensions
+                    # Use extension-based detection as fallback
+                    ext_list = extensions or []
+                    is_video = file_path.suffix.lower() in [ext.lower() for ext in ext_list]
 
                 if is_video:
                     logger.debug(f"Accepted as video file: {file_path}")
@@ -833,9 +834,10 @@ class VideoScanner:
 
         # Run in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
-        video_files = await loop.run_in_executor(None, lambda: list(_scan_directory()))
+        potential_files = await loop.run_in_executor(None, lambda: list(_scan_directory()))
 
-        return sorted(video_files, key=lambda x: x.path)
+        logger.debug(f"Found {len(potential_files)} files to probe")
+        return potential_files
 
 
 def validate_scan_results(results: list[ScanResult]) -> list[str]:
