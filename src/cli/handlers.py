@@ -116,6 +116,17 @@ class ScanHandler(BaseHandler):
         self.scanner = VideoScanner(config)
         self._last_progress_update = 0.0
         self._scan_message_printed: bool = False
+        
+        # Initialize database service (now mandatory)
+        try:
+            from src.database.service import DatabaseService
+            self.db_service = DatabaseService(
+                config.database.path, config.database.auto_cleanup_days
+            )
+            logger.info(f"Database service initialized at {config.database.path}")
+        except Exception as e:
+            logger.error(f"Failed to initialize database service: {e}")
+            raise
 
     def run_scan(
         self,
@@ -129,24 +140,37 @@ class ScanHandler(BaseHandler):
     ) -> ScanSummary | None:
         """
         Run a video corruption scan and return ScanSummary.
-        Results are automatically stored in the database if enabled.
 
-        Args:
-            directory: Directory to scan
-            scan_mode: Scan mode to use
-            recursive: Whether to scan recursively
-            resume: Whether to resume interrupted scans
-            output_file: Optional output file path
-            output_format: Output file format (json, yaml, csv)
-            pretty_print: Whether to pretty-print output files
+        Workflow:
+        1. Find all files in directory (probe-based detection)
+        2. Store files in video_files table
+        3. Run scan operations
+        4. Store scan results linked to video files
+        5. Generate output files
         """
         try:
-            video_files = self.scanner.get_video_files(directory, recursive=recursive)
-            if not video_files:
-                logger.info("No video files found to scan.")
+            # Step 1: Find all files for probing (no extension filtering)
+            potential_files = self.scanner.get_video_files(directory, recursive=recursive)
+            if not potential_files:
+                logger.info("No files found to scan.")
                 return None
-            logger.info(f"Found {len(video_files)} video files to scan.")
 
+            logger.info(f"Found {len(potential_files)} files for probe-based scanning.")
+
+            # Step 2: Store files in database and get video_file_ids
+            video_file_mapping = {}  # Maps file path to video_file_id
+            for video_file in potential_files:
+                try:
+                    file_size = video_file.path.stat().st_size if video_file.path.exists() else None
+                    video_file_id = self.db_service.store_video_file(video_file.path, file_size)
+                    video_file_mapping[str(video_file.path)] = video_file_id
+                except Exception as e:
+                    logger.warning(f"Failed to store video file {video_file.path}: {e}")
+                    continue
+
+            logger.info(f"Stored {len(video_file_mapping)} files in database.")
+
+            # Step 3: Run the actual scan
             summary = self.scanner.scan_directory(
                 directory=directory,
                 scan_mode=scan_mode,
@@ -157,30 +181,67 @@ class ScanHandler(BaseHandler):
                 ),
             )
 
-            # Store results using OutputFormatter (handles both database and file output)
-            if output_file or self.config.database.enabled:
-                self.output_formatter.write_scan_results(
+            # Step 4: Store scan results with new schema
+            if summary and hasattr(summary, 'results'):
+                self._store_scan_results_in_database(summary, video_file_mapping)
+
+            # Step 5: Generate output files
+            if output_file or self.config.output.default_output_dir:
+                self._generate_output(
                     summary=summary,
                     output_file=output_file,
-                    format=output_format,
                     pretty_print=pretty_print,
-                    store_in_database=self.config.database.enabled,
                 )
 
-                if self.config.database.enabled:
-                    logger.info("Scan results stored in database")
-                if output_file:
-                    logger.info(f"Scan results written to {output_file}")
-            else:
-                logger.warning("No storage configured - scan results will not be persisted")
-
             return summary
+
         except KeyboardInterrupt:
             logger.warning("Scan interrupted by user.")
             sys.exit(130)
         except Exception as e:
             self._handle_error(e, "Scan failed")
             return None
+
+    def _store_scan_results_in_database(
+        self, 
+        summary: ScanSummary, 
+        video_file_mapping: dict[str, int]
+    ) -> None:
+        """Store scan results using new database schema.
+        
+        Args:
+            summary: Scan summary containing results
+            video_file_mapping: Maps file paths to video_file_ids
+        """
+        try:
+            from src.database.models import ScanDatabaseModel, ScanResultDatabaseModel
+            
+            # Store the scan metadata
+            scan_model = ScanDatabaseModel.from_scan_summary(summary)
+            scan_id = self.db_service.store_scan(scan_model)
+            
+            # Prepare scan results for new schema
+            scan_results = []
+            if hasattr(summary, 'results') and summary.results:
+                for result in summary.results:
+                    file_path_str = str(result.video_file.path)
+                    video_file_id = video_file_mapping.get(file_path_str)
+                    
+                    if video_file_id is not None:
+                        scan_result = ScanResultDatabaseModel.from_scan_result(
+                            result, scan_id, video_file_id
+                        )
+                        scan_results.append(scan_result)
+                    else:
+                        logger.warning(f"No video_file_id found for {file_path_str}")
+            
+            # Store scan results
+            if scan_results:
+                self.db_service.store_scan_results(scan_id, scan_results)
+                logger.info(f"Stored {len(scan_results)} scan results in database.")
+            
+        except Exception as e:
+            logger.error(f"Failed to store scan results in database: {e}")
 
     def _show_scan_info(self, directory: Path, scan_mode: ScanMode, recursive: bool) -> None:
         """Show initial scan information."""
@@ -198,10 +259,7 @@ class ScanHandler(BaseHandler):
 
         click.echo(f"Max workers: {self.config.processing.max_workers}")
         click.echo(f"Recursive: {'enabled' if recursive else 'disabled'}")
-
-        if self.config.scan.extensions:
-            ext_str = ", ".join(self.config.scan.extensions)
-            click.echo(f"File extensions: {ext_str}")
+        click.echo("File detection: probe-based (all files analyzed)")
 
         click.echo()
 

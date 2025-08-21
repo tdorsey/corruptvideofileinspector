@@ -1660,5 +1660,108 @@ def backup(ctx, backup_path, config):
         sys.exit(1)
 
 
+@database.command()
+@global_options
+@click.option(
+    "--limit",
+    type=click.IntRange(1, 1000),
+    default=100,
+    help="Maximum number of files to show",
+    show_default=True,
+)
+@click.option(
+    "--video-files-only",
+    is_flag=True,
+    help="Only show files confirmed as video files via successful container probes",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=PathType(),
+    help="Save file list to file (JSON format)",
+)
+@click.pass_context
+def files(ctx, limit, video_files_only, output, config):
+    """List video files in database.
+
+    Show video files that have been discovered and stored in the database,
+    with optional filtering for files confirmed as video files via successful probes.
+
+    Examples:
+
+    \b
+    # List all files in database
+    corrupt-video-inspector database files
+
+    \b
+    # List only confirmed video files
+    corrupt-video-inspector database files --video-files-only
+
+    \b
+    # Export confirmed video files to JSON
+    corrupt-video-inspector database files --video-files-only --output video-files.json
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Import database components
+        from src.database.service import DatabaseService
+
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        # Get video files list
+        video_files = db_service.get_video_files_list(
+            limit=limit, confirmed_video_only=video_files_only
+        )
+
+        if not video_files:
+            filter_msg = "confirmed video files" if video_files_only else "files"
+            click.echo(f"No {filter_msg} found in database.")
+            return
+
+        # Display results
+        if output:
+            # Export to JSON file
+            import json
+            file_data = [
+                {
+                    "id": vf.id,
+                    "file_path": vf.file_path,
+                    "file_name": vf.file_name,
+                    "file_size": vf.file_size,
+                    "first_seen": vf.first_seen.isoformat(),
+                    "created_at": vf.created_at.isoformat(),
+                    "updated_at": vf.updated_at.isoformat(),
+                }
+                for vf in video_files
+            ]
+            
+            with open(output, 'w') as f:
+                json.dump(file_data, f, indent=2)
+            
+            filter_msg = "confirmed video files" if video_files_only else "files"
+            click.echo(f"Exported {len(video_files)} {filter_msg} to {output}")
+        else:
+            # Display in table format
+            filter_msg = "Confirmed Video Files" if video_files_only else "Files"
+            click.echo(f"\n{filter_msg} in Database:")
+            click.echo("-" * 80)
+            
+            for vf in video_files:
+                size_str = f"{vf.file_size:,} bytes" if vf.file_size else "unknown size"
+                click.echo(f"ID: {vf.id:4} | {vf.file_path} ({size_str})")
+            
+            click.echo(f"\nTotal: {len(video_files)} files")
+
+    except Exception as e:
+        logger.exception("Database files command failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     cli()

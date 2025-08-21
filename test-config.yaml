@@ -1,0 +1,33 @@
+logging:
+  level: INFO
+  file: /tmp/inspector.log
+  
+ffmpeg:
+  command: /usr/bin/ffmpeg
+  quick_timeout: 30
+  deep_timeout: 1800
+  
+processing:
+  max_workers: 2
+  default_mode: "quick"
+  
+output:
+  default_json: true
+  default_output_dir: /tmp/test-output
+  default_filename: "scan_results.json"
+  
+scan:
+  recursive: true
+  max_workers: 2
+  mode: "quick"
+  default_input_dir: /tmp/test-videos
+  
+trakt:
+  client_id: ""
+  client_secret: ""
+  include_statuses: ["healthy"]
+  
+database:
+  path: /tmp/test-scans.db
+  auto_cleanup_days: 0
+  create_backup: true
