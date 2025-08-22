@@ -264,7 +264,13 @@ class DatabaseService:
             )
             SELECT DISTINCT
                 filename as file_path,
-                SUBSTR(filename, INSTR(filename, '/') + 1) as file_name,
+                SUBSTR(
+                    filename,
+                    1 + MAX(
+                        LENGTH(filename) - INSTR(REVERSE(filename), '/'),
+                        LENGTH(filename) - INSTR(REVERSE(filename), '\\')
+                    )
+                ) as file_name,
                 file_size,
                 created_at as first_seen,
                 created_at,
