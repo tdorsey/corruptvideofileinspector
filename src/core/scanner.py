@@ -22,7 +22,7 @@ from src.core.models.scanning import (
     ScanResult,
     ScanSummary,
 )
-from src.core.probe_cache import ProbeResultCache
+
 from src.core.prober import VideoProber
 from src.ffmpeg.corruption_detector import CorruptionDetector
 from src.ffmpeg.ffmpeg_client import FFmpegClient
@@ -75,14 +75,7 @@ class VideoScanner:
 
         # Initialize probe-related components
         self._ffprobe_client: FFprobeClient | None = None
-        self._probe_cache: ProbeResultCache | None = None
         self._scan_prerequisites = ScanPrerequisites()
-
-        if config.ffmpeg.enable_probe_cache:
-            cache_file = config.output.default_output_dir / "probe_cache.json"
-            self._probe_cache = ProbeResultCache(
-                cache_file, max_age_hours=config.ffmpeg.probe_cache_max_age_hours
-            )
 
         if config.ffmpeg.require_probe_before_scan:
             try:
@@ -110,22 +103,11 @@ class VideoScanner:
         if not self._ffprobe_client:
             return None
 
-        # Check cache first
-        if self._probe_cache:
-            cached_result = self._probe_cache.get(video_file.path)
-            if cached_result:
-                logger.debug(f"Using cached probe result for: {video_file.path}")
-                return cached_result
-
         # Perform probe
         logger.debug(f"Probing file: {video_file.path}")
         probe_result = self._ffprobe_client.probe_file(
             video_file, timeout=self.config.ffmpeg.probe_timeout
         )
-
-        # Cache the result
-        if self._probe_cache:
-            self._probe_cache.put(probe_result)
 
         return probe_result
 

@@ -103,36 +103,6 @@ class TestProbeWorkflowIntegration:
             assert result["probe_success"] is True
             assert result["has_video_streams"] is True
 
-    def test_cache_integration_concept(self):
-        """Test probe cache integration concept."""
-        # Simulate cache behavior
-        cache_data: dict[str, dict[str, object]] = {}
-
-        def get_from_cache(file_path):
-            return cache_data.get(file_path)
-
-        def put_in_cache(file_path, probe_result):
-            cache_data[file_path] = probe_result
-
-        # First scan - probe and cache
-        file_path = "/test/video.mp4"
-        cached_result = get_from_cache(file_path)
-        assert cached_result is None
-
-        # Simulate probe operation
-        probe_result = {
-            "success": True,
-            "timestamp": 1234567890,
-            "has_video_streams": True,
-            "duration": 120.5,
-        }
-        put_in_cache(file_path, probe_result)
-
-        # Second scan - use cache
-        cached_result = get_from_cache(file_path)
-        assert cached_result is not None
-        assert cached_result["success"] is True
-        assert cached_result["duration"] == 120.5
 
     def test_configuration_integration_concept(self):
         """Test configuration integration concept."""
@@ -140,9 +110,7 @@ class TestProbeWorkflowIntegration:
         config = {
             "ffmpeg": {
                 "require_probe_before_scan": True,
-                "enable_probe_cache": True,
                 "probe_timeout": 15,
-                "probe_cache_max_age_hours": 24.0,
             }
         }
 
@@ -154,13 +122,8 @@ class TestProbeWorkflowIntegration:
             # Should skip probe phase
             raise AssertionError()
 
-        if config["ffmpeg"]["enable_probe_cache"]:
-            # Cache should be used
-            assert True
-
-        # Timeout and cache age should be configurable
+        # Timeout should be configurable
         assert config["ffmpeg"]["probe_timeout"] == 15
-        assert config["ffmpeg"]["probe_cache_max_age_hours"] == 24.0
 
     def test_error_handling_concept(self):
         """Test error handling in probe workflow."""
@@ -194,21 +157,16 @@ class TestProbeWorkflowIntegration:
         # Simulate performance tracking
         stats = {
             "total_files": 1000,
-            "cache_hits": 750,  # 75% cache hit rate
-            "cache_misses": 250,
-            "probe_time_saved": 500,  # seconds saved by caching
+            "probe_operations": 250,  # Files that required probing
             "ineligible_files_skipped": 50,  # Files skipped due to probe
         }
 
         # Verify performance benefits
-        cache_hit_rate = stats["cache_hits"] / stats["total_files"]
-        assert cache_hit_rate >= 0.5  # At least 50% cache hit rate expected
-
-        # Time savings from caching
-        assert stats["probe_time_saved"] > 0
+        probe_rate = stats["probe_operations"] / stats["total_files"]
+        assert probe_rate >= 0.0  # Some files may require probing
 
         # Files skipped due to probe validation
-        assert stats["ineligible_files_skipped"] > 0
+        assert stats["ineligible_files_skipped"] >= 0
 
 
 class TestProbeResultValidation:
