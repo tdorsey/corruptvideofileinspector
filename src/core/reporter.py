@@ -583,7 +583,7 @@ class ReportService:
             "deep_timeout": self.config.ffmpeg.deep_timeout,
             "max_workers": self.config.processing.max_workers,
             "default_mode": self.config.processing.default_mode,
-            "extensions": self.config.scan.extensions,
+            "file_detection": "probe-based",  # Replaced extensions with probe-based detection
             "recursive": self.config.scan.recursive,
         }
 

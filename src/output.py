@@ -3,12 +3,10 @@
 import contextlib
 import json
 import logging
-import sys
 from pathlib import Path
 from typing import Any
 
 from src.config.config import AppConfig
-from src.core.database import DatabaseManager
 from src.core.models.reporting.scan_output import ScanMode, ScanOutputModel
 from src.core.models.scanning import ScanResult, ScanSummary
 
@@ -21,142 +19,112 @@ class OutputFormatter:
     def __init__(self, config: AppConfig):
         """Initialize output formatter with configuration."""
         self.config = config
-        self.db_manager = None
-        if config.database.enabled:
-            try:
-                self.db_manager = DatabaseManager(config.database)
-                logger.info("Database storage enabled")
-            except Exception:
-                logger.exception("Failed to initialize database")
-                logger.warning("Continuing with file-only output")
+
+        # Use database service abstraction when available to decouple from
+        # core DatabaseManager implementation
+        self._database_service = None
+
+        # Initialize database service (now always enabled)
+        try:
+            from src.database.service import DatabaseService
+
+            self._database_service = DatabaseService(
+                config.database.path, config.database.auto_cleanup_days
+            )
+            logger.info(f"Database storage initialized at {config.database.path}")
+        except ImportError as e:
+            logger.warning(f"Database dependencies not available: {e}")
+            self._database_service = None
+        except Exception:
+            logger.exception("Failed to initialize database service")
+            self._database_service = None
 
     def write_scan_results(
         self,
         summary: Any,
+        scan_results: list[Any] | None = None,
         output_file: Path | None = None,
         format: str = "json",
         pretty_print: bool = True,
-        *,
-        scan_results: list[ScanResult] | None = None,
-        store_in_database: bool = False,
+        store_in_database: bool = True,
     ) -> None:
         """
         Write scan results to output file and optionally to database.
 
         Args:
             summary: Scan summary object with results
-            output_file: Path to output file (if None, uses database only)
+            scan_results: Optional list of individual scan results
+            output_file: Path to output file (if None, uses configured default)
             format: Output format (json, yaml, csv)
             pretty_print: Whether to pretty-print output
-            scan_results: Optional list of individual scan results for database storage
+            store_in_database: Whether to store in database
         """
         try:
-            # Always write to file (backward compatibility)
-            if format.lower() == "json":
-                self._write_json_results(summary, output_file, pretty_print)
-            else:
-                logger.warning(f"Output format '{format}' not implemented, using JSON")
-                self._write_json_results(summary, output_file, pretty_print)
+            # Store in database if service available and requested
+            if store_in_database and self._database_service:
+                self._store_scan_in_database(summary, scan_results)
 
-            # Optionally store in database
-            if store_in_database and self.db_manager and isinstance(summary, ScanSummary):
-                self._store_to_database(summary, scan_results)
+            # Write to file if output path provided (or use default)
+            if output_file:
+                if format.lower() == "json":
+                    self._write_json_results(summary, output_file, pretty_print)
+                else:
+                    logger.warning(f"Output format '{format}' not implemented, using JSON")
+                    self._write_json_results(summary, output_file, pretty_print)
+            else:
+                # If no explicit output file, write to default location
+                self._write_json_results(summary, output_file, pretty_print)
 
         except Exception:
             logger.exception("Failed to write scan results")
             raise
 
-    def _store_to_database(
-        self, summary: ScanSummary, scan_results: list[ScanResult] | None = None
-    ) -> None:
-        """Store scan results to database."""
+    def _store_scan_in_database(
+        self, summary: Any, scan_results: list[Any] | None = None
+    ) -> int | None:
+        """Store scan summary and results in database using DatabaseService.
+
+        Returns the stored scan id or None on failure.
+        """
+        if not self._database_service:
+            return None
+
         try:
-            # Store summary and get ID
-            db = self.db_manager
-            if not db:
-                logger.warning("Database manager not available, skipping DB storage")
-                return
-            summary_id = db.store_scan_summary(summary)
+            from src.database.models import ScanDatabaseModel, ScanResultDatabaseModel
+
+            # Convert summary to database model
+            db_scan = ScanDatabaseModel.from_scan_summary(summary)
+            scan_id = self._database_service.store_scan(db_scan)
 
             # Store individual results if provided
             if scan_results:
-                db.store_scan_results(scan_results, summary_id)
+                db_results = []
+                for result in scan_results:
+                    # First store the video file to get its ID
+                    video_file_id = self._database_service.store_video_file(
+                        result.video_file.path, result.video_file.size
+                    )
+                    db_result = ScanResultDatabaseModel.from_scan_result(
+                        result, scan_id, video_file_id
+                    )
+                    db_results.append(db_result)
 
-            logger.info(f"Stored scan data to database (summary ID: {summary_id})")
+                self._database_service.store_scan_results(scan_id, db_results)
+                logger.info(f"Stored {len(db_results)} scan results in database")
+
+            # Perform auto-cleanup if configured
+            if self.config.database.auto_cleanup_days > 0:
+                deleted_count = self._database_service.cleanup_old_scans(
+                    self.config.database.auto_cleanup_days
+                )
+                if deleted_count > 0:
+                    logger.info(f"Auto-cleanup removed {deleted_count} old scans")
+
+            return scan_id
+
         except Exception:
-            logger.exception("Failed to store scan data to database")
-            # Don't re-raise - database storage is optional
-
-    def write_file_list(
-        self,
-        video_files: list[Any],
-        directory: Path | None = None,
-        output_file: Path | None = None,
-        format: str = "text",
-        pretty_print: bool = True,
-    ) -> None:
-        """
-        Write list of files to output.
-
-        Accepts either a list of Path objects or objects with a `path` and `size`
-        attribute (e.g., VideoFile). Supports writing to a file or printing to
-        stdout in various formats.
-
-        Args:
-            video_files: List of file paths or VideoFile objects
-            directory: Base directory to relativize paths against
-            output_file: Path to output file (if None, prints to stdout)
-            format: Output format (text, json, csv)
-            pretty_print: Whether to pretty-print JSON output
-        """
-        try:
-            dir_path = Path(directory) if directory else None
-            fmt = (format or "text").lower()
-
-            if output_file:
-                out_path = Path(output_file)
-                if fmt == "json":
-                    self._write_json_file_list(video_files, dir_path or Path(), out_path)
-                elif fmt == "csv":
-                    self._write_csv_file_list(video_files, dir_path or Path(), out_path)
-                else:
-                    self._write_text_file_list(video_files, dir_path or Path(), out_path)
-                return
-
-            # No output file specified - print to stdout
-            if fmt == "json":
-                file_data: list[dict[str, Any]] = []
-                for v in video_files:
-                    rel_path = getattr(v, "path", v)
-                    with contextlib.suppress(Exception):
-                        if dir_path:
-                            rel_path = rel_path.relative_to(dir_path)
-                    file_info = {"path": str(rel_path), "size": getattr(v, "size", 0)}
-                    file_data.append(file_info)
-
-                if pretty_print:
-                    print(json.dumps(file_data, indent=2))
-                else:
-                    print(json.dumps(file_data))
-
-            elif fmt == "csv":
-                import csv
-
-                writer = csv.writer(sys.stdout)
-                writer.writerow(["path", "size_bytes"])
-                for v in video_files:
-                    rel_path = getattr(v, "path", v)
-                    with contextlib.suppress(Exception):
-                        if dir_path:
-                            rel_path = rel_path.relative_to(dir_path)
-                    writer.writerow([str(rel_path), getattr(v, "size", 0)])
-
-            else:
-                for file_path in video_files:
-                    print(getattr(file_path, "path", file_path))
-        except Exception:
-            logger.exception("Failed to write file list")
-            raise
+            logger.exception("Failed to store scan results in database")
+            return None
 
     def get_database_service(self):
         """Get the database service instance if available.
@@ -164,7 +132,7 @@ class OutputFormatter:
         Returns:
             DatabaseService instance or None if not available
         """
-        return self.db_manager
+        return self._database_service
 
     def _write_json_results(
         self, summary: Any, output_file: Path | None, pretty_print: bool
@@ -187,7 +155,7 @@ class OutputFormatter:
         # Determine target output file. If None, use configured default file, else print to stdout
         if output_file is None:
             try:
-                default_dir = self.config.output.default_output_dir
+                default_dir = Path(self.config.output.default_output_dir)
                 default_file = getattr(self.config.output, "default_filename", "scan_results.json")
                 output_file = Path(default_dir) / default_file
                 output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -275,15 +243,57 @@ class OutputFormatter:
 
         logger.info(f"File list written to {output_file}")
 
+    def write_file_list(
+        self,
+        video_files: list[Any],
+        directory: Path,
+        output_file: Path,
+        format: str = "json",
+    ) -> None:
+        """Write file list to output file in specified format.
+
+        Args:
+            video_files: List of video files to write
+            directory: Base directory for relative paths
+            output_file: Path to output file
+            format: Output format (json, csv, text)
+        """
+        if format.lower() == "json":
+            self._write_json_file_list(video_files, directory, output_file)
+        elif format.lower() == "csv":
+            self._write_csv_file_list(video_files, directory, output_file)
+        else:  # default to text
+            self._write_text_file_list(video_files, directory, output_file)
+
     def get_scan_history(
         self, directory: Path | None = None, limit: int | None = None
     ) -> list[ScanSummary]:
         """Get scan history from database."""
-        if not self.db_manager:
+        if not self._database_service:
             logger.warning("Database not enabled, cannot retrieve scan history")
             return []
 
-        return self.db_manager.get_scan_summaries(directory, limit)
+        scans_data: list[ScanSummary] = []
+        # Convert database models to scan summaries
+        db_scans = self._database_service.get_recent_scans(limit or 100)
+        for db_scan in db_scans:
+            if directory and not db_scan.directory.startswith(str(directory)):
+                continue
+            # Convert ScanDatabaseModel to ScanSummary
+            # This is a simplified conversion - you may need a proper converter
+            scan_summary = ScanSummary(
+                directory=Path(db_scan.directory),
+                total_files=db_scan.total_files,
+                processed_files=db_scan.processed_files,
+                corrupt_files=db_scan.corrupt_files,
+                healthy_files=db_scan.healthy_files,
+                scan_mode=ScanMode(db_scan.scan_mode),
+                scan_time=db_scan.scan_time,
+                started_at=db_scan.started_at,
+                completed_at=db_scan.completed_at,
+            )
+            scans_data.append(scan_summary)
+        return scans_data
 
     def get_scan_results_from_db(
         self,
@@ -292,25 +302,69 @@ class OutputFormatter:
         is_corrupt: bool | None = None,
     ) -> list[ScanResult]:
         """Get scan results from database."""
-        if not self.db_manager:
+        if not self._database_service:
             logger.warning("Database not enabled, cannot retrieve scan results")
             return []
 
-        return self.db_manager.get_scan_results(summary_id, directory, is_corrupt)
+        if summary_id:
+            # Get results for a specific scan
+            db_results = self._database_service.get_scan_results(summary_id)
+        else:
+            # Use query_results method for filtering
+            from src.database.models import DatabaseQueryFilter
+
+            filter_opts = DatabaseQueryFilter(
+                directory=directory,
+                is_corrupt=is_corrupt,
+            )
+            db_results = self._database_service.query_results(filter_opts)
+
+        # Convert ScanResultDatabaseModel objects to ScanResult objects
+        results_data: list[ScanResult] = []
+        for db_result in db_results:
+            # This is a simplified conversion - you may need a proper converter
+            scan_result = db_result.to_scan_result()
+            results_data.append(scan_result)
+
+        return results_data
 
     def get_incomplete_scan(self, directory: Path) -> ScanSummary | None:
         """Get incomplete scan for resume functionality."""
-        if not self.db_manager:
+        if not self._database_service:
             logger.warning("Database not enabled, cannot check for incomplete scans")
             return None
 
-        return self.db_manager.get_latest_incomplete_scan(directory)
+        # Get recent scans and find incomplete ones for the directory
+        recent_scans = self._database_service.get_recent_scans(limit=10)
+        for db_scan in recent_scans:
+            if db_scan.directory == str(directory) and db_scan.completed_at is None:
+                # Convert to ScanSummary
+                return ScanSummary(
+                    directory=Path(db_scan.directory),
+                    total_files=db_scan.total_files,
+                    processed_files=db_scan.processed_files,
+                    corrupt_files=db_scan.corrupt_files,
+                    healthy_files=db_scan.healthy_files,
+                    scan_mode=ScanMode(db_scan.scan_mode),
+                    scan_time=db_scan.scan_time,
+                    started_at=db_scan.started_at,
+                    completed_at=db_scan.completed_at,
+                )
+
+        return None
 
     def get_database_stats(self) -> dict[str, Any]:
         """Get database statistics."""
-        if not self.db_manager:
+        if not self._database_service:
             return {"enabled": False, "message": "Database not enabled"}
 
-        stats = self.db_manager.get_database_stats()
-        stats["enabled"] = True
+        db_stats = self._database_service.get_database_stats()
+        stats: dict[str, Any] = {
+            "enabled": True,
+            "total_summaries": db_stats.total_scans,
+            "total_results": db_stats.total_files,
+            "corrupt_files": db_stats.corrupt_files,
+            "healthy_files": db_stats.healthy_files,
+            "database_size_mb": db_stats.database_size_bytes / (1024 * 1024),
+        }
         return stats

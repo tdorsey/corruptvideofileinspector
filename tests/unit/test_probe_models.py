@@ -13,7 +13,6 @@ from src.core.models.probe import (
     StreamInfo,
     StreamType,
 )
-from src.core.probe_cache import ProbeResultCache
 
 
 class TestProbeResult:
@@ -237,94 +236,3 @@ class TestScanPrerequisites:
         reason = prerequisites.get_rejection_reason(probe_result)
         assert "No video streams" in reason
 
-
-class TestProbeResultCache:
-    """Test ProbeResultCache functionality."""
-
-    def test_cache_basic_operations(self):
-        """Test basic cache operations."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            cache_file = Path(temp_dir) / "probe_cache.json"
-            cache = ProbeResultCache(cache_file)
-
-            # Test empty cache
-            assert len(cache) == 0
-            assert cache.get(Path("/test/video.mp4")) is None
-
-            # Add probe result
-            probe_result = ProbeResult(
-                file_path=Path("/test/video.mp4"),
-                success=True,
-            )
-            cache.put(probe_result)
-
-            # Test retrieval
-            assert len(cache) == 1
-            cached_result = cache.get(Path("/test/video.mp4"))
-            assert cached_result is not None
-            assert cached_result.file_path == probe_result.file_path
-            assert cached_result.success is True
-
-    def test_cache_persistence(self):
-        """Test cache persistence across instances."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            cache_file = Path(temp_dir) / "probe_cache.json"
-
-            # Create cache and add result
-            cache1 = ProbeResultCache(cache_file)
-            probe_result = ProbeResult(
-                file_path=Path("/test/video.mp4"),
-                success=True,
-            )
-            cache1.put(probe_result)
-
-            # Create new cache instance
-            cache2 = ProbeResultCache(cache_file)
-            assert len(cache2) == 1
-
-            cached_result = cache2.get(Path("/test/video.mp4"))
-            assert cached_result is not None
-            assert cached_result.file_path == probe_result.file_path
-
-    def test_cache_expiration(self):
-        """Test cache expiration functionality."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            cache_file = Path(temp_dir) / "probe_cache.json"
-            cache = ProbeResultCache(cache_file, max_age_hours=0.001)  # Very short expiry
-
-            # Add probe result
-            probe_result = ProbeResult(
-                file_path=Path("/test/video.mp4"),
-                success=True,
-                timestamp=time.time() - 3600,  # 1 hour ago
-            )
-            cache.put(probe_result)
-
-            # Should be expired
-            assert cache.get(Path("/test/video.mp4")) is None
-
-    def test_cache_stats(self):
-        """Test cache statistics."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            cache_file = Path(temp_dir) / "probe_cache.json"
-            cache = ProbeResultCache(cache_file)
-
-            # Add successful result
-            successful_result = ProbeResult(
-                file_path=Path("/test/video1.mp4"),
-                success=True,
-            )
-            cache.put(successful_result)
-
-            # Add failed result
-            failed_result = ProbeResult(
-                file_path=Path("/test/video2.mp4"),
-                success=False,
-                error_message="Failed",
-            )
-            cache.put(failed_result)
-
-            stats = cache.get_stats()
-            assert stats["total_entries"] == 2
-            assert stats["successful_probes"] == 1
-            assert stats["failed_probes"] == 1

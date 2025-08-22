@@ -60,7 +60,7 @@ class TestDatabaseIntegration:
         formatter = OutputFormatter(temp_config)
 
         # Verify database manager was created
-        assert formatter.db_manager is not None
+        assert formatter._database_service is not None
 
         # Test database storage functionality
         stats = formatter.get_database_stats()
@@ -195,7 +195,7 @@ class TestDatabaseIntegration:
             formatter = OutputFormatter(config)
 
             # Verify database manager was not created
-            assert formatter.db_manager is None
+            assert formatter._database_service is None
 
             # Test that database operations return appropriate responses
             stats = formatter.get_database_stats()

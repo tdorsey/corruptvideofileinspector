@@ -146,11 +146,6 @@ def cli(
     show_default=True,
 )
 @click.option(
-    "--extensions",
-    multiple=True,
-    help="Video file extensions to scan (e.g., --extensions mp4 --extensions mkv)",
-)
-@click.option(
     "--resume/--no-resume",
     default=True,
     help="Enable/disable resume functionality",
@@ -172,9 +167,10 @@ def cli(
 )
 @click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
 @click.option(
-    "--store-db/--no-store-db",
-    default=None,
-    help="Store results in database (overrides config setting)",
+    "--incremental/--full-scan",
+    default=False,
+    help="Skip files that were recently scanned and found healthy",
+    show_default=True,
 )
 @click.pass_context
 def scan(
@@ -183,24 +179,19 @@ def scan(
     mode,
     max_workers,
     recursive,
-    extensions,
     resume,
     output,
     output_format,
     pretty,
-    store_db,
+    incremental,
     config,
 ):
-    # If no arguments are provided, show the help for the scan subcommand
-    if ctx.args == [] and directory is None:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     Scan a directory for corrupt video files.
 
     Uses FFmpeg to analyze video files and detect corruption. Supports four scan modes:
 
-    \b
+    \\b
     - quick: Fast scan with 1-minute timeout per file
     - deep: Full scan with 15-minute timeout per file
     - hybrid: Quick scan first, then deep scan for suspicious files
@@ -208,80 +199,73 @@ def scan(
 
     Database Integration:
 
-    \b
-    - Results are automatically stored in SQLite database (default: enabled)
+    \\b
+    - Results are automatically stored in SQLite database
     - Use --incremental to skip files recently scanned and found healthy
-    - Use 'database query' commands to view stored results
-    - Use --no-database to disable database storage
+    - Database is automatically created on first run
 
     File Output:
 
-    \b
+    \\b
     - Use --output to save results to a JSON file
     - Supports --format json (other formats available: yaml, csv)
     - Use --pretty for formatted JSON output
 
     Examples:
 
-    \b
-    # Basic hybrid scan with database storage
+    \\b
+    # Basic hybrid scan
     corrupt-video-inspector scan /path/to/videos
 
-    \b
-    # Quick scan with JSON file output
-    corrupt-video-inspector scan --mode quick --output results.json /path/to/videos
+    \\b
+    # Quick scan with automatic database storage
+    corrupt-video-inspector scan --mode quick /path/to/videos
 
-    \b
+    \\b
     # Incremental scan (skip recently healthy files)
     corrupt-video-inspector scan --incremental /path/to/videos
 
-    \b
-    # Full scan with both database and file output
-    corrupt-video-inspector scan --mode full --output full_scan.json --pretty /path/to/videos
+    \\b
+    # Full scan without timeout (for thorough analysis)
+    corrupt-video-inspector scan --mode full /path/to/videos
 
-    \b
-    # Deep scan with custom extensions and CSV output
-    corrupt-video-inspector scan --mode deep --extensions mp4 --extensions mkv --output results.csv --format csv /videos
+    Note: All files are probed to determine if they are video files (no extension filtering).
     """
+    # If no arguments are provided, show the help for the scan subcommand
+    if ctx.args == [] and directory is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     try:
         # Load configuration
         app_config = load_config(config_path=config)
 
-        # Override database setting if provided
-        # (previous code referenced an undefined 'database' variable and has
-        #  been removed - database overrides are handled via --store-db)
-
-        # Warn if database is disabled but still allow operation
-        if not app_config.database.enabled:
-            if not output:
-                logger.warning(
-                    "Database storage is disabled and no output file specified - results will not be persisted"
-                )
-                click.echo(
-                    "Warning: Database storage is disabled and no output file specified. Results will not be saved.",
-                    err=True,
-                )
-            else:
-                logger.info(
-                    "Database storage is disabled - results will only be saved to output file"
-                )
-
         # Override config with CLI options
         if max_workers:
             app_config.scan.max_workers = max_workers
-        if extensions:
-            app_config.scan.extensions = [
-                f".{ext}" if not ext.startswith(".") else ext for ext in extensions
-            ]
-
-        # Override database setting if specified
-        if store_db is not None:
-            app_config.database.enabled = store_db
-            if store_db and not app_config.database.path.parent.exists():
-                app_config.database.path.parent.mkdir(parents=True, exist_ok=True)
 
         # Convert mode string to ScanMode enum
         scan_mode = ScanMode(mode.lower())
+
+        # Handle incremental scanning
+        if incremental:
+            try:
+                from src.database.service import DatabaseService
+
+                db_service = DatabaseService(
+                    app_config.database.path, app_config.database.auto_cleanup_days
+                )
+
+                # Get files that were recently scanned and found healthy
+                recent_healthy = db_service.get_files_needing_rescan(
+                    str(directory), scan_mode.value
+                )
+                # Invert the logic - skip files NOT in the rescan list
+                # (these are files that were healthy in recent scans)
+                click.echo(
+                    f"Incremental scan: focusing on {len(recent_healthy)} files that need rescanning"
+                )
+            except Exception as e:
+                logger.warning(f"Could not perform incremental scan: {e}")
 
         # Create and run scan handler
         handler = ScanHandler(app_config)
@@ -323,13 +307,7 @@ def scan(
     help="Recursively scan subdirectories",
     show_default=True,
 )
-@click.option("--extensions", multiple=True, help="Video file extensions to include")
-@click.option(
-    "--output",
-    "-o",
-    type=click.Path(path_type=Path, dir_okay=False),
-    help="Output file path for file list (must be a file, not a directory)",
-)
+@click.option("--output", "-o", type=PathType(), help="Output file path for file list")
 @click.option(
     "--format",
     "output_format",
@@ -343,15 +321,10 @@ def list_files(
     ctx,
     directory,
     recursive,
-    extensions,
     output,
     output_format,
     config,
 ):
-    # If no arguments are provided, show the help for the list-files subcommand
-    if ctx.args == [] and directory is None:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     List all video files in a directory without scanning.
 
@@ -360,31 +333,22 @@ def list_files(
 
     Examples:
 
-    \b
-    # List all video files
+    \\b
+    # List all video files in directory (probe-based detection)
     corrupt-video-inspector list-files /path/to/videos
 
-    \b
-    # List specific extensions only
-    corrupt-video-inspector list-files --extensions mp4 --extensions mkv /videos
-
-    \b
-    # Save file list to JSON
-    corrupt-video-inspector list-files --output files.json --format json /videos
-
-    \b
-    # Save file list to CSV
-    corrupt-video-inspector list-files --output files.csv --format csv /videos
+    \\b
+    # List files to JSON output
+    corrupt-video-inspector list-files --format json /videos
     """
+    # If no arguments are provided, show the help for the list-files subcommand
+    if ctx.args == [] and directory is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
-        # Override config with CLI options
-        if extensions:
-            app_config.scan.extensions = [
-                f".{ext}" if not ext.startswith(".") else ext for ext in extensions
-            ]
 
         # Setup logging
 
@@ -626,12 +590,12 @@ def list_watchlists(config):
 
 
 @trakt.command()
+@global_options
 @click.option(
     "--watchlist",
     "-w",
-    help="Watchlist name or slug to view (leave empty for main watchlist)",
+    help="Watchlist name or slug to view (default: main watchlist)",
 )
-@global_options
 def view(watchlist, config):
     """
     View items in a specific watchlist.
@@ -703,14 +667,21 @@ def view(watchlist, config):
 
 
 @trakt.command()
-@click.option("--username", help="Trakt username (required for OAuth authentication)")
+@click.option(
+    "--username",
+    help="Trakt username (required for OAuth authentication)",
+)
 @click.option(
     "--store/--no-store",
     default=True,
     help="Store credentials in ~/.pytrakt.json for automatic loading",
     show_default=True,
 )
-@click.option("--test-only", is_flag=True, help="Only test existing authentication")
+@click.option(
+    "--test-only",
+    is_flag=True,
+    help="Only test existing authentication",
+)
 @global_options
 def auth(username, store, test_only, config):
     """
@@ -844,16 +815,17 @@ def auth(username, store, test_only, config):
 @global_options
 @click.pass_context
 def test_ffmpeg(ctx, config):
-    # If no arguments are provided, show the help for the test-ffmpeg subcommand
-    if ctx.args == []:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     Test FFmpeg installation and show diagnostic information.
 
     Validates that FFmpeg is properly installed and accessible,
     showing version information and supported formats.
     """
+    # If no arguments are provided, show the help for the test-ffmpeg subcommand
+    if ctx.args == []:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
     try:
         # Load configuration
         app_config = load_config(config_path=config)
@@ -896,9 +868,12 @@ def test_ffmpeg(ctx, config):
 @cli.command()
 @global_options
 @click.argument("video_file", type=PathType(exists=True))
-def test_ffprobe(app_config, video_file):
+def test_ffprobe(video_file, config):
     """Test FFprobe functionality on a specific video file."""
     try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
         setup_logging(0)
 
         # Import FFprobe client
@@ -1002,10 +977,6 @@ def report(
     include_healthy,
     config,
 ):
-    # If no arguments are provided, show the help for the report subcommand
-    if ctx.args == [] and scan_file is None:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     Generate a detailed report from scan results.
 
@@ -1014,11 +985,15 @@ def report(
 
     Examples:
 
-    \b
+    \\b
     # Generate HTML report
     corrupt-video-inspector report results.json
-
     """
+    # If no arguments are provided, show the help for the report subcommand
+    if ctx.args == [] and scan_file is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
     try:
         # Load configuration
         app_config = load_config(config_path=config) if config else load_config()
@@ -1075,7 +1050,7 @@ def report(
 @click.option("--all-configs", is_flag=True, help="Show all configuration sources and values")
 @click.option("--debug", is_flag=True, help="Enable debug logging to see configuration overrides")
 @click.pass_context
-def show_config(all_configs, debug, config):
+def show_config(ctx, all_configs, debug, config):
     """
     Show current configuration settings.
 
@@ -1295,7 +1270,7 @@ def database(ctx):
     """Database operations for scan results.
 
     Manage persistent storage of scan results in SQLite database.
-    Requires database to be enabled in configuration.
+    Database is automatically initialized on first use.
     """
     # If no arguments are provided, show the help for the database group
     if ctx.args == []:
@@ -1384,10 +1359,6 @@ def query(
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
 
         # Import database components
         from src.database.models import DatabaseQueryFilter
@@ -1478,17 +1449,27 @@ def query(
             click.echo("-" * 100)
 
             for result in results:
-                filename = result.filename
+                # Access filename through video_file relationship if available
+                if hasattr(result, "video_file") and result.video_file:
+                    filename = result.video_file.file_name
+                    file_size = result.video_file.file_size or 0
+                else:
+                    logger.warning(
+                        f"Missing video_file relationship for result with video_file_id={getattr(result, 'video_file_id', None)}. Falling back to File ID display. This may indicate incomplete query joins."
+                    )
+                    filename = f"File ID: {result.video_file_id}"
+                    file_size = 0
+
                 if len(filename) > 47:
                     filename = "..." + filename[-44:]
 
-                status = result.status
-                confidence = f"{result.confidence:.2f}"
-                size_mb = f"{result.file_size / (1024*1024):.1f}"
+                status = "corrupt" if result.is_corrupt else "clean"
+                confidence = f"{result.confidence:.2f}" if result.confidence else "N/A"
+                size_mb = f"{file_size / (1024*1024):.1f}"
 
                 from datetime import datetime
 
-                scan_date = datetime.fromtimestamp(result.created_at).strftime("%Y-%m-%d")
+                scan_date = result.created_at.strftime("%Y-%m-%d")
 
                 click.echo(
                     f"{filename:<50} {status:<10} {confidence:<12} {size_mb:<10} {scan_date:<12}"
@@ -1518,10 +1499,6 @@ def stats(ctx, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
 
         # Import database components
         from src.database.service import DatabaseService
@@ -1587,10 +1564,6 @@ def cleanup(ctx, days, dry_run, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
 
         # Import database components
         from src.database.service import DatabaseService
@@ -1664,10 +1637,6 @@ def backup(ctx, backup_path, config):
         # Load configuration
         app_config = load_config(config_path=config)
 
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
-
         # Import database components
         from src.database.service import DatabaseService
 
@@ -1682,6 +1651,110 @@ def backup(ctx, backup_path, config):
 
     except Exception as e:
         logger.exception("Database backup failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--limit",
+    type=click.IntRange(1, 1000),
+    default=100,
+    help="Maximum number of files to show",
+    show_default=True,
+)
+@click.option(
+    "--video-files-only",
+    is_flag=True,
+    help="Only show files confirmed as video files via successful container probes",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=PathType(),
+    help="Save file list to file (JSON format)",
+)
+@click.pass_context
+def files(ctx, limit, video_files_only, output, config):
+    """List video files in database.
+
+    Show video files that have been discovered and stored in the database,
+    with optional filtering for files confirmed as video files via successful probes.
+
+    Examples:
+
+    \b
+    # List all files in database
+    corrupt-video-inspector database files
+
+    \b
+    # List only confirmed video files
+    corrupt-video-inspector database files --video-files-only
+
+    \b
+    # Export confirmed video files to JSON
+    corrupt-video-inspector database files --video-files-only --output video-files.json
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Import database components
+        from src.database.service import DatabaseService
+
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        # Get video files list
+        video_files = db_service.get_video_files_list(
+            limit=limit, confirmed_video_only=video_files_only
+        )
+
+        if not video_files:
+            filter_msg = "confirmed video files" if video_files_only else "files"
+            click.echo(f"No {filter_msg} found in database.")
+            return
+
+        # Display results
+        if output:
+            # Export to JSON file
+            import json
+
+            file_data = [
+                {
+                    "id": vf.id,
+                    "file_path": vf.file_path,
+                    "file_name": vf.file_name,
+                    "file_size": vf.file_size,
+                    "first_seen": vf.first_seen.isoformat(),
+                    "created_at": vf.created_at.isoformat(),
+                    "updated_at": vf.updated_at.isoformat(),
+                }
+                for vf in video_files
+            ]
+
+            with output.open("w") as f:
+                json.dump(file_data, f, indent=2)
+
+            filter_msg = "confirmed video files" if video_files_only else "files"
+            click.echo(f"Exported {len(video_files)} {filter_msg} to {output}")
+        else:
+            # Display in table format
+            filter_msg = "Confirmed Video Files" if video_files_only else "Files"
+            click.echo(f"\n{filter_msg} in Database:")
+            click.echo("-" * 80)
+
+            for vf in video_files:
+                size_str = f"{vf.file_size:,} bytes" if vf.file_size else "unknown size"
+                click.echo(f"ID: {vf.id:4} | {vf.file_path} ({size_str})")
+
+            click.echo(f"\nTotal: {len(video_files)} files")
+
+    except Exception as e:
+        logger.exception("Database files command failed")
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 

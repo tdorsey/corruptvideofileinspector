@@ -229,6 +229,12 @@ These commands work without network access in the Copilot environment:
 - `make clean` - Clean build artifacts
 - `make check` - Format, lint, and type check (requires pre-installed dev dependencies)
 - `make test` - Run all tests (requires pre-installed dev dependencies)
+<<<<<<< HEAD
+=======
+- `make format` - Format code with black
+- `make lint` - Lint code with ruff
+- `make type` - Type check with mypy
+>>>>>>> e8d7570 (refactor: decouple core modules from CLI interface for better reusability (#160))
 - `make docker-env` - Generate Docker environment files
 - `make secrets-init` - Create Trakt secret files
 - Basic Python module imports work with PYTHONPATH set to src/

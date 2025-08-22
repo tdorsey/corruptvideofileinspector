@@ -1,7 +1,8 @@
 """Database models for scan results persistence."""
 
-import time
+import json
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,117 @@ from pydantic import BaseModel, Field
 
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
+
+
+# New Probe-related enums and models
+class ProbeType(str, Enum):
+    """Type of probe operation."""
+
+    CONTAINER = "container"
+    STREAM = "stream"
+
+
+class ProbeStatus(str, Enum):
+    """Status of probe operation."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+
+
+class ProbeResultBase(BaseModel):
+    """Base class for all probe results."""
+
+    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    timestamp: datetime = Field(default_factory=datetime.now)
+    probe_duration_ms: int | None = None
+
+
+class ContainerProbeResult(ProbeResultBase):
+    """Container-level probe results (format, metadata, overall file health)."""
+
+    format_name: str | None = None
+    duration: float | None = None
+    size: int | None = None
+    bitrate: int | None = None
+    streams_count: int = 0
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    container_errors: list[str] = Field(default_factory=list)
+    is_video_file: bool = False  # Determined by successful container probe
+
+
+class StreamProbeResult(ProbeResultBase):
+    """Individual stream analysis results."""
+
+    stream_index: int
+    codec_name: str | None = None
+    codec_type: str | None = None
+    width: int | None = None
+    height: int | None = None
+    frame_rate: str | None = None
+    duration: float | None = None
+    bit_rate: int | None = None
+    stream_errors: list[str] = Field(default_factory=list)
+
+
+class VideoFileModel(BaseModel):
+    """Central video file entity."""
+
+    id: int | None = None
+    file_path: str = Field(..., description="Full path to video file")
+    file_name: str = Field(..., description="Filename without path")
+    file_size: int | None = Field(None, description="File size in bytes")
+    file_hash: str | None = Field(None, description="File hash for integrity")
+    first_seen: datetime = Field(default_factory=datetime.now)
+    last_modified: datetime | None = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        from_attributes = True
+
+
+class ProbeModel(BaseModel):
+    """Main probe execution model."""
+
+    id: int | None = None
+    video_file_id: int
+    probe_type: ProbeType
+    status: ProbeStatus = ProbeStatus.PENDING
+    started_at: datetime
+    completed_at: datetime | None = None
+    success: bool = False
+    error_message: str | None = None
+    triggered_by_scan_id: int | None = None  # Optional link to triggering scan
+    created_at: datetime = Field(default_factory=datetime.now)
+
+    # Related models
+    video_file: VideoFileModel | None = None
+    results: list["ProbeResultModel"] = Field(default_factory=list)
+
+    class Config:
+        from_attributes = True
+
+
+class ProbeResultModel(BaseModel):
+    """Individual probe result data."""
+
+    id: int | None = None
+    probe_id: int
+    result_type: str  # 'container_info', 'stream_info'
+    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    data_json: str  # Serialized probe-specific data
+    created_at: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        from_attributes = True
+
+    @property
+    def data(self) -> dict[str, Any]:
+        """Deserialize JSON data."""
+        data_dict: dict[str, Any] = json.loads(self.data_json)
+        return data_dict
 
 
 class ScanDatabaseModel(BaseModel):
@@ -72,63 +184,71 @@ class ScanDatabaseModel(BaseModel):
 
 
 class ScanResultDatabaseModel(BaseModel):
-    """Database model for individual scan results.
+    """Database model for individual file result within a scan.
 
     Maps to the 'scan_results' table in SQLite database.
+    Links scans to video files with corruption status.
     """
 
     id: int | None = Field(None, description="Primary key (auto-generated)")
     scan_id: int = Field(..., description="Foreign key to scans table")
-    filename: str = Field(..., description="Full path to the video file")
-    file_size: int = Field(..., description="File size in bytes")
-    is_corrupt: bool = Field(..., description="Whether file is corrupt")
-    confidence: float = Field(..., description="Confidence level (0.0-1.0)")
-    inspection_time: float = Field(..., description="Time taken to scan file")
-    scan_mode: str = Field(..., description="Scan mode used for this file")
-    status: str = Field(..., description="File status (HEALTHY/CORRUPT/SUSPICIOUS)")
-    created_at: float = Field(default_factory=time.time, description="When record was created")
+    video_file_id: int = Field(..., description="Foreign key to video_files table")
+    is_corrupt: bool = Field(default=False, description="Whether file is corrupt")
+    confidence: float | None = Field(None, ge=0.0, le=1.0, description="Confidence level")
+    scan_time_ms: int | None = Field(None, description="Time taken to scan file in ms")
+    created_at: datetime = Field(
+        default_factory=datetime.now, description="When record was created"
+    )
+
+    # Related models (populated by joins)
+    video_file: VideoFileModel | None = None
+
+    class Config:
+        from_attributes = True
 
     @classmethod
-    def from_scan_result(cls, result: ScanResult, scan_id: int) -> "ScanResultDatabaseModel":
+    def from_scan_result(
+        cls, result: ScanResult, scan_id: int, video_file_id: int
+    ) -> "ScanResultDatabaseModel":
         """Create database model from ScanResult.
 
         Args:
             result: ScanResult object to convert
             scan_id: ID of the scan this result belongs to
+            video_file_id: ID of the video file
 
         Returns:
             ScanResultDatabaseModel instance
         """
         return cls(
             scan_id=scan_id,
-            filename=str(result.video_file.path),
-            file_size=result.video_file.size,
+            video_file_id=video_file_id,
             is_corrupt=result.is_corrupt,
             confidence=result.confidence,
-            inspection_time=result.inspection_time,
-            scan_mode=result.scan_mode.value,
-            status=result.status,
-            created_at=result.timestamp,
+            scan_time_ms=int(result.inspection_time * 1000) if result.inspection_time else None,
+            created_at=datetime.fromtimestamp(result.timestamp),
         )
 
     def to_scan_result(self) -> ScanResult:
         """Convert to ScanResult object.
 
-        Note: This creates a basic ScanResult. The VideoFile will only have
-        path and size information from the database.
+        Note: This creates a basic ScanResult. The VideoFile information
+        should be provided via the video_file relationship.
 
         Returns:
             ScanResult instance
         """
-        video_file = VideoFile(path=Path(self.filename))
+        if not self.video_file:
+            raise ValueError("video_file relationship must be populated to convert to ScanResult")
+
+        video_file = VideoFile(path=Path(self.video_file.file_path))
 
         return ScanResult(
             video_file=video_file,
             is_corrupt=self.is_corrupt,
-            confidence=self.confidence,
-            inspection_time=self.inspection_time,
-            scan_mode=ScanMode(self.scan_mode),
-            timestamp=self.created_at,
+            confidence=self.confidence or 0.0,
+            inspection_time=(self.scan_time_ms / 1000.0) if self.scan_time_ms else 0.0,
+            timestamp=self.created_at.timestamp(),
         )
 
 
@@ -147,6 +267,8 @@ class DatabaseQueryFilter(BaseModel):
     filename_pattern: str | None = Field(None, description="SQL LIKE pattern for filename")
     limit: int | None = Field(None, description="Maximum number of results")
     offset: int = Field(0, description="Number of results to skip")
+    video_files_only: bool = Field(False, description="Only include files confirmed as video files")
+    include_probe_data: bool = Field(False, description="Include probe results in output")
 
     def to_where_clause(self) -> tuple[str, dict[str, Any]]:
         """Generate SQL WHERE clause and parameters.
@@ -166,7 +288,7 @@ class DatabaseQueryFilter(BaseModel):
             params["is_corrupt"] = self.is_corrupt
 
         if self.scan_mode is not None:
-            conditions.append("sr.scan_mode = :scan_mode")
+            conditions.append("s.scan_mode = :scan_mode")
             params["scan_mode"] = self.scan_mode
 
         if self.min_confidence is not None:
@@ -178,11 +300,11 @@ class DatabaseQueryFilter(BaseModel):
             params["max_confidence"] = self.max_confidence
 
         if self.min_file_size is not None:
-            conditions.append("sr.file_size >= :min_file_size")
+            conditions.append("vf.file_size >= :min_file_size")
             params["min_file_size"] = self.min_file_size
 
         if self.max_file_size is not None:
-            conditions.append("sr.file_size <= :max_file_size")
+            conditions.append("vf.file_size <= :max_file_size")
             params["max_file_size"] = self.max_file_size
 
         if self.since_date is not None:
@@ -194,8 +316,20 @@ class DatabaseQueryFilter(BaseModel):
             params["until_date"] = self.until_date
 
         if self.filename_pattern is not None:
-            conditions.append("sr.filename LIKE :filename_pattern")
+            conditions.append("vf.file_path LIKE :filename_pattern")
             params["filename_pattern"] = self.filename_pattern
+
+        if self.video_files_only:
+            conditions.append(
+                """
+                EXISTS (
+                    SELECT 1 FROM probes p
+                    WHERE p.video_file_id = vf.id
+                    AND p.probe_type = 'container'
+                    AND p.success = true
+                )
+            """
+            )
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         return where_clause, params
@@ -206,8 +340,11 @@ class DatabaseStats(BaseModel):
 
     total_scans: int = Field(..., description="Total number of scans")
     total_files: int = Field(..., description="Total number of files scanned")
+    total_video_files: int = Field(..., description="Total number of confirmed video files")
     corrupt_files: int = Field(..., description="Total number of corrupt files")
     healthy_files: int = Field(..., description="Total number of healthy files")
+    total_probes: int = Field(..., description="Total number of probe operations")
+    successful_probes: int = Field(..., description="Number of successful probes")
     oldest_scan: float | None = Field(None, description="Timestamp of oldest scan")
     newest_scan: float | None = Field(None, description="Timestamp of newest scan")
     database_size_bytes: int = Field(..., description="Database file size in bytes")
@@ -218,6 +355,13 @@ class DatabaseStats(BaseModel):
         if self.total_files == 0:
             return 0.0
         return (self.corrupt_files / self.total_files) * 100.0
+
+    @property
+    def probe_success_rate(self) -> float:
+        """Calculate probe success rate percentage."""
+        if self.total_probes == 0:
+            return 0.0
+        return (self.successful_probes / self.total_probes) * 100.0
 
     @property
     def oldest_scan_date(self) -> datetime | None:

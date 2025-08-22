@@ -5,14 +5,18 @@ import sqlite3
 import time
 from collections.abc import Generator
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from .models import (
     DatabaseQueryFilter,
     DatabaseStats,
+    ProbeModel,
+    ProbeResultModel,
     ScanDatabaseModel,
     ScanResultDatabaseModel,
+    VideoFileModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,7 +44,24 @@ class DatabaseService:
     def _initialize_database(self) -> None:
         """Initialize database schema if it doesn't exist."""
         with self._get_connection() as conn:
-            # Create scans table
+            # Create video_files table - central registry
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS video_files (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_path TEXT NOT NULL UNIQUE,
+                    file_name TEXT NOT NULL,
+                    file_size INTEGER,
+                    file_hash TEXT,
+                    first_seen REAL NOT NULL,
+                    last_modified REAL,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                )
+                """
+            )
+
+            # Create scans table (unchanged structure)
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS scans (
@@ -49,67 +70,232 @@ class DatabaseService:
                     scan_mode TEXT NOT NULL,
                     started_at REAL NOT NULL,
                     completed_at REAL,
-                    total_files INTEGER NOT NULL,
-                    processed_files INTEGER NOT NULL,
-                    corrupt_files INTEGER NOT NULL,
-                    healthy_files INTEGER NOT NULL,
-                    success_rate REAL NOT NULL,
-                    scan_time REAL NOT NULL
+                    total_files INTEGER NOT NULL DEFAULT 0,
+                    processed_files INTEGER NOT NULL DEFAULT 0,
+                    corrupt_files INTEGER NOT NULL DEFAULT 0,
+                    healthy_files INTEGER NOT NULL DEFAULT 0,
+                    success_rate REAL NOT NULL DEFAULT 0.0,
+                    scan_time REAL NOT NULL DEFAULT 0.0
                 )
-            """
+                """
             )
 
-            # Create scan_results table
+            # Create scan_results table - links scans to video files
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS scan_results (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     scan_id INTEGER NOT NULL,
-                    filename TEXT NOT NULL,
-                    file_size INTEGER NOT NULL,
-                    is_corrupt BOOLEAN NOT NULL,
-                    confidence REAL NOT NULL,
-                    inspection_time REAL NOT NULL,
-                    scan_mode TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    created_at REAL DEFAULT (strftime('%s', 'now')),
-                    FOREIGN KEY (scan_id) REFERENCES scans(id),
-                    UNIQUE(scan_id, filename)
+                    video_file_id INTEGER NOT NULL,
+                    is_corrupt BOOLEAN NOT NULL DEFAULT false,
+                    confidence REAL,
+                    scan_time_ms INTEGER,
+                    created_at REAL NOT NULL,
+                    FOREIGN KEY (scan_id) REFERENCES scans (id),
+                    FOREIGN KEY (video_file_id) REFERENCES video_files (id),
+                    UNIQUE(scan_id, video_file_id)
                 )
-            """
+                """
             )
 
-            # Create indexes for common queries
+            # Create probes table - probes linked to video files
             conn.execute(
                 """
-                CREATE INDEX IF NOT EXISTS idx_scan_results_filename
-                ON scan_results(filename)
-            """
+                CREATE TABLE IF NOT EXISTS probes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    video_file_id INTEGER NOT NULL,
+                    probe_type TEXT NOT NULL,
+                    started_at REAL NOT NULL,
+                    completed_at REAL,
+                    success BOOLEAN NOT NULL DEFAULT false,
+                    error_message TEXT,
+                    triggered_by_scan_id INTEGER,
+                    created_at REAL NOT NULL,
+                    FOREIGN KEY (video_file_id) REFERENCES video_files (id),
+                    FOREIGN KEY (triggered_by_scan_id) REFERENCES scans (id),
+                    UNIQUE(video_file_id, probe_type, started_at)
+                )
+                """
+            )
+
+            # Create probe_results table - detailed probe outcomes
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS probe_results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    probe_id INTEGER NOT NULL,
+                    result_type TEXT NOT NULL,
+                    confidence REAL,
+                    data_json TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    FOREIGN KEY (probe_id) REFERENCES probes (id)
+                )
+                """
+            )
+
+            # Create indexes for performance
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_video_files_path
+                ON video_files(file_path)
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_scan_results_video_file
+                ON scan_results(video_file_id)
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_probes_video_file
+                ON probes(video_file_id)
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_probes_type
+                ON probes(probe_type)
+                """
             )
 
             conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_scan_results_corrupt
-                ON scan_results(is_corrupt, confidence)
-            """
+                ON scan_results(is_corrupt)
+                """
             )
 
             conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_scans_directory
                 ON scans(directory, started_at)
-            """
+                """
             )
 
             conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_scan_results_created_at
                 ON scan_results(created_at)
-            """
+                """
             )
 
             conn.commit()
             logger.info(f"Database initialized at {self.db_path}")
+
+            # Check if we need to migrate old schema
+            self._migrate_legacy_schema_if_needed(conn)
+
+    def _migrate_legacy_schema_if_needed(self, conn: sqlite3.Connection) -> None:
+        """Migrate legacy schema if old scan_results table exists."""
+        try:
+            # Check if old scan_results table exists with legacy columns
+            cursor = conn.execute("PRAGMA table_info(scan_results)")
+            columns = {row[1]: row[2] for row in cursor.fetchall()}
+
+            # If we have the old 'filename' column, we need to migrate
+            if "filename" in columns and "video_file_id" not in columns:
+                logger.info("Migrating legacy database schema...")
+
+                # Rename old table
+                conn.execute("ALTER TABLE scan_results RENAME TO scan_results_legacy")
+
+                # Create new tables (they might not exist yet)
+                self._create_new_schema_tables(conn)
+
+                # Migrate data
+                self._migrate_legacy_data(conn)
+
+                # Drop legacy table
+                conn.execute("DROP TABLE scan_results_legacy")
+                conn.commit()
+
+                logger.info("Legacy schema migration completed")
+
+        except Exception as e:
+            logger.warning(f"Could not check/migrate legacy schema: {e}")
+
+    def _create_new_schema_tables(self, conn: sqlite3.Connection) -> None:
+        """Create the new schema tables if they don't exist."""
+        # This ensures the new tables exist even if we're migrating
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS video_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT NOT NULL UNIQUE,
+                file_name TEXT NOT NULL,
+                file_size INTEGER,
+                file_hash TEXT,
+                first_seen REAL NOT NULL,
+                last_modified REAL,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL
+            )
+        """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS scan_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scan_id INTEGER NOT NULL,
+                video_file_id INTEGER NOT NULL,
+                is_corrupt BOOLEAN NOT NULL DEFAULT false,
+                confidence REAL,
+                scan_time_ms INTEGER,
+                created_at REAL NOT NULL,
+                FOREIGN KEY (scan_id) REFERENCES scans (id),
+                FOREIGN KEY (video_file_id) REFERENCES video_files (id),
+                UNIQUE(scan_id, video_file_id)
+            )
+        """
+        )
+
+    def _migrate_legacy_data(self, conn: sqlite3.Connection) -> None:
+        """Migrate data from legacy schema to new schema."""
+        # First, migrate all unique files to video_files table
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO video_files (
+                file_path, file_name, file_size, first_seen, created_at, updated_at
+            )
+            SELECT DISTINCT
+                filename as file_path,
+                SUBSTR(
+                    filename,
+                    1 + MAX(
+                        LENGTH(filename) - INSTR(REVERSE(filename), '/'),
+                        LENGTH(filename) - INSTR(REVERSE(filename), '\\')
+                    )
+                ) as file_name,
+                file_size,
+                created_at as first_seen,
+                created_at,
+                created_at as updated_at
+            FROM scan_results_legacy
+        """
+        )
+
+        # Then migrate scan results
+        conn.execute(
+            """
+            INSERT INTO scan_results (
+                scan_id, video_file_id, is_corrupt, confidence, scan_time_ms, created_at
+            )
+            SELECT
+                srl.scan_id,
+                vf.id as video_file_id,
+                srl.is_corrupt,
+                srl.confidence,
+                CAST(srl.inspection_time * 1000 AS INTEGER) as scan_time_ms,
+                srl.created_at
+            FROM scan_results_legacy srl
+            JOIN video_files vf ON vf.file_path = srl.filename
+        """
+        )
 
     @contextmanager
     def _get_connection(self) -> Generator[sqlite3.Connection]:
@@ -178,14 +364,11 @@ class DatabaseService:
                 data.append(
                     (
                         scan_id,
-                        result.filename,
-                        result.file_size,
+                        result.video_file_id,
                         result.is_corrupt,
                         result.confidence,
-                        result.inspection_time,
-                        result.scan_mode,
-                        result.status,
-                        result.created_at,
+                        result.scan_time_ms,
+                        result.created_at.timestamp(),
                     )
                 )
 
@@ -193,9 +376,8 @@ class DatabaseService:
             conn.executemany(
                 """
                 INSERT OR REPLACE INTO scan_results (
-                    scan_id, filename, file_size, is_corrupt, confidence,
-                    inspection_time, scan_mode, status, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    scan_id, video_file_id, is_corrupt, confidence, scan_time_ms, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
             """,
                 data,
             )
@@ -251,7 +433,7 @@ class DatabaseService:
             cursor = conn.execute(
                 """
                 SELECT * FROM scan_results WHERE scan_id = ?
-                ORDER BY filename
+                ORDER BY id
             """,
                 (scan_id,),
             )
@@ -262,13 +444,10 @@ class DatabaseService:
                     ScanResultDatabaseModel(
                         id=row["id"],
                         scan_id=row["scan_id"],
-                        filename=row["filename"],
-                        file_size=row["file_size"],
+                        video_file_id=row["video_file_id"],
                         is_corrupt=bool(row["is_corrupt"]),
                         confidence=row["confidence"],
-                        inspection_time=row["inspection_time"],
-                        scan_mode=row["scan_mode"],
-                        status=row["status"],
+                        scan_time_ms=row["scan_time_ms"],
                         created_at=row["created_at"],
                     )
                 )
@@ -286,13 +465,24 @@ class DatabaseService:
         """
         where_clause, params = filter_opts.to_where_clause()
 
-        query = f"""
-            SELECT sr.*
-            FROM scan_results sr
-            JOIN scans s ON sr.scan_id = s.id
-            WHERE {where_clause}
-            ORDER BY sr.created_at DESC
-        """
+        if filter_opts.include_probe_data:
+            query = f"""
+                SELECT sr.*, vf.*, s.scan_mode, s.directory
+                FROM scan_results sr
+                JOIN video_files vf ON sr.video_file_id = vf.id
+                JOIN scans s ON sr.scan_id = s.id
+                WHERE {where_clause}
+                ORDER BY sr.created_at DESC
+            """
+        else:
+            query = f"""
+                SELECT sr.*, vf.file_path, vf.file_name, vf.file_size, s.scan_mode, s.directory
+                FROM scan_results sr
+                JOIN video_files vf ON sr.video_file_id = vf.id
+                JOIN scans s ON sr.scan_id = s.id
+                WHERE {where_clause}
+                ORDER BY sr.created_at DESC
+            """
 
         if filter_opts.limit is not None:
             query += f" LIMIT {filter_opts.limit}"
@@ -305,20 +495,41 @@ class DatabaseService:
 
             results = []
             for row in cursor.fetchall():
-                results.append(
-                    ScanResultDatabaseModel(
-                        id=row["id"],
-                        scan_id=row["scan_id"],
-                        filename=row["filename"],
-                        file_size=row["file_size"],
-                        is_corrupt=bool(row["is_corrupt"]),
-                        confidence=row["confidence"],
-                        inspection_time=row["inspection_time"],
-                        scan_mode=row["scan_mode"],
-                        status=row["status"],
-                        created_at=row["created_at"],
-                    )
+                # Create VideoFileModel from the joined data
+                video_file = VideoFileModel(
+                    id=row["video_file_id"],
+                    file_path=row["file_path"],
+                    file_name=row["file_name"],
+                    file_size=row["file_size"],
+                    # Other fields would be included if include_probe_data is True
+                    first_seen=(
+                        datetime.fromtimestamp(row.get("first_seen", 0))
+                        if row.get("first_seen")
+                        else datetime.now()
+                    ),
+                    created_at=(
+                        datetime.fromtimestamp(row.get("created_at", 0))
+                        if row.get("created_at")
+                        else datetime.now()
+                    ),
+                    updated_at=(
+                        datetime.fromtimestamp(row.get("updated_at", 0))
+                        if row.get("updated_at")
+                        else datetime.now()
+                    ),
                 )
+
+                result = ScanResultDatabaseModel(
+                    id=row["id"],
+                    scan_id=row["scan_id"],
+                    video_file_id=row["video_file_id"],
+                    is_corrupt=bool(row["is_corrupt"]),
+                    confidence=row["confidence"],
+                    scan_time_ms=row["scan_time_ms"],
+                    created_at=datetime.fromtimestamp(row["created_at"]),
+                    video_file=video_file,
+                )
+                results.append(result)
 
             return results
 
@@ -392,16 +603,17 @@ class DatabaseService:
 
             last_scan_id = row["id"]
 
-            # Get files that were corrupt or suspicious in the last scan
+            # Get files that were corrupt in the last scan
             cursor = conn.execute(
                 """
-                SELECT filename FROM scan_results
-                WHERE scan_id = ? AND (is_corrupt = 1 OR status = 'SUSPICIOUS')
+                SELECT vf.file_path FROM scan_results sr
+                JOIN video_files vf ON sr.video_file_id = vf.id
+                WHERE sr.scan_id = ? AND sr.is_corrupt = 1
             """,
                 (last_scan_id,),
             )
 
-            return [row["filename"] for row in cursor.fetchall()]
+            return [row["file_path"] for row in cursor.fetchall()]
 
     def get_database_stats(self) -> DatabaseStats:
         """Get statistics about the database contents.
@@ -429,6 +641,31 @@ class DatabaseService:
             corrupt_files = row["corrupt_files"] or 0
             healthy_files = row["healthy_files"] or 0
 
+            # Get video file counts (confirmed via successful container probes)
+            cursor = conn.execute(
+                """
+                SELECT COUNT(DISTINCT vf.id) as video_files
+                FROM video_files vf
+                JOIN probes p ON p.video_file_id = vf.id
+                WHERE p.probe_type = 'container' AND p.success = true
+            """
+            )
+            row = cursor.fetchone()
+            total_video_files = row["video_files"] or 0
+
+            # Get probe statistics
+            cursor = conn.execute(
+                """
+                SELECT
+                    COUNT(*) as total_probes,
+                    SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful_probes
+                FROM probes
+            """
+            )
+            row = cursor.fetchone()
+            total_probes = row["total_probes"] or 0
+            successful_probes = row["successful_probes"] or 0
+
             # Get date range
             cursor = conn.execute(
                 """
@@ -446,8 +683,11 @@ class DatabaseService:
             return DatabaseStats(
                 total_scans=total_scans,
                 total_files=total_files,
+                total_video_files=total_video_files,
                 corrupt_files=corrupt_files,
                 healthy_files=healthy_files,
+                total_probes=total_probes,
+                successful_probes=successful_probes,
                 oldest_scan=oldest_scan,
                 newest_scan=newest_scan,
                 database_size_bytes=database_size,
@@ -545,3 +785,209 @@ class DatabaseService:
             )
 
             return [dict(row) for row in cursor.fetchall()]
+
+    # New methods for video files and probes
+
+    def store_video_file(self, file_path: Path, file_size: int | None = None) -> int:
+        """Store or update a video file record.
+
+        Args:
+            file_path: Path to the video file
+            file_size: Size of the file in bytes (optional)
+
+        Returns:
+            ID of the video file record
+        """
+        with self._get_connection() as conn:
+            now = time.time()
+            file_name = file_path.name
+
+            # Try to insert, or update if exists
+            cursor = conn.execute(
+                """
+                INSERT OR REPLACE INTO video_files
+                (file_path, file_name, file_size, first_seen, created_at, updated_at)
+                VALUES (
+                    ?, ?, ?,
+                    COALESCE((SELECT first_seen FROM video_files WHERE file_path = ?), ?),
+                    COALESCE((SELECT created_at FROM video_files WHERE file_path = ?), ?),
+                    ?
+                )
+                """,
+                (
+                    str(file_path),
+                    file_name,
+                    file_size,
+                    str(file_path),
+                    now,
+                    str(file_path),
+                    now,
+                    now,
+                ),
+            )
+
+            video_file_id = cursor.lastrowid
+            conn.commit()
+
+            if video_file_id is None:
+                raise ValueError("Failed to create or retrieve video file record")
+            return video_file_id
+
+    def get_video_file(self, file_path: Path) -> VideoFileModel | None:
+        """Get video file record by path.
+
+        Args:
+            file_path: Path to the video file
+
+        Returns:
+            VideoFileModel if found, None otherwise
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT * FROM video_files WHERE file_path = ?", (str(file_path),)
+            )
+
+            row = cursor.fetchone()
+            if row is None:
+                return None
+
+            return VideoFileModel(
+                id=row["id"],
+                file_path=row["file_path"],
+                file_name=row["file_name"],
+                file_size=row["file_size"],
+                file_hash=row["file_hash"],
+                first_seen=datetime.fromtimestamp(row["first_seen"]),
+                last_modified=(
+                    datetime.fromtimestamp(row["last_modified"]) if row["last_modified"] else None
+                ),
+                created_at=datetime.fromtimestamp(row["created_at"]),
+                updated_at=datetime.fromtimestamp(row["updated_at"]),
+            )
+
+    def store_probe(self, probe: ProbeModel) -> int:
+        """Store a probe record.
+
+        Args:
+            probe: ProbeModel to store
+
+        Returns:
+            ID of the stored probe
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO probes
+                (video_file_id, probe_type, started_at, completed_at, success,
+                 error_message, triggered_by_scan_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    probe.video_file_id,
+                    probe.probe_type.value,
+                    probe.started_at.timestamp(),
+                    probe.completed_at.timestamp() if probe.completed_at else None,
+                    probe.success,
+                    probe.error_message,
+                    probe.triggered_by_scan_id,
+                    probe.created_at.timestamp(),
+                ),
+            )
+
+            probe_id = cursor.lastrowid
+            conn.commit()
+
+            if probe_id is None:
+                raise ValueError("Failed to create probe record")
+
+            # Store probe results if any
+            if probe.results:
+                for result in probe.results:
+                    result.probe_id = probe_id
+                    self.store_probe_result(result)
+
+            return probe_id
+
+    def store_probe_result(self, result: ProbeResultModel) -> int:
+        """Store a probe result record.
+
+        Args:
+            result: ProbeResultModel to store
+
+        Returns:
+            ID of the stored probe result
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO probe_results
+                (probe_id, result_type, confidence, data_json, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    result.probe_id,
+                    result.result_type,
+                    result.confidence,
+                    result.data_json,
+                    result.created_at.timestamp(),
+                ),
+            )
+
+            result_id = cursor.lastrowid
+            conn.commit()
+
+            if result_id is None:
+                raise ValueError("Failed to create probe result record")
+            return result_id
+
+    def get_video_files_list(
+        self, limit: int = 100, confirmed_video_only: bool = False
+    ) -> list[VideoFileModel]:
+        """Get list of video files.
+
+        Args:
+            limit: Maximum number of files to return
+            confirmed_video_only: If True, only return files confirmed as video files via successful container probes
+
+        Returns:
+            List of VideoFileModel objects
+        """
+        with self._get_connection() as conn:
+            if confirmed_video_only:
+                query = """
+                    SELECT DISTINCT vf.* FROM video_files vf
+                    JOIN probes p ON p.video_file_id = vf.id
+                    WHERE p.probe_type = 'container' AND p.success = true
+                    ORDER BY vf.file_path
+                    LIMIT ?
+                """
+            else:
+                query = """
+                    SELECT * FROM video_files
+                    ORDER BY file_path
+                    LIMIT ?
+                """
+
+            cursor = conn.execute(query, (limit,))
+
+            files = []
+            for row in cursor.fetchall():
+                files.append(
+                    VideoFileModel(
+                        id=row["id"],
+                        file_path=row["file_path"],
+                        file_name=row["file_name"],
+                        file_size=row["file_size"],
+                        file_hash=row["file_hash"],
+                        first_seen=datetime.fromtimestamp(row["first_seen"]),
+                        last_modified=(
+                            datetime.fromtimestamp(row["last_modified"])
+                            if row["last_modified"]
+                            else None
+                        ),
+                        created_at=datetime.fromtimestamp(row["created_at"]),
+                        updated_at=datetime.fromtimestamp(row["updated_at"]),
+                    )
+                )
+
+            return files
