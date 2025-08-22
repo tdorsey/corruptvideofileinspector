@@ -38,6 +38,13 @@ applyTo: "tests/**/*.py"
 - Automated tools ensure consistency and reduce the risk of introducing errors during manual changes.
 
 ### Required Testing Practices
+
+**CRITICAL: Do NOT create Python tests for GitHub Actions workflows**:
+- NEVER write Python code to test `.github/workflows/*.yml` or `.yaml` files
+- Workflow files should be validated using `actionlint` or GitHub Actions itself
+- Python tests for workflows create unnecessary maintenance overhead
+
+Standard Testing Practices:
 1. **Test before changes**: Always run `make test` before making changes to validate existing functionality
 2. **Test after changes**: Run `make test` after changes to ensure nothing is broken
 3. **Integration with quality checks**: Use `make check` which includes testing as part of the full validation

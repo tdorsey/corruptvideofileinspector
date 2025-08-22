@@ -152,6 +152,8 @@ For the latest updates, fixes, and changes, see the [CHANGELOG.md](../CHANGELOG.
 When marketplace actions are insufficient:
 - Keep custom logic minimal and focused
 - Use `actions/github-script@v7` for simple API operations
+- **NEVER write Python code to test GitHub Actions workflow files**
+- Use `actionlint` or GitHub's built-in validation instead
 - Document complex workflows thoroughly
 - Consider contributing useful patterns back to the community
 

@@ -42,12 +42,18 @@ type(optional-scope): description
 - ❌ `FEAT: add feature` (uppercase type)
 
 ### 2. Issue Reference Requirement
-PRs must reference an issue number either in the title or body:
+PRs must reference an issue number in the title, body, or branch name:
 
 **Examples:**
-- ✅ `feat: add feature (#123)`
-- ✅ Title: `feat: add feature` + Body contains: `Fixes #123`
-- ❌ `feat: add feature` (no issue reference)
+- ✅ **Title:** `feat: add feature (#123)`
+- ✅ **Body:** `Fixes #123`, `Closes #456`, or `(#789)`
+- ✅ **Branch:** `issue-123-description`, `fix-456-bug`, or `feature-789-new`
+- ❌ `feat: add feature` (no issue reference anywhere)
+
+**Detection Logic:**
+- **Priority:** Title → Body → Branch Name
+- **Patterns:** `#123` format in title/body, `issue-123-*` patterns in branch names
+- **Enhanced:** Now includes comprehensive debugging and multiple detection methods
 
 ### 3. Subject Line Rules
 - Must start with lowercase letter
@@ -173,7 +179,9 @@ The refactored workflow follows these principles:
 
 2. **"Missing issue reference"**
    - Add issue number to title: `feat: description (#123)`
-   - Or reference in PR body: `Fixes #123`
+   - Or reference in PR body: `Fixes #123`, `Closes #123`, `(#123)`
+   - Or use descriptive branch name: `issue-123-description`
+   - **Fixed in v2:** Enhanced detection now properly finds issue references in all locations
 
 3. **"Subject pattern error"**
    - Ensure subject line starts with lowercase letter
@@ -184,3 +192,11 @@ The refactored workflow follows these principles:
    - Fix the issues mentioned
    - Update the PR to trigger re-validation
    - Mark as ready for review once validation passes
+
+### Recent Fixes
+
+**Issue #178 (Fixed):** PR workflow was failing to detect issue references in PR bodies
+- **Problem:** References like `(#174)` at the end of PR body were not being detected
+- **Solution:** Enhanced workflow logic with comprehensive debugging and multiple detection methods  
+- **Improvement:** Added branch name detection and better error messages
+- **Testing:** Added comprehensive test suite to prevent regression
