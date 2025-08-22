@@ -148,6 +148,14 @@ The CI workflows heavily rely on Makefile targets for consistency:
 
 ## Working with Workflows
 
+### Workflow Testing and Validation
+
+**CRITICAL**: Do NOT create Python tests for GitHub Actions workflow files:
+- NEVER write Python code to test `.github/workflows/*.yml` or `.github/workflows/*.yaml` files
+- Use `actionlint` for syntax validation instead
+- Use GitHub Actions itself for functional testing
+- Python tests are inappropriate for workflow validation and create maintenance overhead
+
 ### Local Testing
 Before pushing workflow changes:
 ```bash
@@ -222,6 +230,10 @@ jobs:
 4. **Set appropriate permissions** (principle of least privilege)
 5. **Use environment variables** for configuration
 6. **Add meaningful step names** for better debugging
+7. **NEVER write Python code to test GitHub Actions workflow files**
+   - Workflow files should be tested using GitHub Actions itself or dedicated tools like `actionlint`
+   - Do not create Python test files for validating `.github/workflows/*.yml` or `.yaml` files
+   - Use `actionlint` or GitHub's workflow validation for syntax and logic testing
 
 ## Monitoring and Maintenance
 
