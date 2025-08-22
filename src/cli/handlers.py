@@ -167,7 +167,8 @@ class ScanHandler(BaseHandler):
                     video_file_mapping[str(video_file.path)] = video_file_id
                 except Exception as e:
                     logger.warning(f"Failed to store video file {video_file.path}: {e}")
-                    continue
+                    logger.error(f"Failed to store video file {video_file.path}: {e}. Aborting scan to prevent inconsistent results.")
+                    return None
 
             logger.info(f"Stored {len(video_file_mapping)} files in database.")
 
