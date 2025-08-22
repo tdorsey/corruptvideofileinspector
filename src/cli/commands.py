@@ -1454,6 +1454,9 @@ def query(
                     filename = result.video_file.file_name
                     file_size = result.video_file.file_size or 0
                 else:
+                    logger.warning(
+                        f"Missing video_file relationship for result with video_file_id={getattr(result, 'video_file_id', None)}. Falling back to File ID display. This may indicate incomplete query joins."
+                    )
                     filename = f"File ID: {result.video_file_id}"
                     file_size = 0
 
