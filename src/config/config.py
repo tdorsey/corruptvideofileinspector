@@ -32,18 +32,23 @@ class ProcessingConfig(BaseModel):
 
 
 class OutputConfig(BaseModel):
-    default_json: bool = Field(default=True)
+    # Directory for temporary files (like resume state)
     default_output_dir: Path = Field(...)
-    # Default filename for scan results output
-    default_filename: str = Field(default="scan_results.json")
 
 
 class DatabaseConfig(BaseModel):
     enabled: bool = Field(default=False, description="Enable database storage for scan results")
     path: Path = Field(
-        default=Path("scan_results.db"), description="Path to SQLite database file"
+        default=Path.home() / ".corrupt-video-inspector" / "scans.db",
+        description="Database file location",
     )
-    auto_create: bool = Field(default=True, description="Automatically create database if it doesn't exist")
+    auto_create: bool = Field(
+        default=True, description="Automatically create database and tables if missing"
+    )
+    auto_cleanup_days: int = Field(
+        default=0, description="Auto-delete scans older than X days (0 = disabled)"
+    )
+    create_backup: bool = Field(default=True, description="Create backups before schema changes")
 
 
 class TraktConfig(BaseModel):
@@ -66,15 +71,14 @@ class ScanConfig(BaseModel):
     )
     use_content_detection: bool = Field(
         default=True,
-        description="Use FFprobe content analysis instead of extension-based detection"
+        description="Use FFprobe content analysis instead of extension-based detection",
     )
     ffprobe_timeout: int = Field(
-        default=30,
-        description="Timeout in seconds for FFprobe content analysis"
+        default=30, description="Timeout in seconds for FFprobe content analysis"
     )
     extension_filter: list[str] = Field(
         default_factory=list,
-        description="Optional file extensions to pre-filter before content analysis (performance optimization)"
+        description="Optional file extensions to pre-filter before content analysis (performance optimization)",
     )
 
 
@@ -138,20 +142,23 @@ def load_config(config_path: Path | None = None, debug: bool = False) -> AppConf
                     if xdg_path.is_file():
                         config_path = xdg_path
                     else:
-                        raise FileNotFoundError(
+                        msg = (
                             f"No config file found at /app/config.yaml, {project_config}, or {xdg_path}. "
                             "Please provide a config file."
                         )
+                        raise FileNotFoundError(msg)
                 else:
-                    raise FileNotFoundError(
+                    msg = (
                         f"No config file found at /app/config.yaml or {project_config}, and XDG_CONFIG_HOME is not set. "
                         "Please provide a config file."
                     )
+                    raise FileNotFoundError(msg)
         else:
-            raise FileNotFoundError(
+            msg = (
                 "No config file found at /app/config.yaml and no pyproject.toml found to locate project root. "
                 "Please provide a config file."
             )
+            raise FileNotFoundError(msg)
 
     # Load YAML configuration file
     with config_path.open("r", encoding="utf-8") as f:

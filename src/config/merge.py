@@ -124,9 +124,7 @@ class ConfigurationMerger:
             "CVI_MAX_WORKERS": ("processing", "max_workers"),
             "CVI_DEFAULT_MODE": ("processing", "default_mode"),
             # Output configuration
-            "CVI_DEFAULT_JSON": ("output", "default_json"),
             "CVI_OUTPUT_DIR": ("output", "default_output_dir"),
-            "CVI_OUTPUT_FILENAME": ("output", "default_filename"),
             # Scan configuration
             "CVI_RECURSIVE": ("scan", "recursive"),
             "CVI_VIDEO_DIR": ("scan", "default_input_dir"),
@@ -189,10 +187,7 @@ class ConfigurationMerger:
         # Define conversion mapping
         conversion_map = {
             # Boolean keys
-            **{
-                k: lambda v: v.lower() in ("true", "1", "yes", "on")
-                for k in ("recursive", "default_json")
-            },
+            **{k: lambda v: v.lower() in ("true", "1", "yes", "on") for k in ("recursive",)},
             # Path keys
             **{
                 k: lambda v: Path(v) if v else None
@@ -261,10 +256,11 @@ class ConfigurationMerger:
         if has_id != has_secret:
             missing = "client_secret" if has_id else "client_id"
             provided = "client_id" if has_id else "client_secret"
-            raise ValueError(
+            msg = (
                 f"Partial Trakt credentials detected: {provided} provided but {missing} missing. "
                 "Both client_id and client_secret must be provided together, or neither."
             )
+            raise ValueError(msg)
 
         if has_id and has_secret:
             self._log_override("post_process", "trakt.credentials", "partial", "complete")

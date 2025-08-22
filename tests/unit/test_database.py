@@ -79,7 +79,7 @@ class TestDatabaseManager:
     def test_database_creation(self, db_manager):
         """Test that database and tables are created."""
         assert db_manager.db_path.exists()
-        
+
         # Check that tables exist
         with db_manager._get_connection() as conn:
             cursor = conn.execute(
@@ -102,7 +102,9 @@ class TestDatabaseManager:
 
         # Verify results were stored
         with db_manager._get_connection() as conn:
-            cursor = conn.execute("SELECT COUNT(*) FROM scan_results WHERE summary_id = ?", (summary_id,))
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM scan_results WHERE summary_id = ?", (summary_id,)
+            )
             count = cursor.fetchone()[0]
             assert count == len(sample_results)
 
@@ -110,7 +112,7 @@ class TestDatabaseManager:
         """Test retrieving scan summaries."""
         # Store a summary
         db_manager.store_scan_summary(sample_summary)
-        
+
         # Retrieve summaries
         summaries = db_manager.get_scan_summaries()
         assert len(summaries) == 1
@@ -122,7 +124,7 @@ class TestDatabaseManager:
         # Store summary and results
         summary_id = db_manager.store_scan_summary(sample_summary)
         db_manager.store_scan_results(sample_results, summary_id)
-        
+
         # Retrieve results
         results = db_manager.get_scan_results(summary_id=summary_id)
         assert len(results) == len(sample_results)
@@ -134,12 +136,12 @@ class TestDatabaseManager:
         # Store summary and results
         summary_id = db_manager.store_scan_summary(sample_summary)
         db_manager.store_scan_results(sample_results, summary_id)
-        
+
         # Get only corrupt files
         corrupt_results = db_manager.get_scan_results(summary_id=summary_id, is_corrupt=True)
         assert len(corrupt_results) == 1
         assert corrupt_results[0].is_corrupt is True
-        
+
         # Get only healthy files
         healthy_results = db_manager.get_scan_results(summary_id=summary_id, is_corrupt=False)
         assert len(healthy_results) == 1
@@ -156,13 +158,15 @@ class TestDatabaseManager:
             corrupt_files=1,
             healthy_files=2,
             scan_time=60.0,
+            deep_scans_needed=0,
+            deep_scans_completed=0,
             started_at=time.time() - 100,
             completed_at=None,  # Incomplete
             was_resumed=False,
         )
-        
+
         db_manager.store_scan_summary(incomplete_summary)
-        
+
         # Retrieve incomplete scan
         result = db_manager.get_latest_incomplete_scan(Path("/test/videos"))
         assert result is not None
@@ -180,17 +184,19 @@ class TestDatabaseManager:
             corrupt_files=0,
             healthy_files=1,
             scan_time=5.0,
+            deep_scans_needed=0,
+            deep_scans_completed=0,
             started_at=time.time() - 50,
             completed_at=None,
             was_resumed=False,
         )
-        
+
         summary_id = db_manager.store_scan_summary(incomplete_summary)
-        
+
         # Mark as completed
         completion_time = time.time()
         db_manager.mark_scan_completed(summary_id, completion_time)
-        
+
         # Verify it's marked as complete
         summaries = db_manager.get_scan_summaries()
         assert len(summaries) == 1
@@ -201,10 +207,10 @@ class TestDatabaseManager:
         # Store some data
         summary_id = db_manager.store_scan_summary(sample_summary)
         db_manager.store_scan_results(sample_results, summary_id)
-        
+
         # Get stats
         stats = db_manager.get_database_stats()
-        
+
         assert stats["total_summaries"] == 1
         assert stats["completed_summaries"] == 1
         assert stats["incomplete_summaries"] == 0
@@ -219,16 +225,16 @@ class TestDatabaseManager:
         # Store data
         summary_id = db_manager.store_scan_summary(sample_summary)
         db_manager.store_scan_results(sample_results, summary_id)
-        
+
         # Verify data exists
         summaries = db_manager.get_scan_summaries()
         results = db_manager.get_scan_results(summary_id=summary_id)
         assert len(summaries) == 1
         assert len(results) == 2
-        
+
         # Delete data
         db_manager.delete_scan_data(summary_id)
-        
+
         # Verify data is gone
         summaries = db_manager.get_scan_summaries()
         results = db_manager.get_scan_results(summary_id=summary_id)
@@ -238,10 +244,10 @@ class TestDatabaseManager:
     def test_empty_results_handling(self, db_manager, sample_summary):
         """Test handling of empty results list."""
         summary_id = db_manager.store_scan_summary(sample_summary)
-        
+
         # Store empty results - should not fail
         db_manager.store_scan_results([], summary_id)
-        
+
         # Verify no results stored
         results = db_manager.get_scan_results(summary_id=summary_id)
         assert len(results) == 0
@@ -251,8 +257,8 @@ class TestDatabaseManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "no_auto.db"
             config = DatabaseConfig(enabled=True, path=db_path, auto_create=False)
-            
+
             # Should not create database file
-            db_manager = DatabaseManager(config)
+            db_manager = DatabaseManager(config)  # noqa: F841
             # Database file should not exist since auto_create is False
             # The actual behavior depends on implementation - this tests the config option exists

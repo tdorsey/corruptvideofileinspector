@@ -7,13 +7,13 @@ import logging
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from src.config.config import FFmpegConfig
 from src.core.errors.errors import FFmpegError
 from src.core.models.inspection import VideoFile
-from src.core.models.scanning import ScanResult
 from src.core.models.probe import ProbeResult
+from src.core.models.scanning import ScanResult
 from src.ffmpeg.corruption_detector import CorruptionDetector
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,8 @@ class FFmpegClient:
             logger.info(f"Found FFmpeg via which: {which_result}")
             return
 
-        raise FFmpegError("FFmpeg command not found. Please install FFmpeg or configure the path.")
+        msg = "FFmpeg command not found. Please install FFmpeg or configure the path."
+        raise FFmpegError(msg)
 
     def _validate_ffmpeg_command(self, command: str) -> bool:
         """Validate that a command is a working FFmpeg installation."""
@@ -94,7 +95,8 @@ class FFmpegClient:
         """
         # Assumption: Quick scan reads first 10 seconds, disables audio, minimal output
         if self._ffmpeg_path is None:
-            raise FFmpegError("FFmpeg path is not set.")
+            msg = "FFmpeg path is not set."
+            raise FFmpegError(msg)
         return [
             str(self._ffmpeg_path),
             "-v",
@@ -112,7 +114,9 @@ class FFmpegClient:
             "-",
         ]
 
-    def inspect_quick(self, video_file: VideoFile, probe_result: ProbeResult | None = None) -> ScanResult:
+    def inspect_quick(
+        self, video_file: VideoFile, probe_result: ProbeResult | None = None
+    ) -> ScanResult:
         """
         Perform quick inspection of video file (limited time scan).
 
@@ -123,7 +127,7 @@ class FFmpegClient:
         Returns:
             ScanResult: Quick inspection results
         """
-        logger.debug(f"Quick scan: {video_file.path}")
+        logger.debug(f"[SHA256: {video_file.short_hash}] Quick scan: {video_file.path}")
 
         # Build FFmpeg command for quick scan
         cmd = self._build_quick_scan_command(video_file)
@@ -137,10 +141,14 @@ class FFmpegClient:
                 check=False,  # Don't raise on non-zero exit
             )
 
-            return self._process_ffmpeg_result(video_file, result, is_quick=True, probe_result=probe_result)
+            return self._process_ffmpeg_result(
+                video_file, result, is_quick=True, probe_result=probe_result
+            )
 
         except subprocess.TimeoutExpired:
-            logger.warning(f"Quick scan timeout: {video_file.path}")
+            logger.warning(
+                f"[SHA256: {video_file.short_hash}] Quick scan timeout: {video_file.path}"
+            )
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=True,
@@ -148,7 +156,9 @@ class FFmpegClient:
                 probe_result=probe_result,
             )
         except Exception as e:
-            logger.exception(f"Quick scan failed: {video_file.path}")
+            logger.exception(
+                f"[SHA256: {video_file.short_hash}] Quick scan failed: {video_file.path}"
+            )
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=True,
@@ -156,7 +166,12 @@ class FFmpegClient:
                 probe_result=probe_result,
             )
 
-    def inspect_deep(self, video_file: VideoFile, timeout: int | None = None, probe_result: ProbeResult | None = None) -> ScanResult:
+    def inspect_deep(
+        self,
+        video_file: VideoFile,
+        timeout: int | None = None,
+        probe_result: ProbeResult | None = None,
+    ) -> ScanResult:
         """
         Perform deep inspection of video file (full scan).
 
@@ -168,7 +183,7 @@ class FFmpegClient:
         Returns:
             ScanResult: Deep inspection results
         """
-        logger.debug(f"Deep scan: {video_file.path}")
+        logger.debug(f"[SHA256: {video_file.short_hash}] Deep scan: {video_file.path}")
 
         # Build FFmpeg command for deep scan
         cmd = self._build_deep_scan_command(video_file)
@@ -185,9 +200,13 @@ class FFmpegClient:
                 timeout=timeout,
                 check=False,
             )
-            return self._process_ffmpeg_result(video_file, result, is_quick=False, probe_result=probe_result)
+            return self._process_ffmpeg_result(
+                video_file, result, is_quick=False, probe_result=probe_result
+            )
         except subprocess.TimeoutExpired:
-            logger.warning(f"Deep scan timeout: {video_file.path}")
+            logger.warning(
+                f"[SHA256: {video_file.short_hash}] Deep scan timeout: {video_file.path}"
+            )
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=False,
@@ -195,7 +214,9 @@ class FFmpegClient:
                 probe_result=probe_result,
             )
         except Exception as e:
-            logger.exception(f"Deep scan failed: {video_file.path}")
+            logger.exception(
+                f"[SHA256: {video_file.short_hash}] Deep scan failed: {video_file.path}"
+            )
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=False,
@@ -214,7 +235,8 @@ class FFmpegClient:
             list[str]: FFmpeg command as list
         """
         if self._ffmpeg_path is None:
-            raise FFmpegError("FFmpeg path is not set.")
+            msg = "FFmpeg path is not set."
+            raise FFmpegError(msg)
         return [
             str(self._ffmpeg_path),
             "-v",
@@ -226,7 +248,9 @@ class FFmpegClient:
             "-",
         ]
 
-    def inspect_full(self, video_file: VideoFile, probe_result: ProbeResult | None = None) -> ScanResult:
+    def inspect_full(
+        self, video_file: VideoFile, probe_result: ProbeResult | None = None
+    ) -> ScanResult:
         """
         Perform full inspection of video file without timeout.
 
@@ -237,7 +261,7 @@ class FFmpegClient:
         Returns:
             ScanResult: Full inspection results
         """
-        logger.debug(f"Full scan (no timeout): {video_file.path}")
+        logger.debug(f"[SHA256: {video_file.short_hash}] Full scan (no timeout): {video_file.path}")
 
         # Build FFmpeg command for full scan (same as deep scan)
         cmd = self._build_deep_scan_command(video_file)
@@ -251,9 +275,13 @@ class FFmpegClient:
                 timeout=None,
                 check=False,
             )
-            return self._process_ffmpeg_result(video_file, result, is_quick=False, probe_result=probe_result)
+            return self._process_ffmpeg_result(
+                video_file, result, is_quick=False, probe_result=probe_result
+            )
         except Exception as e:
-            logger.exception(f"Full scan failed: {video_file.path}")
+            logger.exception(
+                f"[SHA256: {video_file.short_hash}] Full scan failed: {video_file.path}"
+            )
             return ScanResult(
                 video_file=video_file,
                 needs_deep_scan=False,
@@ -350,27 +378,29 @@ class FFmpegClient:
     def analyze_streams(self, file_path: Path, timeout: int = 30) -> dict[str, Any]:
         """
         Analyze file streams using FFprobe to determine if it's a video file.
-        
+
         Args:
             file_path: Path to file to analyze
             timeout: Analysis timeout in seconds
-            
+
         Returns:
             dict: FFprobe output with stream information
-            
+
         Raises:
             FFmpegError: If FFprobe analysis fails
         """
         ffprobe_cmd = self._get_ffprobe_command()
-        
+
         cmd = [
             ffprobe_cmd,
-            "-v", "quiet",  # Minimal output
-            "-print_format", "json",  # JSON output for easier parsing
+            "-v",
+            "quiet",  # Minimal output
+            "-print_format",
+            "json",  # JSON output for easier parsing
             "-show_streams",  # Show stream information
-            str(file_path)
+            str(file_path),
         ]
-        
+
         try:
             result = subprocess.run(
                 cmd,
@@ -379,50 +409,50 @@ class FFmpegClient:
                 timeout=timeout,
                 check=False,
             )
-            
+
             if result.returncode != 0:
                 # FFprobe failed - file is likely not a valid media file
                 logger.debug(f"FFprobe failed for {file_path}: {result.stderr}")
                 return {"streams": []}
-            
+
             # Parse JSON output
             try:
-                data = json.loads(result.stdout)
-                return data
+                # json.loads returns Any; cast to expected dict[str, Any]
+                return cast("dict[str, Any]", json.loads(result.stdout))
             except json.JSONDecodeError as e:
                 logger.warning(f"Failed to parse FFprobe JSON output for {file_path}: {e}")
                 return {"streams": []}
-                
+
         except subprocess.TimeoutExpired:
             logger.warning(f"FFprobe timeout analyzing {file_path}")
-            raise FFmpegError(f"FFprobe timeout analyzing {file_path}")
-        except Exception as e:
-            logger.error(f"FFprobe analysis failed for {file_path}: {e}")
-            raise FFmpegError(f"FFprobe analysis failed: {e}")
+            raise FFmpegError(f"FFprobe timeout analyzing {file_path}") from None
+        except Exception:
+            logger.exception("FFprobe analysis failed for %s", file_path)
+            raise FFmpegError("FFprobe analysis failed") from None
 
     def is_video_file(self, file_path: Path, timeout: int = 30) -> bool:
         """
         Determine if a file is a video file by analyzing its content with FFprobe.
-        
+
         Args:
             file_path: Path to file to check
             timeout: Analysis timeout in seconds
-            
+
         Returns:
             bool: True if file contains video streams, False otherwise
         """
         try:
             result = self.analyze_streams(file_path, timeout)
-            
+
             # Check if any stream is a video stream
             for stream in result.get("streams", []):
                 if stream.get("codec_type") == "video":
                     logger.debug(f"Video stream found in {file_path}: {stream.get('codec_name')}")
                     return True
-            
+
             logger.debug(f"No video streams found in {file_path}")
             return False
-            
+
         except FFmpegError:
             # If FFprobe fails, assume it's not a video file
             logger.debug(f"FFprobe analysis failed for {file_path}, assuming not a video file")
@@ -454,7 +484,10 @@ class FFmpegClient:
 
         error_message: str | None = analysis.error_message or None
         if result.returncode != 0 and not error_message:
-            error_message = error_output.strip() or "FFmpeg reported errors"
+            error_message = f"[SHA256: {video_file.short_hash}] {error_output.strip() or 'FFmpeg reported errors'}"
+        if error_message and not error_message.startswith("[SHA256:"):
+            # Prepend hash to existing error message if it doesn't already contain it
+            error_message = f"[SHA256: {video_file.short_hash}] {error_message}"
 
         return ScanResult(
             video_file=video_file,

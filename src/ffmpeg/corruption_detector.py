@@ -169,7 +169,7 @@ class CorruptionDetector:
             else:
                 # In deep scan, warnings might indicate minor issues
                 analysis.confidence = 0.3
-                analysis.error_message = f"Warnings detected: " f"{', '.join(warning_matches[:3])}"
+                analysis.error_message = f"Warnings detected: {', '.join(warning_matches[:3])}"
 
             logger.debug(f"Warning patterns detected: {warning_matches}")
 
@@ -178,7 +178,7 @@ class CorruptionDetector:
             if is_quick_scan and not analysis.is_corrupt:
                 analysis.needs_deep_scan = True
                 analysis.confidence = max(analysis.confidence, 0.5)
-                analysis.error_message = f"FFmpeg error (code {exit_code}) - " f"needs verification"
+                analysis.error_message = f"FFmpeg error (code {exit_code}) - needs verification"
             else:
                 # In deep scan, critical exit codes are more concerning
                 analysis.is_corrupt = True
@@ -195,7 +195,7 @@ class CorruptionDetector:
                 analysis.needs_deep_scan = True
                 analysis.confidence = max(analysis.confidence, 0.4)
                 if not analysis.error_message:
-                    analysis.error_message = "Multiple suspicious indicators - " "needs deep scan"
+                    analysis.error_message = "Multiple suspicious indicators - needs deep scan"
             else:
                 analysis.confidence = max(analysis.confidence, 0.3)
 
@@ -203,11 +203,9 @@ class CorruptionDetector:
             if is_quick_scan:
                 analysis.needs_deep_scan = True
                 analysis.confidence = 0.3
-                analysis.error_message = (
-                    f"FFmpeg error (code {exit_code}) - " f"investigation needed"
-                )
+                analysis.error_message = f"FFmpeg error (code {exit_code}) - investigation needed"
             else:
-                analysis.error_message = f"FFmpeg error (code {exit_code}): " f"{stderr[:200]}"
+                analysis.error_message = f"FFmpeg error (code {exit_code}): {stderr[:200]}"
 
         # Remove unreachable/duplicate error message assignments
         # Remove unused inner function and comments

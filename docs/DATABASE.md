@@ -1,212 +1,215 @@
-# Database Storage Documentation
+# SQLite Database Support
 
-## Overview
+The Corrupt Video Inspector supports optional SQLite database
+storage for scan results, providing persistent storage, incremental
+scanning, resume capabilities, and richer historical analysis of scan
+data. Database storage is optional and does not affect existing CLI
+workflows when disabled.
 
-The Corrupt Video Inspector now supports SQLite database storage for scan results, providing persistent storage, resume capabilities, and better analysis of historical scan data.
+## Features
+
+- Persistent storage of scan runs and per-file results
+- Incremental scanning and resume support (skip recently healthy
+  files)
+- Advanced querying (by corruption status, confidence, dates,
+  directory)
+- Export results to JSON, CSV, or table formats
+- Automatic cleanup and configurable retention policies
+- Backup and restore support
+- Performance optimizations with appropriate indexes
 
 ## Configuration
 
-Add the following section to your `config.yaml` file:
+Add the following section to your `config.yaml` file (example):
 
 ```yaml
 database:
   enabled: true                    # Enable database storage
-  path: "scan_results.db"         # Path to SQLite database file  
-  auto_create: true               # Automatically create database if it doesn't exist
+  path: "~/.corrupt-video-inspector/scan_results.db"  # DB file
+  auto_create: true                # Create DB/tables if missing
+  auto_cleanup_days: 30            # Auto-delete scans older than X days
+  create_backup: true              # Create backups before schema changes
 ```
 
-### Configuration Options
+Configuration options:
 
-- **enabled**: `boolean` - Enable/disable database storage (default: `false`)
-- **path**: `string` - Path to SQLite database file (default: `"scan_results.db"`)
-- **auto_create**: `boolean` - Automatically create database and tables if they don't exist (default: `true`)
+- `enabled` (boolean) — Enable/disable database storage
+  (default: `false`)
+- `path` (string) — Path to SQLite database file
+  (default: `"scan_results.db"`)
+- `auto_create` (boolean) — Create database and tables
+  automatically (default: `true`)
+- `auto_cleanup_days` (integer) — Number of days to retain scan
+  history (0 = disabled)
+- `create_backup` (boolean) — Create a backup before schema changes
 
 ## Database Schema
 
-The database contains two main tables:
+The database typically contains two primary tables:
 
 ### scan_summaries
-Stores high-level scan information:
-- `id` - Primary key
-- `directory` - Directory that was scanned
-- `scan_mode` - Scan mode used (quick, deep, hybrid)
-- `total_files`, `processed_files`, `corrupt_files`, `healthy_files` - File counts
-- `scan_time` - Total scan duration in seconds
-- `deep_scans_needed`, `deep_scans_completed` - Deep scan statistics
-- `started_at`, `completed_at` - Scan timestamps
-- `was_resumed` - Whether scan was resumed from previous session
-- `summary_data` - JSON blob with complete summary data
+
+Stores metadata about each scan run, for example:
+
+- `id` (PK)
+- `directory`
+- `scan_mode` (quick, deep, hybrid)
+- `total_files`, `processed_files`, `corrupt_files`, `healthy_files`
+- `scan_time` (seconds)
+- `deep_scans_needed`, `deep_scans_completed`
+- `started_at`, `completed_at` (timestamps)
+- `was_resumed` (boolean)
+- `summary_data` (JSON blob with full scan summary)
 
 ### scan_results
-Stores individual file scan results:
-- `id` - Primary key
-- `summary_id` - Foreign key to scan_summaries
-- `file_path` - Path to the video file
-- `file_size` - File size in bytes
-- `is_corrupt` - Whether file is corrupt
-- `error_message` - Human-readable error description
-- `ffmpeg_output` - Raw FFmpeg output
-- `inspection_time` - Time taken to scan this file
-- `scan_mode` - Scan mode used for this file
-- `needs_deep_scan`, `deep_scan_completed` - Deep scan flags
-- `timestamp` - When the scan was performed
-- `confidence` - Corruption confidence level (0.0-1.0)
-- `result_data` - JSON blob with complete result data
+
+Stores individual file scan records, for example:
+
+- `id` (PK)
+- `summary_id` (FK to `scan_summaries`)
+- `file_path`
+- `file_size`
+- `is_corrupt` (boolean)
+- `confidence` (0.0–1.0)
+- `error_message`
+- `ffmpeg_output`
+- `inspection_time` (seconds)
+- `scan_mode`
+- `needs_deep_scan`, `deep_scan_completed`
+- `timestamp`
+- `result_data` (JSON blob with full result data)
+
+Indexes should be created on common query columns
+(`directory`, `is_corrupt`, `timestamp`) to keep queries fast.
 
 ## CLI Usage
 
-### Enable Database Storage for Scans
-
-Use the `--store-db` flag to enable database storage for a specific scan:
+Enable database storage for a particular scan (overrides config):
 
 ```bash
-# Enable database storage (overrides config setting)
-corrupt-video-inspector scan /path/to/videos --store-db
+# Store scan results in database
+corrupt-video-inspector scan /media/videos --store-db
 
-# Disable database storage (overrides config setting)  
-corrupt-video-inspector scan /path/to/videos --no-store-db
+# Disable storing in database for this run
+corrupt-video-inspector scan /media/videos --no-store-db
+
+# Incremental scan (skip recently healthy files)
+corrupt-video-inspector scan /media/videos --incremental --store-db
 ```
 
-### View Scan History
-
-Display previous scan summaries from the database:
+Database query and management examples:
 
 ```bash
-# Show last 10 scans
-corrupt-video-inspector db-history
+# Show all corrupt files
+corrupt-video-inspector database query --corrupt
 
-# Show scans for specific directory
-corrupt-video-inspector db-history --directory /path/to/videos
+# Query files from last week
+corrupt-video-inspector database query --since "7 days ago"
 
-# Show more results
-corrupt-video-inspector db-history --limit 20
+# High-confidence corrupt files
+corrupt-video-inspector database query --corrupt --min-confidence 0.8
 
-# JSON output format
-corrupt-video-inspector db-history --format json
+# Export corrupt files to CSV
+corrupt-video-inspector database query --corrupt --format csv \
+  --output corrupt_files.csv
+
+# Show database statistics
+corrupt-video-inspector database stats
+
+# Clean up old scans (older than 30 days)
+corrupt-video-inspector database cleanup --days 30
+
+# Create database backup
+corrupt-video-inspector database backup --backup-path backup.db
+
+# Preview cleanup (dry run)
+corrupt-video-inspector database cleanup --days 30 --dry-run
 ```
-
-### Database Statistics
-
-View database information and statistics:
-
-```bash
-corrupt-video-inspector db-stats
-```
-
-Example output:
-```
-Database Statistics:
-====================
-Database Path: /path/to/scan_results.db
-Database Size: 2.45 MB
-Total Scans: 15
-Completed Scans: 14
-Incomplete Scans: 1
-Total File Results: 1,245
-Corrupt Files Found: 23
-Healthy Files: 1,222
-```
-
-## Features
-
-### Persistent Storage
-- Scan results are permanently stored in SQLite database
-- No risk of losing scan data due to file corruption or accidental deletion
-- Efficient storage with indexes for fast querying
-
-### Resume Functionality
-- Incomplete scans are automatically detected
-- Resume from where previous scan left off
-- Prevents re-scanning files that were already processed
-
-### Historical Analysis
-- Query scan history by directory, date range, or corruption status
-- Track corruption trends over time
-- Compare scan results across different time periods
-- Generate reports from historical data
-
-### Data Integrity
-- Foreign key constraints ensure data consistency
-- WAL (Write-Ahead Logging) mode for better concurrency
-- Automatic transaction management
-
-## Performance Considerations
-
-- Database operations are optimized with appropriate indexes
-- Batch inserts for scan results improve performance
-- Database size grows with number of scans and results
-- Consider periodic cleanup of old scan data if storage space is limited
-
-## Backup and Maintenance
-
-### Backup Database
-```bash
-# Simple file copy (ensure application is not running)
-cp scan_results.db scan_results_backup.db
-
-# SQLite backup command
-sqlite3 scan_results.db ".backup scan_results_backup.db"
-```
-
-### Database Maintenance
-```bash
-# Compact database (reclaim unused space)
-sqlite3 scan_results.db "VACUUM;"
-
-# Check database integrity
-sqlite3 scan_results.db "PRAGMA integrity_check;"
-```
-
-## Migration from File-Only Storage
-
-The database storage is additive - existing file-based workflows continue to work unchanged. When database storage is enabled:
-
-1. Scan results are written to both files AND database
-2. File output remains the primary interface for compatibility
-3. Database provides additional capabilities for analysis and resume
-
-## Troubleshooting
-
-### Database Not Created
-- Check that the path is writable
-- Verify `auto_create` is set to `true`
-- Check file permissions on the parent directory
-
-### Performance Issues
-- Monitor database size - large databases may slow queries
-- Consider adding custom indexes for specific query patterns
-- Check available disk space
-
-### Data Recovery
-- Database uses WAL mode which provides better crash recovery
-- In case of corruption, SQLite has built-in recovery tools
-- Regular backups are recommended for critical data
 
 ## Example Queries
 
-For advanced users, direct SQLite queries can provide detailed insights:
+Historical corruption trends (SQLite):
 
 ```sql
--- Find scans with highest corruption rates
-SELECT directory, 
-       (corrupt_files * 100.0 / total_files) as corruption_rate,
-       total_files
-FROM scan_summaries 
-WHERE total_files > 0
-ORDER BY corruption_rate DESC;
-
--- Average scan time by scan mode
-SELECT scan_mode, 
-       AVG(scan_time) as avg_time,
-       COUNT(*) as scan_count
-FROM scan_summaries 
-GROUP BY scan_mode;
-
--- Most frequently corrupt file types
-SELECT substr(file_path, -4) as extension,
-       COUNT(*) as corrupt_count
-FROM scan_results 
-WHERE is_corrupt = 1
-GROUP BY extension
-ORDER BY corrupt_count DESC;
+SELECT
+  DATE(started_at, 'unixepoch') AS scan_date,
+  corrupt_files,
+  total_files,
+  ROUND(100.0 * corrupt_files / total_files, 2) AS corruption_rate
+FROM scan_summaries
+WHERE directory = '/media/movies'
+ORDER BY started_at;
 ```
+
+Files that became corrupt recently:
+
+```sql
+SELECT sr.file_path, sr.confidence, s.started_at
+FROM scan_results sr
+JOIN scan_summaries s ON sr.summary_id = s.id
+WHERE sr.is_corrupt = 1
+  AND s.started_at > datetime('now', '-7 days');
+```
+
+Largest corrupt files:
+
+```sql
+SELECT file_path, file_size, confidence
+FROM scan_results
+WHERE is_corrupt = 1
+ORDER BY file_size DESC
+LIMIT 10;
+```
+
+## Integration Benefits
+
+- Media server administrators: Monitor library health, identify
+  recurring problems, and optimize scan schedules.
+- Home media enthusiasts: Maintain a history of collection health and
+  quickly find recently corrupted files.
+- CI/CD integration: Compare current scan against baseline and fail
+  builds if corruption increases.
+
+## Performance Considerations
+
+- Use indexes on frequently queried columns (`directory`, `is_corrupt`,
+  `timestamp`)
+- Use incremental scans to only process changed or unscanned files
+- Enable auto-cleanup to limit database growth
+- Use `--limit` on CLI queries for large result sets
+
+## Troubleshooting
+
+Database not found or disabled:
+
+```bash
+# Check whether database is enabled in config
+corrupt-video-inspector show-config
+
+# Ensure database directory exists
+mkdir -p "$(dirname ~/.corrupt-video-inspector/scan_results.db)"
+```
+
+Query performance tips:
+
+- Narrow filters (directory, since) and use limits for large datasets
+- Run cleanup if database size is unexpectedly large
+
+## Backward Compatibility
+
+- Database storage is entirely optional. Existing output formats
+  (JSON, CSV, YAML, text) and CLI commands work the same when
+  database features are disabled.
+- Database-related dependencies are only required when database
+  features are used.
+
+## Best Practices
+
+1. Enable `auto_cleanup_days` to prevent unlimited growth.
+2. Regularly backup the database before major operations.
+3. Use incremental scans for large libraries.
+4. Rely on configured indexes and vacuum/maintenance for performance.
+
+This documentation describes the recommended schema, configuration
+options, CLI usage, and operational guidance for the SQLite
+integration in Corrupt Video Inspector.

@@ -2,6 +2,7 @@
 Video file operations and utilities.
 """
 
+import importlib
 import logging
 from pathlib import Path
 
@@ -12,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 def count_all_video_files(
-    directory: str, 
-    recursive: bool = True, 
+    directory: str,
+    recursive: bool = True,
     extensions: list[str] | None = None,
     use_content_detection: bool = False,
-    ffprobe_timeout: int = 30
+    ffprobe_timeout: int = 30,
 ) -> int:
     """
     Count all video files in a directory.
@@ -51,14 +52,16 @@ def count_all_video_files(
     ffmpeg_client = None
     if use_content_detection:
         try:
-            from src.config.config import load_config
-            from src.ffmpeg.ffmpeg_client import FFmpegClient
+            # Import heavy dependencies at runtime to avoid import errors during static analysis
+            load_config = importlib.import_module("src.config.config").load_config
+            FFmpegClient = importlib.import_module("src.ffmpeg.ffmpeg_client").FFmpegClient
+
             config = load_config()
             ffmpeg_client = FFmpegClient(config.ffmpeg)
             logger.debug("FFmpeg client initialized for content detection")
         except Exception as e:
-            logger.warning(f"Failed to initialize FFmpeg client for content detection: {e}")
-            logger.warning("Falling back to extension-based detection")
+            logger.warning("FFmpeg client unavailable; falling back to extension-based detection")
+            logger.debug(f"FFmpeg initialization error: {e}")
             use_content_detection = False
 
     try:
@@ -69,7 +72,7 @@ def count_all_video_files(
         for file_path in path.glob(pattern):
             if not file_path.is_file():
                 continue
-                
+
             is_video = False
             if use_content_detection and ffmpeg_client:
                 # Use FFprobe content analysis
@@ -77,13 +80,15 @@ def count_all_video_files(
                     is_video = ffmpeg_client.is_video_file(file_path, timeout=ffprobe_timeout)
                     logger.debug(f"Content analysis result for {file_path}: {is_video}")
                 except Exception as e:
-                    logger.debug(f"Content analysis failed for {file_path}: {e}, using extension fallback")
+                    logger.debug(
+                        f"Content analysis failed for {file_path}: {e}, using extension fallback"
+                    )
                     # Fall back to extension check for this file
                     is_video = file_path.suffix.lower() in ext_set
             else:
                 # Use extension-based detection
                 is_video = file_path.suffix.lower() in ext_set
-                
+
             if is_video:
                 count += 1
                 logger.debug(f"Found video file: {file_path}")

@@ -22,15 +22,10 @@ Example:
 
 from __future__ import annotations
 
+import importlib
 import sys
 
 from src.version import __version__
-
-# Only import CLI components when explicitly requested to avoid dependencies
-def get_main():
-    """Import and return the main CLI function."""
-    from .cli.main import main
-    return main
 
 from .core.errors.errors import (
     ConfigurationError,
@@ -52,6 +47,14 @@ from .core.models.scanning import (
     ScanSummary,
 )
 from .core.scanner import VideoScanner
+
+
+# Only import CLI components when explicitly requested to avoid dependencies
+def get_main():
+    """Import and return the main CLI function."""
+    module = importlib.import_module("src.cli.main")
+    return module.main
+
 
 # Package metadata
 __title__ = "corrupt-video-inspector"
@@ -100,4 +103,7 @@ def get_version() -> str:
 
 
 if __name__ == "__main__":
+    # Import CLI main only when running as script
+    from .cli.main import main
+
     sys.exit(main())

@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, next ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, next ]
 
 jobs:
   # PR title validation (skip for pushes and draft PRs)

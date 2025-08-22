@@ -3,7 +3,6 @@ Command handlers for CLI operations.
 """
 
 import importlib.util
-import json
 import logging
 import os
 import sys
@@ -11,16 +10,24 @@ import time
 from collections.abc import Sequence
 from pathlib import Path
 from shutil import which
+from typing import Any
 
 import click
 import typer
 from pydantic import BaseModel, Field
 
+from src.cli.credential_utils import handle_credential_error
 from src.config import load_config
 from src.config.config import AppConfig
-from src.core.credential_validator import handle_credential_error, validate_trakt_secrets
+from src.core.credential_validator import validate_trakt_secrets
 from src.core.models.inspection import VideoFile
-from src.core.models.scanning import FileStatus, ScanMode, ScanProgress, ScanResult, ScanSummary
+from src.core.models.scanning import (
+    FileStatus,
+    ScanMode,
+    ScanProgress,
+    ScanResult,
+    ScanSummary,
+)
 from src.core.reporter import ReportService
 from src.core.scanner import VideoScanner
 from src.core.watchlist import (
@@ -53,74 +60,53 @@ class BaseHandler:
         if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
             if isinstance(error, ValueError | KeyError | FileNotFoundError):
                 raise error
-            raise RuntimeError(f"{message}: {error}")
+            msg = f"{message}: {error}"
+            raise RuntimeError(msg)
 
         sys.exit(1)
 
     def _generate_output(
         self,
-        summary: ScanSummary,
+        summary: Any,
         output_file: Path | None = None,
-        output_format: str = "json",
         pretty_print: bool = True,
-    ) -> None:
-        """Generate output file from scan summary."""
-        try:
-            # Determine target output file path
-            if output_file:
-                # If a directory is provided, warn and use default output directory
-                if output_file.is_dir():
-                    logger.warning(
-                        f"Specified output path {output_file} is a directory; "
-                        "using default output directory"
-                    )
-                    target_file = (
-                        self.config.output.default_output_dir / self.config.output.default_filename
-                    )
-                else:
-                    target_file = output_file
-            else:
-                # Use configured default output directory and filename
-                target_file = (
-                    self.config.output.default_output_dir / self.config.output.default_filename
-                )
-            # Ensure parent directory exists
-            target_file.parent.mkdir(parents=True, exist_ok=True)
+        output_format: str = "json",
+    ) -> Path | None:
+        """Helper to generate output files for handlers and tests.
 
-            if output_format.lower() == "json":
-                with target_file.open("w", encoding="utf-8") as f:
-                    if pretty_print:
-                        json.dump(summary.model_dump(), f, indent=2)
-                    else:
-                        json.dump(summary.model_dump(), f)
-                logger.info(f"Scan results saved to: {target_file}")
-            else:
-                logger.warning(f"Unsupported output format: {output_format}")
-        except Exception as e:
-            # Initial write failed, log and attempt fallback to configured output dir
-            logger.warning(
-                f"Failed to save output to {target_file}: {e}. "
-                "Attempting to save to default output directory"
+        Writes summary.model_dump() or dict(summary) as JSON using OutputFormatter.
+        """
+        # Determine target
+        if output_file and output_file.exists() and output_file.is_dir():
+            logger.warning("Output path is a directory; using default output directory")
+            target = Path(self.config.output.default_output_dir) / getattr(
+                self.config.output, "default_filename", "scan_results.json"
             )
-            try:
-                # Determine fallback file path
-                fallback_file = (
-                    self.config.output.default_output_dir / self.config.output.default_filename
-                )
-                # Ensure fallback directory exists
-                fallback_file.parent.mkdir(parents=True, exist_ok=True)
-                # Write output to fallback file
-                with fallback_file.open("w", encoding="utf-8") as f:
-                    if output_format.lower() == "json":
-                        # Use indent when pretty printing
-                        indent = 2 if pretty_print else None
-                        json.dump(summary.model_dump(), f, indent=indent)
-                    else:
-                        # Unsupported formats not implemented in fallback
-                        logger.warning(f"Unsupported output format in fallback: {output_format}")
-                logger.info(f"Scan results saved to: {fallback_file}")
-            except Exception as fallback_exc:
-                logger.warning(f"Failed to save fallback output to {fallback_file}: {fallback_exc}")
+        elif output_file:
+            target = output_file
+        else:
+            target = Path(self.config.output.default_output_dir) / getattr(
+                self.config.output, "default_filename", "scan_results.json"
+            )
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        data = None
+        try:
+            if hasattr(summary, "model_dump"):
+                data = summary.model_dump()
+            elif hasattr(summary, "dict"):
+                data = summary.dict()
+            else:
+                data = dict(summary)
+        except Exception:
+            data = {"summary": str(summary)}
+
+        # Keep output_format available for compatibility with callers/tests
+        _ = output_format
+
+        self.output_formatter._write_json_results(data, target, pretty_print)
+        return target
 
 
 class ScanHandler(BaseHandler):
@@ -142,7 +128,17 @@ class ScanHandler(BaseHandler):
         pretty_print: bool = True,
     ) -> ScanSummary | None:
         """
-        Run a video corruption scan and return ScanSummary or None.
+        Run a video corruption scan and return ScanSummary.
+        Results are automatically stored in the database if enabled.
+
+        Args:
+            directory: Directory to scan
+            scan_mode: Scan mode to use
+            recursive: Whether to scan recursively
+            resume: Whether to resume interrupted scans
+            output_file: Optional output file path
+            output_format: Output file format (json, yaml, csv)
+            pretty_print: Whether to pretty-print output files
         """
         try:
             video_files = self.scanner.get_video_files(directory, recursive=recursive)
@@ -150,6 +146,7 @@ class ScanHandler(BaseHandler):
                 logger.info("No video files found to scan.")
                 return None
             logger.info(f"Found {len(video_files)} video files to scan.")
+
             summary = self.scanner.scan_directory(
                 directory=directory,
                 scan_mode=scan_mode,
@@ -159,13 +156,24 @@ class ScanHandler(BaseHandler):
                     self._progress_callback if self.config.logging.level != "QUIET" else None
                 ),
             )
-            if output_file or self.config.output.default_json:
-                self._generate_output(
+
+            # Store results using OutputFormatter (handles both database and file output)
+            if output_file or self.config.database.enabled:
+                self.output_formatter.write_scan_results(
                     summary=summary,
                     output_file=output_file,
-                    output_format=output_format,
+                    format=output_format,
                     pretty_print=pretty_print,
+                    store_in_database=self.config.database.enabled,
                 )
+
+                if self.config.database.enabled:
+                    logger.info("Scan results stored in database")
+                if output_file:
+                    logger.info(f"Scan results written to {output_file}")
+            else:
+                logger.warning("No storage configured - scan results will not be persisted")
+
             return summary
         except KeyboardInterrupt:
             logger.warning("Scan interrupted by user.")
@@ -212,12 +220,13 @@ class ScanHandler(BaseHandler):
 
     def _show_progress_bar(self, progress: ScanProgress) -> None:
         """Show progress as a progress bar."""
-        with click.progressbar(
+        bar: Any = click.progressbar(
             length=progress.total_files,
             show_eta=True,
             show_percent=True,
             show_pos=True,
-        ) as bar:
+        )
+        with bar:
             bar.update(progress.processed_count)
 
     def _show_scan_results(self, summary: ScanSummary) -> None:
@@ -263,7 +272,7 @@ class ScanHandler(BaseHandler):
         self,
         summary: ScanSummary,
         results: list[ScanResult],
-        output_file: Path | None = None,
+        output_file: Path | None,
         output_format: str = "json",
         include_healthy: bool = False,
         include_metadata: bool = True,
@@ -307,8 +316,6 @@ class ListHandler(BaseHandler):
         self,
         directory: Path,
         recursive: bool = True,
-        output_file: Path | None = None,
-        output_format: str = "text",
     ) -> list[VideoFile]:
         """
         List all video files in directory and return list of VideoFile Pydantic models.
@@ -320,39 +327,10 @@ class ListHandler(BaseHandler):
                 return []
             logger.info(f"Found {len(video_files)} video files in directory {directory}.")
             # Convert to VideoFile Pydantic models if not already
-            video_file_models = [
-                vf if isinstance(vf, VideoFile) else VideoFile(path=vf) for vf in video_files
-            ]
-            if output_file:
-                self._save_file_list(video_file_models, directory, output_file, output_format)
-            return video_file_models
+            return [vf if isinstance(vf, VideoFile) else VideoFile(path=vf) for vf in video_files]
         except Exception as e:
             self._handle_error(e, "Failed to list files")
             return []
-
-    def _show_file_list(self, video_files: list, directory: Path) -> None:
-        """Show file list to console."""
-        click.echo(f"\nFound {len(video_files)} video files:")
-        for i, video_file in enumerate(video_files, 1):
-            rel_path = video_file.path.relative_to(directory)
-            size_mb = video_file.size / (1024 * 1024) if video_file.size > 0 else 0
-            click.echo(f"  {i:3d}: {rel_path} ({size_mb:.1f} MB)")
-
-    def _save_file_list(
-        self,
-        video_files: list,
-        directory: Path,
-        output_file: Path,
-        output_format: str,
-    ) -> None:
-        """Save file list to output file."""
-        self.output_formatter.write_file_list(
-            video_files=video_files,
-            directory=directory,
-            output_file=output_file,
-            format=output_format,
-        )
-        click.echo(f"File list saved to: {output_file}")
 
 
 class TraktSyncResult(BaseModel):
@@ -375,7 +353,6 @@ class TraktHandler(BaseHandler):
         self,
         scan_file: Path,
         interactive: bool = False,
-        output_file: Path | None = None,
         watchlist: str | None = None,
         include_statuses: list[FileStatus] | None = None,
     ) -> TraktSyncResult | None:
@@ -385,7 +362,6 @@ class TraktHandler(BaseHandler):
         Args:
             scan_file: Path to scan results JSON file
             interactive: Enable interactive mode for ambiguous matches
-            output_file: Optional file to save sync results
             watchlist: Optional watchlist name/slug to sync to
             include_statuses: Optional list of file statuses to include
         """
@@ -418,10 +394,9 @@ class TraktHandler(BaseHandler):
                 results=getattr(result_summary, "results", []),
             )
             logger.info(
-                f"Trakt sync complete. Movies added: {result.movies_added}, Shows added: {result.shows_added}."
+                f"Trakt sync complete. Movies added: {result.movies_added}, "
+                f"Shows added: {result.shows_added}."
             )
-            if output_file:
-                self._save_sync_results(result, output_file)
             return result
         except Exception as e:
             self._handle_error(e, "Trakt sync failed")
@@ -459,18 +434,6 @@ class TraktHandler(BaseHandler):
                     )
                 if len(failed_items) > 10:
                     click.echo(f"  ... and {len(failed_items) - 10} more")
-
-    def _save_sync_results(self, results: TraktSyncResult, output_file: Path) -> None:
-        """Save sync results to output file."""
-        try:
-            with output_file.open("w", encoding="utf-8") as f:
-                json.dump(results.model_dump(), f, indent=2)
-
-            click.echo(f"\nSync results saved to: {output_file}")
-
-        except Exception as e:
-            logger.warning(f"Failed to save sync results: {e}")
-            click.echo(f"Warning: Could not save sync results: {e}", err=True)
 
     def list_watchlists(self, _access_token: str | None = None) -> list | None:
         """
@@ -565,16 +528,16 @@ class TraktHandler(BaseHandler):
         client_secret = self.config.trakt.client_secret
 
         if not client_id or not client_secret:
-            raise ValueError(
-                "Trakt client_id and client_secret must be configured. Use 'make secrets-init' or set in config file."
-            )
+            msg = "Trakt client_id and client_secret must be configured. Use 'make secrets-init' or set in config file."
+            raise ValueError(msg)
 
         # TODO: Implement actual OAuth token retrieval/refresh logic
         # For now, raise an error indicating the limitation
-        raise NotImplementedError(
+        msg = (
             "Config-based authentication not fully implemented yet. "
             "Please ensure you have valid OAuth tokens configured."
         )
+        raise NotImplementedError(msg)
 
     def authenticate_oauth(self, username: str, store: bool = True) -> bool:
         """
@@ -775,7 +738,3 @@ def list_video_files(
     except Exception:
         logger.exception("Error listing video files")
         sys.exit(1)
-
-
-# Typer app for CLI entry point
-app = typer.Typer()

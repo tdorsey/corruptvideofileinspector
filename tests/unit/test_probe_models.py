@@ -2,24 +2,23 @@
 Unit tests for probe-related models and functionality.
 """
 
-import pytest
 import tempfile
 import time
 from pathlib import Path
 
 from src.core.models.probe import (
+    FormatInfo,
     ProbeResult,
+    ScanPrerequisites,
     StreamInfo,
     StreamType,
-    FormatInfo,
-    ScanPrerequisites,
 )
 from src.core.probe_cache import ProbeResultCache
 
 
 class TestProbeResult:
     """Test ProbeResult model functionality."""
-    
+
     def test_probe_result_creation(self):
         """Test basic ProbeResult creation."""
         file_path = Path("/test/video.mp4")
@@ -28,13 +27,13 @@ class TestProbeResult:
             success=True,
             file_size=1024,
         )
-        
+
         assert probe_result.file_path == file_path
         assert probe_result.success is True
         assert probe_result.file_size == 1024
         assert probe_result.streams == []
         assert probe_result.format_info is None
-    
+
     def test_probe_result_with_streams(self):
         """Test ProbeResult with stream information."""
         video_stream = StreamInfo(
@@ -45,27 +44,27 @@ class TestProbeResult:
             height=1080,
             duration=120.5,
         )
-        
+
         audio_stream = StreamInfo(
             index=1,
             codec_name="aac",
             codec_type=StreamType.AUDIO,
             duration=120.5,
         )
-        
+
         probe_result = ProbeResult(
             file_path=Path("/test/video.mp4"),
             success=True,
             streams=[video_stream, audio_stream],
             duration=120.5,
         )
-        
+
         assert probe_result.has_video_streams is True
         assert probe_result.has_audio_streams is True
         assert len(probe_result.video_streams) == 1
         assert len(probe_result.audio_streams) == 1
         assert probe_result.is_valid_video_file is False  # No format_info
-    
+
     def test_probe_result_valid_video_file(self):
         """Test ProbeResult for valid video file detection."""
         video_stream = StreamInfo(
@@ -73,22 +72,22 @@ class TestProbeResult:
             codec_type=StreamType.VIDEO,
             codec_name="h264",
         )
-        
+
         format_info = FormatInfo(
             filename="test.mp4",
             format_name="mov,mp4,m4a,3gp,3g2,mj2",
             duration=120.5,
         )
-        
+
         probe_result = ProbeResult(
             file_path=Path("/test/video.mp4"),
             success=True,
             streams=[video_stream],
             format_info=format_info,
         )
-        
+
         assert probe_result.is_valid_video_file is True
-    
+
     def test_probe_result_age_calculation(self):
         """Test probe result age calculations."""
         # Create result with specific timestamp
@@ -97,12 +96,12 @@ class TestProbeResult:
             file_path=Path("/test/video.mp4"),
             timestamp=past_time,
         )
-        
+
         assert probe_result.age_seconds >= 3600
         assert probe_result.age_hours >= 1.0
         assert probe_result.is_expired(max_age_hours=0.5) is True
         assert probe_result.is_expired(max_age_hours=2.0) is False
-    
+
     def test_probe_result_summary(self):
         """Test probe result summary generation."""
         # Failed probe
@@ -112,12 +111,12 @@ class TestProbeResult:
             error_message="File not found",
         )
         assert "Probe failed" in failed_result.get_summary()
-        
+
         # Valid video file
         video_stream = StreamInfo(index=0, codec_type=StreamType.VIDEO)
         audio_stream = StreamInfo(index=1, codec_type=StreamType.AUDIO)
         format_info = FormatInfo(filename="test.mp4")
-        
+
         valid_result = ProbeResult(
             file_path=Path("/test/video.mp4"),
             success=True,
@@ -125,7 +124,7 @@ class TestProbeResult:
             format_info=format_info,
             duration=120.5,
         )
-        
+
         summary = valid_result.get_summary()
         assert "1 video" in summary
         assert "1 audio" in summary
@@ -134,7 +133,7 @@ class TestProbeResult:
 
 class TestStreamInfo:
     """Test StreamInfo model functionality."""
-    
+
     def test_stream_info_from_ffprobe_data(self):
         """Test creating StreamInfo from FFprobe data."""
         ffprobe_data = {
@@ -148,9 +147,9 @@ class TestStreamInfo:
             "avg_frame_rate": "25/1",
             "pix_fmt": "yuv420p",
         }
-        
+
         stream = StreamInfo.from_ffprobe_stream(ffprobe_data)
-        
+
         assert stream.index == 0
         assert stream.codec_name == "h264"
         assert stream.codec_type == StreamType.VIDEO
@@ -164,7 +163,7 @@ class TestStreamInfo:
 
 class TestFormatInfo:
     """Test FormatInfo model functionality."""
-    
+
     def test_format_info_from_ffprobe_data(self):
         """Test creating FormatInfo from FFprobe data."""
         ffprobe_data = {
@@ -176,9 +175,9 @@ class TestFormatInfo:
             "bit_rate": "3318784",
             "probe_score": 100,
         }
-        
+
         format_info = FormatInfo.from_ffprobe_format(ffprobe_data)
-        
+
         assert format_info.filename == "/test/video.mp4"
         assert format_info.format_name == "mov,mp4,m4a,3gp,3g2,mj2"
         assert format_info.format_long_name == "QuickTime / MOV"
@@ -190,22 +189,22 @@ class TestFormatInfo:
 
 class TestScanPrerequisites:
     """Test ScanPrerequisites functionality."""
-    
+
     def test_can_scan_with_valid_result(self):
         """Test scan prerequisites with valid probe result."""
         video_stream = StreamInfo(index=0, codec_type=StreamType.VIDEO)
         format_info = FormatInfo(filename="test.mp4")
-        
+
         probe_result = ProbeResult(
             file_path=Path("/test/video.mp4"),
             success=True,
             streams=[video_stream],
             format_info=format_info,
         )
-        
+
         prerequisites = ScanPrerequisites()
         assert prerequisites.can_scan(probe_result) is True
-    
+
     def test_can_scan_with_failed_probe(self):
         """Test scan prerequisites with failed probe."""
         probe_result = ProbeResult(
@@ -213,64 +212,64 @@ class TestScanPrerequisites:
             success=False,
             error_message="Probe failed",
         )
-        
+
         prerequisites = ScanPrerequisites()
         assert prerequisites.can_scan(probe_result) is False
-        
+
         reason = prerequisites.get_rejection_reason(probe_result)
         assert "Probe failed" in reason
-    
+
     def test_can_scan_without_video_streams(self):
         """Test scan prerequisites without video streams."""
         audio_stream = StreamInfo(index=0, codec_type=StreamType.AUDIO)
         format_info = FormatInfo(filename="test.mp3")
-        
+
         probe_result = ProbeResult(
             file_path=Path("/test/audio.mp3"),
             success=True,
             streams=[audio_stream],
             format_info=format_info,
         )
-        
+
         prerequisites = ScanPrerequisites(require_video_streams=True)
         assert prerequisites.can_scan(probe_result) is False
-        
+
         reason = prerequisites.get_rejection_reason(probe_result)
         assert "No video streams" in reason
 
 
 class TestProbeResultCache:
     """Test ProbeResultCache functionality."""
-    
+
     def test_cache_basic_operations(self):
         """Test basic cache operations."""
         with tempfile.TemporaryDirectory() as temp_dir:
             cache_file = Path(temp_dir) / "probe_cache.json"
             cache = ProbeResultCache(cache_file)
-            
+
             # Test empty cache
             assert len(cache) == 0
             assert cache.get(Path("/test/video.mp4")) is None
-            
+
             # Add probe result
             probe_result = ProbeResult(
                 file_path=Path("/test/video.mp4"),
                 success=True,
             )
             cache.put(probe_result)
-            
+
             # Test retrieval
             assert len(cache) == 1
             cached_result = cache.get(Path("/test/video.mp4"))
             assert cached_result is not None
             assert cached_result.file_path == probe_result.file_path
             assert cached_result.success is True
-    
+
     def test_cache_persistence(self):
         """Test cache persistence across instances."""
         with tempfile.TemporaryDirectory() as temp_dir:
             cache_file = Path(temp_dir) / "probe_cache.json"
-            
+
             # Create cache and add result
             cache1 = ProbeResultCache(cache_file)
             probe_result = ProbeResult(
@@ -278,21 +277,21 @@ class TestProbeResultCache:
                 success=True,
             )
             cache1.put(probe_result)
-            
+
             # Create new cache instance
             cache2 = ProbeResultCache(cache_file)
             assert len(cache2) == 1
-            
+
             cached_result = cache2.get(Path("/test/video.mp4"))
             assert cached_result is not None
             assert cached_result.file_path == probe_result.file_path
-    
+
     def test_cache_expiration(self):
         """Test cache expiration functionality."""
         with tempfile.TemporaryDirectory() as temp_dir:
             cache_file = Path(temp_dir) / "probe_cache.json"
             cache = ProbeResultCache(cache_file, max_age_hours=0.001)  # Very short expiry
-            
+
             # Add probe result
             probe_result = ProbeResult(
                 file_path=Path("/test/video.mp4"),
@@ -300,23 +299,23 @@ class TestProbeResultCache:
                 timestamp=time.time() - 3600,  # 1 hour ago
             )
             cache.put(probe_result)
-            
+
             # Should be expired
             assert cache.get(Path("/test/video.mp4")) is None
-    
+
     def test_cache_stats(self):
         """Test cache statistics."""
         with tempfile.TemporaryDirectory() as temp_dir:
             cache_file = Path(temp_dir) / "probe_cache.json"
             cache = ProbeResultCache(cache_file)
-            
+
             # Add successful result
             successful_result = ProbeResult(
                 file_path=Path("/test/video1.mp4"),
                 success=True,
             )
             cache.put(successful_result)
-            
+
             # Add failed result
             failed_result = ProbeResult(
                 file_path=Path("/test/video2.mp4"),
@@ -324,7 +323,7 @@ class TestProbeResultCache:
                 error_message="Failed",
             )
             cache.put(failed_result)
-            
+
             stats = cache.get_stats()
             assert stats["total_entries"] == 2
             assert stats["successful_probes"] == 1

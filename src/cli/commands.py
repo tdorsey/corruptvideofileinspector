@@ -2,7 +2,6 @@
 CLI command definitions using Click framework.
 """
 
-import csv
 import importlib.util
 import io
 import json
@@ -19,6 +18,19 @@ from src.core.models.inspection import VideoFile
 from src.core.models.scanning import FileStatus, ScanMode, ScanResult, ScanSummary
 from src.core.reporter import ReportService
 from src.ffmpeg.ffmpeg_client import FFmpegClient
+
+
+# Database imports - only import when available
+def get_database_imports():
+    """Dynamically import database modules when needed."""
+    try:
+        from src.database.models import DatabaseQueryFilter
+        from src.database.service import DatabaseService
+
+        return DatabaseQueryFilter, DatabaseService
+    except ImportError:
+        return None, None
+
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +108,7 @@ def cli(
         ctx.obj["config"] = app_config
     except Exception as e:
         logging.exception("Configuration error")
-        raise click.Abort() from e
+        raise click.Abort from e
 
     # If no command specified, show help
     if ctx.invoked_subcommand is None:
@@ -194,27 +206,65 @@ def scan(
     - hybrid: Quick scan first, then deep scan for suspicious files
     - full: Complete scan of entire video stream without timeout
 
+    Database Integration:
+
+    \b
+    - Results are automatically stored in SQLite database (default: enabled)
+    - Use --incremental to skip files recently scanned and found healthy
+    - Use 'database query' commands to view stored results
+    - Use --no-database to disable database storage
+
+    File Output:
+
+    \b
+    - Use --output to save results to a JSON file
+    - Supports --format json (other formats available: yaml, csv)
+    - Use --pretty for formatted JSON output
+
     Examples:
 
     \b
-    # Basic hybrid scan
+    # Basic hybrid scan with database storage
     corrupt-video-inspector scan /path/to/videos
 
     \b
-    # Quick scan with custom output
+    # Quick scan with JSON file output
     corrupt-video-inspector scan --mode quick --output results.json /path/to/videos
 
     \b
-    # Full scan without timeout (for thorough analysis)
-    corrupt-video-inspector scan --mode full /path/to/videos
+    # Incremental scan (skip recently healthy files)
+    corrupt-video-inspector scan --incremental /path/to/videos
 
     \b
-    # Deep scan with custom extensions
-    corrupt-video-inspector scan --mode deep --extensions mp4 --extensions mkv /videos
+    # Full scan with both database and file output
+    corrupt-video-inspector scan --mode full --output full_scan.json --pretty /path/to/videos
+
+    \b
+    # Deep scan with custom extensions and CSV output
+    corrupt-video-inspector scan --mode deep --extensions mp4 --extensions mkv --output results.csv --format csv /videos
     """
     try:
         # Load configuration
         app_config = load_config(config_path=config)
+
+        # Override database setting if provided
+        # (previous code referenced an undefined 'database' variable and has
+        #  been removed - database overrides are handled via --store-db)
+
+        # Warn if database is disabled but still allow operation
+        if not app_config.database.enabled:
+            if not output:
+                logger.warning(
+                    "Database storage is disabled and no output file specified - results will not be persisted"
+                )
+                click.echo(
+                    "Warning: Database storage is disabled and no output file specified. Results will not be saved.",
+                    err=True,
+                )
+            else:
+                logger.info(
+                    "Database storage is disabled - results will only be saved to output file"
+                )
 
         # Override config with CLI options
         if max_workers:
@@ -223,7 +273,7 @@ def scan(
             app_config.scan.extensions = [
                 f".{ext}" if not ext.startswith(".") else ext for ext in extensions
             ]
-        
+
         # Override database setting if specified
         if store_db is not None:
             app_config.database.enabled = store_db
@@ -247,6 +297,13 @@ def scan(
         if summary is not None:
             click.echo("\nScan Summary:")
             click.echo(json.dumps(summary.model_dump(), indent=2 if pretty else None))
+
+            # Show where results were stored
+            if app_config.database.enabled:
+                click.echo(f"\nResults stored in database: {app_config.database.path}")
+                click.echo("Use 'corrupt-video-inspector database query' to view results")
+            if output:
+                click.echo(f"Results also saved to file: {output}")
         else:
             click.echo("No video files found to scan.")
 
@@ -267,7 +324,12 @@ def scan(
     show_default=True,
 )
 @click.option("--extensions", multiple=True, help="Video file extensions to include")
-@click.option("--output", "-o", type=PathType(), help="Output file path for file list")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path, dir_okay=False),
+    help="Output file path for file list (must be a file, not a directory)",
+)
 @click.option(
     "--format",
     "output_format",
@@ -293,8 +355,8 @@ def list_files(
     """
     List all video files in a directory without scanning.
 
-    Useful for previewing what files would be scanned or generating
-    file inventories.
+    Displays all video files found in the specified directory.
+    Useful for previewing what files would be scanned.
 
     Examples:
 
@@ -303,8 +365,16 @@ def list_files(
     corrupt-video-inspector list-files /path/to/videos
 
     \b
-    # List specific extensions to JSON
-    corrupt-video-inspector list-files --extensions mp4 --format json /videos
+    # List specific extensions only
+    corrupt-video-inspector list-files --extensions mp4 --extensions mkv /videos
+
+    \b
+    # Save file list to JSON
+    corrupt-video-inspector list-files --output files.json --format json /videos
+
+    \b
+    # Save file list to CSV
+    corrupt-video-inspector list-files --output files.csv --format csv /videos
     """
     try:
         # Load configuration
@@ -323,26 +393,29 @@ def list_files(
         video_files = handler.list_files(
             directory=directory,
             recursive=recursive,
-            output_file=output,
-            output_format=output_format,
         )
         if not video_files:
             click.echo("No video files found in the specified directory.")
-        elif output_format == "json":
-            click.echo(json.dumps([vf.model_dump() for vf in video_files], indent=2))
-        elif output_format == "csv":
-            output_str = io.StringIO()
-            writer = csv.DictWriter(output_str, fieldnames=video_files[0].model_dump().keys())
-            writer.writeheader()
-            for vf in video_files:
-                writer.writerow(vf.model_dump())
-            click.echo(output_str.getvalue())
         else:
-            click.echo(f"\nFound {len(video_files)} video files:")
-            for i, vf in enumerate(video_files, 1):
-                rel_path = vf.path.relative_to(directory)
-                size_mb = vf.size / (1024 * 1024) if vf.size > 0 else 0
-                click.echo(f"  {i:3d}: {rel_path} ({size_mb:.1f} MB)")
+            # Write to output file if specified
+            if output:
+                handler.output_formatter.write_file_list(
+                    video_files=video_files,
+                    directory=directory,
+                    output_file=output,
+                    format=output_format,
+                )
+                click.echo(f"File list saved to: {output}")
+
+            # Always display to console unless output format is not text
+            if not output or output_format == "text":
+                click.echo(f"\nFound {len(video_files)} video files:")
+                for i, vf in enumerate(video_files, 1):
+                    rel_path = vf.path.relative_to(directory)
+                    size_mb = vf.size / (1024 * 1024) if vf.size > 0 else 0
+                    click.echo(f"  {i:3d}: {rel_path} ({size_mb:.1f} MB)")
+            elif output:
+                click.echo(f"Found {len(video_files)} video files, saved to {output}")
 
     except Exception as e:
         logger.exception("List command failed")
@@ -421,12 +494,16 @@ def sync(
     corrupt-video-inspector trakt sync results.json --watchlist "my-custom-list"
 
     \b
-    # Interactive sync with output
-    corrupt-video-inspector trakt sync results.json --interactive --output sync_results.json
+    # Interactive sync
+    corrupt-video-inspector trakt sync results.json --interactive
 
     \b
     # Dry run to see what would be synced
     corrupt-video-inspector trakt sync results.json --dry-run
+
+    \b
+    # Save sync results to file
+    corrupt-video-inspector trakt sync results.json --output sync_results.json
     """
     # If no arguments are provided, show the help for the trakt sync subcommand
     if ctx.args == [] and scan_file is None:
@@ -455,7 +532,6 @@ def sync(
         result = handler.sync_to_watchlist(
             scan_file=scan_file,
             interactive=interactive,
-            output_file=output,
             watchlist=watchlist,
             include_statuses=include_statuses,
         )
@@ -465,9 +541,24 @@ def sync(
 
         click.echo("\nTrakt Sync Result:")
         if result is not None:
-            click.echo(json.dumps(result.model_dump(), indent=2))
+            result_json = json.dumps(result.model_dump(), indent=2)
+            click.echo(result_json)
+
+            # Save to output file if specified
+            if output:
+                output.parent.mkdir(parents=True, exist_ok=True)
+                with output.open("w", encoding="utf-8") as f:
+                    f.write(result_json)
+                click.echo(f"Sync results also saved to: {output}")
         else:
             click.echo("No sync result returned.")
+
+            # Create empty result file if output specified
+            if output:
+                output.parent.mkdir(parents=True, exist_ok=True)
+                with output.open("w", encoding="utf-8") as f:
+                    json.dump({"message": "No sync result returned"}, f, indent=2)
+                click.echo(f"Empty result saved to: {output}")
 
     except Exception as e:
         logger.exception("Trakt sync command failed")
@@ -476,17 +567,8 @@ def sync(
 
 
 @trakt.command()
-@click.option("--output", "-o", type=PathType(), help="Save watchlist info to file")
-@click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["json", "table"], case_sensitive=False),
-    default="table",
-    help="Output format",
-    show_default=True,
-)
 @global_options
-def list_watchlists(output, output_format, config):
+def list_watchlists(config):
     """
     List all available watchlists for the authenticated user.
 
@@ -496,12 +578,8 @@ def list_watchlists(output, output_format, config):
     Examples:
 
     \b
-    # List watchlists in table format
+    # List watchlists
     corrupt-video-inspector trakt list-watchlists
-
-    \b
-    # List watchlists in JSON format
-    corrupt-video-inspector trakt list-watchlists --format json
     """
     try:
         # Load configuration
@@ -514,25 +592,16 @@ def list_watchlists(output, output_format, config):
             click.echo("No watchlists found or failed to fetch watchlists.")
             return
 
-        if output_format == "json":
-            output_data = {"watchlists": watchlists}
-            click.echo(json.dumps(output_data, indent=2))
-        else:
-            # Table format
-            click.echo(f"\nFound {len(watchlists)} watchlists:\n")
-            click.echo(f"{'Name':<30} {'Slug':<20} {'Items':<8} {'Privacy':<10}")
-            click.echo("-" * 70)
-            for wl in watchlists:
-                name = wl.get("name", "Unknown")[:29]
-                slug = wl.get("slug", "")[:19]
-                items = wl.get("item_count", 0)
-                privacy = wl.get("privacy", "private")[:9]
-                click.echo(f"{name:<30} {slug:<20} {items:<8} {privacy:<10}")
-
-        if output:
-            with output.open("w", encoding="utf-8") as f:
-                json.dump({"watchlists": watchlists}, f, indent=2)
-            click.echo(f"\nWatchlist data saved to: {output}")
+        # Table format
+        click.echo(f"\nFound {len(watchlists)} watchlists:\n")
+        click.echo(f"{'Name':<30} {'Slug':<20} {'Items':<8} {'Privacy':<10}")
+        click.echo("-" * 70)
+        for wl in watchlists:
+            name = wl.get("name", "Unknown")[:29]
+            slug = wl.get("slug", "")[:19]
+            items = wl.get("item_count", 0)
+            privacy = wl.get("privacy", "private")[:9]
+            click.echo(f"{name:<30} {slug:<20} {items:<8} {privacy:<10}")
 
     except ValueError as e:
         # Handle credential validation errors with user-friendly message
@@ -562,17 +631,8 @@ def list_watchlists(output, output_format, config):
     "-w",
     help="Watchlist name or slug to view (leave empty for main watchlist)",
 )
-@click.option("--output", "-o", type=PathType(), help="Save watchlist contents to file")
-@click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["json", "table"], case_sensitive=False),
-    default="table",
-    help="Output format",
-    show_default=True,
-)
 @global_options
-def view(watchlist, output, output_format, config):
+def view(watchlist, config):
     """
     View items in a specific watchlist.
 
@@ -589,10 +649,6 @@ def view(watchlist, output, output_format, config):
     \b
     # View a specific custom list
     corrupt-video-inspector trakt view --watchlist "my-list"
-
-    \b
-    # View watchlist in JSON format
-    corrupt-video-inspector trakt view --format json
     """
     try:
         # Load configuration
@@ -608,30 +664,21 @@ def view(watchlist, output, output_format, config):
 
         watchlist_name = watchlist or "Main Watchlist"
 
-        if output_format == "json":
-            output_data = {"watchlist": watchlist_name, "items": items}
-            click.echo(json.dumps(output_data, indent=2))
-        else:
-            # Table format
-            click.echo(f"\nItems in '{watchlist_name}' ({len(items)} total):\n")
-            click.echo(f"{'#':<4} {'Title':<40} {'Year':<6} {'Type':<6}")
-            click.echo("-" * 58)
-            for item in items:
-                rank = item.get("rank", "")
-                rank_str = str(rank) if rank else ""
+        # Table format
+        click.echo(f"\nItems in '{watchlist_name}' ({len(items)} total):\n")
+        click.echo(f"{'#':<4} {'Title':<40} {'Year':<6} {'Type':<6}")
+        click.echo("-" * 58)
+        for item in items:
+            rank = item.get("rank", "")
+            rank_str = str(rank) if rank else ""
 
-                trakt_item = item.get("trakt_item", {})
-                title = trakt_item.get("title", "Unknown")[:39]
-                year = trakt_item.get("year", "")
-                year_str = str(year) if year else ""
-                media_type = trakt_item.get("media_type", "unknown")[:5]
+            trakt_item = item.get("trakt_item", {})
+            title = trakt_item.get("title", "Unknown")[:39]
+            year = trakt_item.get("year", "")
+            year_str = str(year) if year else ""
+            media_type = trakt_item.get("media_type", "unknown")[:5]
 
-                click.echo(f"{rank_str:<4} {title:<40} {year_str:<6} {media_type:<6}")
-
-        if output:
-            with output.open("w", encoding="utf-8") as f:
-                json.dump({"watchlist": watchlist_name, "items": items}, f, indent=2)
-            click.echo(f"\nWatchlist contents saved to: {output}")
+            click.echo(f"{rank_str:<4} {title:<40} {year_str:<6} {media_type:<6}")
 
     except ValueError as e:
         # Handle credential validation errors with user-friendly message
@@ -853,44 +900,48 @@ def test_ffprobe(app_config, video_file):
     """Test FFprobe functionality on a specific video file."""
     try:
         setup_logging(0)
-        
-        # Import FFprobe client  
-        from src.ffmpeg.ffprobe_client import FFprobeClient
+
+        # Import FFprobe client
         from src.core.models.inspection import VideoFile
-        
+        from src.ffmpeg.ffprobe_client import FFprobeClient
+
         # Test FFprobe installation
         ffprobe = FFprobeClient(app_config.ffmpeg)
         install_results = ffprobe.test_installation()
-        
+
         click.echo("FFprobe Installation Test")
         click.echo("=" * 40)
-        
+
         click.echo(f"FFprobe Path: {install_results['ffprobe_path'] or 'Not found'}")
         click.echo(f"FFprobe Available: {'✓' if install_results['ffprobe_available'] else '✗'}")
         click.echo(f"JSON Output: {'✓' if install_results['can_parse_json'] else '✗'}")
-        
+
         if install_results["version_info"]:
             click.echo(f"Version: {install_results['version_info']}")
-        
+
         if not install_results["ffprobe_available"]:
             click.echo("\nFFprobe is not available.")
             sys.exit(1)
-        
+
         # Test probe on actual file
         click.echo(f"\nProbing file: {video_file}")
         click.echo("=" * 40)
-        
+
         video_file_obj = VideoFile(path=video_file)
         probe_result = ffprobe.probe_file(video_file_obj)
-        
+
         if probe_result.success:
             click.echo("✓ Probe successful")
-            click.echo(f"Duration: {probe_result.duration}s" if probe_result.duration else "Duration: Unknown")
+            click.echo(
+                f"Duration: {probe_result.duration}s"
+                if probe_result.duration
+                else "Duration: Unknown"
+            )
             click.echo(f"File size: {probe_result.file_size} bytes")
             click.echo(f"Video streams: {len(probe_result.video_streams)}")
             click.echo(f"Audio streams: {len(probe_result.audio_streams)}")
             click.echo(f"Valid video file: {'✓' if probe_result.is_valid_video_file else '✗'}")
-            
+
             if probe_result.streams:
                 click.echo("\nStreams:")
                 for stream in probe_result.streams:
@@ -900,7 +951,7 @@ def test_ffprobe(app_config, video_file):
                     if stream.width and stream.height:
                         stream_info += f" {stream.width}x{stream.height}"
                     click.echo(stream_info)
-            
+
             if probe_result.format_info:
                 click.echo(f"\nFormat: {probe_result.format_info.format_name}")
                 if probe_result.format_info.format_long_name:
@@ -909,9 +960,9 @@ def test_ffprobe(app_config, video_file):
             click.echo("✗ Probe failed")
             click.echo(f"Error: {probe_result.error_message}")
             sys.exit(1)
-        
+
         click.echo("\nFFprobe test completed successfully! ✓")
-        
+
     except Exception as e:
         logger.exception("FFprobe test command failed")
         click.echo(f"Error: {e}", err=True)
@@ -1122,60 +1173,68 @@ def show_config(all_configs, debug, config):
 )
 def db_history(config, directory, limit, output_format):
     """Show scan history from database.
-    
+
     Display previous scan summaries stored in the database.
-    
+
     Examples:
-    
+
     \b
     # Show last 10 scans
     corrupt-video-inspector db-history
-    
+
     \b
     # Show scans for specific directory
     corrupt-video-inspector db-history --directory /path/to/videos
-    
+
     \b
     # Show results in JSON format
     corrupt-video-inspector db-history --format json
     """
     try:
         app_config = load_config(config_path=config)
-        
+
         if not app_config.database.enabled:
             click.echo("Database is not enabled in configuration", err=True)
             sys.exit(1)
-            
+
         from src.output import OutputFormatter
+
         formatter = OutputFormatter(app_config)
-        
+
         summaries = formatter.get_scan_history(directory, limit)
-        
+
         if not summaries:
             location = f" in {directory}" if directory else ""
             click.echo(f"No scan history found{location}")
             return
-            
+
         if output_format == "json":
             output_data = [summary.model_dump() for summary in summaries]
             click.echo(json.dumps(output_data, indent=2))
         else:
             # Table format
             click.echo(f"\nScan History ({len(summaries)} results):\n")
-            click.echo(f"{'Directory':<40} {'Mode':<8} {'Files':<8} {'Corrupt':<8} {'Time':<12} {'Date'}")
+            click.echo(
+                f"{'Directory':<40} {'Mode':<8} {'Files':<8} {'Corrupt':<8} {'Time':<12} {'Date'}"
+            )
             click.echo("-" * 90)
-            
+
             for summary in summaries:
                 from datetime import datetime
+
                 date_str = datetime.fromtimestamp(summary.started_at).strftime("%Y-%m-%d %H:%M")
-                directory_str = str(summary.directory)[-MAX_DIRECTORY_DISPLAY_LENGTH:] if len(str(summary.directory)) > MAX_DIRECTORY_DISPLAY_LENGTH else str(summary.directory)
-                
+                directory_str = (
+                    str(summary.directory)[-MAX_DIRECTORY_DISPLAY_LENGTH:]
+                    if len(str(summary.directory)) > MAX_DIRECTORY_DISPLAY_LENGTH
+                    else str(summary.directory)
+                )
+
                 click.echo(
                     f"{directory_str:<40} {summary.scan_mode.value:<8} "
                     f"{summary.processed_files:<8} {summary.corrupt_files:<8} "
                     f"{summary.scan_time:<12.1f} {date_str}"
                 )
-                
+
     except Exception as e:
         logger.exception("Database history command failed")
         click.echo(f"Error: {e}", err=True)
@@ -1186,22 +1245,23 @@ def db_history(config, directory, limit, output_format):
 @global_options
 def db_stats(config):
     """Show database statistics.
-    
+
     Display information about the database including number of scans,
     file counts, and database size.
     """
     try:
         app_config = load_config(config_path=config)
-        
+
         from src.output import OutputFormatter
+
         formatter = OutputFormatter(app_config)
-        
+
         stats = formatter.get_database_stats()
-        
+
         if not stats.get("enabled"):
             click.echo("Database is not enabled in configuration", err=True)
             sys.exit(1)
-            
+
         click.echo("\nDatabase Statistics:")
         click.echo("=" * 20)
         click.echo(f"Database Path: {stats['database_path']}")
@@ -1212,7 +1272,7 @@ def db_stats(config):
         click.echo(f"Total File Results: {stats['total_results']}")
         click.echo(f"Corrupt Files Found: {stats['corrupt_files']}")
         click.echo(f"Healthy Files: {stats['healthy_files']}")
-        
+
     except Exception as e:
         logger.exception("Database stats command failed")
         click.echo(f"Error: {e}", err=True)
@@ -1226,6 +1286,404 @@ def main_command(ctx):
     """Backward compatibility alias for scan command."""
     click.echo("Note: 'main_command' is deprecated. Use 'scan' instead.", err=True)
     ctx.invoke(scan)
+
+
+# Database command group
+@cli.group()
+@click.pass_context
+def database(ctx):
+    """Database operations for scan results.
+
+    Manage persistent storage of scan results in SQLite database.
+    Requires database to be enabled in configuration.
+    """
+    # If no arguments are provided, show the help for the database group
+    if ctx.args == []:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--directory",
+    "-d",
+    help="Filter by directory path",
+)
+@click.option(
+    "--corrupt/--healthy/--all",
+    default=None,
+    help="Filter by corruption status (default: all)",
+)
+@click.option(
+    "--scan-mode",
+    type=click.Choice(["quick", "deep", "hybrid"], case_sensitive=False),
+    help="Filter by scan mode",
+)
+@click.option(
+    "--min-confidence",
+    type=click.FloatRange(0.0, 1.0),
+    help="Minimum confidence level (0.0-1.0)",
+)
+@click.option(
+    "--since",
+    help="Show results since date (e.g., '2024-01-01', '7 days ago')",
+)
+@click.option(
+    "--limit",
+    type=click.IntRange(1, 10000),
+    default=100,
+    help="Maximum number of results to show",
+    show_default=True,
+)
+@click.option(
+    "--output",
+    "-o",
+    type=PathType(),
+    help="Save query results to file (JSON format)",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["table", "json", "csv"], case_sensitive=False),
+    default="table",
+    help="Output format",
+    show_default=True,
+)
+@click.pass_context
+def query(
+    ctx,
+    directory,
+    corrupt,
+    scan_mode,
+    min_confidence,
+    since,
+    limit,
+    output,
+    output_format,
+    config,
+):
+    """Query scan results from database.
+
+    Search and filter scan results stored in the database with various criteria.
+
+    Examples:
+
+    \b
+    # Show all corrupt files
+    corrupt-video-inspector database query --corrupt
+
+    \b
+    # Show files scanned in the last week
+    corrupt-video-inspector database query --since "7 days ago"
+
+    \b
+    # Show high-confidence corrupt files
+    corrupt-video-inspector database query --corrupt --min-confidence 0.8
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        if not app_config.database.enabled:
+            click.echo("Database is not enabled in configuration.", err=True)
+            sys.exit(1)
+
+        # Import database components
+        from src.database.models import DatabaseQueryFilter
+        from src.database.service import DatabaseService
+
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        # Parse since date if provided
+        since_timestamp = None
+        if since:
+            import time
+            from datetime import datetime
+
+            # Simple parsing for common formats
+            if "days ago" in since:
+                days = int(since.split()[0])
+                since_timestamp = time.time() - (days * 24 * 60 * 60)
+            elif "weeks ago" in since:
+                weeks = int(since.split()[0])
+                since_timestamp = time.time() - (weeks * 7 * 24 * 60 * 60)
+            else:
+                # Try parsing as date
+                try:
+                    dt = datetime.fromisoformat(since)
+                    since_timestamp = dt.timestamp()
+                except ValueError:
+                    click.echo(f"Could not parse date: {since}", err=True)
+                    sys.exit(1)
+
+        # Build query filter
+        filter_opts = DatabaseQueryFilter(
+            directory=directory,
+            is_corrupt=corrupt if corrupt is not None else None,
+            scan_mode=scan_mode,
+            min_confidence=min_confidence,
+            since_date=since_timestamp,
+            limit=limit,
+        )
+
+        # Execute query
+        results = db_service.query_results(filter_opts)
+
+        if not results:
+            click.echo("No results found matching the criteria.")
+            return
+
+        # Output results
+        if output_format == "json":
+            result_data = [result.model_dump() for result in results]
+            if output:
+                with output.open("w", encoding="utf-8") as f:
+                    json.dump(result_data, f, indent=2)
+                click.echo(f"Results saved to {output}")
+            else:
+                click.echo(json.dumps(result_data, indent=2))
+
+        elif output_format == "csv":
+            import csv as csv_module
+
+            if output:
+                with output.open("w", newline="", encoding="utf-8") as f:
+                    if results:
+                        writer = csv_module.DictWriter(f, fieldnames=results[0].model_dump().keys())
+                        writer.writeheader()
+                        for result in results:
+                            writer.writerow(result.model_dump())
+                click.echo(f"Results saved to {output}")
+            else:
+                # Output to stdout
+                output_str = io.StringIO()
+                if results:
+                    writer = csv_module.DictWriter(
+                        output_str, fieldnames=results[0].model_dump().keys()
+                    )
+                    writer.writeheader()
+                    for result in results:
+                        writer.writerow(result.model_dump())
+                click.echo(output_str.getvalue())
+
+        else:  # table format
+            click.echo(f"\nFound {len(results)} results:\n")
+            click.echo(
+                f"{'Filename':<50} {'Status':<10} {'Confidence':<12} {'Size (MB)':<10} {'Scan Date':<12}"
+            )
+            click.echo("-" * 100)
+
+            for result in results:
+                filename = result.filename
+                if len(filename) > 47:
+                    filename = "..." + filename[-44:]
+
+                status = result.status
+                confidence = f"{result.confidence:.2f}"
+                size_mb = f"{result.file_size / (1024*1024):.1f}"
+
+                from datetime import datetime
+
+                scan_date = datetime.fromtimestamp(result.created_at).strftime("%Y-%m-%d")
+
+                click.echo(
+                    f"{filename:<50} {status:<10} {confidence:<12} {size_mb:<10} {scan_date:<12}"
+                )
+
+            if output:
+                result_data = [result.model_dump() for result in results]
+                with output.open("w", encoding="utf-8") as f:
+                    json.dump(result_data, f, indent=2)
+                click.echo(f"\nResults also saved to {output}")
+
+    except Exception as e:
+        logger.exception("Database query failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.pass_context
+def stats(ctx, config):
+    """Show database statistics.
+
+    Display information about database contents, including total scans,
+    files, corruption rates, and database size.
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        if not app_config.database.enabled:
+            click.echo("Database is not enabled in configuration.", err=True)
+            sys.exit(1)
+
+        # Import database components
+        from src.database.service import DatabaseService
+
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        # Get statistics
+        stats = db_service.get_database_stats()
+
+        click.echo("Database Statistics")
+        click.echo("=" * 30)
+        click.echo(f"Database Path: {app_config.database.path}")
+        click.echo(f"Database Size: {stats.database_size_bytes / (1024*1024):.1f} MB")
+        click.echo(f"Total Scans: {stats.total_scans}")
+        click.echo(f"Total Files: {stats.total_files}")
+        click.echo(f"Corrupt Files: {stats.corrupt_files}")
+        click.echo(f"Healthy Files: {stats.healthy_files}")
+        click.echo(f"Corruption Rate: {stats.corruption_rate:.1f}%")
+
+        if stats.oldest_scan_date:
+            click.echo(f"Oldest Scan: {stats.oldest_scan_date.strftime('%Y-%m-%d %H:%M:%S')}")
+        if stats.newest_scan_date:
+            click.echo(f"Newest Scan: {stats.newest_scan_date.strftime('%Y-%m-%d %H:%M:%S')}")
+
+    except Exception as e:
+        logger.exception("Database stats failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--days",
+    type=click.IntRange(1, 365),
+    required=True,
+    help="Delete scans older than this many days",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be deleted without actually deleting",
+)
+@click.pass_context
+def cleanup(ctx, days, dry_run, config):
+    """Clean up old scan records.
+
+    Remove scans and their results that are older than the specified number of days.
+
+    Examples:
+
+    \b
+    # Preview cleanup of scans older than 30 days
+    corrupt-video-inspector database cleanup --days 30 --dry-run
+
+    \b
+    # Actually clean up old scans
+    corrupt-video-inspector database cleanup --days 30
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        if not app_config.database.enabled:
+            click.echo("Database is not enabled in configuration.", err=True)
+            sys.exit(1)
+
+        # Import database components
+        from src.database.service import DatabaseService
+
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        if dry_run:
+            # Show what would be deleted
+            import time
+
+            cutoff_time = time.time() - (days * 24 * 60 * 60)
+            from datetime import datetime
+
+            cutoff_date = datetime.fromtimestamp(cutoff_time)
+
+            click.echo(
+                f"DRY RUN: Would delete scans older than {cutoff_date.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+
+            # Get count of scans that would be deleted
+            with db_service._get_connection() as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT COUNT(*) as count FROM scans WHERE started_at < ?
+                """,
+                    (cutoff_time,),
+                )
+                count = cursor.fetchone()["count"]
+
+            click.echo(f"Would delete {count} scans")
+        else:
+            # Actually perform cleanup
+            deleted_count = db_service.cleanup_old_scans(days)
+            click.echo(f"Deleted {deleted_count} old scans")
+
+            if deleted_count > 0:
+                # Vacuum database to reclaim space
+                db_service.vacuum_database()
+                click.echo("Database optimized")
+
+    except Exception as e:
+        logger.exception("Database cleanup failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--backup-path",
+    type=PathType(),
+    required=True,
+    help="Path for the backup file",
+)
+@click.pass_context
+def backup(ctx, backup_path, config):
+    """Create a database backup.
+
+    Create a complete backup of the scan results database.
+
+    Example:
+
+    \b
+    # Create backup
+    corrupt-video-inspector database backup --backup-path backup.db
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        if not app_config.database.enabled:
+            click.echo("Database is not enabled in configuration.", err=True)
+            sys.exit(1)
+
+        # Import database components
+        from src.database.service import DatabaseService
+
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        # Create backup
+        db_service.backup_database(backup_path)
+        click.echo(f"Database backup created: {backup_path}")
+
+    except Exception as e:
+        logger.exception("Database backup failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

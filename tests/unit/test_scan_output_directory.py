@@ -45,6 +45,8 @@ def config(tmp_path):
     cfg.output = MagicMock()
     cfg.output.default_output_dir = tmp_path / "output"
     cfg.output.default_filename = "scan_results.json"
+    cfg.database = MagicMock()
+    cfg.database.enabled = False
     return cfg
 
 

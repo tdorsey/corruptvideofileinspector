@@ -30,9 +30,16 @@ class MediaType(Enum):
 class VideoFile(BaseModel):
     """Represents a video file with its properties."""
 
+    # Constants for short-hash formatting
+    SHORT_HASH_PREFIX_LEN: ClassVar[int] = 8
+    SHORT_HASH_SUFFIX_LEN: ClassVar[int] = 4
+
     path: Path = Field(..., description="Filesystem path to the video file")
     duration: float = Field(0.0, description="Video duration in seconds (set by scanner)")
     media_type: MediaType = Field(MediaType.MOVIE, description="Type of media content")
+    sha256_hash: str = Field(
+        "", description="SHA-256 hash of the file for identification and integrity"
+    )
 
     @field_validator("path", mode="before")
     @classmethod
@@ -65,6 +72,15 @@ class VideoFile(BaseModel):
     def suffix(self) -> str:
         """Get file extension."""
         return self.path.suffix
+
+    @property
+    def short_hash(self) -> str:
+        """Get shortened SHA-256 hash for logging and display."""
+        if not self.sha256_hash:
+            return "no-hash"
+        if len(self.sha256_hash) >= (self.SHORT_HASH_PREFIX_LEN + self.SHORT_HASH_SUFFIX_LEN):
+            return f"{self.sha256_hash[:self.SHORT_HASH_PREFIX_LEN]}...{self.sha256_hash[-self.SHORT_HASH_SUFFIX_LEN:]}"
+        return self.sha256_hash
 
 
 class MediaInfo(BaseModel):
