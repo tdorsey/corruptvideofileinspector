@@ -168,7 +168,7 @@ class VideoScanner:
 
         Args:
             directory: Directory to search
-            recursive: Whether to search subdirectories  
+            recursive: Whether to search subdirectories
             extensions: Deprecated parameter, kept for compatibility
             progress_callback: Optional callback for progress updates
 
@@ -202,7 +202,7 @@ class VideoScanner:
 
         Args:
             directory: Directory to search
-            recursive: Whether to search subdirectories  
+            recursive: Whether to search subdirectories
             extensions: Deprecated parameter, kept for compatibility
             progress_callback: Optional callback for progress updates
 
@@ -785,9 +785,7 @@ class VideoScanner:
                     ffmpeg_client = FFmpegClient(self.config.ffmpeg)
                     logger.debug("FFmpeg client initialized for content detection")
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to initialize FFmpeg client for content detection: {e}"
-                    )
+                    logger.warning(f"Failed to initialize FFmpeg client for content detection: {e}")
                     logger.warning("Falling back to extension-based detection")
                     local_use_content = False
 

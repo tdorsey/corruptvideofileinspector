@@ -36,6 +36,8 @@ from src.core.watchlist import (
     sync_to_trakt_watchlist,
     test_trakt_authentication,
 )
+from src.database.models import ScanDatabaseModel, ScanResultDatabaseModel
+from src.database.service import DatabaseService
 from src.output import OutputFormatter
 
 logger = logging.getLogger(__name__)
@@ -116,16 +118,15 @@ class ScanHandler(BaseHandler):
         self.scanner = VideoScanner(config)
         self._last_progress_update = 0.0
         self._scan_message_printed: bool = False
-        
+
         # Initialize database service (now mandatory)
         try:
-            from src.database.service import DatabaseService
             self.db_service = DatabaseService(
                 config.database.path, config.database.auto_cleanup_days
             )
             logger.info(f"Database service initialized at {config.database.path}")
-        except Exception as e:
-            logger.error(f"Failed to initialize database service: {e}")
+        except Exception:
+            logger.exception("Failed to initialize database service")
             raise
 
     def run_scan(
@@ -182,7 +183,7 @@ class ScanHandler(BaseHandler):
             )
 
             # Step 4: Store scan results with new schema
-            if summary and hasattr(summary, 'results'):
+            if summary and hasattr(summary, "results"):
                 self._store_scan_results_in_database(summary, video_file_mapping)
 
             # Step 5: Generate output files
@@ -191,6 +192,7 @@ class ScanHandler(BaseHandler):
                     summary=summary,
                     output_file=output_file,
                     pretty_print=pretty_print,
+                    output_format=output_format,
                 )
 
             return summary
@@ -203,30 +205,26 @@ class ScanHandler(BaseHandler):
             return None
 
     def _store_scan_results_in_database(
-        self, 
-        summary: ScanSummary, 
-        video_file_mapping: dict[str, int]
+        self, summary: ScanSummary, video_file_mapping: dict[str, int]
     ) -> None:
         """Store scan results using new database schema.
-        
+
         Args:
             summary: Scan summary containing results
             video_file_mapping: Maps file paths to video_file_ids
         """
         try:
-            from src.database.models import ScanDatabaseModel, ScanResultDatabaseModel
-            
             # Store the scan metadata
             scan_model = ScanDatabaseModel.from_scan_summary(summary)
             scan_id = self.db_service.store_scan(scan_model)
-            
+
             # Prepare scan results for new schema
             scan_results = []
-            if hasattr(summary, 'results') and summary.results:
+            if hasattr(summary, "results") and summary.results:
                 for result in summary.results:
                     file_path_str = str(result.video_file.path)
                     video_file_id = video_file_mapping.get(file_path_str)
-                    
+
                     if video_file_id is not None:
                         scan_result = ScanResultDatabaseModel.from_scan_result(
                             result, scan_id, video_file_id
@@ -234,14 +232,14 @@ class ScanHandler(BaseHandler):
                         scan_results.append(scan_result)
                     else:
                         logger.warning(f"No video_file_id found for {file_path_str}")
-            
+
             # Store scan results
             if scan_results:
                 self.db_service.store_scan_results(scan_id, scan_results)
                 logger.info(f"Stored {len(scan_results)} scan results in database.")
-            
-        except Exception as e:
-            logger.error(f"Failed to store scan results in database: {e}")
+
+        except Exception:
+            logger.exception("Failed to store scan results in database")
 
     def _show_scan_info(self, directory: Path, scan_mode: ScanMode, recursive: bool) -> None:
         """Show initial scan information."""

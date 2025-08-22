@@ -100,7 +100,13 @@ class OutputFormatter:
             if scan_results:
                 db_results = []
                 for result in scan_results:
-                    db_result = ScanResultDatabaseModel.from_scan_result(result, scan_id)
+                    # First store the video file to get its ID
+                    video_file_id = self._database_service.store_video_file(
+                        result.video_file.path, result.video_file.size
+                    )
+                    db_result = ScanResultDatabaseModel.from_scan_result(
+                        result, scan_id, video_file_id
+                    )
                     db_results.append(db_result)
 
                 self._database_service.store_scan_results(scan_id, db_results)
@@ -237,15 +243,57 @@ class OutputFormatter:
 
         logger.info(f"File list written to {output_file}")
 
+    def write_file_list(
+        self,
+        video_files: list[Any],
+        directory: Path,
+        output_file: Path,
+        format: str = "json",
+    ) -> None:
+        """Write file list to output file in specified format.
+
+        Args:
+            video_files: List of video files to write
+            directory: Base directory for relative paths
+            output_file: Path to output file
+            format: Output format (json, csv, text)
+        """
+        if format.lower() == "json":
+            self._write_json_file_list(video_files, directory, output_file)
+        elif format.lower() == "csv":
+            self._write_csv_file_list(video_files, directory, output_file)
+        else:  # default to text
+            self._write_text_file_list(video_files, directory, output_file)
+
     def get_scan_history(
         self, directory: Path | None = None, limit: int | None = None
     ) -> list[ScanSummary]:
         """Get scan history from database."""
-        if not self.db_manager:
+        if not self._database_service:
             logger.warning("Database not enabled, cannot retrieve scan history")
             return []
 
-        return self.db_manager.get_scan_summaries(directory, limit)
+        scans_data: list[ScanSummary] = []
+        # Convert database models to scan summaries
+        db_scans = self._database_service.get_recent_scans(limit or 100)
+        for db_scan in db_scans:
+            if directory and not db_scan.directory.startswith(str(directory)):
+                continue
+            # Convert ScanDatabaseModel to ScanSummary
+            # This is a simplified conversion - you may need a proper converter
+            scan_summary = ScanSummary(
+                directory=Path(db_scan.directory),
+                total_files=db_scan.total_files,
+                processed_files=db_scan.processed_files,
+                corrupt_files=db_scan.corrupt_files,
+                healthy_files=db_scan.healthy_files,
+                scan_mode=ScanMode(db_scan.scan_mode),
+                scan_time=db_scan.scan_time,
+                started_at=db_scan.started_at,
+                completed_at=db_scan.completed_at,
+            )
+            scans_data.append(scan_summary)
+        return scans_data
 
     def get_scan_results_from_db(
         self,
@@ -254,25 +302,69 @@ class OutputFormatter:
         is_corrupt: bool | None = None,
     ) -> list[ScanResult]:
         """Get scan results from database."""
-        if not self.db_manager:
+        if not self._database_service:
             logger.warning("Database not enabled, cannot retrieve scan results")
             return []
 
-        return self.db_manager.get_scan_results(summary_id, directory, is_corrupt)
+        if summary_id:
+            # Get results for a specific scan
+            db_results = self._database_service.get_scan_results(summary_id)
+        else:
+            # Use query_results method for filtering
+            from src.database.models import DatabaseQueryFilter
+
+            filter_opts = DatabaseQueryFilter(
+                directory=directory,
+                is_corrupt=is_corrupt,
+            )
+            db_results = self._database_service.query_results(filter_opts)
+
+        # Convert ScanResultDatabaseModel objects to ScanResult objects
+        results_data: list[ScanResult] = []
+        for db_result in db_results:
+            # This is a simplified conversion - you may need a proper converter
+            scan_result = db_result.to_scan_result()
+            results_data.append(scan_result)
+
+        return results_data
 
     def get_incomplete_scan(self, directory: Path) -> ScanSummary | None:
         """Get incomplete scan for resume functionality."""
-        if not self.db_manager:
+        if not self._database_service:
             logger.warning("Database not enabled, cannot check for incomplete scans")
             return None
 
-        return self.db_manager.get_latest_incomplete_scan(directory)
+        # Get recent scans and find incomplete ones for the directory
+        recent_scans = self._database_service.get_recent_scans(limit=10)
+        for db_scan in recent_scans:
+            if db_scan.directory == str(directory) and db_scan.completed_at is None:
+                # Convert to ScanSummary
+                return ScanSummary(
+                    directory=Path(db_scan.directory),
+                    total_files=db_scan.total_files,
+                    processed_files=db_scan.processed_files,
+                    corrupt_files=db_scan.corrupt_files,
+                    healthy_files=db_scan.healthy_files,
+                    scan_mode=ScanMode(db_scan.scan_mode),
+                    scan_time=db_scan.scan_time,
+                    started_at=db_scan.started_at,
+                    completed_at=db_scan.completed_at,
+                )
+
+        return None
 
     def get_database_stats(self) -> dict[str, Any]:
         """Get database statistics."""
-        if not self.db_manager:
+        if not self._database_service:
             return {"enabled": False, "message": "Database not enabled"}
 
-        stats = self.db_manager.get_database_stats()
-        stats["enabled"] = True
+        db_stats = self._database_service.get_database_stats()
+        stats: dict[str, Any] = {
+            "enabled": True,
+            "total_summaries": db_stats.total_scans,
+            "total_results": db_stats.total_files,
+            "corrupt_files": db_stats.corrupt_files,
+            "healthy_files": db_stats.healthy_files,
+            "database_size_mb": db_stats.database_size_bytes / (1024 * 1024),
+        }
         return stats

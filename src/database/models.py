@@ -1,11 +1,10 @@
 """Database models for scan results persistence."""
 
 import json
-import time
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -16,12 +15,14 @@ from src.core.models.scanning import ScanMode, ScanResult, ScanSummary
 # New Probe-related enums and models
 class ProbeType(str, Enum):
     """Type of probe operation."""
+
     CONTAINER = "container"
     STREAM = "stream"
 
 
 class ProbeStatus(str, Enum):
     """Status of probe operation."""
+
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"
@@ -30,89 +31,96 @@ class ProbeStatus(str, Enum):
 
 class ProbeResultBase(BaseModel):
     """Base class for all probe results."""
-    confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+
+    confidence: float | None = Field(None, ge=0.0, le=1.0)
     timestamp: datetime = Field(default_factory=datetime.now)
-    probe_duration_ms: Optional[int] = None
+    probe_duration_ms: int | None = None
 
 
 class ContainerProbeResult(ProbeResultBase):
     """Container-level probe results (format, metadata, overall file health)."""
-    format_name: Optional[str] = None
-    duration: Optional[float] = None
-    size: Optional[int] = None
-    bitrate: Optional[int] = None
+
+    format_name: str | None = None
+    duration: float | None = None
+    size: int | None = None
+    bitrate: int | None = None
     streams_count: int = 0
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    container_errors: List[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    container_errors: list[str] = Field(default_factory=list)
     is_video_file: bool = False  # Determined by successful container probe
 
 
 class StreamProbeResult(ProbeResultBase):
     """Individual stream analysis results."""
+
     stream_index: int
-    codec_name: Optional[str] = None
-    codec_type: Optional[str] = None
-    width: Optional[int] = None
-    height: Optional[int] = None
-    frame_rate: Optional[str] = None
-    duration: Optional[float] = None
-    bit_rate: Optional[int] = None
-    stream_errors: List[str] = Field(default_factory=list)
+    codec_name: str | None = None
+    codec_type: str | None = None
+    width: int | None = None
+    height: int | None = None
+    frame_rate: str | None = None
+    duration: float | None = None
+    bit_rate: int | None = None
+    stream_errors: list[str] = Field(default_factory=list)
 
 
 class VideoFileModel(BaseModel):
     """Central video file entity."""
-    id: Optional[int] = None
+
+    id: int | None = None
     file_path: str = Field(..., description="Full path to video file")
     file_name: str = Field(..., description="Filename without path")
-    file_size: Optional[int] = Field(None, description="File size in bytes")
-    file_hash: Optional[str] = Field(None, description="File hash for integrity")
+    file_size: int | None = Field(None, description="File size in bytes")
+    file_hash: str | None = Field(None, description="File hash for integrity")
     first_seen: datetime = Field(default_factory=datetime.now)
-    last_modified: Optional[datetime] = None
+    last_modified: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-    
+
     class Config:
         from_attributes = True
 
 
 class ProbeModel(BaseModel):
     """Main probe execution model."""
-    id: Optional[int] = None
+
+    id: int | None = None
     video_file_id: int
     probe_type: ProbeType
     status: ProbeStatus = ProbeStatus.PENDING
     started_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     success: bool = False
-    error_message: Optional[str] = None
-    triggered_by_scan_id: Optional[int] = None  # Optional link to triggering scan
+    error_message: str | None = None
+    triggered_by_scan_id: int | None = None  # Optional link to triggering scan
     created_at: datetime = Field(default_factory=datetime.now)
-    
+
     # Related models
-    video_file: Optional[VideoFileModel] = None
-    results: List["ProbeResultModel"] = Field(default_factory=list)
-    
+    video_file: VideoFileModel | None = None
+    results: list["ProbeResultModel"] = Field(default_factory=list)
+
     class Config:
         from_attributes = True
 
 
 class ProbeResultModel(BaseModel):
     """Individual probe result data."""
-    id: Optional[int] = None
+
+    id: int | None = None
     probe_id: int
     result_type: str  # 'container_info', 'stream_info'
-    confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+    confidence: float | None = Field(None, ge=0.0, le=1.0)
     data_json: str  # Serialized probe-specific data
     created_at: datetime = Field(default_factory=datetime.now)
-    
+
     class Config:
         from_attributes = True
-    
+
     @property
-    def data(self) -> Dict[str, Any]:
+    def data(self) -> dict[str, Any]:
         """Deserialize JSON data."""
-        return json.loads(self.data_json)
+        data_dict: dict[str, Any] = json.loads(self.data_json)
+        return data_dict
 
 
 class ScanDatabaseModel(BaseModel):
@@ -177,27 +185,31 @@ class ScanDatabaseModel(BaseModel):
 
 class ScanResultDatabaseModel(BaseModel):
     """Database model for individual file result within a scan.
-    
+
     Maps to the 'scan_results' table in SQLite database.
     Links scans to video files with corruption status.
     """
 
-    id: Optional[int] = Field(None, description="Primary key (auto-generated)")
+    id: int | None = Field(None, description="Primary key (auto-generated)")
     scan_id: int = Field(..., description="Foreign key to scans table")
     video_file_id: int = Field(..., description="Foreign key to video_files table")
     is_corrupt: bool = Field(default=False, description="Whether file is corrupt")
-    confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Confidence level")
-    scan_time_ms: Optional[int] = Field(None, description="Time taken to scan file in ms")
-    created_at: datetime = Field(default_factory=datetime.now, description="When record was created")
-    
+    confidence: float | None = Field(None, ge=0.0, le=1.0, description="Confidence level")
+    scan_time_ms: int | None = Field(None, description="Time taken to scan file in ms")
+    created_at: datetime = Field(
+        default_factory=datetime.now, description="When record was created"
+    )
+
     # Related models (populated by joins)
-    video_file: Optional[VideoFileModel] = None
-    
+    video_file: VideoFileModel | None = None
+
     class Config:
         from_attributes = True
 
     @classmethod
-    def from_scan_result(cls, result: ScanResult, scan_id: int, video_file_id: int) -> "ScanResultDatabaseModel":
+    def from_scan_result(
+        cls, result: ScanResult, scan_id: int, video_file_id: int
+    ) -> "ScanResultDatabaseModel":
         """Create database model from ScanResult.
 
         Args:
@@ -228,7 +240,7 @@ class ScanResultDatabaseModel(BaseModel):
         """
         if not self.video_file:
             raise ValueError("video_file relationship must be populated to convert to ScanResult")
-            
+
         video_file = VideoFile(path=Path(self.video_file.file_path))
 
         return ScanResult(
@@ -243,29 +255,29 @@ class ScanResultDatabaseModel(BaseModel):
 class DatabaseQueryFilter(BaseModel):
     """Filter options for database queries."""
 
-    directory: Optional[str] = Field(None, description="Filter by directory")
-    is_corrupt: Optional[bool] = Field(None, description="Filter by corruption status")
-    scan_mode: Optional[str] = Field(None, description="Filter by scan mode")
-    min_confidence: Optional[float] = Field(None, description="Minimum confidence level")
-    max_confidence: Optional[float] = Field(None, description="Maximum confidence level")
-    min_file_size: Optional[int] = Field(None, description="Minimum file size")
-    max_file_size: Optional[int] = Field(None, description="Maximum file size")
-    since_date: Optional[float] = Field(None, description="Filter results since timestamp")
-    until_date: Optional[float] = Field(None, description="Filter results until timestamp")
-    filename_pattern: Optional[str] = Field(None, description="SQL LIKE pattern for filename")
-    limit: Optional[int] = Field(None, description="Maximum number of results")
+    directory: str | None = Field(None, description="Filter by directory")
+    is_corrupt: bool | None = Field(None, description="Filter by corruption status")
+    scan_mode: str | None = Field(None, description="Filter by scan mode")
+    min_confidence: float | None = Field(None, description="Minimum confidence level")
+    max_confidence: float | None = Field(None, description="Maximum confidence level")
+    min_file_size: int | None = Field(None, description="Minimum file size")
+    max_file_size: int | None = Field(None, description="Maximum file size")
+    since_date: float | None = Field(None, description="Filter results since timestamp")
+    until_date: float | None = Field(None, description="Filter results until timestamp")
+    filename_pattern: str | None = Field(None, description="SQL LIKE pattern for filename")
+    limit: int | None = Field(None, description="Maximum number of results")
     offset: int = Field(0, description="Number of results to skip")
     video_files_only: bool = Field(False, description="Only include files confirmed as video files")
     include_probe_data: bool = Field(False, description="Include probe results in output")
 
-    def to_where_clause(self) -> tuple[str, Dict[str, Any]]:
+    def to_where_clause(self) -> tuple[str, dict[str, Any]]:
         """Generate SQL WHERE clause and parameters.
 
         Returns:
             Tuple of (where_clause, parameters)
         """
         conditions = []
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
 
         if self.directory is not None:
             conditions.append("s.directory = :directory")
@@ -308,14 +320,16 @@ class DatabaseQueryFilter(BaseModel):
             params["filename_pattern"] = self.filename_pattern
 
         if self.video_files_only:
-            conditions.append("""
+            conditions.append(
+                """
                 EXISTS (
-                    SELECT 1 FROM probes p 
-                    WHERE p.video_file_id = vf.id 
-                    AND p.probe_type = 'container' 
+                    SELECT 1 FROM probes p
+                    WHERE p.video_file_id = vf.id
+                    AND p.probe_type = 'container'
                     AND p.success = true
                 )
-            """)
+            """
+            )
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         return where_clause, params
@@ -331,8 +345,8 @@ class DatabaseStats(BaseModel):
     healthy_files: int = Field(..., description="Total number of healthy files")
     total_probes: int = Field(..., description="Total number of probe operations")
     successful_probes: int = Field(..., description="Number of successful probes")
-    oldest_scan: Optional[float] = Field(None, description="Timestamp of oldest scan")
-    newest_scan: Optional[float] = Field(None, description="Timestamp of newest scan")
+    oldest_scan: float | None = Field(None, description="Timestamp of oldest scan")
+    newest_scan: float | None = Field(None, description="Timestamp of newest scan")
     database_size_bytes: int = Field(..., description="Database file size in bytes")
 
     @property
@@ -350,14 +364,14 @@ class DatabaseStats(BaseModel):
         return (self.successful_probes / self.total_probes) * 100.0
 
     @property
-    def oldest_scan_date(self) -> Optional[datetime]:
+    def oldest_scan_date(self) -> datetime | None:
         """Get oldest scan as datetime object."""
         if self.oldest_scan is None:
             return None
         return datetime.fromtimestamp(self.oldest_scan)
 
     @property
-    def newest_scan_date(self) -> Optional[datetime]:
+    def newest_scan_date(self) -> datetime | None:
         """Get newest scan as datetime object."""
         if self.newest_scan is None:
             return None

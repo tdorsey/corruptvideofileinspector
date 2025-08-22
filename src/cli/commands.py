@@ -186,16 +186,12 @@ def scan(
     incremental,
     config,
 ):
-    # If no arguments are provided, show the help for the scan subcommand
-    if ctx.args == [] and directory is None:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     Scan a directory for corrupt video files.
 
     Uses FFmpeg to analyze video files and detect corruption. Supports four scan modes:
 
-    \b
+    \\b
     - quick: Fast scan with 1-minute timeout per file
     - deep: Full scan with 15-minute timeout per file
     - hybrid: Quick scan first, then deep scan for suspicious files
@@ -203,37 +199,42 @@ def scan(
 
     Database Integration:
 
-    \b
+    \\b
     - Results are automatically stored in SQLite database
     - Use --incremental to skip files recently scanned and found healthy
     - Database is automatically created on first run
 
     File Output:
 
-    \b
-<<<<<<< HEAD
+    \\b
     - Use --output to save results to a JSON file
     - Supports --format json (other formats available: yaml, csv)
     - Use --pretty for formatted JSON output
-=======
+
+    Examples:
+
+    \\b
     # Basic hybrid scan
     corrupt-video-inspector scan /path/to/videos
 
-    \b
+    \\b
     # Quick scan with automatic database storage
     corrupt-video-inspector scan --mode quick /path/to/videos
 
-    \b
+    \\b
     # Incremental scan (skip recently healthy files)
     corrupt-video-inspector scan --incremental /path/to/videos
 
-    \b
+    \\b
     # Full scan without timeout (for thorough analysis)
     corrupt-video-inspector scan --mode full /path/to/videos
 
     Note: All files are probed to determine if they are video files (no extension filtering).
->>>>>>> f0f3451 (Phase 3: Remove extension-based filtering, implement probe-based file detection)
     """
+    # If no arguments are provided, show the help for the scan subcommand
+    if ctx.args == [] and directory is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
     try:
         # Load configuration
         app_config = load_config(config_path=config)
@@ -306,17 +307,7 @@ def scan(
     help="Recursively scan subdirectories",
     show_default=True,
 )
-<<<<<<< HEAD
-@click.option("--extensions", multiple=True, help="Video file extensions to include")
-@click.option(
-    "--output",
-    "-o",
-    type=click.Path(path_type=Path, dir_okay=False),
-    help="Output file path for file list (must be a file, not a directory)",
-)
-=======
 @click.option("--output", "-o", type=PathType(), help="Output file path for file list")
->>>>>>> f0f3451 (Phase 3: Remove extension-based filtering, implement probe-based file detection)
 @click.option(
     "--format",
     "output_format",
@@ -334,10 +325,6 @@ def list_files(
     output_format,
     config,
 ):
-    # If no arguments are provided, show the help for the list-files subcommand
-    if ctx.args == [] and directory is None:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     List all video files in a directory without scanning.
 
@@ -346,27 +333,19 @@ def list_files(
 
     Examples:
 
-    \b
+    \\b
     # List all video files in directory (probe-based detection)
     corrupt-video-inspector list-files /path/to/videos
 
-    \b
-<<<<<<< HEAD
-    # List specific extensions only
-    corrupt-video-inspector list-files --extensions mp4 --extensions mkv /videos
-
-    \b
-    # Save file list to JSON
-    corrupt-video-inspector list-files --output files.json --format json /videos
-
-    \b
-    # Save file list to CSV
-    corrupt-video-inspector list-files --output files.csv --format csv /videos
-=======
+    \\b
     # List files to JSON output
     corrupt-video-inspector list-files --format json /videos
->>>>>>> f0f3451 (Phase 3: Remove extension-based filtering, implement probe-based file detection)
     """
+    # If no arguments are provided, show the help for the list-files subcommand
+    if ctx.args == [] and directory is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
     try:
         # Load configuration
         app_config = load_config(config_path=config)
@@ -612,6 +591,11 @@ def list_watchlists(config):
 
 @trakt.command()
 @global_options
+@click.option(
+    "--watchlist",
+    "-w",
+    help="Watchlist name or slug to view (default: main watchlist)",
+)
 def view(watchlist, config):
     """
     View items in a specific watchlist.
@@ -831,16 +815,17 @@ def auth(username, store, test_only, config):
 @global_options
 @click.pass_context
 def test_ffmpeg(ctx, config):
-    # If no arguments are provided, show the help for the test-ffmpeg subcommand
-    if ctx.args == []:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     Test FFmpeg installation and show diagnostic information.
 
     Validates that FFmpeg is properly installed and accessible,
     showing version information and supported formats.
     """
+    # If no arguments are provided, show the help for the test-ffmpeg subcommand
+    if ctx.args == []:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
     try:
         # Load configuration
         app_config = load_config(config_path=config)
@@ -883,9 +868,12 @@ def test_ffmpeg(ctx, config):
 @cli.command()
 @global_options
 @click.argument("video_file", type=PathType(exists=True))
-def test_ffprobe(app_config, video_file):
+def test_ffprobe(video_file, config):
     """Test FFprobe functionality on a specific video file."""
     try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
         setup_logging(0)
 
         # Import FFprobe client
@@ -989,10 +977,6 @@ def report(
     include_healthy,
     config,
 ):
-    # If no arguments are provided, show the help for the report subcommand
-    if ctx.args == [] and scan_file is None:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
     Generate a detailed report from scan results.
 
@@ -1001,11 +985,15 @@ def report(
 
     Examples:
 
-    \b
+    \\b
     # Generate HTML report
     corrupt-video-inspector report results.json
-
     """
+    # If no arguments are provided, show the help for the report subcommand
+    if ctx.args == [] and scan_file is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
     try:
         # Load configuration
         app_config = load_config(config_path=config) if config else load_config()
@@ -1062,7 +1050,7 @@ def report(
 @click.option("--all-configs", is_flag=True, help="Show all configuration sources and values")
 @click.option("--debug", is_flag=True, help="Enable debug logging to see configuration overrides")
 @click.pass_context
-def show_config(all_configs, debug, config):
+def show_config(ctx, all_configs, debug, config):
     """
     Show current configuration settings.
 
@@ -1461,17 +1449,24 @@ def query(
             click.echo("-" * 100)
 
             for result in results:
-                filename = result.filename
+                # Access filename through video_file relationship if available
+                if hasattr(result, "video_file") and result.video_file:
+                    filename = result.video_file.file_name
+                    file_size = result.video_file.file_size or 0
+                else:
+                    filename = f"File ID: {result.video_file_id}"
+                    file_size = 0
+
                 if len(filename) > 47:
                     filename = "..." + filename[-44:]
 
-                status = result.status
-                confidence = f"{result.confidence:.2f}"
-                size_mb = f"{result.file_size / (1024*1024):.1f}"
+                status = "corrupt" if result.is_corrupt else "clean"
+                confidence = f"{result.confidence:.2f}" if result.confidence else "N/A"
+                size_mb = f"{file_size / (1024*1024):.1f}"
 
                 from datetime import datetime
 
-                scan_date = datetime.fromtimestamp(result.created_at).strftime("%Y-%m-%d")
+                scan_date = result.created_at.strftime("%Y-%m-%d")
 
                 click.echo(
                     f"{filename:<50} {status:<10} {confidence:<12} {size_mb:<10} {scan_date:<12}"
@@ -1501,7 +1496,6 @@ def stats(ctx, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
 
         # Import database components
         from src.database.service import DatabaseService
@@ -1567,7 +1561,6 @@ def cleanup(ctx, days, dry_run, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
 
         # Import database components
         from src.database.service import DatabaseService
@@ -1640,7 +1633,6 @@ def backup(ctx, backup_path, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
 
         # Import database components
         from src.database.service import DatabaseService
@@ -1727,6 +1719,7 @@ def files(ctx, limit, video_files_only, output, config):
         if output:
             # Export to JSON file
             import json
+
             file_data = [
                 {
                     "id": vf.id,
@@ -1739,10 +1732,10 @@ def files(ctx, limit, video_files_only, output, config):
                 }
                 for vf in video_files
             ]
-            
-            with open(output, 'w') as f:
+
+            with output.open("w") as f:
                 json.dump(file_data, f, indent=2)
-            
+
             filter_msg = "confirmed video files" if video_files_only else "files"
             click.echo(f"Exported {len(video_files)} {filter_msg} to {output}")
         else:
@@ -1750,11 +1743,11 @@ def files(ctx, limit, video_files_only, output, config):
             filter_msg = "Confirmed Video Files" if video_files_only else "Files"
             click.echo(f"\n{filter_msg} in Database:")
             click.echo("-" * 80)
-            
+
             for vf in video_files:
                 size_str = f"{vf.file_size:,} bytes" if vf.file_size else "unknown size"
                 click.echo(f"ID: {vf.id:4} | {vf.file_path} ({size_str})")
-            
+
             click.echo(f"\nTotal: {len(video_files)} files")
 
     except Exception as e:

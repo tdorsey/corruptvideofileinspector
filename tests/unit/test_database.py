@@ -2,6 +2,7 @@
 
 import tempfile
 import time
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -38,6 +39,7 @@ class TestDatabaseManager:
             processed_files=10,
             corrupt_files=2,
             healthy_files=8,
+            success_rate=80.0,
             scan_time=120.5,
             deep_scans_needed=1,
             deep_scans_completed=1,
@@ -53,39 +55,21 @@ class TestDatabaseManager:
         return [
             ScanResultDatabaseModel(
                 id=None,
-                summary_id=None,
-                file_path=str(Path("/test/videos/file1.mp4")),
-                file_size=1024000,
+                scan_id=1,
+                video_file_id=1,
                 is_corrupt=False,
-                error_message="",
-                ffmpeg_output="",
-                inspection_time=2.5,
-                scan_mode="quick",
-                needs_deep_scan=False,
-                deep_scan_completed=False,
-                timestamp=time.time() - 100,
-                confidence=0.0,
-                result_data={
-                    "filename": "/test/videos/file1.mp4",
-                },
+                confidence=0.95,
+                scan_time_ms=2500,
+                created_at=datetime.fromtimestamp(time.time() - 100),
             ),
             ScanResultDatabaseModel(
                 id=None,
-                summary_id=None,
-                file_path=str(Path("/test/videos/file2.mp4")),
-                file_size=2048000,
+                scan_id=1,
+                video_file_id=2,
                 is_corrupt=True,
-                error_message="Invalid data found",
-                ffmpeg_output="ERROR: corruption detected",
-                inspection_time=1.8,
-                scan_mode="quick",
-                needs_deep_scan=False,
-                deep_scan_completed=False,
-                timestamp=time.time() - 95,
-                confidence=0.9,
-                result_data={
-                    "filename": "/test/videos/file2.mp4",
-                },
+                confidence=0.80,
+                scan_time_ms=3000,
+                created_at=datetime.fromtimestamp(time.time() - 95),
             ),
         ]
 
