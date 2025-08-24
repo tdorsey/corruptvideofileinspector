@@ -232,7 +232,7 @@ exclude_lines = [
 
 [tool.poetry]
 name = "corrupt-video-inspector"
-version = "0.0.0"  # placeholder, will be replaced by dynamic versioning
+version = "1.0.0"  # placeholder, will be replaced by dynamic versioning
 description = "A Docker-based tool to detect and report corrupt video files using FFmpeg"
 authors = ["tdorsey <tdorsey@users.noreply.github.com>"]
 packages = [
