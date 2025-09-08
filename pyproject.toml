@@ -246,7 +246,7 @@ ruff = "^0.12.9"
 mypy = "^1.17.1"
 types-toml = "^0.10.8.20240310"
 types-pyyaml = "^6.0.12.20250809"
-pytest = "^8.4.1"
+pytest = "^8.4.2"
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
