@@ -63,7 +63,7 @@ The application can be run in Docker containers with configurable user permissio
 
 ```bash
 # Set project directory (required for config file mount)
-export COMPOSE_PROJECT_DIR=/home/runner/work/corruptvideofileinspector/corruptvideofileinspector/docker
+export COMPOSE_PROJECT_DIR=/path/to/corruptvideofileinspector/docker
 
 # Set user/group IDs (optional, defaults to 1000)
 export PUID=1000
