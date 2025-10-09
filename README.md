@@ -40,6 +40,52 @@ corrupt-video-inspector database query --corrupt --since "7 days ago"
 corrupt-video-inspector --help
 ```
 
+### 🐳 Docker Usage
+
+The application can be run in Docker containers with configurable user permissions:
+
+#### Environment Variables
+
+- **PUID** (default: 1000): User ID for the container runtime user
+- **PGID** (default: 1000): Group ID for the container runtime user
+- **COMPOSE_PROJECT_DIR**: Path to the directory containing docker-compose.yml (required for config file mount)
+- **CVI_VIDEO_DIR**: Host path to video directory
+- **CVI_OUTPUT_DIR**: Host path to output directory
+- **CVI_LOG_DIR**: Host path to log directory
+
+#### Prerequisites
+
+- Set `COMPOSE_PROJECT_DIR` to the directory containing docker-compose.yml
+- Ensure `config.yaml` exists at `${COMPOSE_PROJECT_DIR}/config.yaml`
+- Host folders (videos, output, logs) should be owned or writable by the configured PUID/PGID
+
+#### Usage Examples
+
+```bash
+# Set project directory (required for config file mount)
+export COMPOSE_PROJECT_DIR=/path/to/corruptvideofileinspector/docker
+
+# Set user/group IDs (optional, defaults to 1000)
+export PUID=1000
+export PGID=1000
+
+# Set required volume paths
+export CVI_VIDEO_DIR=/path/to/videos
+export CVI_OUTPUT_DIR=/path/to/output
+export CVI_LOG_DIR=/path/to/logs
+
+# Run scan service
+docker compose -f docker/docker-compose.yml up -d --build scan
+
+# Run scan and generate report
+docker compose -f docker/docker-compose.yml up -d --build scan report
+
+# Run with Trakt sync (requires Trakt credentials)
+docker compose -f docker/docker-compose.yml --profile trakt up -d --build scan trakt
+```
+
+For advanced Docker workflows and Trakt integration, see [Docker Trakt Integration](docs/DOCKER_TRAKT.md).
+
 ### 🗄️ Database Support (New!)
 
 Optional SQLite database support enables persistent storage and advanced analysis:
