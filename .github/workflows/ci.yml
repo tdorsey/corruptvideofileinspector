@@ -61,31 +61,95 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const title = context.payload.pull_request.title;
+            const title = context.payload.pull_request.title || '';
             const body = context.payload.pull_request.body || '';
+            const branchName = context.payload.pull_request.head.ref || '';
 
-            // Check for issue reference in title or body
-            const issueRefPattern = /#\d+/;
-            const hasIssueRefInTitle = issueRefPattern.test(title);
-            const hasIssueRefInBody = issueRefPattern.test(body);
+            // Debug output
+            console.log('=== DEBUG: PR Information ===');
+            console.log(`Title: "${title}"`);
+            console.log(`Title length: ${title.length}`);
+            console.log(`Body length: ${body.length}`);
+            console.log(`Branch: "${branchName}"`);
+            
+            // Show first and last 100 chars of body for debugging
+            if (body.length > 0) {
+              console.log(`Body start: "${body.substring(0, 100)}"`);
+              if (body.length > 100) {
+                console.log(`Body end: "${body.substring(body.length - 100)}"`);
+              }
+            } else {
+              console.log('Body is empty or null');
+            }
 
-            if (!hasIssueRefInTitle && !hasIssueRefInBody) {
+            // Check for issue reference in title, body, or branch name
+            const issueRefPattern = /#(\d+)/;
+            const branchIssuePattern = /(?:issue-|fix-|feature-|bug-|hotfix-)(\d+)/i;
+            let foundIssueNumber = null;
+            let foundLocation = null;
+
+            // Try to extract issue number from title
+            let match = title.match(issueRefPattern);
+            if (match) {
+              foundIssueNumber = match[1];
+              foundLocation = 'title';
+              console.log(`✅ Issue reference found in title: #${foundIssueNumber}`);
+            }
+            
+            // Try to extract from body if not found
+            if (!foundIssueNumber && body.length > 0) {
+              match = body.match(issueRefPattern);
+              if (match) {
+                foundIssueNumber = match[1];
+                foundLocation = 'body';
+                console.log(`✅ Issue reference found in body: #${foundIssueNumber}`);
+                
+                // Find the exact position in body for debugging
+                const index = body.search(issueRefPattern);
+                console.log(`Issue reference position in body: ${index}`);
+                const context_start = Math.max(0, index - 20);
+                const context_end = Math.min(body.length, index + 30);
+                console.log(`Body context: "${body.substring(context_start, context_end)}"`);
+              }
+            }
+            
+            // Try to extract from branch name if not found
+            if (!foundIssueNumber) {
+              match = branchName.match(issueRefPattern);
+              if (match) {
+                foundIssueNumber = match[1];
+                foundLocation = 'branch (direct)';
+                console.log(`✅ Issue reference found in branch name: #${foundIssueNumber}`);
+              } else {
+                match = branchName.match(branchIssuePattern);
+                if (match) {
+                  foundIssueNumber = match[1];
+                  foundLocation = 'branch (pattern)';
+                  console.log(`✅ Issue reference found in branch pattern: #${foundIssueNumber}`);
+                }
+              }
+            }
+
+            // Final validation
+            if (!foundIssueNumber) {
+              console.log('❌ No issue reference found in title, body, or branch name');
+              console.log('=== DEBUG: Testing patterns manually ===');
+              console.log(`Title test: ${issueRefPattern.test(title)}`);
+              console.log(`Body test: ${issueRefPattern.test(body)}`);
+              console.log(`Branch test: ${issueRefPattern.test(branchName) || branchIssuePattern.test(branchName)}`);
+              
               core.setFailed(
                 'PR must reference an issue number (e.g., #123) either in ' +
-                'the title or body. Example: "feat: add new feature (#123)" ' +
-                'or reference in PR body.'
+                'the title, body, or branch name. Examples:\n' +
+                '- Title: "feat: add new feature (#123)"\n' +
+                '- Body: "Fixes #123" or "Closes #123"\n' +
+                '- Branch: "issue-123-description" or "fix-123-bug"'
               );
               return;
             }
 
-            console.log('✅ Issue reference found');
-            console.log(`Title: ${title}`);
-            if (hasIssueRefInTitle) {
-              console.log('Issue reference found in title');
-            }
-            if (hasIssueRefInBody) {
-              console.log('Issue reference found in body');
-            }
+            console.log(`✅ Issue reference validation passed`);
+            console.log(`Found issue #${foundIssueNumber} in ${foundLocation}`);
 
   lint-and-format:
     name: Lint, Format, and Type Check
