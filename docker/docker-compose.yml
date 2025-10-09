@@ -10,14 +10,14 @@ services:
         APP_TITLE: "corrupt-video-inspector"
         APP_DESCRIPTION: "A Docker-based tool to detect and report corrupt video files using FFmpeg"
     container_name: scan
-
+    user: "${PUID:-1000}:${PGID:-1000}"
     command:
       - scan
       - --directory
       - /app/videos
     volumes:
       - type: bind
-        source: ${PWD}/config.yaml
+        source: ${COMPOSE_PROJECT_DIR}/config.yaml
         target: /app/config.yaml
         read_only: true
       - video_data:/app/videos:ro
