@@ -1,0 +1,300 @@
+name: Nx CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, next]
+  pull_request:
+    branches: [main, develop, next]
+
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+  NX_BRANCH: ${{ github.head_ref || github.ref_name }}
+  
+jobs:
+  # PR title validation (skip for pushes and draft PRs)
+  validate-pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+
+    steps:
+      - name: Skip for pushes
+        if: github.event_name != 'pull_request'
+        run: echo "Skipping PR title validation for push events"
+
+      - name: Validate PR title
+        if: github.event_name == 'pull_request'
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            chore
+            ci
+          requireScope: false
+          disallowScopes: |
+            release
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            didn't match the configured pattern. Please ensure that the subject
+            starts with a lowercase letter.
+          ignoreLabels: |
+            bot
+            ignore-semantic-pr
+          validateSingleCommit: false
+
+      - name: Validate issue reference
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title || '';
+            const body = context.payload.pull_request.body || '';
+            const branchName = context.payload.pull_request.head.ref || '';
+
+            const issueRefPattern = /#(\d+)/;
+            const branchIssuePattern = /(?:issue-|fix-|feature-|bug-|hotfix-)(\d+)/i;
+            let foundIssueNumber = null;
+            let foundLocation = null;
+
+            let match = title.match(issueRefPattern);
+            if (match) {
+              foundIssueNumber = match[1];
+              foundLocation = 'title';
+            }
+            
+            if (!foundIssueNumber && body.length > 0) {
+              match = body.match(issueRefPattern);
+              if (match) {
+                foundIssueNumber = match[1];
+                foundLocation = 'body';
+              }
+            }
+            
+            if (!foundIssueNumber) {
+              match = branchName.match(issueRefPattern);
+              if (match) {
+                foundIssueNumber = match[1];
+                foundLocation = 'branch (direct)';
+              } else {
+                match = branchName.match(branchIssuePattern);
+                if (match) {
+                  foundIssueNumber = match[1];
+                  foundLocation = 'branch (pattern)';
+                }
+              }
+            }
+
+            if (!foundIssueNumber) {
+              core.setFailed(
+                'PR must reference an issue number (e.g., #123) either in ' +
+                'the title, body, or branch name.'
+              );
+              return;
+            }
+
+            console.log(`✅ Issue reference validation passed: #${foundIssueNumber} in ${foundLocation}`);
+
+  # Setup job - prepare Nx and restore cache
+  setup:
+    name: Setup Nx Workspace
+    runs-on: ubuntu-latest
+    needs: validate-pr-title
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for Nx affected commands
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Node dependencies
+        run: npm ci
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+      
+      - name: Install Python dependencies
+        run: make install-dev
+      
+      - name: Setup test configuration
+        run: cp config.sample.yaml config.yaml
+      
+      - name: Cache Nx computation cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pyproject.toml') }}
+          restore-keys: |
+            nx-cache-${{ runner.os }}-
+
+  # Lint and format job with Nx orchestration
+  lint-and-format:
+    name: Lint, Format, and Type Check
+    runs-on: ubuntu-latest
+    needs: setup
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Node dependencies
+        run: npm ci
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+      
+      - name: Install Python dependencies
+        run: make install-dev
+      
+      - name: Restore Nx cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pyproject.toml') }}
+          restore-keys: |
+            nx-cache-${{ runner.os }}-
+      
+      - name: Lint code
+        run: make lint
+
+  # Security scanning job
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: setup
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+      
+      - name: Install Python dependencies
+        run: make install-dev
+      
+      - name: Run Security Scan
+        run: make security-scan
+
+  # Test job with Nx caching
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: [lint-and-format, security]
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Node dependencies
+        run: npm ci
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+      
+      - name: Install Python dependencies
+        run: make install-dev
+      
+      - name: Setup test configuration
+        run: cp config.sample.yaml config.yaml
+      
+      - name: Restore Nx cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pyproject.toml') }}
+          restore-keys: |
+            nx-cache-${{ runner.os }}-
+      
+      - name: Run Tests
+        run: make test
+
+  # Docker build job
+  docker:
+    name: Build and Test Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+      
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('**/Dockerfile', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      
+      - name: Build Docker image
+        run: make docker-build
+      
+      - name: Test Docker image
+        run: make docker-test
+
+  # Summary job to report overall status
+  ci-success:
+    name: CI Pipeline Success
+    runs-on: ubuntu-latest
+    needs: [lint-and-format, security, test, docker]
+    if: success()
+    
+    steps:
+      - name: Report success
+        run: |
+          echo "✅ All CI checks passed!"
+          echo "- Lint and format: ✓"
+          echo "- Security scan: ✓"
+          echo "- Tests: ✓"
+          echo "- Docker build: ✓"
