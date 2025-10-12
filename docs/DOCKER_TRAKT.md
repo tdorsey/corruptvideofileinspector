@@ -119,6 +119,9 @@ trakt-dev:
 
 ```bash
 # 1. Set environment variables
+export COMPOSE_PROJECT_DIR="/path/to/corruptvideofileinspector/docker"
+export PUID=1000
+export PGID=1000
 export TRAKT_CLIENT_ID="your_client_id"
 export TRAKT_CLIENT_SECRET="your_client_secret"
 export CVI_VIDEO_DIR="/path/to/videos"
@@ -153,6 +156,9 @@ docker-compose -f docker-compose.dev.yml --profile trakt up app trakt-dev
 
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `PUID` | No | User ID for container runtime (default: 1000) |
+| `PGID` | No | Group ID for container runtime (default: 1000) |
+| `COMPOSE_PROJECT_DIR` | Yes | Path to directory containing docker-compose.yml (for config mount) |
 | `TRAKT_CLIENT_ID` | Yes | API client ID from Trakt application |
 | `TRAKT_CLIENT_SECRET` | Yes | API client secret from Trakt application |
 | `CVI_VIDEO_DIR` | Yes | Path to video directory for scanning |

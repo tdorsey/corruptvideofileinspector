@@ -17,13 +17,15 @@ services:
       - /app/videos
     volumes:
       - type: bind
-        source: ${COMPOSE_PROJECT_DIR}/config.yaml
+        source: ${COMPOSE_PROJECT_DIR:-.}/config.yaml
         target: /app/config.yaml
         read_only: true
       - video_data:/app/videos:ro
       - output:/app/output
       - logs:/app/logs
     environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
       - TRAKT_CLIENT_ID=test_client_id
       - PYTHONUNBUFFERED=1
     secrets:
