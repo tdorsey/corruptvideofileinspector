@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 # Global scan state management
 active_scans: dict[str, dict[str, Any]] = {}
 
+# Define base directory for scanning - restrict all scans under this path.
+BASE_SCAN_DIR = Path("/server/video_scans").resolve()
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
@@ -74,8 +76,8 @@ def create_app() -> FastAPI:
                 status_code=500, detail="Internal server error during health check"
             ) from None
 
-    def _validate_directory(directory: Path) -> None:
-        """Validate directory path and prevent path traversal attacks."""
+    def _validate_directory(directory: Path, root: Path) -> None:
+        """Validate directory path and prevent path traversal attacks. Only allow directories within the specified root."""
         # Resolve to absolute path to prevent directory traversal
         try:
             resolved_path = directory.resolve()
@@ -91,18 +93,27 @@ def create_app() -> FastAPI:
         if not resolved_path.is_dir():
             raise HTTPException(status_code=400, detail="Path is not a directory")
 
+        # Additional security: ensure resolved path is within the allowed root
+        try:
+            root = root.resolve()
+        except Exception as e:
+            logger.error(f"Base scan root could not be resolved: {e}")
+            raise HTTPException(status_code=500, detail="Server configuration error") from None
+        if not str(resolved_path).startswith(str(root)):
+            logger.warning(f"Directory {resolved_path} is outside of root {root}")
+            raise HTTPException(status_code=400, detail="Directory is not permitted")
+
         # Additional security: ensure path is absolute and doesn't contain suspicious patterns
         path_str = str(resolved_path)
         if ".." in path_str or path_str.startswith("~"):
             raise HTTPException(status_code=400, detail="Invalid directory path")
-
     @app.post("/api/scans", response_model=ScanResponse)
     async def start_scan(request: ScanRequest) -> ScanResponse:
         """Start a new video scan."""
         try:
             # Validate directory exists
             directory = Path(request.directory)
-            _validate_directory(directory)
+            _validate_directory(directory, BASE_SCAN_DIR)
 
             # Generate unique scan ID
             scan_id = str(uuid.uuid4())
