@@ -96,3 +96,15 @@ config.yaml
 secrets/*
 docker/secrets/*
 videos/
+
+
+
+# Nx
+.nx/cache
+.nx/workspace-data
+node_modules/
+package-lock.json
+
+# Cursor and GitHub instructions
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
