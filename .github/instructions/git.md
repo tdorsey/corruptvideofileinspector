@@ -130,14 +130,37 @@ Using Conventional Commits helps:
 - **All tests must pass** before submitting changes
 - **Follow existing code style and patterns** in the repository
 
+### Merge Conflict Resolution (REQUIRED)
+**Before submitting or updating a pull request:**
+- **MUST resolve all merge conflicts** - PRs with unresolved conflicts will be rejected
+- Check for conflicts: `git status` and look for "both modified" files
+- Resolve conflicts manually or with merge tools: `git mergetool`
+- After resolving, stage changes: `git add <resolved-files>`
+- Complete the merge: `git commit` (or `git merge --continue` / `git rebase --continue`)
+- Verify resolution: `git diff origin/main` to review all changes
+- The pre-commit hook `check-merge-conflict` will automatically detect any remaining conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`)
+
+### Dependency Management (REQUIRED)
+**When dependencies are added or modified:**
+- **MUST update `poetry.lock`** after changing dependencies in `pyproject.toml`
+- Update lock file: `poetry lock --no-update` (for specific changes) or `poetry lock` (for full update)
+- Validate consistency: `poetry check` to ensure pyproject.toml and poetry.lock are in sync
+- **MUST commit `poetry.lock`** alongside `pyproject.toml` changes
+- Document dependency changes in commit message and PR description
+
 ### Development Workflow for Pull Requests
-1. **Make minimal, focused changes** that address the specific issue
-2. **Format code**: `make format` to fix Black and Ruff issues
-3. **Run full checks**: `make check` to validate quality standards
-4. **Test changes**: `make test` to ensure functionality
-5. **Commit only when all checks pass** - no exceptions
+1. **Sync with main branch**: `git fetch origin && git merge origin/main` (or rebase)
+2. **Resolve any merge conflicts** following the process above
+3. **Make minimal, focused changes** that address the specific issue
+4. **Update dependencies if needed** and run `poetry lock` if `pyproject.toml` changed
+5. **Format code**: `make format` to fix Black and Ruff issues
+6. **Run full checks**: `make check` to validate quality standards
+7. **Test changes**: `make test` to ensure functionality
+8. **Verify no conflicts remain**: `git status` should show clean working directory
+9. **Commit only when all checks pass** - no exceptions
 
 ### Documentation Updates
 - Update relevant documentation when making changes
 - Ensure README and other docs reflect current functionality
 - Update environment variable documentation when needed
+- Update dependency documentation if adding new packages

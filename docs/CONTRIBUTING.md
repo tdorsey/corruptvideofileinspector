@@ -18,22 +18,39 @@ Thank you for your interest in contributing to Corrupt Video Inspector! This doc
    cd corruptvideofileinspector
    ```
 
-2. **Install system dependencies (including FFmpeg):**
+2. **Install Poetry (if not already installed):**
+   ```bash
+   # Via official installer (recommended)
+   curl -sSL https://install.python-poetry.org | python3 -
+   
+   # Or via pip
+   pip install poetry
+   
+   # Verify installation
+   poetry --version
+   ```
+
+3. **Install system dependencies (including FFmpeg):**
    ```bash
    make install-system-deps
    ```
 
-3. **Install the package with development dependencies:**
+4. **Install the package with development dependencies:**
    ```bash
    make install-dev
    ```
 
-4. **Install and set up pre-commit hooks:**
+5. **Verify Poetry lock file consistency:**
+   ```bash
+   poetry check
+   ```
+
+6. **Install and set up pre-commit hooks:**
    ```bash
    make pre-commit-install
    ```
 
-5. **Verify FFmpeg installation:**
+7. **Verify FFmpeg installation:**
    ```bash
    make test-ffmpeg
    ```
@@ -107,6 +124,65 @@ make test
 python3 tests/run_tests.py
 ```
 
+## Dependency Management
+
+This project uses Poetry for dependency management and build system configuration.
+
+### Adding or Updating Dependencies
+
+**REQUIRED: Always update `poetry.lock` when modifying dependencies**
+
+1. **Add dependency to `pyproject.toml`:**
+   - Runtime dependencies: Add to `[project.dependencies]`
+   - Development dependencies: Add to `[project.optional-dependencies.dev]` or `[tool.poetry.group.dev.dependencies]`
+
+2. **Update the lock file (REQUIRED):**
+   ```bash
+   # Update only the changed dependency (recommended)
+   poetry lock --no-update
+   
+   # Or update all dependencies to latest compatible versions
+   poetry lock
+   ```
+
+3. **Verify consistency:**
+   ```bash
+   poetry check
+   ```
+
+4. **Install updated dependencies:**
+   ```bash
+   make install-dev
+   ```
+
+5. **Commit both files together:**
+   ```bash
+   git add pyproject.toml poetry.lock
+   git commit -m "build(deps): add/update package-name"
+   ```
+
+### Useful Poetry Commands
+
+```bash
+# Check if pyproject.toml and poetry.lock are in sync
+poetry check
+
+# Show installed packages
+poetry show
+
+# Show dependency tree
+poetry show --tree
+
+# Show outdated packages
+poetry show --outdated
+
+# Update a specific package
+poetry update package-name
+
+# Update all packages to latest compatible versions
+poetry update
+```
+
 ## Code Style Guidelines
 
 - **Line Length**: Maximum 100 characters (enforced by Black)
@@ -116,6 +192,51 @@ python3 tests/run_tests.py
 - **Variable Names**: Use descriptive variable names that clearly indicate purpose
 
 ## Pull Request Requirements
+
+### Critical Requirements (MUST BE MET)
+
+Before submitting a pull request, ensure:
+
+1. **✅ No Merge Conflicts**: All merge conflicts with the target branch MUST be resolved
+2. **✅ Poetry Lock Updated**: If dependencies changed, `poetry.lock` MUST be updated and committed
+3. **✅ All Tests Pass**: Run `make test` and ensure all tests succeed
+4. **✅ Code Quality Checks Pass**: Run `make check` to validate formatting, linting, and type checking
+5. **✅ Pre-commit Hooks Pass**: The `check-merge-conflict` hook will block commits with conflict markers
+
+**Pull requests that do not meet these requirements will be rejected.**
+
+### Resolving Merge Conflicts
+
+If your PR has merge conflicts:
+
+1. **Sync your branch with the target branch:**
+   ```bash
+   git fetch origin
+   git merge origin/main  # or origin/develop for develop branch
+   ```
+
+2. **If conflicts occur, resolve them:**
+   - Open conflicted files (marked with `<<<<<<<`, `=======`, `>>>>>>>`)
+   - Manually resolve conflicts by choosing the correct code
+   - Remove conflict markers
+   - Test your changes to ensure functionality
+
+3. **Stage and commit resolved files:**
+   ```bash
+   git add <resolved-files>
+   git commit -m "chore: resolve merge conflicts with main"
+   ```
+
+4. **Verify no conflict markers remain:**
+   ```bash
+   # Pre-commit hook will check automatically
+   git status
+   ```
+
+5. **Push updated branch:**
+   ```bash
+   git push origin your-branch-name
+   ```
 
 ### PR Title Format
 
@@ -187,24 +308,58 @@ For more details, see [SECURITY.md](../SECURITY.md).
 
 2. **Make your changes** following the code quality guidelines
 
-3. **Ensure all checks pass:**
+3. **If dependencies were modified, update the lock file:**
+   ```bash
+   # After editing pyproject.toml dependencies
+   poetry lock --no-update  # Update only changed dependencies
+   # or
+   poetry lock  # Update all dependencies to latest compatible versions
+   
+   # Verify consistency
+   poetry check
+   ```
+
+4. **Ensure all checks pass:**
    ```bash
    make check
    make test
    ```
 
-4. **Commit your changes** (pre-commit hooks will run automatically):
+5. **Resolve any merge conflicts with main branch:**
    ```bash
-   git add .
-   git commit -m "Description of your changes"
+   # Fetch latest changes
+   git fetch origin
+   
+   # Merge main into your branch
+   git merge origin/main
+   
+   # If conflicts occur, resolve them manually, then:
+   git add <resolved-files>
+   git commit
+   
+   # Verify no conflict markers remain
+   git diff origin/main
    ```
 
-5. **Push to your fork and create a pull request** with a properly formatted title:
+6. **Commit your changes** (pre-commit hooks will run automatically):
+   ```bash
+   git add .
+   git commit -m "type(scope): description of your changes"
+   ```
+   
+   **Note:** The pre-commit hook includes `check-merge-conflict` which will prevent commits with conflict markers.
+
+7. **Push to your fork and create a pull request** with a properly formatted title:
    ```bash
    git push origin feature/your-feature-name
    ```
 
-6. **Wait for code owner review** (required for all PRs to main branch)
+8. **Verify PR has no conflicts or failures:**
+   - Check that PR shows "No conflicts with base branch"
+   - Ensure all CI checks pass
+   - Confirm `poetry.lock` is committed if dependencies changed
+
+9. **Wait for code owner review** (required for all PRs to main branch)
 
 ## Pre-commit Hook Details
 
