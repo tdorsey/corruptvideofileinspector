@@ -1,0 +1,64 @@
+{
+  "name": "api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "src/api",
+  "projectType": "application",
+  "tags": ["type:app", "lang:python"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pytest tests/unit/test_api*.py -v",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "black src/api --check",
+          "ruff check src/api",
+          "mypy src/api"
+        ],
+        "cwd": "{workspaceRoot}",
+        "parallel": false
+      }
+    },
+    "format": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "black src/api",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker build -f docker/Dockerfile.api -t cvi-api:latest .",
+        "cwd": "{workspaceRoot}"
+      },
+      "outputs": ["{options.outputPath}"]
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python -m uvicorn src.api.app:create_app --factory --reload --host 0.0.0.0 --port 8000",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "docker-up": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose -f docker/docker-compose.yml --profile api up -d api",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "docker-down": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose -f docker/docker-compose.yml --profile api down",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

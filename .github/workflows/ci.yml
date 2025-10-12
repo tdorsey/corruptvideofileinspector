@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main, develop, next ]
 
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+  NX_BRANCH: ${{ github.head_ref || github.ref_name }}
+
 jobs:
   # PR title validation (skip for pushes and draft PRs)
   validate-pr-title:
@@ -159,11 +163,31 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Required for Nx affected commands
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Node dependencies
+      run: npm ci
 
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.13'
+        cache: 'pip'
+
+    - name: Restore Nx cache
+      uses: actions/cache@v4
+      with:
+        path: .nx/cache
+        key: nx-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pyproject.toml') }}
+        restore-keys: |
+          nx-cache-${{ runner.os }}-
 
     - name: Install dependencies
       run: |
@@ -207,11 +231,31 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Required for Nx affected commands
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Node dependencies
+      run: npm ci
 
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.13'
+        cache: 'pip'
+
+    - name: Restore Nx cache
+      uses: actions/cache@v4
+      with:
+        path: .nx/cache
+        key: nx-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pyproject.toml') }}
+        restore-keys: |
+          nx-cache-${{ runner.os }}-
 
     - name: Install system dependencies
       run: |
@@ -244,6 +288,16 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+      with:
+        driver-opts: network=host
+
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ hashFiles('**/Dockerfile', '**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
 
     - name: Build Docker image
       run: |

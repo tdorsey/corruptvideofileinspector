@@ -1,6 +1,24 @@
 # Corrupt Video File Inspector
 
-A comprehensive Python tool for detecting corrupted video files using FFmpeg, with both CLI and web-based interfaces, optional Trakt.tv synchronization, and Docker containerization support.
+A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support.
+
+## 📦 Monorepo Structure
+
+This project uses **Nx** for workspace orchestration and intelligent caching:
+
+- **Fast builds**: Computation caching speeds up repeated tasks
+- **Smart CI/CD**: Only test/build changed code
+- **Organized structure**: Apps and shared libraries in a monorepo
+
+Quick Nx commands:
+```bash
+npm test          # Run all tests
+npm run lint      # Lint all code
+npm run graph     # View dependency graph
+npx nx reset      # Clear cache
+```
+
+📖 See [`NX_QUICK_START.md`](NX_QUICK_START.md) for Nx commands | [`docs/NX_MONOREPO.md`](docs/NX_MONOREPO.md) for full documentation
 
 ## 🚀 Quick Start
 
@@ -24,17 +42,20 @@ make setup
 ### Basic Usage
 
 ```bash
-# Scan a directory for corrupt videos
-corrupt-video-inspector scan /path/to/videos --mode hybrid --output results.json
-
-# Scan with database storage for historical tracking
-corrupt-video-inspector scan /path/to/videos --database --mode hybrid
+# Scan a directory for corrupt videos (results stored in database)
+corrupt-video-inspector scan /path/to/videos --mode hybrid
 
 # Incremental scan (skip recently healthy files)
-corrupt-video-inspector scan /path/to/videos --incremental --database
+corrupt-video-inspector scan /path/to/videos --incremental
 
-# Query database for corrupt files
-corrupt-video-inspector database query --corrupt --since "7 days ago"
+# Generate report from latest scan
+corrupt-video-inspector report
+
+# Generate report from specific scan ID
+corrupt-video-inspector report --scan-id 42
+
+# Sync latest scan to Trakt.tv
+corrupt-video-inspector trakt sync
 
 # View help for all commands
 corrupt-video-inspector --help
@@ -50,14 +71,14 @@ The application can be run in Docker containers with configurable user permissio
 - **PGID** (default: 1000): Group ID for the container runtime user
 - **COMPOSE_PROJECT_DIR**: Path to the directory containing docker-compose.yml (required for config file mount)
 - **CVI_VIDEO_DIR**: Host path to video directory
-- **CVI_OUTPUT_DIR**: Host path to output directory
+- **CVI_DB_DIR**: Host path to database directory (stores scans.db)
 - **CVI_LOG_DIR**: Host path to log directory
 
 #### Prerequisites
 
 - Set `COMPOSE_PROJECT_DIR` to the directory containing docker-compose.yml
 - Ensure `config.yaml` exists at `${COMPOSE_PROJECT_DIR}/config.yaml`
-- Host folders (videos, output, logs) should be owned or writable by the configured PUID/PGID
+- Host folders (videos, database, logs) should be owned or writable by the configured PUID/PGID
 
 #### Usage Examples
 
@@ -71,55 +92,61 @@ export PGID=1000
 
 # Set required volume paths
 export CVI_VIDEO_DIR=/path/to/videos
-export CVI_OUTPUT_DIR=/path/to/output
+export CVI_DB_DIR=/path/to/database
 export CVI_LOG_DIR=/path/to/logs
 
-# Run scan service
+# Run scan service (results stored in database)
 docker compose -f docker/docker-compose.yml up -d --build scan
 
-# Run scan and generate report
-docker compose -f docker/docker-compose.yml up -d --build scan report
+# Generate report from latest scan
+docker compose -f docker/docker-compose.yml up -d --build report
 
 # Run with Trakt sync (requires Trakt credentials)
-docker compose -f docker/docker-compose.yml --profile trakt up -d --build scan trakt
+docker compose -f docker/docker-compose.yml --profile trakt up -d --build trakt
+
+# Run the GraphQL API server
+docker compose -f docker/docker-compose.yml --profile api up -d api
 ```
 
 For advanced Docker workflows and Trakt integration, see [Docker Trakt Integration](docs/DOCKER_TRAKT.md).
 
-### 🌐 Web Interface (New!)
+### 🌐 GraphQL API (New!)
 
-A modern React-based web interface provides an intuitive graphical alternative to the CLI:
+FastAPI-based GraphQL API for web interface integration:
 
-- **Visual Dashboard**: Real-time system status and scan management
-- **Interactive Configuration**: Point-and-click scan setup with live validation
-- **Real-Time Progress**: WebSocket-powered progress updates with detailed metrics
-- **Results Visualization**: Comprehensive tables and statistics for scan results
-- **Responsive Design**: Works on desktop and mobile devices
+- **GraphQL Queries**: Query scan jobs, results, and summaries
+- **GraphQL Mutations**: Start scans and generate reports via API
+- **OIDC Authentication**: Secure API access with OpenID Connect
+- **Docker Support**: Containerized API deployment
+- **Web Integration Ready**: Enable web UI development
 
-**Quick Start**:
 ```bash
-# Using Docker (recommended)
-make web-docker-build
-make web-docker-up
-# Access at http://localhost:3000
+# Run API locally
+make run-api
 
-# Local development
-python api_server.py  # Terminal 1
-cd frontend && npm install && npm run dev  # Terminal 2
-# Access at http://localhost:5173
+# Run API with Docker
+make docker-api
+
+# Access GraphQL playground
+open http://localhost:8000/graphql
 ```
 
-**See [Web UI Documentation](docs/WEB_UI.md) and [API Documentation](docs/API.md) for complete details.**
+**See [API Documentation](docs/API.md) for complete GraphQL schema and examples.**
 
-### 🗄️ Database Support
+### 🗄️ Database Storage
 
-Optional SQLite database support enables persistent storage and advanced analysis:
+=======
+### 🗄️ Database Storage
+
+All scan results are stored in an SQLite database for persistent storage and advanced analysis:
 
 - **Historical Tracking**: Maintain scan history across multiple runs
 - **Incremental Scanning**: Skip recently scanned healthy files for faster scans
-- **Advanced Querying**: SQL-like filters for corruption status, dates, confidence levels
-- **Trend Analysis**: Track corruption rates and file health changes over time
+- **Report Generation**: Generate reports from any previous scan by ID
+- **Trakt Integration**: Sync scan results directly from database
 - **Zero Configuration**: Embedded SQLite database requires no server setup
+
+**Note**: File-based output (JSON, CSV, YAML) has been removed. All results are stored in the database at `~/.corrupt-video-inspector/scans.db` by default.
 
 **See [Database Documentation](docs/DATABASE.md) for complete details and examples.**
 
@@ -132,24 +159,16 @@ Optional SQLite database support enables persistent storage and advanced analysi
 ```
 corrupt_video_inspector/
 ├── src/
-│   ├── api/                    # Web API (FastAPI) → See docs/API.md
+│   ├── api/                    # FastAPI GraphQL API → See docs/API.md
 │   ├── cli/                    # Command-line interface → See docs/CLI.md
 │   ├── core/                   # Core business logic → See docs/CORE.md
 │   ├── config/                 # Configuration management → See docs/CONFIG.md
 │   ├── database/               # SQLite database support → See docs/DATABASE.md
 │   ├── ffmpeg/                 # FFmpeg integration → See docs/FFMPEG.md
 │   └── utils/                  # Shared utilities → See docs/UTILS.md
-├── frontend/                   # React web interface → See docs/WEB_UI.md
-│   ├── src/
-│   │   ├── components/         # React components
-│   │   ├── pages/              # Page components
-│   │   ├── services/           # API client
-│   │   └── types/              # TypeScript definitions
-│   └── package.json            # Frontend dependencies
 ├── tests/                      # Test suite → See docs/tests.md
 ├── docs/                       # Documentation
-│   ├── API.md                  # Web API documentation (NEW)
-│   ├── WEB_UI.md               # Web interface guide (NEW)
+│   ├── API.md                  # FastAPI GraphQL API documentation
 │   ├── CLI.md                  # Command-line interface documentation
 │   ├── CORE.md                 # Core module documentation
 │   ├── CONFIG.md               # Configuration system guide
@@ -160,12 +179,6 @@ corrupt_video_inspector/
 │   ├── CONTRIBUTING.md         # Development setup and guidelines
 │   ├── REPORTER.md             # Report generation system
 │   └── VERSIONING.md           # Version management
-├── docker/                     # Docker configuration
-│   ├── Dockerfile.api          # API server container (NEW)
-│   ├── Dockerfile.frontend     # Frontend container (NEW)
-│   ├── docker-compose.web.yml  # Web UI deployment (NEW)
-│   └── docker-compose.yml      # CLI deployment
-├── api_server.py               # API server entry point (NEW)
 └── pyproject.toml              # Project configuration
 ```
 

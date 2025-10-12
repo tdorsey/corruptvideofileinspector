@@ -14,7 +14,8 @@ def test_scan_completion_message_once(mock_echo):
     config.processing = MagicMock()  # Add processing attribute
     config.ffmpeg = MagicMock()  # Add ffmpeg attribute
     config.database = MagicMock()
-    config.database.enabled = False
+    config.database.path = MagicMock()
+    config.database.auto_cleanup_days = 0
     handler = ScanHandler(config)
 
     summary = ScanSummary(

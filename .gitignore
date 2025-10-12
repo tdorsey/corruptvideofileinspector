@@ -82,6 +82,13 @@ output/
 *.log
 test-larger/
 *.json
+# Allow important config files
+!nx.json
+!package.json
+!package-lock.json
+!project.json
+!tsconfig*.json
+!.vscode/*.json
 
 # Testing artifacts
 test_copilot_setup.py
@@ -97,10 +104,15 @@ secrets/*
 docker/secrets/*
 videos/
 
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-frontend/package-lock.json
-frontend/yarn.lock
-frontend/pnpm-lock.yaml
+# Test artifacts
+<Mock *
+<MagicMock *
+
+# Nx
+.nx/
+node_modules/
+package-lock.json
+dist/
+.vite/
+yarn.lock
+pnpm-lock.yaml

@@ -1,415 +1,556 @@
-# API Documentation
+# API Module Documentation
 
-The Corrupt Video Inspector web API provides RESTful endpoints and WebSocket support for managing video corruption scans through a web interface.
-
-## Overview
-
-- **Technology**: FastAPI (Python 3.13+)
-- **Base URL**: `http://localhost:8000/api`
-- **WebSocket**: `ws://localhost:8000/ws`
-- **Data Format**: JSON
-- **Authentication**: None (MVP - can be added later)
-
-## Running the API Server
-
-### Development Mode
-
-```bash
-# Direct execution
-python api_server.py
-
-# Using Make
-make api-dev
-```
-
-The API server will start on `http://localhost:8000`.
-
-### Docker Mode
-
-```bash
-# Build and run with Docker Compose
-make web-docker-build
-make web-docker-up
-```
-
-## API Endpoints
-
-### Health Check
-
-Check API server status and FFmpeg availability.
-
-**Endpoint**: `GET /api/health`
-
-**Response**:
-```json
-{
-  "status": "healthy",
-  "version": "0.1.0",
-  "ffmpeg_available": true
-}
-```
-
-**Status Codes**:
-- `200 OK`: Service is healthy
-- `500 Internal Server Error`: Service is unhealthy
-
----
-
-### Start New Scan
-
-Initiate a new video corruption scan.
-
-**Endpoint**: `POST /api/scans`
-
-**Request Body**:
-```json
-{
-  "directory": "/app/videos",
-  "mode": "quick",
-  "recursive": true,
-  "max_workers": 8
-}
-```
-
-**Parameters**:
-- `directory` (string, required): Absolute path to video directory
-- `mode` (string, required): Scan mode - `"quick"`, `"deep"`, or `"hybrid"`
-- `recursive` (boolean, optional): Scan subdirectories (default: `true`)
-- `max_workers` (integer, optional): Number of parallel workers (1-32, default: 8)
-
-**Response**:
-```json
-{
-  "scan_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "pending",
-  "message": "Scan started successfully"
-}
-```
-
-**Status Codes**:
-- `200 OK`: Scan started
-- `400 Bad Request`: Invalid directory or parameters
-- `500 Internal Server Error`: Failed to start scan
-
----
-
-### Get Scan Status
-
-Retrieve current status and progress of a scan.
-
-**Endpoint**: `GET /api/scans/{scan_id}`
-
-**Response**:
-```json
-{
-  "scan_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "running",
-  "directory": "/app/videos",
-  "mode": "quick",
-  "progress": {
-    "processed_count": 42,
-    "total_files": 100,
-    "current_file": "/app/videos/movie.mp4",
-    "healthy_count": 38,
-    "corrupt_count": 4,
-    "suspicious_count": 0,
-    "progress_percentage": 42.0,
-    "elapsed_time": 125.5,
-    "estimated_remaining_time": 173.2,
-    "processing_rate": 0.33,
-    "phase": "quick",
-    "scan_mode": "quick"
-  },
-  "results": null,
-  "error": null
-}
-```
-
-**Scan Statuses**:
-- `pending`: Scan queued but not started
-- `running`: Scan in progress
-- `completed`: Scan finished successfully
-- `failed`: Scan encountered an error
-- `cancelled`: Scan was cancelled by user
-
-**Status Codes**:
-- `200 OK`: Status retrieved
-- `404 Not Found`: Scan ID not found
-
----
-
-### Get Scan Results
-
-Retrieve detailed results of a completed scan.
-
-**Endpoint**: `GET /api/scans/{scan_id}/results`
-
-**Response**:
-```json
-{
-  "scan_id": "550e8400-e29b-41d4-a716-446655440000",
-  "results": [],
-  "summary": {
-    "directory": "/app/videos",
-    "total_files": 100,
-    "processed_files": 100,
-    "corrupt_files": 5,
-    "healthy_files": 95,
-    "scan_mode": "quick",
-    "scan_time": 298.7,
-    "deep_scans_needed": 0,
-    "deep_scans_completed": 0,
-    "was_resumed": false
-  }
-}
-```
-
-**Note**: Individual file results (`results` array) are not currently implemented and return an empty array. Only summary statistics are available.
-
-**Status Codes**:
-- `200 OK`: Results retrieved
-- `400 Bad Request`: Scan not completed
-- `404 Not Found`: Scan ID not found or results not available
-
----
-
-### Cancel Scan
-
-Cancel a running scan.
-
-**Endpoint**: `DELETE /api/scans/{scan_id}`
-
-**Response**:
-```json
-{
-  "message": "Scan cancelled successfully"
-}
-```
-
-**Status Codes**:
-- `200 OK`: Scan cancelled
-- `400 Bad Request`: Cannot cancel scan in current state
-- `404 Not Found`: Scan ID not found
-
----
-
-### Get Database Statistics
-
-Retrieve database statistics (placeholder for future implementation).
-
-**Endpoint**: `GET /api/database/stats`
-
-**Response**:
-```json
-{
-  "total_files": 0,
-  "healthy_files": 0,
-  "corrupt_files": 0,
-  "suspicious_files": 0,
-  "last_scan_time": null
-}
-```
-
-**Status Codes**:
-- `200 OK`: Statistics retrieved
-
----
-
-## WebSocket API
-
-### Real-Time Scan Progress
-
-Connect to receive real-time updates during a scan.
-
-**Endpoint**: `WS /ws/scans/{scan_id}`
-
-**Message Types**:
-
-1. **Status Message** (initial connection):
-```json
-{
-  "type": "status",
-  "data": {
-    "status": "running"
-  }
-}
-```
-
-2. **Progress Update** (periodic, every 500ms):
-```json
-{
-  "type": "progress",
-  "data": {
-    "processed_count": 42,
-    "total_files": 100,
-    "progress_percentage": 42.0,
-    "healthy_count": 38,
-    "corrupt_count": 4,
-    "suspicious_count": 0,
-    "elapsed_time": 125.5
-  }
-}
-```
-
-3. **Completion Message**:
-```json
-{
-  "type": "complete",
-  "data": {
-    "status": "completed",
-    "error": null
-  }
-}
-```
-
-4. **Error Message**:
-```json
-{
-  "type": "error",
-  "data": {
-    "message": "Error description"
-  }
-}
-```
-
-**Usage Example** (JavaScript):
-```javascript
-const ws = new WebSocket('ws://localhost:8000/ws/scans/550e8400-e29b-41d4-a716-446655440000');
-
-ws.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  
-  switch(message.type) {
-    case 'progress':
-      console.log(`Progress: ${message.data.progress_percentage}%`);
-      break;
-    case 'complete':
-      console.log('Scan completed!');
-      break;
-    case 'error':
-      console.error('Error:', message.data.message);
-      break;
-  }
-};
-```
-
----
-
-## Security
-
-The API implements several security measures:
-
-### Path Traversal Protection
-
-Directory paths are validated to prevent path traversal attacks:
-- Paths are resolved to absolute paths
-- Suspicious patterns (e.g., `..`, `~`) are rejected
-- Non-existent or invalid paths return 400 Bad Request
-
-### Information Disclosure Prevention
-
-Error messages do not expose internal system details:
-- Exception messages are logged but not returned to clients
-- Generic error messages are returned (e.g., "Internal server error")
-- Detailed errors are only available in server logs
-
-### CORS Restrictions
-
-Cross-Origin Resource Sharing is restricted to specific origins:
-- Only localhost origins are allowed by default
-- Production deployments should configure specific domains
-- Methods and headers are explicitly whitelisted
-
-### Input Validation
-
-All request parameters are validated:
-- Pydantic models enforce type checking
-- Parameter ranges are enforced (e.g., max_workers: 1-32)
-- Invalid inputs return 422 Unprocessable Entity
-
----
-
-## Error Handling
-
-All errors follow a consistent format:
-
-```json
-{
-  "detail": "Error message description"
-}
-```
-
-Common HTTP status codes:
-- `200 OK`: Success
-- `400 Bad Request`: Invalid input or path
-- `404 Not Found`: Resource not found
-- `422 Unprocessable Entity`: Validation error
-- `500 Internal Server Error`: Server error
-
----
-
-## CORS Configuration
-
-The API is configured with CORS to allow localhost origins for development:
-
-**Allowed Origins (Default)**:
-- `http://localhost:3000` - Docker frontend
-- `http://localhost:5173` - Vite dev server
-- `http://127.0.0.1:3000` - Docker frontend (IP)
-- `http://127.0.0.1:5173` - Vite dev server (IP)
-
-**Allowed Methods**:
-- `GET`, `POST`, `DELETE`, `OPTIONS`
-
-**Allowed Headers**:
-- `Content-Type`, `Authorization`
-
-For production deployments, add your domain to the `allowed_origins` list in `src/api/main.py`:
-
-```python
-allowed_origins = [
-    "https://yourdomain.com",
-    "https://www.yourdomain.com",
-]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
-)
-```
-
----
+The API module (`src/api/`) provides a FastAPI-based GraphQL API for the Corrupt Video Inspector. It enables web-based interaction with the video scanning and reporting functionality through a modern, type-safe GraphQL interface.
 
 ## Architecture
 
-The API wraps existing core modules:
+```
+src/api/
+├── __init__.py              # Module exports
+├── __main__.py              # Entry point for running the API server
+├── app.py                   # FastAPI application setup
+├── security.py              # OIDC authentication and authorization
+└── graphql/                 # GraphQL schema and resolvers
+    ├── __init__.py
+    ├── schema.py            # GraphQL schema definition
+    ├── types.py             # GraphQL type definitions (Strawberry)
+    └── resolvers.py         # Query and mutation resolvers
+```
 
-- **Scanner Integration**: Uses `src/core/scanner.VideoScanner` for video analysis
-- **Configuration**: Loads settings from `src/config/config.py`
-- **Models**: Leverages Pydantic models from `src/core/models/scanning`
-- **No Duplication**: All business logic remains in core modules
+## Features
 
----
+- **GraphQL API**: Type-safe API using Strawberry GraphQL
+- **OIDC Authentication**: Secure API access with OpenID Connect
+- **RESTful Endpoints**: Health check and metadata endpoints
+- **Docker Support**: Containerized deployment with docker-compose
+- **Async Operations**: Non-blocking video scanning and reporting
+- **CORS Support**: Configurable cross-origin resource sharing
+
+## Quick Start
+
+### Running Locally
+
+1. **Install dependencies**:
+   ```bash
+   make install-dev
+   ```
+
+2. **Configure the API** in `config.yaml`:
+   ```yaml
+   api:
+     enabled: true
+     host: "0.0.0.0"
+     port: 8000
+     oidc_enabled: false
+   ```
+
+3. **Run the API server**:
+   ```bash
+   # Using Make
+   make run-api
+
+   # Using Nx (if node_modules installed)
+   npx nx serve api
+   ```
+
+   Or directly with uvicorn:
+   ```bash
+   python -m uvicorn src.api.app:create_app --factory --reload
+   ```
+
+4. **Access the API**:
+   - GraphQL Playground: http://localhost:8000/graphql
+   - Health Check: http://localhost:8000/health
+   - API Info: http://localhost:8000/
+
+### Running with Docker
+
+1. **Build the API image**:
+   ```bash
+   make docker-api-build
+   # Or with Nx
+   npx nx build api
+   ```
+
+2. **Run the API container**:
+   ```bash
+   make docker-api
+   # Or with Nx
+   npx nx docker-up api
+   ```
+
+3. **Stop the API container**:
+   ```bash
+   make docker-api-down
+   # Or with Nx
+   npx nx docker-down api
+   ```
+
+### Running with Nx
+
+The API project is integrated with Nx for workspace orchestration:
+
+```bash
+# Install Nx dependencies (first time only)
+npm install
+
+# Run API server with hot reload
+npx nx serve api
+
+# Build Docker image
+npx nx build api
+
+# Run tests
+npx nx test api
+
+# Lint code
+npx nx lint api
+
+# Format code
+npx nx format api
+
+# Start Docker container
+npx nx docker-up api
+
+# Stop Docker container
+npx nx docker-down api
+```
+
+**Benefits of using Nx:**
+- **Caching**: Task results are cached for faster rebuilds
+- **Affected commands**: Only test/build changed code
+- **Dependency graph**: Visualize project dependencies
+- **Parallel execution**: Run tasks in parallel
+
+See [`NX_QUICK_START.md`](../NX_QUICK_START.md) for more Nx commands.
+
+## GraphQL Schema
+
+### Types
+
+#### ScanModeType
+```graphql
+enum ScanModeType {
+  QUICK
+  DEEP
+  HYBRID
+}
+```
+
+#### FileStatusType
+```graphql
+enum FileStatusType {
+  HEALTHY
+  CORRUPT
+  NEEDS_DEEP_SCAN
+  ERROR
+}
+```
+
+#### ScanResultType
+```graphql
+type ScanResultType {
+  path: String!
+  isCorrupt: Boolean!
+  confidence: Float!
+  errorMessage: String
+  fileSizeBytes: Int!
+  scanMode: ScanModeType!
+  status: FileStatusType!
+  needsDeepScan: Boolean!
+  scannedAt: DateTime!
+}
+```
+
+#### ScanSummaryType
+```graphql
+type ScanSummaryType {
+  directory: String!
+  totalFiles: Int!
+  processedFiles: Int!
+  corruptFiles: Int!
+  healthyFiles: Int!
+  scanMode: ScanModeType!
+  scanTimeSeconds: Float!
+  successRate: Float!
+  filesPerSecond: Float!
+  startedAt: DateTime!
+  completedAt: DateTime
+}
+```
+
+#### ScanJobType
+```graphql
+type ScanJobType {
+  id: String!
+  directory: String!
+  scanMode: ScanModeType!
+  status: String!
+  startedAt: DateTime!
+  completedAt: DateTime
+  resultsCount: Int!
+}
+```
+
+#### ReportType
+```graphql
+type ReportType {
+  id: String!
+  format: String!
+  filePath: String!
+  createdAt: DateTime!
+  scanSummary: ScanSummaryType!
+}
+```
+
+### Queries
+
+#### Get All Scan Jobs
+```graphql
+query {
+  scanJobs {
+    id
+    directory
+    scanMode
+    status
+    startedAt
+    completedAt
+    resultsCount
+  }
+}
+```
+
+#### Get Specific Scan Job
+```graphql
+query {
+  scanJob(jobId: "uuid-here") {
+    id
+    directory
+    status
+    resultsCount
+  }
+}
+```
+
+#### Get Scan Results
+```graphql
+query {
+  scanResults(jobId: "uuid-here") {
+    path
+    isCorrupt
+    confidence
+    status
+    fileSizeBytes
+  }
+}
+```
+
+#### Get Scan Summary
+```graphql
+query {
+  scanSummary(jobId: "uuid-here") {
+    directory
+    totalFiles
+    corruptFiles
+    healthyFiles
+    scanTimeSeconds
+    successRate
+  }
+}
+```
+
+### Mutations
+
+#### Start a Scan
+```graphql
+mutation {
+  startScan(input: {
+    directory: "/path/to/videos"
+    scanMode: HYBRID
+    recursive: true
+    resume: true
+  }) {
+    id
+    directory
+    status
+    startedAt
+  }
+}
+```
+
+#### Generate Report
+```graphql
+mutation {
+  generateReport(input: {
+    scanJobId: "uuid-here"
+    format: "json"
+    includeHealthy: false
+    prettyPrint: true
+  }) {
+    id
+    format
+    filePath
+    createdAt
+    scanSummary {
+      totalFiles
+      corruptFiles
+    }
+  }
+}
+```
+
+## Authentication
+
+### OIDC Configuration
+
+The API supports OpenID Connect (OIDC) authentication for secure access.
+
+#### Environment Variables
+
+```bash
+export OIDC_ENABLED=true
+export OIDC_ISSUER=https://auth.example.com
+export OIDC_CLIENT_ID=your-client-id
+export OIDC_CLIENT_SECRET=your-client-secret
+export OIDC_AUDIENCE=corrupt-video-inspector-api
+```
+
+#### Configuration File
+
+```yaml
+api:
+  enabled: true
+  oidc_enabled: true
+  oidc_issuer: "https://auth.example.com"
+  oidc_client_id: "your-client-id"
+  oidc_client_secret: "your-client-secret"
+  oidc_audience: "corrupt-video-inspector-api"
+```
+
+#### Using Bearer Tokens
+
+When OIDC is enabled, include the JWT token in the Authorization header:
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     http://localhost:8000/graphql \
+     -d '{"query": "{ scanJobs { id } }"}'
+```
+
+### Development Mode (No Authentication)
+
+For development purposes, OIDC can be disabled:
+
+```yaml
+api:
+  enabled: true
+  oidc_enabled: false
+```
+
+## REST Endpoints
+
+### Health Check
+
+```bash
+GET /health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "service": "corrupt-video-inspector-api"
+}
+```
+
+### API Metadata
+
+```bash
+GET /
+```
+
+Response:
+```json
+{
+  "name": "Corrupt Video Inspector API",
+  "version": "1.0.0",
+  "graphql_endpoint": "/graphql",
+  "health_endpoint": "/health"
+}
+```
+
+## Docker Deployment
+
+### Docker Compose Configuration
+
+The API service is defined in `docker/docker-compose.yml`:
+
+```yaml
+services:
+  api:
+    image: cvi-api:1.0.0
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: cvi-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - video_data:/app/videos:ro
+      - output:/app/output:ro
+    environment:
+      - OIDC_ENABLED=false
+      - PYTHONUNBUFFERED=1
+    profiles:
+      - api
+```
+
+### Running with Profiles
+
+The API service uses Docker Compose profiles to avoid running by default:
+
+```bash
+# Run only the API
+docker compose --profile api up
+
+# Run API alongside other services
+docker compose --profile api --profile trakt up
+```
+
+## Integration with Core Components
+
+The API integrates with the core functionality through:
+
+- **ScanHandler**: Executes video scans using the CLI handler
+- **ReportService**: Generates reports in various formats
+- **VideoScanner**: Orchestrates file scanning operations
+- **Configuration**: Uses the centralized AppConfig system
+
+## Development
+
+### Adding New Queries
+
+1. Define the query in `src/api/graphql/resolvers.py`:
+   ```python
+   @strawberry.field
+   def my_new_query(self, info: Info, param: str) -> MyType:
+       # Implementation
+       pass
+   ```
+
+2. Add the query to the `Query` class
+
+3. Update the GraphQL schema automatically (Strawberry handles this)
+
+### Adding New Mutations
+
+1. Define the mutation in `src/api/graphql/resolvers.py`:
+   ```python
+   @strawberry.mutation
+   def my_new_mutation(self, info: Info, input: MyInputType) -> MyOutputType:
+       # Implementation
+       pass
+   ```
+
+2. Add the mutation to the `Mutation` class
+
+### Adding New Types
+
+1. Define types in `src/api/graphql/types.py`:
+   ```python
+   @strawberry.type
+   class MyNewType:
+       field1: str
+       field2: int
+   ```
+
+2. Use the types in queries and mutations
+
+## Testing
+
+### Unit Tests
+
+```bash
+pytest tests/unit/test_api.py -v
+```
+
+### Integration Tests
+
+```bash
+# Start the API
+make run-api
+
+# In another terminal, run integration tests
+pytest tests/integration/test_api_integration.py -v
+```
+
+### Manual Testing with cURL
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# GraphQL query
+curl -X POST http://localhost:8000/graphql \
+     -H "Content-Type: application/json" \
+     -d '{"query": "{ scanJobs { id directory status } }"}'
+
+# Start a scan
+curl -X POST http://localhost:8000/graphql \
+     -H "Content-Type: application/json" \
+     -d '{"query": "mutation { startScan(input: { directory: \"/app/videos\", scanMode: QUICK }) { id status } }"}'
+```
+
+## Security Considerations
+
+1. **OIDC Authentication**: Always enable OIDC in production
+2. **CORS Configuration**: Restrict allowed origins in production
+3. **Rate Limiting**: Consider adding rate limiting for production use
+4. **Input Validation**: All inputs are validated by Pydantic models
+5. **File Access**: API only has read access to video files
+
+## Performance
+
+- **Async Operations**: GraphQL resolvers run asynchronously
+- **Non-Blocking**: Video scans don't block API requests
+- **Resource Limits**: Consider container resource limits for large scans
+- **Caching**: Future enhancement for caching scan results
+
+## Troubleshooting
+
+### API Won't Start
+
+1. Check configuration file exists: `config.yaml`
+2. Verify dependencies are installed: `make install-dev`
+3. Check port 8000 is not in use: `lsof -i :8000`
+
+### GraphQL Queries Fail
+
+1. Check GraphQL syntax in playground
+2. Verify authentication token if OIDC is enabled
+3. Check API logs for detailed error messages
+
+### Docker Container Issues
+
+1. Check container logs: `docker logs cvi-api`
+2. Verify volumes are mounted: `docker inspect cvi-api`
+3. Check network connectivity: `docker network inspect`
 
 ## Future Enhancements
 
-Planned features for future releases:
+- [ ] WebSocket subscriptions for real-time scan progress
+- [ ] Database integration for persistent scan history
+- [ ] Batch operations for multiple scans
+- [ ] Advanced filtering and sorting
+- [ ] Trakt.tv integration through GraphQL
+- [ ] File upload support for scanning
+- [ ] Admin panel integration
+- [ ] Metrics and monitoring endpoints
 
-1. **File-Level Results**: Return individual file scan results
-2. **Database Integration**: Query historical scans from SQLite database
-3. **Authentication**: JWT-based authentication for multi-user deployments
-4. **Query Builder**: Advanced filtering and search capabilities
-5. **Export Endpoints**: Download results in CSV, JSON, PDF formats
-6. **Trakt Integration**: Sync scan results with Trakt.tv watchlist
-7. **Batch Operations**: Start multiple scans simultaneously
-8. **Rate Limiting**: Prevent API abuse
+## Related Documentation
 
----
-
-## See Also
-
-- [Web UI Documentation](WEB_UI.md)
-- [Core Module Documentation](CORE.md)
-- [Docker Deployment](DOCKER.md)
+- [Core Module](./CORE.md) - Business logic components
+- [CLI Module](./CLI.md) - Command-line interface
+- [Configuration](./CONFIG.md) - Configuration management
+- [Docker](./DOCKER.md) - Container deployment
