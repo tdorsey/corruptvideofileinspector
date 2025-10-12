@@ -96,3 +96,6 @@ config.yaml
 secrets/*
 docker/secrets/*
 videos/
+# Test artifacts
+<Mock *
+<MagicMock *

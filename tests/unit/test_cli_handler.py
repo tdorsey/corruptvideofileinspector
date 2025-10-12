@@ -26,7 +26,7 @@ class TestSetupLogging(unittest.TestCase):
         setup_logging(verbose=False)
 
         mock_basic_config.assert_called_once()
-        args, kwargs = mock_basic_config.call_args
+        _args, kwargs = mock_basic_config.call_args
         assert kwargs["level"] == logging.INFO
 
 

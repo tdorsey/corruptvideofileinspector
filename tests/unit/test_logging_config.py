@@ -6,7 +6,6 @@ import logging
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 
@@ -181,7 +180,7 @@ class TestSetupLogging(unittest.TestCase):
             (2, logging.DEBUG),
         ]
 
-        for verbose, expected_level in test_cases:
+        for verbose, _expected_level in test_cases:
             # Clear handlers
             root_logger = logging.getLogger()
             for handler in root_logger.handlers[:]:

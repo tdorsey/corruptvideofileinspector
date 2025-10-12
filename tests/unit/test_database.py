@@ -447,8 +447,17 @@ class TestDatabaseIntegrationWithOutput:
         db_path.unlink()
 
         # Import config components
-        from src.config.config import AppConfig, DatabaseConfig, FFmpegConfig, LoggingConfig, OutputConfig, ProcessingConfig, ScanConfig, TraktConfig
-        
+        from src.config.config import (
+            AppConfig,
+            DatabaseConfig,
+            FFmpegConfig,
+            LoggingConfig,
+            OutputConfig,
+            ProcessingConfig,
+            ScanConfig,
+            TraktConfig,
+        )
+
         # Create minimal config with database enabled
         config = AppConfig(
             logging=LoggingConfig(level="WARNING", file=Path("/tmp/test.log")),
@@ -468,14 +477,14 @@ class TestDatabaseIntegrationWithOutput:
 
     def test_output_formatter_stores_in_database(self, temp_db_config):
         """Test that OutputFormatter stores scan results in database."""
+        from src.core.models.scanning import ScanMode, ScanSummary
         from src.output import OutputFormatter
-        from src.core.models.scanning import ScanSummary, ScanMode
 
-        config, db_path = temp_db_config
-        
+        config, _db_path = temp_db_config
+
         # Create output formatter
         formatter = OutputFormatter(config)
-        
+
         # Create a scan summary
         summary = ScanSummary(
             directory=Path("/test/videos"),
@@ -488,23 +497,21 @@ class TestDatabaseIntegrationWithOutput:
             started_at=time.time(),
             completed_at=time.time() + 120,
         )
-        
-        # Write results without output file (database only)
-        formatter.write_scan_results(
+
+        # Store results in database
+        formatter.store_scan_results(
             summary=summary,
             scan_results=None,
-            output_file=None,
-            store_in_database=True,
         )
-        
+
         # Verify data was stored in database
         db_service = formatter.get_database_service()
         assert db_service is not None
-        
+
         stats = db_service.get_database_stats()
         assert stats.total_scans == 1
         assert stats.total_files == 0  # No individual results stored
-        
+
         # Get the scan from database
         recent_scans = db_service.get_recent_scans(limit=1)
         assert len(recent_scans) == 1
