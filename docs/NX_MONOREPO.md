@@ -25,7 +25,7 @@ The repository has been migrated to use Nx for workspace orchestration, computat
 ├── nx.json               # Nx workspace configuration
 ├── package.json          # Node.js dependencies and scripts
 └── .github/workflows/
-    └── nx-ci.yml         # Nx-powered CI/CD pipeline
+    └── ci.yml            # CI/CD pipeline with Nx caching
 ```
 
 ## Projects
@@ -137,7 +137,7 @@ npx nx affected --target=lint
 
 ## CI/CD Integration
 
-The `.github/workflows/nx-ci.yml` workflow uses Nx for intelligent CI/CD:
+The `.github/workflows/ci.yml` workflow integrates Nx for intelligent CI/CD:
 
 ### Features
 

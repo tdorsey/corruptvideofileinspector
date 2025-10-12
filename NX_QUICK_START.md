@@ -105,7 +105,7 @@ To clear cache: `npx nx reset`
 
 ## CI/CD
 
-The repository uses Nx-powered CI/CD in `.github/workflows/nx-ci.yml`:
+The repository uses Nx-powered CI/CD in `.github/workflows/ci.yml`:
 
 - ✅ Intelligent caching across CI runs
 - ✅ Parallel job execution
