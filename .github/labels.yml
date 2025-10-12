@@ -41,6 +41,8 @@
   - '*Tests*'
 'component:docs':
   - '*Documentation*'
+'component:api':
+  - '*API*'
 'component:other':
   - '*Other*'
 
