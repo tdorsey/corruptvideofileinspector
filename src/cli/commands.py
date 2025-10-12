@@ -195,7 +195,7 @@ def scan(
     - hybrid: Quick scan first, then deep scan for suspicious files
     - full: Complete scan of entire video stream without timeout
 
-    All scan results are stored in the SQLite database.
+    - All scan results are stored in the SQLite database.
 
     \b
     - Use --incremental to skip files recently scanned and found healthy
