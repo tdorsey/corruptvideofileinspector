@@ -41,25 +41,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg build-essential
 
-      - name: Install poetry
-        run: pipx install poetry
-
       - id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ vars.DEFAULT_PYTHON_VERSION || '3.13' }}
-          cache: 'poetry'
+          cache: 'pip'
 
-      - name: Install dependencies (Poetry)
-        run: poetry install
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
 
       - name: Verify tools are available
         run: |
           ffmpeg -version | head -n 1
-          poetry run black --version
-          poetry run ruff --version
-          poetry run mypy --version
-          poetry run pytest --version
+          black --version
+          ruff --version
+          mypy --version
+          pytest --version
 
       - name: Setup test configuration
         run: |

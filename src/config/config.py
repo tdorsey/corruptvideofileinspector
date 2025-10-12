@@ -28,14 +28,14 @@ class ProcessingConfig(BaseModel):
 
 
 class OutputConfig(BaseModel):
-    default_json: bool = Field(default=True)
-    default_output_dir: Path = Field(...)
-    # Default filename for scan results output
-    default_filename: str = Field(default="scan_results.json")
+    # Note: File-based output removed in favor of database-only storage
+    # These fields are kept for backward compatibility with config files but are deprecated
+    default_json: bool = Field(default=True, deprecated="File output removed")
+    default_output_dir: Path = Field(..., deprecated="File output removed")
+    default_filename: str = Field(default="scan_results.json", deprecated="File output removed")
 
 
 class DatabaseConfig(BaseModel):
-    enabled: bool = Field(default=False, description="Enable SQLite database storage")
     path: Path = Field(
         default=Path.home() / ".corrupt-video-inspector" / "scans.db",
         description="Database file location",

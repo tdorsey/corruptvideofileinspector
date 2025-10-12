@@ -9,10 +9,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies including dumb-init and ffmpeg
+# Install system dependencies including dumb-init, gosu and ffmpeg
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     dumb-init \
+    gosu \
     ca-certificates \
     build-essential \
     curl \
@@ -102,11 +103,14 @@ COPY --chown=inspector:inspector pyproject.toml ./
 # Copy application source code (if needed)
 COPY --chown=inspector:inspector src/ /app/src/
 
+# Copy entrypoint script
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Create directories and set ownership as root
 RUN mkdir -p /app/videos /app/output /app/logs && chown -R inspector:inspector /app
 
-# Switch to non-root user after directories are created and owned
-USER ${APP_USER}
+# Don't switch to non-root user yet - entrypoint will handle it based on PUID/PGID
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -115,8 +119,8 @@ ENV PYTHONPATH=/app
 WORKDIR /app
 
 
-# Entrypoint runs the CLI root, so docker-compose command can be just the subcommand and args
-ENTRYPOINT ["dumb-init", "--", "python3", "-m", "src"]
+# Entrypoint handles PUID/PGID and runs as appropriate user
+ENTRYPOINT ["/entrypoint.sh", "dumb-init", "--", "python3", "-m", "src"]
 CMD ["--help"]
 
 LABEL org.opencontainers.image.title=${APP_TITLE}
