@@ -99,7 +99,8 @@ export interface DatabaseStatsResponse {
   last_scan_time?: string
 }
 
-export interface WebSocketMessage {
-  type: 'status' | 'progress' | 'complete' | 'error'
-  data: any
-}
+export type WebSocketMessage =
+  | { type: 'status'; data: ScanStatusResponse }
+  | { type: 'progress'; data: ScanProgress }
+  | { type: 'complete'; data: ScanResultsData }
+  | { type: 'error'; data: { error: string } };
