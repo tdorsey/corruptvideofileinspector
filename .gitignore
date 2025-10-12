@@ -110,7 +110,7 @@ videos/
 
 # Nx
 .nx/
-.nx/cache
-.nx/workspace-data
+=======
+
 node_modules/
 package-lock.json

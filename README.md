@@ -135,6 +135,9 @@ open http://localhost:8000/graphql
 
 ### 🗄️ Database Storage
 
+=======
+### 🗄️ Database Storage
+
 All scan results are stored in an SQLite database for persistent storage and advanced analysis:
 
 - **Historical Tracking**: Maintain scan history across multiple runs
