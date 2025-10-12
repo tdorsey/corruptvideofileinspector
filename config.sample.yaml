@@ -1,5 +1,8 @@
 # Sample configuration file for Corrupt Video Inspector
 # Copy this file to config.yaml and customize as needed
+#
+# NOTE: All scan results are now stored in SQLite database only.
+# File-based output has been removed in favor of database storage.
 
 logging:
   level: INFO
@@ -16,6 +19,8 @@ processing:
   max_workers: 8
   default_mode: "quick"
 
+# DEPRECATED: output settings are no longer used
+# All results are stored in database
 output:
   default_json: true
   default_output_dir: /tmp/output
@@ -34,8 +39,9 @@ scan:
     - ".wmv"
     - ".flv"
 
+# Database storage (required, always enabled)
 database:
-  enabled: false  # Enable SQLite database storage
+  enabled: true  # Database storage is now mandatory
   path: "~/.corrupt-video-inspector/scans.db"  # Database file location
   auto_cleanup_days: 0  # Auto-delete scans older than X days (0 = disabled)
   create_backup: true  # Create backups before schema changes
