@@ -44,8 +44,7 @@ def get_oidc_config() -> OIDCConfig:
 
     if not all([config.issuer, config.client_id, config.client_secret]):
         logger.warning(
-            "OIDC is enabled but configuration is incomplete. "
-            "Falling back to disabled mode."
+            "OIDC is enabled but configuration is incomplete. " "Falling back to disabled mode."
         )
         return OIDCConfig(enabled=False)
 

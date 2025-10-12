@@ -103,6 +103,22 @@ This includes detailed guidance on:
 - All tests must pass before submitting changes
 - Follow existing code style and patterns in the repository
 
+### Dependency Management (REQUIRED)
+**When adding or updating dependencies:**
+- **MUST update `poetry.lock`** after any changes to dependencies in `pyproject.toml`
+- Run `poetry lock --no-update` to update only the changed dependencies
+- Run `poetry lock` to update all dependencies to latest compatible versions
+- Always commit `poetry.lock` changes alongside `pyproject.toml` changes
+- Verify changes with `poetry check` before committing
+
+### Pull Request Requirements (REQUIRED)
+**Before submitting a pull request:**
+- **MUST resolve all merge conflicts** - PRs with unresolved conflicts will not be accepted
+- **MUST update `poetry.lock`** if dependencies were modified
+- **MUST pass all CI/CD checks** including tests, linting, and formatting
+- Pre-commit hook `check-merge-conflict` automatically detects conflict markers
+- Run `git status` and `git diff` to verify no conflicts remain
+
 ## Additional Resources
 
 For comprehensive guidance on specific aspects of development, refer to these specialized instruction files:
@@ -248,6 +264,12 @@ These commands work without network access in the Copilot environment:
 
 ### Installation and Environment Setup (For Local Development)
 - **Network connectivity to PyPI is required for local development**. In Copilot environments, dependencies are pre-installed.
+- **Install Poetry** (if not already installed):
+  ```bash
+  curl -sSL https://install.python-poetry.org | python3 -
+  # or
+  pip install poetry
+  ```
 - Install development dependencies:
   ```bash
   make install-dev
@@ -255,6 +277,11 @@ These commands work without network access in the Copilot environment:
   - **Expected time**: 2-5 minutes. NEVER CANCEL - Set timeout to 10+ minutes.
   - **Alternative if network issues occur**: `pip install -e ".[dev]" --timeout 300 --retries 3`
   - **Fallback for network issues**: Use Docker development environment instead
+- **Verify Poetry installation**:
+  ```bash
+  poetry --version
+  poetry check  # Validates pyproject.toml and poetry.lock consistency
+  ```
 
 ### Project Setup (Works Without Network)
 - **Setup project directories and secrets**:
@@ -424,6 +451,12 @@ make secrets-init                   # Create secret files (5-10 sec)
 
 # Install dependencies (NETWORK REQUIRED)
 make install-dev                    # 2-5 min, timeout 10+ min
+
+# Dependency management (when dependencies change)
+poetry lock --no-update             # Update lock file for changed deps only
+poetry lock                         # Update all dependencies to latest compatible
+poetry check                        # Verify pyproject.toml and poetry.lock consistency
+poetry show --tree                  # Show dependency tree
 
 # Code quality and validation
 make format                         # 30-60 sec, timeout 5+ min

@@ -1,251 +1,168 @@
-# Corrupt Video Inspector - Web Frontend
+# Corrupt Video Inspector Web UI
 
-React-based web interface for the Corrupt Video Inspector.
+React-based web interface for video corruption detection with real-time progress monitoring.
 
-## Quick Start
+## Overview
 
-### Prerequisites
+A modern web dashboard for managing video corruption scans. Features include:
 
-- Node.js 18 or later
-- npm 9 or later
-
-### Installation
-
-```bash
-# Install dependencies
-npm install
-```
-
-### Development
-
-```bash
-# Start development server
-npm run dev
-
-# Development server will be available at http://localhost:5173
-```
-
-The development server includes:
-- Hot module replacement
-- API proxy to backend (http://localhost:8000)
-- WebSocket proxy for real-time updates
-
-### Building for Production
-
-```bash
-# Build production bundle
-npm run build
-
-# Preview production build locally
-npm run preview
-```
-
-Production build outputs to `dist/` directory.
-
-## Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Lint TypeScript/React code
-- `npm run format` - Format code with Prettier
-- `npm run type-check` - Type check without emitting
-
-## Project Structure
-
-```
-frontend/
-├── src/
-│   ├── components/     # Reusable React components
-│   │   └── AppBar.tsx  # Navigation bar
-│   ├── pages/          # Page components (routes)
-│   │   ├── Dashboard.tsx   # System status dashboard
-│   │   ├── ScanPage.tsx    # Scan configuration
-│   │   └── ResultsPage.tsx # Scan results display
-│   ├── services/       # API communication
-│   │   └── api.ts      # API client methods
-│   ├── types/          # TypeScript type definitions
-│   │   └── api.ts      # API data models
-│   ├── App.tsx         # Main app component
-│   └── main.tsx        # Application entry point
-├── public/             # Static assets
-├── index.html          # HTML template
-├── vite.config.ts      # Vite configuration
-├── tsconfig.json       # TypeScript configuration
-├── package.json        # Dependencies and scripts
-└── README.md           # This file
-```
+- **New Scan Configuration**: Form-based interface for starting new scans
+- **Real-time Progress**: WebSocket-based live updates during scanning
+- **Scan History**: View all past and current scans with status
+- **Results Visualization**: Clear display of corrupt vs healthy files
 
 ## Technology Stack
 
-- **React 18** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool and dev server
-- **Material-UI (MUI)** - Component library
-- **React Router** - Client-side routing
-- **Axios** - HTTP client
-- **WebSocket API** - Real-time updates
+- **React 18** with TypeScript
+- **Material-UI** for components and theming
+- **Vite** for fast development and optimized builds
+- **WebSocket** for real-time updates
+- **Nginx** for production serving
 
-## Configuration
+## Development
 
-### API Endpoint
+### Prerequisites
 
-The API endpoint is configured in `vite.config.ts`:
+- Node.js 18+
+- API server running on port 8000
 
-```typescript
-server: {
-  proxy: {
-    '/api': {
-      target: 'http://localhost:8000',
-      changeOrigin: true,
-    },
-  },
-}
-```
-
-To use a different API server, modify the `target` URL.
-
-### Environment Variables
-
-Create a `.env.local` file for environment-specific configuration:
+### Local Development
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8000
+# Install dependencies
+cd apps/web
+npm install
+
+# Set environment variables (optional)
+cp .env.example .env
+# Edit .env to set VITE_API_URL if API is not on localhost:8000
+
+# Start development server (with proxy to API)
+npm run dev
+
+# Access at http://localhost:3000
 ```
 
-## Development Guidelines
+### Build for Production
 
-### Code Style
+```bash
+# Build optimized production bundle
+npm run build
 
-- Use functional components with hooks
-- Follow TypeScript strict mode
-- Use Material-UI components
-- Format with Prettier (2 spaces, single quotes)
-- Lint with ESLint
-
-### Adding New Pages
-
-1. Create component in `src/pages/`
-2. Add route in `App.tsx`
-3. Add navigation link in `AppBar.tsx`
-
-Example:
-
-```typescript
-// src/pages/NewPage.tsx
-import { Container, Typography } from '@mui/material'
-
-export default function NewPage() {
-  return (
-    <Container>
-      <Typography variant="h4">New Page</Typography>
-    </Container>
-  )
-}
-
-// App.tsx
-<Route path="/new-page" element={<NewPage />} />
-```
-
-### API Integration
-
-Use the `apiService` from `src/services/api.ts`:
-
-```typescript
-import { apiService } from '@/services/api'
-
-// Health check
-const health = await apiService.healthCheck()
-
-// Start scan
-const response = await apiService.startScan({
-  directory: '/path/to/videos',
-  mode: ScanMode.QUICK,
-  recursive: true,
-  max_workers: 8,
-})
-
-// WebSocket connection
-const ws = apiService.createWebSocket(scanId)
-ws.onmessage = (event) => {
-  const message = JSON.parse(event.data)
-  // Handle message
-}
+# Preview production build
+npm run preview
 ```
 
 ## Docker Deployment
 
-The frontend is containerized for production deployment:
+### Using Docker Compose
 
 ```bash
-# Build Docker image
-docker build -f ../docker/Dockerfile.frontend -t cvi-frontend ..
+# From repository root
+# Start both API and Web UI
+docker compose --profile web up
 
-# Run with Docker Compose
-docker-compose -f ../docker/docker-compose.web.yml up
+# Or build and start
+docker compose --profile web up --build
+
+# Access:
+# - Web UI: http://localhost:3000
+# - API: http://localhost:8000
 ```
 
-The Docker build uses multi-stage builds:
-1. Build stage: Compile TypeScript and bundle with Vite
-2. Runtime stage: Serve static files with Nginx
-
-## Troubleshooting
-
-### "Module not found" errors
+### Manual Docker Build
 
 ```bash
-# Clear node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
+# Build image
+docker build -f docker/Dockerfile.web -t cvi-web:latest apps/web/
+
+# Run container
+docker run -p 3000:3000 \
+  -e VITE_API_URL=http://localhost:8000 \
+  cvi-web:latest
 ```
 
-### Development server not proxying API
+## Features
 
-Check that the API server is running on port 8000:
+### New Scan Tab
 
-```bash
-curl http://localhost:8000/api/health
+Configure and start new video corruption scans:
+- Directory path selection
+- Scan mode: Quick, Deep, or Hybrid
+- Recursive subdirectory scanning
+- Resume capability
+
+### Scan Progress Tab
+
+Monitor all scans with:
+- List of all scans (past and present)
+- Real-time status updates
+- Auto-refresh every 5 seconds
+- Click to view detailed results
+
+### Results Tab
+
+View detailed scan results with:
+- Real-time progress bar during scanning
+- Live file count updates
+- Corrupt vs healthy file statistics
+- Current file being scanned
+- Final summary when complete
+
+## API Integration
+
+The web UI communicates with the FastAPI backend through:
+
+**REST Endpoints:**
+- `POST /api/scans` - Create new scan
+- `GET /api/scans` - List all scans
+- `GET /api/scans/{id}` - Get specific scan
+
+**WebSocket:**
+- `WS /ws/scans/{id}` - Real-time progress updates
+
+## Configuration
+
+Environment variables (set in `.env` file):
+
+- `VITE_API_URL` - API server URL (default: `http://localhost:8000`)
+
+## Architecture
+
 ```
-
-### Build fails with TypeScript errors
-
-```bash
-# Type check to see detailed errors
-npm run type-check
-```
-
-### Hot reload not working
-
-Clear Vite cache:
-
-```bash
-rm -rf node_modules/.vite
-npm run dev
+apps/web/
+├── src/
+│   ├── api/
+│   │   └── client.ts          # API client with REST and WebSocket
+│   ├── components/
+│   │   ├── ScanForm.tsx       # New scan configuration form
+│   │   ├── ScanList.tsx       # List of all scans
+│   │   └── ScanResults.tsx    # Detailed results with live updates
+│   ├── App.tsx                # Main application with tab navigation
+│   └── main.tsx               # Application entry point
+├── index.html                  # HTML template
+├── vite.config.ts             # Vite configuration with proxy
+└── package.json               # Dependencies and scripts
 ```
 
 ## Browser Support
 
-- Chrome 90+
+- Chrome/Edge 90+
 - Firefox 88+
 - Safari 14+
-- Edge 90+
 
-Internet Explorer is not supported.
+## Troubleshooting
 
-## Contributing
+**Cannot connect to API:**
+- Ensure API server is running on port 8000
+- Check CORS settings in API configuration
+- Verify `VITE_API_URL` in `.env` file
 
-1. Follow the existing code style
-2. Write TypeScript with strict types
-3. Test changes in development mode
-4. Ensure production build succeeds
-5. Update documentation as needed
+**WebSocket connection fails:**
+- Check that API supports WebSocket connections
+- Verify network allows WebSocket protocol
+- Check browser console for detailed errors
 
-## Documentation
-
-- [Web UI Guide](../docs/WEB_UI.md)
-- [API Documentation](../docs/API.md)
-- [Main Project README](../README.md)
-
-## License
-
-MIT
+**Build fails:**
+- Clear `node_modules` and reinstall: `rm -rf node_modules && npm install`
+- Ensure Node.js version is 18 or higher

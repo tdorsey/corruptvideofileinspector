@@ -110,9 +110,12 @@ videos/
 
 # Nx
 .nx/
+
+# Node.js / Web
 node_modules/
 package-lock.json
 dist/
 .vite/
 yarn.lock
 pnpm-lock.yaml
+apps/web/.env

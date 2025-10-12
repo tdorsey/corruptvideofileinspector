@@ -25,18 +25,61 @@ applyTo: "src/**/*.py,cli_handler.py,video_inspector.py,utils.py"
 
 ## Dependency Management
 
-### Adding Dependencies
-- For runtime dependencies: Add to `[project.dependencies]` or use tool-specific commands
-- For development dependencies: Add to `[project.optional-dependencies.dev]` or tool-specific dev groups
-- Always specify appropriate version constraints:
-  - `>=1.0.0,<2.0.0` for semantic versioning
-  - `~=1.4.0` for compatible releases
-  - Pin exact versions only when necessary
+### Poetry Setup (REQUIRED)
+This project uses Poetry for dependency management and as its build backend:
+- **Install Poetry**: `curl -sSL https://install.python-poetry.org | python3 -` or `pip install poetry`
+- **Verify installation**: `poetry --version`
+- **Check project status**: `poetry check` validates `pyproject.toml` and `poetry.lock` consistency
+
+### Adding Dependencies (REQUIRED WORKFLOW)
+**For runtime dependencies:**
+1. Add to `[project.dependencies]` in `pyproject.toml` with appropriate version constraints
+2. **MUST update lock file**: Run `poetry lock --no-update` to update only the new dependency
+3. Install updated dependencies: `make install-dev` or `pip install -e ".[dev]"`
+4. **MUST commit both `pyproject.toml` AND `poetry.lock`** together
+
+**For development dependencies:**
+1. Add to `[project.optional-dependencies.dev]` or `[tool.poetry.group.dev.dependencies]`
+2. **MUST update lock file**: Run `poetry lock --no-update`
+3. Install: `make install-dev`
+4. **MUST commit both files together**
+
+### Version Constraints
+- Use semantic versioning constraints:
+  - `>=1.0.0,<2.0.0` for semantic versioning (allows minor updates)
+  - `~=1.4.0` for compatible releases (1.4.x only)
+  - `^1.4.0` for Poetry-style caret (allows 1.x.x, not 2.0.0)
+  - Pin exact versions (`==1.4.0`) only when necessary for critical dependencies
+
+### Poetry Lock File Management (CRITICAL)
+**MUST update `poetry.lock` when:**
+- Adding new dependencies to `pyproject.toml`
+- Removing dependencies from `pyproject.toml`
+- Changing version constraints in `pyproject.toml`
+- Updating dependencies to newer versions
+
+**Poetry commands for lock file:**
+```bash
+# Update lock file for specific changed dependencies (recommended)
+poetry lock --no-update
+
+# Update all dependencies to latest compatible versions
+poetry lock
+
+# Verify consistency between pyproject.toml and poetry.lock
+poetry check
+
+# Show installed packages and dependencies
+poetry show
+poetry show --tree  # Show dependency tree
+poetry show --outdated  # Show outdated packages
+```
 
 ### Version Management
 - Follow semantic versioning (MAJOR.MINOR.PATCH)
-- Update version in `pyproject.toml` consistently
-- Consider using dynamic versioning with tools like `setuptools_scm`
+- This project uses `poetry-dynamic-versioning` for automatic version management from git tags
+- Version is dynamically generated at build time based on git tags and commits
+- Do not manually update version in `pyproject.toml` (it uses placeholder "0.0.0")
 
 ## Code Quality Standards
 
