@@ -1,0 +1,59 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: cvi-api
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - type: bind
+        source: ${COMPOSE_PROJECT_DIR:-.}/config.yaml
+        target: /app/config.yaml
+        read_only: true
+      - video_data:/app/videos:ro
+      - output:/app/output
+      - logs:/app/logs
+    networks:
+      - cvi-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: cvi-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - cvi-network
+
+networks:
+  cvi-network:
+    driver: bridge
+
+volumes:
+  video_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${CVI_VIDEO_DIR:?'CVI_VIDEO_DIR environment variable not set'}
+  output:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${CVI_OUTPUT_DIR:?'CVI_OUTPUT_DIR environment variable not set'}
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${CVI_LOG_DIR:?'CVI_LOG_DIR environment variable not set'}

@@ -50,6 +50,9 @@ dependencies = [
     "requests>=2.28.0",
     "pydantic>=2.0.0",
     "trakt>=3.4.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "websockets>=12.0",
 ]
 
 [project.optional-dependencies]
@@ -191,6 +194,10 @@ disallow_untyped_defs = false
 module = [
     "trakt",
     "trakt.*",
+    "fastapi",
+    "fastapi.*",
+    "uvicorn",
+    "uvicorn.*",
 ]
 ignore_missing_imports = true
 

@@ -158,6 +158,25 @@ docker-trakt: docker-env ## Run trakt sync service via Docker Compose
 docker-all:       ## Run scan and report in sequence via Docker Compose
 	docker compose -f docker/docker-compose.yml up --build scan report
 
+# Web UI targets
+web-dev:           ## Run web UI in development mode (requires Node.js)
+	cd frontend && npm install && npm run dev
+
+web-build:         ## Build web UI for production
+	cd frontend && npm install && npm run build
+
+web-docker-build:  ## Build Docker images for web UI (frontend and API)
+	docker compose --env-file docker/.env -f docker/docker-compose.web.yml build
+
+web-docker-up:     ## Start web UI services via Docker Compose
+	docker compose --env-file docker/.env -f docker/docker-compose.web.yml up
+
+web-docker-down:   ## Stop web UI services
+	docker compose -f docker/docker-compose.web.yml down
+
+api-dev:           ## Run API server in development mode
+	python api_server.py
+
 # CI/CD targets referenced in workflows
 docker-test:       ## Test Docker image functionality
 	@echo "Testing Docker image build and basic functionality..."
