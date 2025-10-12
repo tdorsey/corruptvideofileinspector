@@ -4,18 +4,23 @@ import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import strawberry
 from strawberry.types import Info
 
 from src.api.graphql.types import (
+    CorruptionTrendDataType,
+    DatabaseQueryFilterInput,
+    DatabaseStatsType,
     FileStatusType,
     ReportInputType,
     ReportType,
+    ScanHistoryType,
     ScanInputType,
     ScanJobType,
     ScanModeType,
+    ScanResultHistoryType,
     ScanResultType,
     ScanSummaryType,
 )
@@ -28,6 +33,8 @@ from src.core.models.scanning import (
     ScanSummary,
 )
 from src.core.reporter import ReportService
+from src.database.models import DatabaseQueryFilter
+from src.database.service import DatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +106,23 @@ def convert_scan_summary_to_graphql(summary: ScanSummary) -> ScanSummaryType:
     )
 
 
+def get_database_service(config: AppConfig) -> DatabaseService | None:
+    """Get database service from configuration.
+
+    Args:
+        config: Application configuration
+
+    Returns:
+        DatabaseService instance
+    """
+    if not hasattr(config, "database") or not config.database:
+        return None
+
+    db_path = Path(config.database.path).expanduser()
+    auto_cleanup_days = config.database.auto_cleanup_days
+    return DatabaseService(db_path=db_path, auto_cleanup_days=auto_cleanup_days)
+
+
 @strawberry.type
 class Query:
     """GraphQL queries."""
@@ -122,7 +146,7 @@ class Query:
         return jobs
 
     @strawberry.field
-    def scan_job(self, info: Info, job_id: str) -> Optional[ScanJobType]:
+    def scan_job(self, info: Info, job_id: str) -> ScanJobType | None:
         """Get a specific scan job by ID."""
         job_data = _scan_jobs.get(job_id)
         if not job_data:
@@ -145,13 +169,177 @@ class Query:
         return [convert_scan_result_to_graphql(r) for r in results]
 
     @strawberry.field
-    def scan_summary(self, info: Info, job_id: str) -> Optional[ScanSummaryType]:
+    def scan_summary(self, info: Info, job_id: str) -> ScanSummaryType | None:
         """Get scan summary for a specific job."""
         job_data = _scan_jobs.get(job_id)
         if not job_data or "summary" not in job_data:
             return None
 
         return convert_scan_summary_to_graphql(job_data["summary"])
+
+    @strawberry.field
+    def database_stats(self, info: Info) -> DatabaseStatsType | None:
+        """Get database statistics.
+
+        Returns statistics about the database contents including total scans,
+        file counts, and date ranges.
+        """
+        config: AppConfig = info.context["config"]
+        db_service = get_database_service(config)
+
+        if not db_service:
+            logger.warning("Database not enabled in configuration")
+            return None
+
+        try:
+            stats = db_service.get_database_stats()
+            return DatabaseStatsType(
+                total_scans=stats.total_scans,
+                total_files=stats.total_files,
+                corrupt_files=stats.corrupt_files,
+                healthy_files=stats.healthy_files,
+                oldest_scan=stats.oldest_scan,
+                newest_scan=stats.newest_scan,
+                database_size_bytes=stats.database_size_bytes,
+            )
+        except Exception:
+            logger.exception("Failed to get database stats")
+            return None
+
+    @strawberry.field
+    def database_query(
+        self, info: Info, filter: DatabaseQueryFilterInput | None = None
+    ) -> list[ScanResultHistoryType]:
+        """Query scan results from database with optional filtering.
+
+        Args:
+            filter: Optional filter criteria for the query
+
+        Returns:
+            List of scan results matching the filter criteria
+        """
+        config: AppConfig = info.context["config"]
+        db_service = get_database_service(config)
+
+        if not db_service:
+            logger.warning("Database not enabled in configuration")
+            return []
+
+        try:
+            # Convert GraphQL input to database filter model
+            db_filter = DatabaseQueryFilter()
+            if filter:
+                db_filter = DatabaseQueryFilter(
+                    directory=filter.directory,
+                    is_corrupt=filter.is_corrupt,
+                    scan_mode=filter.scan_mode,
+                    min_confidence=filter.min_confidence,
+                    max_confidence=filter.max_confidence,
+                    min_file_size=filter.min_file_size,
+                    max_file_size=filter.max_file_size,
+                    since_date=filter.since_date,
+                    until_date=filter.until_date,
+                    filename_pattern=filter.filename_pattern,
+                    limit=filter.limit,
+                    offset=filter.offset,
+                )
+
+            results = db_service.query_results(db_filter)
+
+            return [
+                ScanResultHistoryType(
+                    id=result.id or 0,
+                    scan_id=result.scan_id,
+                    filename=result.filename,
+                    file_size=result.file_size,
+                    is_corrupt=result.is_corrupt,
+                    confidence=result.confidence,
+                    inspection_time=result.inspection_time,
+                    scan_mode=result.scan_mode,
+                    status=result.status,
+                    created_at=result.created_at,
+                )
+                for result in results
+            ]
+        except Exception:
+            logger.exception("Failed to query database")
+            return []
+
+    @strawberry.field
+    def corruption_trend(
+        self, info: Info, directory: str, days: int = 30
+    ) -> list[CorruptionTrendDataType]:
+        """Get corruption rate trend over time for a directory.
+
+        Args:
+            directory: Directory to analyze
+            days: Number of days to look back (default: 30)
+
+        Returns:
+            List of corruption rate data points over time
+        """
+        config: AppConfig = info.context["config"]
+        db_service = get_database_service(config)
+
+        if not db_service:
+            logger.warning("Database not enabled in configuration")
+            return []
+
+        try:
+            trend_data = db_service.get_corruption_trend(directory, days)
+
+            return [
+                CorruptionTrendDataType(
+                    scan_date=data["scan_date"],
+                    corrupt_files=data["corrupt_files"],
+                    total_files=data["total_files"],
+                    corruption_rate=data["corruption_rate"],
+                )
+                for data in trend_data
+            ]
+        except Exception:
+            logger.exception("Failed to get corruption trend")
+            return []
+
+    @strawberry.field
+    def scan_history(self, info: Info, limit: int = 10) -> list[ScanHistoryType]:
+        """Get recent scan history.
+
+        Args:
+            limit: Maximum number of scans to return (default: 10)
+
+        Returns:
+            List of recent scan records
+        """
+        config: AppConfig = info.context["config"]
+        db_service = get_database_service(config)
+
+        if not db_service:
+            logger.warning("Database not enabled in configuration")
+            return []
+
+        try:
+            scans = db_service.get_recent_scans(limit)
+
+            return [
+                ScanHistoryType(
+                    id=scan.id or 0,
+                    directory=scan.directory,
+                    scan_mode=scan.scan_mode,
+                    started_at=scan.started_at,
+                    completed_at=scan.completed_at,
+                    total_files=scan.total_files,
+                    processed_files=scan.processed_files,
+                    corrupt_files=scan.corrupt_files,
+                    healthy_files=scan.healthy_files,
+                    success_rate=scan.success_rate,
+                    scan_time=scan.scan_time,
+                )
+                for scan in scans
+            ]
+        except Exception:
+            logger.exception("Failed to get scan history")
+            return []
 
 
 @strawberry.type
@@ -197,7 +385,7 @@ class Mutation:
                 _scan_results[job_id] = []
 
         except Exception as e:
-            logger.error(f"Scan failed: {e}")
+            logger.exception("Scan failed")
             _scan_jobs[job_id]["status"] = "failed"
             _scan_jobs[job_id]["completed_at"] = datetime.now()
             _scan_jobs[job_id]["error"] = str(e)
@@ -214,7 +402,7 @@ class Mutation:
         )
 
     @strawberry.mutation
-    def generate_report(self, info: Info, input: ReportInputType) -> Optional[ReportType]:
+    def generate_report(self, info: Info, input: ReportInputType) -> ReportType | None:
         """Generate a report for a completed scan."""
         config: AppConfig = info.context["config"]
         job_data = _scan_jobs.get(input.scan_job_id)
@@ -246,6 +434,6 @@ class Mutation:
                 scan_summary=convert_scan_summary_to_graphql(summary),
             )
 
-        except Exception as e:
-            logger.error(f"Report generation failed: {e}")
+        except Exception:
+            logger.exception("Report generation failed")
             return None

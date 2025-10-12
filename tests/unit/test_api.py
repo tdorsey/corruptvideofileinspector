@@ -1,8 +1,9 @@
 """Unit tests for FastAPI GraphQL API."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
 
 # Mark all tests in this module as unit tests
 pytestmark = pytest.mark.unit
