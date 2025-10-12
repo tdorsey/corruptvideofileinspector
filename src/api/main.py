@@ -100,7 +100,9 @@ def create_app() -> FastAPI:
         except Exception:
             logger.exception("Base scan root could not be resolved")
             raise HTTPException(status_code=500, detail="Server configuration error") from None
-        if not str(resolved_path).startswith(str(root)):
+        # Robust check: ensure resolved_path is strictly within root
+        import os
+        if os.path.commonpath([str(resolved_path), str(root)]) != str(root):
             logger.warning(f"Directory {resolved_path} is outside of root {root}")
             raise HTTPException(status_code=400, detail="Directory is not permitted")
 
