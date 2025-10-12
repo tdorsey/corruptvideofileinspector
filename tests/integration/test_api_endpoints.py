@@ -164,8 +164,11 @@ class TestCORSHeaders:
     """Test CORS configuration."""
 
     def test_cors_headers_present(self, client):
-        """Test CORS headers are present in responses."""
-        response = client.options("/api/health", headers={"Origin": "http://localhost:3000"})
+        """Test CORS headers are present in responses from allowed origins."""
+        # Test with an allowed origin
+        response = client.get("/api/health", headers={"Origin": "http://localhost:3000"})
 
-        # FastAPI/Starlette handles OPTIONS automatically with CORS middleware
-        assert response.status_code in [200, 204]
+        # Should receive CORS headers for allowed origins
+        assert response.status_code == 200
+        # CORS headers should be present when using allowed origin
+        assert "access-control-allow-origin" in [h.lower() for h in response.headers.keys()]

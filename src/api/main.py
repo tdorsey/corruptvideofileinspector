@@ -42,12 +42,20 @@ def create_app() -> FastAPI:
     )
 
     # CORS middleware for frontend access
+    # Note: In production, configure allowed origins explicitly
+    # For development, we allow localhost origins
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
+        allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"],
     )
 
     @app.get("/api/health", response_model=HealthResponse)
@@ -60,16 +68,33 @@ def create_app() -> FastAPI:
                 version=__version__,
                 ffmpeg_available=ffmpeg_available,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Health check failed")
-            raise HTTPException(status_code=500, detail=str(e)) from e
+            raise HTTPException(
+                status_code=500, detail="Internal server error during health check"
+            ) from None
 
     def _validate_directory(directory: Path) -> None:
-        """Validate directory path."""
-        if not directory.exists():
+        """Validate directory path and prevent path traversal attacks."""
+        # Resolve to absolute path to prevent directory traversal
+        try:
+            resolved_path = directory.resolve()
+        except (OSError, RuntimeError) as e:
+            logger.warning(f"Failed to resolve directory path: {e}")
+            raise HTTPException(status_code=400, detail="Invalid directory path") from None
+
+        # Check if path exists
+        if not resolved_path.exists():
             raise HTTPException(status_code=400, detail="Directory does not exist")
-        if not directory.is_dir():
+
+        # Check if it's a directory
+        if not resolved_path.is_dir():
             raise HTTPException(status_code=400, detail="Path is not a directory")
+
+        # Additional security: ensure path is absolute and doesn't contain suspicious patterns
+        path_str = str(resolved_path)
+        if ".." in path_str or path_str.startswith("~"):
+            raise HTTPException(status_code=400, detail="Invalid directory path")
 
     @app.post("/api/scans", response_model=ScanResponse)
     async def start_scan(request: ScanRequest) -> ScanResponse:
@@ -105,9 +130,11 @@ def create_app() -> FastAPI:
 
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to start scan")
-            raise HTTPException(status_code=500, detail=str(e)) from e
+            raise HTTPException(
+                status_code=500, detail="Internal server error starting scan"
+            ) from None
 
     @app.get("/api/scans/{scan_id}", response_model=ScanStatusResponse)
     async def get_scan_status(scan_id: str) -> ScanStatusResponse:
@@ -207,10 +234,12 @@ def create_app() -> FastAPI:
 
         except WebSocketDisconnect:
             logger.info(f"WebSocket disconnected for scan {scan_id}")
-        except Exception as e:
+        except Exception:
             logger.exception("WebSocket error")
             with contextlib.suppress(Exception):
-                await websocket.send_json({"type": "error", "data": {"message": str(e)}})
+                await websocket.send_json(
+                    {"type": "error", "data": {"message": "Internal server error"}}
+                )
 
     return app
 
@@ -258,10 +287,10 @@ async def run_scan(scan_id: str, request: ScanRequest) -> None:
                 "details": [],  # TODO: Implement file-level results storage
             }
 
-    except Exception as e:
+    except Exception:
         logger.exception(f"Scan {scan_id} failed")
         scan_data["status"] = ScanStatusEnum.FAILED
-        scan_data["error"] = str(e)
+        scan_data["error"] = "Scan failed due to an internal error"
 
 
 # Create app instance

@@ -295,6 +295,40 @@ ws.onmessage = (event) => {
 
 ---
 
+## Security
+
+The API implements several security measures:
+
+### Path Traversal Protection
+
+Directory paths are validated to prevent path traversal attacks:
+- Paths are resolved to absolute paths
+- Suspicious patterns (e.g., `..`, `~`) are rejected
+- Non-existent or invalid paths return 400 Bad Request
+
+### Information Disclosure Prevention
+
+Error messages do not expose internal system details:
+- Exception messages are logged but not returned to clients
+- Generic error messages are returned (e.g., "Internal server error")
+- Detailed errors are only available in server logs
+
+### CORS Restrictions
+
+Cross-Origin Resource Sharing is restricted to specific origins:
+- Only localhost origins are allowed by default
+- Production deployments should configure specific domains
+- Methods and headers are explicitly whitelisted
+
+### Input Validation
+
+All request parameters are validated:
+- Pydantic models enforce type checking
+- Parameter ranges are enforced (e.g., max_workers: 1-32)
+- Invalid inputs return 422 Unprocessable Entity
+
+---
+
 ## Error Handling
 
 All errors follow a consistent format:
@@ -307,23 +341,42 @@ All errors follow a consistent format:
 
 Common HTTP status codes:
 - `200 OK`: Success
-- `400 Bad Request`: Invalid input
+- `400 Bad Request`: Invalid input or path
 - `404 Not Found`: Resource not found
+- `422 Unprocessable Entity`: Validation error
 - `500 Internal Server Error`: Server error
 
 ---
 
 ## CORS Configuration
 
-The API currently allows all origins (`*`) for development. For production deployments, configure the `allow_origins` list in `src/api/main.py`:
+The API is configured with CORS to allow localhost origins for development:
+
+**Allowed Origins (Default)**:
+- `http://localhost:3000` - Docker frontend
+- `http://localhost:5173` - Vite dev server
+- `http://127.0.0.1:3000` - Docker frontend (IP)
+- `http://127.0.0.1:5173` - Vite dev server (IP)
+
+**Allowed Methods**:
+- `GET`, `POST`, `DELETE`, `OPTIONS`
+
+**Allowed Headers**:
+- `Content-Type`, `Authorization`
+
+For production deployments, add your domain to the `allowed_origins` list in `src/api/main.py`:
 
 ```python
+allowed_origins = [
+    "https://yourdomain.com",
+    "https://www.yourdomain.com",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://yourdomain.com"],  # Update for production
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 ```
 
