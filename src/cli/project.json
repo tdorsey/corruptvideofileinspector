@@ -1,0 +1,43 @@
+{
+  "name": "cli",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "src/cli",
+  "projectType": "application",
+  "tags": ["type:app", "lang:python"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pytest tests/unit/test_cli*.py tests/integration/test_cli*.py -v",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "black src/cli --check",
+          "ruff check src/cli",
+          "mypy src/cli"
+        ],
+        "cwd": "{workspaceRoot}",
+        "parallel": false
+      }
+    },
+    "format": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "black src/cli",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker build -f docker/Dockerfile -t cvi:latest .",
+        "cwd": "{workspaceRoot}"
+      },
+      "outputs": ["{options.outputPath}"]
+    }
+  }
+}

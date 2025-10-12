@@ -1,0 +1,20 @@
+{
+  "name": "corruptvideofileinspector-monorepo",
+  "version": "1.0.0",
+  "description": "Corrupt Video Inspector monorepo with Nx",
+  "private": true,
+  "scripts": {
+    "test": "nx run-many --target=test --all",
+    "lint": "nx run-many --target=lint --all",
+    "build": "nx run-many --target=build --all",
+    "format": "nx run-many --target=format --all",
+    "graph": "nx graph"
+  },
+  "devDependencies": {
+    "nx": "^17.0.0",
+    "@nx/python": "^17.0.0"
+  },
+  "nx": {
+    "includedScripts": []
+  }
+}
