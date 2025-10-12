@@ -2,6 +2,24 @@
 
 A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support.
 
+## 📦 Monorepo Structure
+
+This project uses **Nx** for workspace orchestration and intelligent caching:
+
+- **Fast builds**: Computation caching speeds up repeated tasks
+- **Smart CI/CD**: Only test/build changed code
+- **Organized structure**: Apps and shared libraries in a monorepo
+
+Quick Nx commands:
+```bash
+npm test          # Run all tests
+npm run lint      # Lint all code
+npm run graph     # View dependency graph
+npx nx reset      # Clear cache
+```
+
+📖 See [`NX_QUICK_START.md`](NX_QUICK_START.md) for Nx commands | [`docs/NX_MONOREPO.md`](docs/NX_MONOREPO.md) for full documentation
+
 ## 🚀 Quick Start
 
 ### Installation
