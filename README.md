@@ -82,11 +82,37 @@ docker compose -f docker/docker-compose.yml up -d --build scan report
 
 # Run with Trakt sync (requires Trakt credentials)
 docker compose -f docker/docker-compose.yml --profile trakt up -d --build scan trakt
+
+# Run the GraphQL API server
+docker compose -f docker/docker-compose.yml --profile api up -d api
 ```
 
 For advanced Docker workflows and Trakt integration, see [Docker Trakt Integration](docs/DOCKER_TRAKT.md).
 
-### 🗄️ Database Support (New!)
+### 🌐 GraphQL API (New!)
+
+FastAPI-based GraphQL API for web interface integration:
+
+- **GraphQL Queries**: Query scan jobs, results, and summaries
+- **GraphQL Mutations**: Start scans and generate reports via API
+- **OIDC Authentication**: Secure API access with OpenID Connect
+- **Docker Support**: Containerized API deployment
+- **Web Integration Ready**: Enable web UI development
+
+```bash
+# Run API locally
+make run-api
+
+# Run API with Docker
+make docker-api
+
+# Access GraphQL playground
+open http://localhost:8000/graphql
+```
+
+**See [API Documentation](docs/API.md) for complete GraphQL schema and examples.**
+
+### 🗄️ Database Support
 
 Optional SQLite database support enables persistent storage and advanced analysis:
 
@@ -107,6 +133,7 @@ Optional SQLite database support enables persistent storage and advanced analysi
 ```
 corrupt_video_inspector/
 ├── src/
+│   ├── api/                    # FastAPI GraphQL API → See docs/API.md
 │   ├── cli/                    # Command-line interface → See docs/CLI.md
 │   ├── core/                   # Core business logic → See docs/CORE.md
 │   ├── config/                 # Configuration management → See docs/CONFIG.md
@@ -115,6 +142,7 @@ corrupt_video_inspector/
 │   └── utils/                  # Shared utilities → See docs/UTILS.md
 ├── tests/                      # Test suite → See docs/tests.md
 ├── docs/                       # Documentation
+│   ├── API.md                  # FastAPI GraphQL API documentation
 │   ├── CLI.md                  # Command-line interface documentation
 │   ├── CORE.md                 # Core module documentation
 │   ├── CONFIG.md               # Configuration system guide

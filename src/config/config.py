@@ -66,6 +66,17 @@ class ScanConfig(BaseModel):
     )
 
 
+class APIConfig(BaseModel):
+    enabled: bool = Field(default=False, description="Enable FastAPI GraphQL API server")
+    host: str = Field(default="0.0.0.0", description="API server host address")
+    port: int = Field(default=8000, description="API server port")
+    oidc_enabled: bool = Field(default=False, description="Enable OIDC authentication")
+    oidc_issuer: str = Field(default="", description="OIDC issuer URL")
+    oidc_client_id: str = Field(default="", description="OIDC client ID")
+    oidc_client_secret: str = Field(default="", description="OIDC client secret")
+    oidc_audience: str = Field(default="", description="OIDC audience")
+
+
 class AppConfig(BaseModel):
     logging: LoggingConfig
     ffmpeg: FFmpegConfig
@@ -74,6 +85,7 @@ class AppConfig(BaseModel):
     scan: ScanConfig
     trakt: TraktConfig
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    api: APIConfig = Field(default_factory=APIConfig)
 
 
 _CONFIG_SINGLETON: AppConfig | None = None
