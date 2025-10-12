@@ -82,6 +82,13 @@ output/
 *.log
 test-larger/
 *.json
+# Allow important config files
+!nx.json
+!package.json
+!package-lock.json
+!project.json
+!tsconfig*.json
+!.vscode/*.json
 
 # Testing artifacts
 test_copilot_setup.py
@@ -102,8 +109,8 @@ videos/
 <MagicMock *
 
 # Nx
-.nx/cache
-.nx/workspace-data
+.nx/
+=======
+
 node_modules/
 package-lock.json
-

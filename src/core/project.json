@@ -1,0 +1,35 @@
+{
+  "name": "core",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "src/core",
+  "projectType": "library",
+  "tags": ["type:lib", "lang:python"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pytest tests/unit/ tests/integration/ -v -m 'not cli'",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "black src/core --check",
+          "ruff check src/core",
+          "mypy src/core"
+        ],
+        "cwd": "{workspaceRoot}",
+        "parallel": false
+      }
+    },
+    "format": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "black src/core",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

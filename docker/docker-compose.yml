@@ -57,6 +57,43 @@ services:
     profiles:
       - trakt
 
+  api:
+    image: cvi-api:${APP_VERSION:-1.0.0}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+      target: production
+      args:
+        APP_VERSION: "${APP_VERSION:-1.0.0}"
+        APP_TITLE: "corrupt-video-inspector-api"
+        APP_DESCRIPTION: "FastAPI GraphQL API for corrupt video file inspection"
+    container_name: cvi-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - type: bind
+        source: ${COMPOSE_PROJECT_DIR}/config.yaml
+        target: /app/config.yaml
+        read_only: true
+      - video_data:/app/videos:ro
+      - output:/app/output:ro
+      - logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OIDC_ENABLED=${OIDC_ENABLED:-false}
+      - OIDC_ISSUER=${OIDC_ISSUER:-}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+      - OIDC_AUDIENCE=${OIDC_AUDIENCE:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - api
+
 # Docker secrets configuration
 secrets:
   trakt_client_id:

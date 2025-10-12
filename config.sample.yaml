@@ -51,3 +51,13 @@ trakt:
   default_watchlist: null
   include_statuses:
     - "healthy"
+
+api:
+  enabled: false  # Enable FastAPI GraphQL API server
+  host: "0.0.0.0"  # API server host address
+  port: 8000  # API server port
+  oidc_enabled: false  # Enable OIDC authentication
+  oidc_issuer: ""  # OIDC issuer URL (e.g., https://auth.example.com)
+  oidc_client_id: ""  # OIDC client ID
+  oidc_client_secret: ""  # OIDC client secret
+  oidc_audience: ""  # OIDC audience
