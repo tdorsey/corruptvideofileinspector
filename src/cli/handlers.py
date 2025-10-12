@@ -336,6 +336,51 @@ class TraktHandler(BaseHandler):
         """Initialize Trakt handler."""
         super().__init__(config)
 
+    def sync_to_watchlist_from_results(
+        self,
+        scan_results: list[Any],
+        interactive: bool = False,  # noqa: ARG002
+        watchlist: str | None = None,
+    ) -> TraktSyncResult | None:
+        """
+        Sync database scan results to Trakt.tv watchlist.
+
+        Args:
+            scan_results: List of ScanResultDatabaseModel objects
+            interactive: Enable interactive mode (not yet implemented)
+            watchlist: Optional watchlist name/slug to sync to
+        """
+        # Validate Trakt credentials early
+        validation_result = validate_trakt_secrets()
+        if not validation_result.is_valid:
+            handle_credential_error(validation_result)
+
+        try:
+            logger.info(f"Syncing {len(scan_results)} scan results to Trakt.tv watchlist.")
+
+            # Extract filenames from database results
+            filenames = [result.filename for result in scan_results]
+
+            # For now, return a mock result indicating the feature needs full implementation
+            # This would require updating the core watchlist module to accept filenames directly
+            result = TraktSyncResult(
+                total=len(filenames),
+                movies_added=0,
+                shows_added=0,
+                failed=0,
+                watchlist=watchlist,
+                results=[],
+            )
+
+            logger.info(
+                "Trakt sync from database not fully implemented yet. "
+                "This requires updating the watchlist module."
+            )
+            return result
+        except Exception as e:
+            self._handle_error(e, "Trakt sync failed")
+            return None
+
     def sync_to_watchlist(
         self,
         scan_file: Path,

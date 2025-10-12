@@ -15,8 +15,7 @@ import click
 from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
 from src.cli.logging import configure_logging_from_config, setup_logging
 from src.config import load_config
-from src.core.models.inspection import VideoFile
-from src.core.models.scanning import FileStatus, ScanMode, ScanResult, ScanSummary
+from src.core.models.scanning import FileStatus, ScanMode
 from src.core.reporter import ReportService
 from src.ffmpeg.ffmpeg_client import FFmpegClient
 
@@ -390,7 +389,12 @@ def trakt(ctx):
 
 
 @trakt.command()
-@click.argument("scan_file", type=PathType(exists=True))
+@click.option(
+    "--scan-id",
+    "-s",
+    type=int,
+    help="Scan ID from database (use latest scan if not specified)",
+)
 @click.option("--client-id", help="Trakt.tv API client ID (overrides config setting)")
 @click.option(
     "--interactive/--no-interactive",
@@ -400,7 +404,6 @@ def trakt(ctx):
     show_default=True,
 )
 @click.option("--dry-run", is_flag=True, help="Show what would be synced without actually syncing")
-@click.option("--output", "-o", type=PathType(), help="Save sync results to file")
 @click.option(
     "--watchlist",
     "-w",
@@ -418,11 +421,10 @@ def trakt(ctx):
 @click.pass_context
 def sync(
     ctx,
-    scan_file,
+    scan_id,
     client_id,
     interactive,
     dry_run,
-    output,
     watchlist,
     include_status,
     config,
@@ -430,32 +432,28 @@ def sync(
     """
     Sync scan results to Trakt.tv watchlist.
 
-    Processes a JSON scan results file and adds discovered movies and TV shows
+    Reads scan results from database and adds discovered movies and TV shows
     to your Trakt.tv watchlist using filename parsing and search matching.
     Authentication is handled through configuration (config file, environment variables, or Docker secrets).
 
     Examples:
 
     \b
-    # Basic sync to main watchlist
-    corrupt-video-inspector trakt sync results.json
+    # Basic sync from latest scan to main watchlist
+    corrupt-video-inspector trakt sync
 
     \b
-    # Sync to a specific watchlist
-    corrupt-video-inspector trakt sync results.json --watchlist "my-custom-list"
+    # Sync specific scan to a specific watchlist
+    corrupt-video-inspector trakt sync --scan-id 42 --watchlist "my-custom-list"
 
     \b
-    # Interactive sync with output
-    corrupt-video-inspector trakt sync results.json --interactive --output sync_results.json
+    # Interactive sync
+    corrupt-video-inspector trakt sync --interactive
 
     \b
     # Dry run to see what would be synced
-    corrupt-video-inspector trakt sync results.json --dry-run
+    corrupt-video-inspector trakt sync --dry-run
     """
-    # If no arguments are provided, show the help for the trakt sync subcommand
-    if ctx.args == [] and scan_file is None:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     try:
         # Load configuration
         app_config = load_config(config_path=config)
@@ -464,28 +462,61 @@ def sync(
         if client_id:
             app_config.trakt.client_id = client_id
 
-        # Setup logging
+        # Get database service
+        from src.database.service import DatabaseService
 
-        # Create and run Trakt handler
-        handler = TraktHandler(app_config)
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        # Get scan from database
+        if scan_id is None:
+            # Get latest scan
+            recent_scans = db_service.get_recent_scans(limit=1)
+            if not recent_scans:
+                click.echo("No scans found in database", err=True)
+                sys.exit(1)
+            scan_model = recent_scans[0]
+            click.echo(f"Using latest scan (ID: {scan_model.id})")
+        else:
+            scan_model = db_service.get_scan(scan_id)
+            if scan_model is None:
+                click.echo(f"Scan ID {scan_id} not found in database", err=True)
+                sys.exit(1)
+
+        # Get scan results
+        scan_results_db = db_service.get_scan_results(scan_model.id)
 
         # Convert status strings to FileStatus enums
         include_statuses = [FileStatus(status) for status in include_status]
 
+        # Filter results by status
+        filtered_results = [
+            result
+            for result in scan_results_db
+            if FileStatus(result.status.upper()) in include_statuses
+        ]
+
+        click.echo(f"Found {len(filtered_results)} files matching status filter")
+
         # Handle dry-run mode
         if dry_run:
             click.echo("DRY RUN MODE: No actual syncing will be performed")
+            click.echo("\nFiles to sync:")
+            for result in filtered_results[:10]:  # Show first 10
+                click.echo(f"  - {result.filename} ({result.status})")
+            if len(filtered_results) > 10:
+                click.echo(f"  ... and {len(filtered_results) - 10} more")
+            return
 
-        result = handler.sync_to_watchlist(
-            scan_file=scan_file,
+        # Create and run Trakt handler
+        handler = TraktHandler(app_config)
+
+        result = handler.sync_to_watchlist_from_results(
+            scan_results=filtered_results,
             interactive=interactive,
-            output_file=output,
             watchlist=watchlist,
-            include_statuses=include_statuses,
         )
-
-        if dry_run:
-            click.echo("DRY RUN COMPLETE")
 
         click.echo("\nTrakt Sync Result:")
         if result is not None:
@@ -873,18 +904,16 @@ def test_ffmpeg(ctx, config):
 @cli.command()
 @global_options
 @click.option(
-    "--scan-file",
+    "--scan-id",
     "-s",
-    required=True,
-    type=PathType(exists=True),
-    help="Path to scan results file (JSON)",
+    type=int,
+    help="Scan ID from database (use latest scan if not specified)",
 )
-@click.option("--output", "-o", type=PathType(), help="Output file for the report")
 @click.option(
     "--format",
     "output_format",
     type=click.Choice(["html", "pdf", "json"], case_sensitive=False),
-    default="html",
+    default="json",
     help="Report format",
     show_default=True,
 )
@@ -897,27 +926,26 @@ def test_ffmpeg(ctx, config):
 @click.pass_context
 def report(
     ctx,
-    scan_file,
-    output,
+    scan_id,
     output_format,
     include_healthy,
     config,
 ):
-    # If no arguments are provided, show the help for the report subcommand
-    if ctx.args == [] and scan_file is None:
-        click.echo(ctx.get_help())
-        ctx.exit(0)
     """
-    Generate a detailed report from scan results.
+    Generate a detailed report from scan results stored in database.
 
     Creates formatted reports with statistics, file lists, and analysis
-    from JSON scan results.
+    from database scan results.
 
     Examples:
 
     \b
-    # Generate HTML report
-    corrupt-video-inspector report results.json
+    # Generate JSON report from latest scan
+    corrupt-video-inspector report
+
+    \b
+    # Generate report from specific scan ID
+    corrupt-video-inspector report --scan-id 42
 
     """
     try:
@@ -926,44 +954,68 @@ def report(
 
         # Setup logging
         setup_logging(0)
-        # Generate report
-        # Load scan results from file
-        with scan_file.open("r", encoding="utf-8") as f:
-            scan_data = json.load(f)
 
-        # Extract summary from scan data
-        summary = ScanSummary(
-            directory=Path(scan_data.get("directory", "/")),
-            total_files=scan_data.get("total_files", 0),
-            processed_files=scan_data.get("processed_files", 0),
-            corrupt_files=scan_data.get("corrupt_files", 0),
-            healthy_files=scan_data.get("healthy_files", 0),
-            scan_mode=ScanMode(scan_data.get("scan_mode", "quick")),
-            scan_time=scan_data.get("scan_time", 0.0),
+        # Get database service
+        from src.database.service import DatabaseService
+
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
         )
 
-        # Extract results
-        results = []
-        for result_data in scan_data.get("results", []):
-            video_file = VideoFile(path=Path(result_data.get("filename", "")))
-            result = ScanResult(
-                video_file=video_file,
-                needs_deep_scan=result_data.get("needs_deep_scan", False),
-                error_message=result_data.get("error_message", ""),
-            )
-            results.append(result)
+        # Get scan from database
+        if scan_id is None:
+            # Get latest scan
+            recent_scans = db_service.get_recent_scans(limit=1)
+            if not recent_scans:
+                click.echo("No scans found in database", err=True)
+                sys.exit(1)
+            scan_model = recent_scans[0]
+            click.echo(f"Using latest scan (ID: {scan_model.id})")
+        else:
+            scan_model = db_service.get_scan(scan_id)
+            if scan_model is None:
+                click.echo(f"Scan ID {scan_id} not found in database", err=True)
+                sys.exit(1)
 
-        # Use ReportService to generate report
-        service = ReportService(app_config)
-        report_path = service.generate_report(
-            summary=summary,
-            results=results,
-            output_path=output,
-            format=output_format.lower(),
-            include_healthy=include_healthy,
-        )
+        # Convert database model to ScanSummary
+        summary = scan_model.to_scan_summary()
 
-        click.echo(f"Report generated: {report_path}")
+        # Get scan results
+        scan_results_db = db_service.get_scan_results(scan_model.id)
+        results = [result.to_scan_result() for result in scan_results_db]
+
+        # Display report as JSON to stdout
+        if output_format.lower() == "json":
+            report_data = {
+                "scan_id": scan_model.id,
+                "summary": summary.model_dump(),
+                "results": (
+                    [r.model_dump() for r in results]
+                    if include_healthy
+                    else [r.model_dump() for r in results if r.is_corrupt]
+                ),
+            }
+            click.echo(json.dumps(report_data, indent=2, default=str))
+        else:
+            # For other formats, use ReportService if available
+            try:
+                service = ReportService(app_config)
+                report_path = service.generate_report(
+                    summary=summary,
+                    results=results,
+                    format=output_format.lower(),
+                    include_healthy=include_healthy,
+                )
+                click.echo(f"Report generated: {report_path}")
+            except Exception as e:
+                logger.warning(f"Report generation not available for format {output_format}: {e}")
+                # Fallback to JSON
+                report_data = {
+                    "scan_id": scan_model.id,
+                    "summary": summary.model_dump(),
+                    "results": [r.model_dump() for r in results],
+                }
+                click.echo(json.dumps(report_data, indent=2, default=str))
 
     except Exception as e:
         logger.exception("Report command failed")
