@@ -10,7 +10,7 @@ services:
         APP_TITLE: "corrupt-video-inspector"
         APP_DESCRIPTION: "A Docker-based tool to detect and report corrupt video files using FFmpeg"
     container_name: scan
-
+    user: "${PUID:-1000}:${PGID:-1000}"
     command:
       - scan
       - --directory
