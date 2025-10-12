@@ -75,7 +75,7 @@ class BaseHandler:
         store_in_database: bool = True,
     ) -> None:
         """Generate output file from scan summary and optionally store in database.
-        
+
         Args:
             summary: Scan summary to output
             output_file: Optional output file path
@@ -96,10 +96,10 @@ class BaseHandler:
                 pretty_print=pretty_print,
                 store_in_database=store_in_database,
             )
-            
+
             if output_file:
                 logger.info(f"Scan results saved to: {output_file}")
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to write scan results")
             # Fallback to manual JSON write if OutputFormatter fails
             try:
@@ -108,10 +108,10 @@ class BaseHandler:
                     target_file = (
                         self.config.output.default_output_dir / self.config.output.default_filename
                     )
-                
+
                 # Ensure parent directory exists
                 target_file.parent.mkdir(parents=True, exist_ok=True)
-                
+
                 # Write JSON manually as fallback
                 with target_file.open("w", encoding="utf-8") as f:
                     if output_format.lower() == "json":
