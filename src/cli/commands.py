@@ -479,13 +479,14 @@ def sync(
             scan_model = recent_scans[0]
             click.echo(f"Using latest scan (ID: {scan_model.id})")
         else:
-            scan_model = db_service.get_scan(scan_id)
-            if scan_model is None:
+            scan_model_or_none = db_service.get_scan(scan_id)
+            if scan_model_or_none is None:
                 click.echo(f"Scan ID {scan_id} not found in database", err=True)
                 sys.exit(1)
+            scan_model = scan_model_or_none
 
         # Get scan results
-        scan_results_db = db_service.get_scan_results(scan_model.id)
+        scan_results_db = db_service.get_scan_results(scan_model.id or 0)
 
         # Convert status strings to FileStatus enums
         include_statuses = [FileStatus(status) for status in include_status]
@@ -512,15 +513,15 @@ def sync(
         # Create and run Trakt handler
         handler = TraktHandler(app_config)
 
-        result = handler.sync_to_watchlist_from_results(
+        sync_result = handler.sync_to_watchlist_from_results(
             scan_results=filtered_results,
             interactive=interactive,
             watchlist=watchlist,
         )
 
         click.echo("\nTrakt Sync Result:")
-        if result is not None:
-            click.echo(json.dumps(result.model_dump(), indent=2))
+        if sync_result is not None:
+            click.echo(json.dumps(sync_result.model_dump(), indent=2))
         else:
             click.echo("No sync result returned.")
 
@@ -972,16 +973,17 @@ def report(
             scan_model = recent_scans[0]
             click.echo(f"Using latest scan (ID: {scan_model.id})")
         else:
-            scan_model = db_service.get_scan(scan_id)
-            if scan_model is None:
+            scan_model_or_none = db_service.get_scan(scan_id)
+            if scan_model_or_none is None:
                 click.echo(f"Scan ID {scan_id} not found in database", err=True)
                 sys.exit(1)
+            scan_model = scan_model_or_none
 
         # Convert database model to ScanSummary
         summary = scan_model.to_scan_summary()
 
         # Get scan results
-        scan_results_db = db_service.get_scan_results(scan_model.id)
+        scan_results_db = db_service.get_scan_results(scan_model.id or 0)
         results = [result.to_scan_result() for result in scan_results_db]
 
         # Display report as JSON to stdout

@@ -64,6 +64,10 @@ class OutputFormatter:
         Returns:
             Scan ID
         """
+        if not self._database_service:
+            msg = "Database service not initialized"
+            raise RuntimeError(msg)
+
         try:
             from src.database.models import (
                 ScanDatabaseModel,
@@ -108,3 +112,60 @@ class OutputFormatter:
             msg = "Database service not initialized"
             raise RuntimeError(msg)
         return self._database_service
+
+    def write_file_list(
+        self,
+        video_files: list[Any],
+        directory: Any,
+        output_file: Any,
+        format: str = "text",
+    ) -> None:
+        """Write file list to output file (for list-files command only).
+
+        Note: This is kept for the list-files command which lists video files
+        without scanning. Scan results are stored in database only.
+        """
+        import contextlib
+        import json
+        from pathlib import Path
+
+        output_file = Path(output_file)
+        directory = Path(directory)
+
+        if format.lower() == "json":
+            file_data = []
+            for video_file in video_files:
+                rel_path = getattr(video_file, "path", video_file)
+                with contextlib.suppress(ValueError):
+                    rel_path = rel_path.relative_to(directory)
+
+                file_info = {
+                    "path": str(rel_path),
+                    "size": getattr(video_file, "size", 0),
+                }
+                file_data.append(file_info)
+
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            with output_file.open("w", encoding="utf-8") as f:
+                json.dump({"directory": str(directory), "files": file_data}, f, indent=2)
+        else:
+            # Text format
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            with output_file.open("w", encoding="utf-8") as f:
+                f.write(f"Video files in: {directory}\n")
+                f.write("=" * 50 + "\n\n")
+
+                for i, video_file in enumerate(video_files, 1):
+                    rel_path = getattr(video_file, "path", video_file)
+                    if hasattr(rel_path, "relative_to"):
+                        with contextlib.suppress(ValueError):
+                            rel_path = rel_path.relative_to(directory)
+
+                    size_mb = (
+                        getattr(video_file, "size", 0) / (1024 * 1024)
+                        if getattr(video_file, "size", 0) > 0
+                        else 0
+                    )
+                    f.write(f"{i:3d}: {rel_path} ({size_mb:.1f} MB)\n")
+
+        logger.info(f"File list written to {output_file}")
