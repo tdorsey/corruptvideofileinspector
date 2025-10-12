@@ -72,9 +72,9 @@ class TestDockerConfiguration(unittest.TestCase):
         # Check that source uses COMPOSE_PROJECT_DIR
         if isinstance(config_mount, dict):
             source = config_mount.get("source", "")
-            assert "COMPOSE_PROJECT_DIR" in source, (
-                f"config.yaml mount should use COMPOSE_PROJECT_DIR, got: {source}"
-            )
+            assert (
+                "COMPOSE_PROJECT_DIR" in source
+            ), f"config.yaml mount should use COMPOSE_PROJECT_DIR, got: {source}"
 
     def test_env_example_has_puid_pgid(self):
         """Test that .env.example includes PUID and PGID variables."""
@@ -89,9 +89,9 @@ class TestDockerConfiguration(unittest.TestCase):
         with self.env_example.open("r", encoding="utf-8") as f:
             env_content = f.read()
 
-        assert "COMPOSE_PROJECT_DIR=" in env_content, (
-            "COMPOSE_PROJECT_DIR not found in .env.example"
-        )
+        assert (
+            "COMPOSE_PROJECT_DIR=" in env_content
+        ), "COMPOSE_PROJECT_DIR not found in .env.example"
 
     @patch.dict(os.environ, {"PUID": "1500", "PGID": "1500"})
     def test_puid_pgid_environment_defaults(self):
