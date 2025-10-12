@@ -20,6 +20,7 @@ src/api/
 ## Features
 
 - **GraphQL API**: Type-safe API using Strawberry GraphQL
+- **Database History & Analytics**: Query scan history, statistics, and corruption trends
 - **OIDC Authentication**: Secure API access with OpenID Connect
 - **RESTful Endpoints**: Health check and metadata endpoints
 - **Docker Support**: Containerized deployment with docker-compose
@@ -203,6 +204,80 @@ type ReportType {
 }
 ```
 
+#### DatabaseStatsType
+```graphql
+type DatabaseStatsType {
+  totalScans: Int!
+  totalFiles: Int!
+  corruptFiles: Int!
+  healthyFiles: Int!
+  oldestScan: Float
+  newestScan: Float
+  databaseSizeBytes: Int!
+}
+```
+
+#### CorruptionTrendDataType
+```graphql
+type CorruptionTrendDataType {
+  scanDate: String!
+  corruptFiles: Int!
+  totalFiles: Int!
+  corruptionRate: Float!
+}
+```
+
+#### ScanHistoryType
+```graphql
+type ScanHistoryType {
+  id: Int!
+  directory: String!
+  scanMode: String!
+  startedAt: Float!
+  completedAt: Float
+  totalFiles: Int!
+  processedFiles: Int!
+  corruptFiles: Int!
+  healthyFiles: Int!
+  successRate: Float!
+  scanTime: Float!
+}
+```
+
+#### ScanResultHistoryType
+```graphql
+type ScanResultHistoryType {
+  id: Int!
+  scanId: Int!
+  filename: String!
+  fileSize: Int!
+  isCorrupt: Boolean!
+  confidence: Float!
+  inspectionTime: Float!
+  scanMode: String!
+  status: String!
+  createdAt: Float!
+}
+```
+
+#### DatabaseQueryFilterInput
+```graphql
+input DatabaseQueryFilterInput {
+  directory: String
+  isCorrupt: Boolean
+  scanMode: String
+  minConfidence: Float
+  maxConfidence: Float
+  minFileSize: Int
+  maxFileSize: Int
+  sinceDate: Float
+  untilDate: Float
+  filenamePattern: String
+  limit: Int
+  offset: Int = 0
+}
+```
+
 ### Queries
 
 #### Get All Scan Jobs
@@ -255,6 +330,76 @@ query {
     healthyFiles
     scanTimeSeconds
     successRate
+  }
+}
+```
+
+#### Get Database Statistics
+```graphql
+query {
+  databaseStats {
+    totalScans
+    totalFiles
+    corruptFiles
+    healthyFiles
+    oldestScan
+    newestScan
+    databaseSizeBytes
+  }
+}
+```
+
+#### Query Database Results
+```graphql
+query {
+  databaseQuery(filter: {
+    directory: "/path/to/videos"
+    isCorrupt: true
+    minConfidence: 0.8
+    limit: 50
+    offset: 0
+  }) {
+    id
+    scanId
+    filename
+    fileSize
+    isCorrupt
+    confidence
+    inspectionTime
+    scanMode
+    status
+    createdAt
+  }
+}
+```
+
+#### Get Corruption Trend
+```graphql
+query {
+  corruptionTrend(directory: "/path/to/videos", days: 30) {
+    scanDate
+    corruptFiles
+    totalFiles
+    corruptionRate
+  }
+}
+```
+
+#### Get Scan History
+```graphql
+query {
+  scanHistory(limit: 10) {
+    id
+    directory
+    scanMode
+    startedAt
+    completedAt
+    totalFiles
+    processedFiles
+    corruptFiles
+    healthyFiles
+    successRate
+    scanTime
   }
 }
 ```
@@ -540,13 +685,14 @@ curl -X POST http://localhost:8000/graphql \
 ## Future Enhancements
 
 - [ ] WebSocket subscriptions for real-time scan progress
-- [ ] Database integration for persistent scan history
+- [x] Database integration for persistent scan history
 - [ ] Batch operations for multiple scans
-- [ ] Advanced filtering and sorting
+- [x] Advanced filtering and sorting for database queries
 - [ ] Trakt.tv integration through GraphQL
 - [ ] File upload support for scanning
 - [ ] Admin panel integration
 - [ ] Metrics and monitoring endpoints
+- [ ] Interactive visualization charts for corruption trends
 
 ## Related Documentation
 

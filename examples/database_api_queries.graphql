@@ -1,0 +1,363 @@
+# GraphQL Query Examples for Database History & Analytics API
+# This file contains example queries for the Corrupt Video Inspector Database API
+# Use these examples with the GraphQL playground at http://localhost:8000/graphql
+
+# ============================================================================
+# Database Statistics
+# ============================================================================
+
+# Get overall database statistics
+query GetDatabaseStats {
+  databaseStats {
+    totalScans
+    totalFiles
+    corruptFiles
+    healthyFiles
+    oldestScan
+    newestScan
+    databaseSizeBytes
+  }
+}
+
+# ============================================================================
+# Query Database Results with Filters
+# ============================================================================
+
+# Query all corrupt files
+query GetCorruptFiles {
+  databaseQuery(filter: { isCorrupt: true, limit: 100 }) {
+    id
+    filename
+    fileSize
+    confidence
+    scanMode
+    status
+    createdAt
+  }
+}
+
+# Query corrupt files with high confidence
+query GetHighConfidenceCorruptFiles {
+  databaseQuery(filter: { isCorrupt: true, minConfidence: 0.8, limit: 50 }) {
+    id
+    filename
+    confidence
+    status
+    createdAt
+  }
+}
+
+# Query files from a specific directory
+query GetFilesFromDirectory {
+  databaseQuery(filter: { directory: "/media/movies", limit: 100 }) {
+    id
+    filename
+    isCorrupt
+    confidence
+    scanMode
+    createdAt
+  }
+}
+
+# Query large corrupt files (over 1GB)
+query GetLargeCorruptFiles {
+  databaseQuery(
+    filter: { isCorrupt: true, minFileSize: 1073741824, limit: 50 }
+  ) {
+    id
+    filename
+    fileSize
+    confidence
+    inspectionTime
+  }
+}
+
+# Query recent scan results (last 7 days)
+query GetRecentResults {
+  databaseQuery(
+    filter: {
+      sinceDate: 1704067200  # Unix timestamp for 7 days ago
+      limit: 100
+    }
+  ) {
+    id
+    filename
+    isCorrupt
+    confidence
+    createdAt
+  }
+}
+
+# Query with filename pattern (using SQL LIKE)
+query GetMovieFiles {
+  databaseQuery(filter: { filenamePattern: "%/movies/%.mp4", limit: 50 }) {
+    id
+    filename
+    isCorrupt
+    confidence
+  }
+}
+
+# Complex query with multiple filters
+query GetComplexQuery {
+  databaseQuery(
+    filter: {
+      directory: "/media/videos"
+      isCorrupt: true
+      scanMode: "deep"
+      minConfidence: 0.7
+      minFileSize: 104857600  # 100MB
+      limit: 25
+      offset: 0
+    }
+  ) {
+    id
+    scanId
+    filename
+    fileSize
+    isCorrupt
+    confidence
+    inspectionTime
+    scanMode
+    status
+    createdAt
+  }
+}
+
+# Paginated query results
+query GetPaginatedResults($offset: Int = 0) {
+  databaseQuery(filter: { isCorrupt: true, limit: 20, offset: $offset }) {
+    id
+    filename
+    confidence
+    createdAt
+  }
+}
+
+# ============================================================================
+# Corruption Trend Analysis
+# ============================================================================
+
+# Get corruption trend for last 30 days
+query GetCorruptionTrend30Days {
+  corruptionTrend(directory: "/media/videos", days: 30) {
+    scanDate
+    corruptFiles
+    totalFiles
+    corruptionRate
+  }
+}
+
+# Get corruption trend for last 7 days
+query GetCorruptionTrend7Days {
+  corruptionTrend(directory: "/media/movies", days: 7) {
+    scanDate
+    corruptFiles
+    totalFiles
+    corruptionRate
+  }
+}
+
+# Get corruption trend for last 90 days
+query GetCorruptionTrend90Days {
+  corruptionTrend(directory: "/media/tv-shows", days: 90) {
+    scanDate
+    corruptFiles
+    totalFiles
+    corruptionRate
+  }
+}
+
+# ============================================================================
+# Scan History Browser
+# ============================================================================
+
+# Get recent scan history (last 10 scans)
+query GetRecentScans {
+  scanHistory(limit: 10) {
+    id
+    directory
+    scanMode
+    startedAt
+    completedAt
+    totalFiles
+    processedFiles
+    corruptFiles
+    healthyFiles
+    successRate
+    scanTime
+  }
+}
+
+# Get detailed scan history (last 5 scans)
+query GetDetailedScanHistory {
+  scanHistory(limit: 5) {
+    id
+    directory
+    scanMode
+    startedAt
+    completedAt
+    totalFiles
+    corruptFiles
+    successRate
+  }
+}
+
+# Get extensive scan history (last 50 scans)
+query GetExtensiveScanHistory {
+  scanHistory(limit: 50) {
+    id
+    directory
+    scanMode
+    startedAt
+    corruptFiles
+    healthyFiles
+  }
+}
+
+# ============================================================================
+# Combined Queries
+# ============================================================================
+
+# Dashboard overview query
+query GetDashboardOverview {
+  databaseStats {
+    totalScans
+    totalFiles
+    corruptFiles
+    healthyFiles
+    databaseSizeBytes
+  }
+  scanHistory(limit: 5) {
+    id
+    directory
+    scanMode
+    startedAt
+    corruptFiles
+    successRate
+  }
+  corruptionTrend(directory: "/media/videos", days: 30) {
+    scanDate
+    corruptionRate
+  }
+}
+
+# Directory health overview
+query GetDirectoryHealth($directory: String!) {
+  databaseStats {
+    totalFiles
+    corruptFiles
+    healthyFiles
+  }
+  corruptionTrend(directory: $directory, days: 30) {
+    scanDate
+    corruptFiles
+    totalFiles
+    corruptionRate
+  }
+  databaseQuery(
+    filter: { directory: $directory, isCorrupt: true, limit: 10 }
+  ) {
+    filename
+    confidence
+    status
+    createdAt
+  }
+}
+
+# Recent activity summary
+query GetRecentActivity {
+  scanHistory(limit: 5) {
+    id
+    directory
+    startedAt
+    completedAt
+    totalFiles
+    corruptFiles
+  }
+  databaseQuery(filter: { isCorrupt: true, limit: 10 }) {
+    filename
+    confidence
+    createdAt
+  }
+}
+
+# ============================================================================
+# Analytics Queries
+# ============================================================================
+
+# High-risk files (corrupt with high confidence)
+query GetHighRiskFiles {
+  databaseQuery(
+    filter: { isCorrupt: true, minConfidence: 0.9, limit: 100 }
+  ) {
+    id
+    filename
+    fileSize
+    confidence
+    scanMode
+    inspectionTime
+  }
+}
+
+# Suspicious files (needs deep scan)
+query GetSuspiciousFiles {
+  databaseQuery(filter: { status: "SUSPICIOUS", limit: 100 }) {
+    id
+    filename
+    confidence
+    scanMode
+    status
+  }
+}
+
+# Files scanned in different modes
+query GetFilesByMode($mode: String!) {
+  databaseQuery(filter: { scanMode: $mode, limit: 100 }) {
+    id
+    filename
+    isCorrupt
+    confidence
+    scanMode
+  }
+}
+
+# ============================================================================
+# Monitoring Queries
+# ============================================================================
+
+# Check for new corruption issues (last 24 hours)
+query GetNewCorruptionIssues {
+  databaseQuery(
+    filter: {
+      isCorrupt: true
+      sinceDate: 1704153600  # Unix timestamp for 24 hours ago
+      limit: 50
+    }
+  ) {
+    id
+    filename
+    confidence
+    createdAt
+  }
+}
+
+# Monitor scan performance
+query MonitorScanPerformance {
+  scanHistory(limit: 10) {
+    id
+    directory
+    scanMode
+    scanTime
+    totalFiles
+    processedFiles
+  }
+}
+
+# Track corruption rate changes
+query TrackCorruptionRate($directory: String!) {
+  corruptionTrend(directory: $directory, days: 30) {
+    scanDate
+    corruptionRate
+  }
+}
