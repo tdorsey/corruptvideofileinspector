@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from strawberry.fastapi import GraphQLRouter
 
 from src.api.graphql.schema import schema
+from src.api.rest import router as rest_router
 from src.api.security import get_oidc_config
 from src.config import load_config
 
@@ -55,6 +56,9 @@ def create_app() -> FastAPI:
     )
     app.include_router(graphql_app, prefix="/graphql")
 
+    # Add REST API endpoints
+    app.include_router(rest_router)
+
     # Health check endpoint
     @app.get("/health")
     async def health_check() -> dict[str, str]:
@@ -69,6 +73,10 @@ def create_app() -> FastAPI:
             "name": "Corrupt Video Inspector API",
             "version": "1.0.0",
             "graphql_endpoint": "/graphql",
+            "rest_endpoints": {
+                "scans": "/api/scans",
+                "websocket": "/ws/scans/{id}",
+            },
             "health_endpoint": "/health",
         }
 
