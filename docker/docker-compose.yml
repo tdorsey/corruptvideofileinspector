@@ -93,6 +93,22 @@ services:
       start_period: 10s
     profiles:
       - api
+      - web
+
+  web:
+    image: cvi-web:${APP_VERSION:-1.0.0}
+    build:
+      context: ../apps/web
+      dockerfile: ../../docker/Dockerfile.web
+    container_name: cvi-web
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    profiles:
+      - web
 
 # Docker secrets configuration
 secrets:
