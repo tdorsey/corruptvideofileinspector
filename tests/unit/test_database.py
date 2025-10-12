@@ -431,3 +431,84 @@ class TestDatabaseService:
         # Verify old scan is gone, recent scan remains
         assert temp_db.get_scan(old_scan_id) is None
         assert temp_db.get_scan(recent_scan_id) is not None
+
+
+@pytest.mark.unit
+class TestDatabaseIntegrationWithOutput:
+    """Test database integration with OutputFormatter."""
+
+    @pytest.fixture
+    def temp_db_config(self):
+        """Create temporary database configuration."""
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+            db_path = Path(f.name)
+
+        # Clean up the file so DatabaseService can create it
+        db_path.unlink()
+
+        # Import config components
+        from src.config.config import AppConfig, DatabaseConfig, FFmpegConfig, LoggingConfig, OutputConfig, ProcessingConfig, ScanConfig, TraktConfig
+        
+        # Create minimal config with database enabled
+        config = AppConfig(
+            logging=LoggingConfig(level="WARNING", file=Path("/tmp/test.log")),
+            ffmpeg=FFmpegConfig(),
+            processing=ProcessingConfig(),
+            output=OutputConfig(default_output_dir=Path("/tmp")),
+            scan=ScanConfig(default_input_dir=Path("/tmp")),
+            trakt=TraktConfig(),
+            database=DatabaseConfig(enabled=True, path=db_path),
+        )
+
+        yield config, db_path
+
+        # Clean up
+        if db_path.exists():
+            db_path.unlink()
+
+    def test_output_formatter_stores_in_database(self, temp_db_config):
+        """Test that OutputFormatter stores scan results in database."""
+        from src.output import OutputFormatter
+        from src.core.models.scanning import ScanSummary, ScanMode
+
+        config, db_path = temp_db_config
+        
+        # Create output formatter
+        formatter = OutputFormatter(config)
+        
+        # Create a scan summary
+        summary = ScanSummary(
+            directory=Path("/test/videos"),
+            total_files=10,
+            processed_files=10,
+            corrupt_files=2,
+            healthy_files=8,
+            scan_mode=ScanMode.QUICK,
+            scan_time=120.0,
+            started_at=time.time(),
+            completed_at=time.time() + 120,
+        )
+        
+        # Write results without output file (database only)
+        formatter.write_scan_results(
+            summary=summary,
+            scan_results=None,
+            output_file=None,
+            store_in_database=True,
+        )
+        
+        # Verify data was stored in database
+        db_service = formatter.get_database_service()
+        assert db_service is not None
+        
+        stats = db_service.get_database_stats()
+        assert stats.total_scans == 1
+        assert stats.total_files == 0  # No individual results stored
+        
+        # Get the scan from database
+        recent_scans = db_service.get_recent_scans(limit=1)
+        assert len(recent_scans) == 1
+        assert recent_scans[0].directory == "/test/videos"
+        assert recent_scans[0].total_files == 10
+        assert recent_scans[0].corrupt_files == 2
+        assert recent_scans[0].healthy_files == 8

@@ -13,7 +13,7 @@ from pathlib import Path
 import click
 
 from src.cli.handlers import ListHandler, ScanHandler, TraktHandler
-from src.cli.logging import setup_logging
+from src.cli.logging import configure_logging_from_config, setup_logging
 from src.config import load_config
 from src.core.models.inspection import VideoFile
 from src.core.models.scanning import FileStatus, ScanMode, ScanResult, ScanSummary
@@ -96,7 +96,7 @@ def cli(
         corrupt-video-inspector scan /movies --mode deep --recursive
         corrupt-video-inspector scan /tv-shows --trakt-sync
     """
-    # Setup logging first
+    # Setup basic logging first
     setup_logging(0)
 
     # Load configuration
@@ -104,6 +104,15 @@ def cli(
         app_config = load_config(config_path=config) if config else load_config()
         ctx.ensure_object(dict)
         ctx.obj["config"] = app_config
+
+        # Reconfigure logging with settings from AppConfig
+        # This ensures logs are written to both stdout and the configured file
+        configure_logging_from_config(
+            level=app_config.logging.level,
+            log_file=app_config.logging.file,
+            log_format=app_config.logging.format,
+            date_format=app_config.logging.date_format,
+        )
     except Exception as e:
         logging.exception("Configuration error")
         raise click.Abort from e

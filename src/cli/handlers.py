@@ -72,66 +72,56 @@ class BaseHandler:
         output_file: Path | None = None,
         output_format: str = "json",
         pretty_print: bool = True,
+        store_in_database: bool = True,
     ) -> None:
-        """Generate output file from scan summary."""
+        """Generate output file from scan summary and optionally store in database.
+        
+        Args:
+            summary: Scan summary to output
+            output_file: Optional output file path
+            output_format: Output format (json, yaml, csv)
+            pretty_print: Whether to pretty-print output
+            store_in_database: Whether to store in database (if enabled in config)
+        """
         try:
-            # Determine target output file path
+            # Use OutputFormatter to write results and store in database
+            # Note: Individual scan results are not currently tracked by scanner,
+            # so we only store the summary. This is sufficient for basic database
+            # functionality and incremental scanning.
+            self.output_formatter.write_scan_results(
+                summary=summary,
+                scan_results=None,  # Scanner doesn't currently provide individual results
+                output_file=output_file,
+                format=output_format,
+                pretty_print=pretty_print,
+                store_in_database=store_in_database,
+            )
+            
             if output_file:
-                # If a directory is provided, warn and use default
-                # output directory
-                if output_file.is_dir():
-                    logger.warning(
-                        f"Specified output path {output_file} is a directory; "
-                        "using default output directory"
-                    )
+                logger.info(f"Scan results saved to: {output_file}")
+        except Exception as e:
+            logger.exception("Failed to write scan results")
+            # Fallback to manual JSON write if OutputFormatter fails
+            try:
+                target_file = output_file
+                if target_file is None:
                     target_file = (
                         self.config.output.default_output_dir / self.config.output.default_filename
                     )
-                else:
-                    target_file = output_file
-            else:
-                # Use configured default output directory and filename
-                target_file = (
-                    self.config.output.default_output_dir / self.config.output.default_filename
-                )
-            # Ensure parent directory exists
-            target_file.parent.mkdir(parents=True, exist_ok=True)
-
-            if output_format.lower() == "json":
+                
+                # Ensure parent directory exists
+                target_file.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Write JSON manually as fallback
                 with target_file.open("w", encoding="utf-8") as f:
-                    if pretty_print:
-                        json.dump(summary.model_dump(), f, indent=2)
-                    else:
-                        json.dump(summary.model_dump(), f)
-                logger.info(f"Scan results saved to: {target_file}")
-            else:
-                logger.warning(f"Unsupported output format: {output_format}")
-        except Exception as e:
-            # Initial write failed, log and attempt fallback to configured
-            # output dir
-            logger.warning(
-                f"Failed to save output to {target_file}: {e}. "
-                "Attempting to save to default output directory"
-            )
-            try:
-                # Determine fallback file path
-                fallback_file = (
-                    self.config.output.default_output_dir / self.config.output.default_filename
-                )
-                # Ensure fallback directory exists
-                fallback_file.parent.mkdir(parents=True, exist_ok=True)
-                # Write output to fallback file
-                with fallback_file.open("w", encoding="utf-8") as f:
                     if output_format.lower() == "json":
-                        # Use indent when pretty printing
                         indent = 2 if pretty_print else None
                         json.dump(summary.model_dump(), f, indent=indent)
                     else:
-                        # Unsupported formats not implemented in fallback
                         logger.warning(f"Unsupported output format in fallback: {output_format}")
-                logger.info(f"Scan results saved to: {fallback_file}")
+                logger.info(f"Scan results saved to fallback location: {target_file}")
             except Exception as fallback_exc:
-                logger.warning(f"Failed to save fallback output to {fallback_file}: {fallback_exc}")
+                logger.warning(f"Failed to save fallback output: {fallback_exc}")
 
 
 class ScanHandler(BaseHandler):
@@ -170,7 +160,8 @@ class ScanHandler(BaseHandler):
                     self._progress_callback if self.config.logging.level != "QUIET" else None
                 ),
             )
-            if output_file or self.config.output.default_json:
+            # Generate output if: output file specified, default JSON enabled, or database enabled
+            if output_file or self.config.output.default_json or self.config.database.enabled:
                 self._generate_output(
                     summary=summary,
                     output_file=output_file,
