@@ -35,6 +35,7 @@ active_scans: dict[str, dict[str, Any]] = {}
 # Define base directory for scanning - restrict all scans under this path.
 BASE_SCAN_DIR = Path("/server/video_scans").resolve()
 
+
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     app = FastAPI(
@@ -96,8 +97,8 @@ def create_app() -> FastAPI:
         # Additional security: ensure resolved path is within the allowed root
         try:
             root = root.resolve()
-        except Exception as e:
-            logger.error(f"Base scan root could not be resolved: {e}")
+        except Exception:
+            logger.exception("Base scan root could not be resolved")
             raise HTTPException(status_code=500, detail="Server configuration error") from None
         if not str(resolved_path).startswith(str(root)):
             logger.warning(f"Directory {resolved_path} is outside of root {root}")
@@ -107,6 +108,7 @@ def create_app() -> FastAPI:
         path_str = str(resolved_path)
         if ".." in path_str or path_str.startswith("~"):
             raise HTTPException(status_code=400, detail="Invalid directory path")
+
     @app.post("/api/scans", response_model=ScanResponse)
     async def start_scan(request: ScanRequest) -> ScanResponse:
         """Start a new video scan."""
