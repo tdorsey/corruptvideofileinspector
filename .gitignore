@@ -112,5 +112,9 @@ videos/
 .nx/
 =======
 
+# Node.js / Web
 node_modules/
 package-lock.json
+dist/
+.vite/
+apps/web/.env
