@@ -1210,10 +1210,6 @@ def query(
         # Load configuration
         app_config = load_config(config_path=config)
 
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
-
         # Import database components
         from src.database.models import DatabaseQueryFilter
         from src.database.service import DatabaseService
@@ -1344,10 +1340,6 @@ def stats(ctx, config):
         # Load configuration
         app_config = load_config(config_path=config)
 
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
-
         # Import database components
         from src.database.service import DatabaseService
 
@@ -1412,10 +1404,6 @@ def cleanup(ctx, days, dry_run, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
 
         # Import database components
         from src.database.service import DatabaseService
@@ -1488,10 +1476,6 @@ def backup(ctx, backup_path, config):
     try:
         # Load configuration
         app_config = load_config(config_path=config)
-
-        if not app_config.database.enabled:
-            click.echo("Database is not enabled in configuration.", err=True)
-            sys.exit(1)
 
         # Import database components
         from src.database.service import DatabaseService

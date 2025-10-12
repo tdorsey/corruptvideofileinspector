@@ -6,7 +6,7 @@ Successfully refactored the Corrupt Video Inspector to use SQLite database as th
 ## Changes Made
 
 ### Configuration
-- **Database now mandatory**: `database.enabled` defaults to `true` (was `false`)
+- **Database now mandatory**: Removed `database.enabled` field entirely - database is always used
 - **Output config deprecated**: Marked `OutputConfig` fields as deprecated
 - Updated `config.yaml` and `config.sample.yaml` to reflect database-first approach
 
@@ -87,11 +87,13 @@ scan_id = output_formatter.store_scan_results(
 ```yaml
 # BEFORE
 database:
-  enabled: false  # Optional
+  enabled: false  # Optional - could be disabled
+  path: "~/.corrupt-video-inspector/scans.db"
 
 # AFTER
 database:
-  enabled: true   # Mandatory
+  # No 'enabled' field - database is always mandatory
+  path: "~/.corrupt-video-inspector/scans.db"
 ```
 
 ## Benefits

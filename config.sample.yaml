@@ -39,9 +39,8 @@ scan:
     - ".wmv"
     - ".flv"
 
-# Database storage (required, always enabled)
+# Database storage (mandatory)
 database:
-  enabled: true  # Database storage is now mandatory
   path: "~/.corrupt-video-inspector/scans.db"  # Database file location
   auto_cleanup_days: 0  # Auto-delete scans older than X days (0 = disabled)
   create_backup: true  # Create backups before schema changes
