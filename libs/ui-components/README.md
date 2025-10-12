@@ -28,6 +28,7 @@ import { FileUploader, ProgressBar } from '@corruptvideofileinspector/ui-compone
 
 ## Development Commands
 
+> ⚠️ **Note:** These Nx targets may not resolve until project discovery is fixed. If you encounter errors running these commands, please check your Nx workspace configuration and ensure project discovery is working.
 ```bash
 # Build library
 nx build ui-components
