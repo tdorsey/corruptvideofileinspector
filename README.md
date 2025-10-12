@@ -1,6 +1,6 @@
 # Corrupt Video File Inspector
 
-A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support.
+A comprehensive Python tool for detecting corrupted video files using FFmpeg, with both CLI and web-based interfaces, optional Trakt.tv synchronization, and Docker containerization support.
 
 ## 🚀 Quick Start
 
@@ -86,7 +86,32 @@ docker compose -f docker/docker-compose.yml --profile trakt up -d --build scan t
 
 For advanced Docker workflows and Trakt integration, see [Docker Trakt Integration](docs/DOCKER_TRAKT.md).
 
-### 🗄️ Database Support (New!)
+### 🌐 Web Interface (New!)
+
+A modern React-based web interface provides an intuitive graphical alternative to the CLI:
+
+- **Visual Dashboard**: Real-time system status and scan management
+- **Interactive Configuration**: Point-and-click scan setup with live validation
+- **Real-Time Progress**: WebSocket-powered progress updates with detailed metrics
+- **Results Visualization**: Comprehensive tables and statistics for scan results
+- **Responsive Design**: Works on desktop and mobile devices
+
+**Quick Start**:
+```bash
+# Using Docker (recommended)
+make web-docker-build
+make web-docker-up
+# Access at http://localhost:3000
+
+# Local development
+python api_server.py  # Terminal 1
+cd frontend && npm install && npm run dev  # Terminal 2
+# Access at http://localhost:5173
+```
+
+**See [Web UI Documentation](docs/WEB_UI.md) and [API Documentation](docs/API.md) for complete details.**
+
+### 🗄️ Database Support
 
 Optional SQLite database support enables persistent storage and advanced analysis:
 
@@ -107,14 +132,24 @@ Optional SQLite database support enables persistent storage and advanced analysi
 ```
 corrupt_video_inspector/
 ├── src/
+│   ├── api/                    # Web API (FastAPI) → See docs/API.md
 │   ├── cli/                    # Command-line interface → See docs/CLI.md
 │   ├── core/                   # Core business logic → See docs/CORE.md
 │   ├── config/                 # Configuration management → See docs/CONFIG.md
 │   ├── database/               # SQLite database support → See docs/DATABASE.md
 │   ├── ffmpeg/                 # FFmpeg integration → See docs/FFMPEG.md
 │   └── utils/                  # Shared utilities → See docs/UTILS.md
+├── frontend/                   # React web interface → See docs/WEB_UI.md
+│   ├── src/
+│   │   ├── components/         # React components
+│   │   ├── pages/              # Page components
+│   │   ├── services/           # API client
+│   │   └── types/              # TypeScript definitions
+│   └── package.json            # Frontend dependencies
 ├── tests/                      # Test suite → See docs/tests.md
 ├── docs/                       # Documentation
+│   ├── API.md                  # Web API documentation (NEW)
+│   ├── WEB_UI.md               # Web interface guide (NEW)
 │   ├── CLI.md                  # Command-line interface documentation
 │   ├── CORE.md                 # Core module documentation
 │   ├── CONFIG.md               # Configuration system guide
@@ -125,6 +160,12 @@ corrupt_video_inspector/
 │   ├── CONTRIBUTING.md         # Development setup and guidelines
 │   ├── REPORTER.md             # Report generation system
 │   └── VERSIONING.md           # Version management
+├── docker/                     # Docker configuration
+│   ├── Dockerfile.api          # API server container (NEW)
+│   ├── Dockerfile.frontend     # Frontend container (NEW)
+│   ├── docker-compose.web.yml  # Web UI deployment (NEW)
+│   └── docker-compose.yml      # CLI deployment
+├── api_server.py               # API server entry point (NEW)
 └── pyproject.toml              # Project configuration
 ```
 
