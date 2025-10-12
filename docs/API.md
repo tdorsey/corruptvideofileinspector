@@ -46,7 +46,11 @@ src/api/
 
 3. **Run the API server**:
    ```bash
+   # Using Make
    make run-api
+
+   # Using Nx (if node_modules installed)
+   npx nx serve api
    ```
 
    Or directly with uvicorn:
@@ -64,17 +68,61 @@ src/api/
 1. **Build the API image**:
    ```bash
    make docker-api-build
+   # Or with Nx
+   npx nx build api
    ```
 
 2. **Run the API container**:
    ```bash
    make docker-api
+   # Or with Nx
+   npx nx docker-up api
    ```
 
 3. **Stop the API container**:
    ```bash
    make docker-api-down
+   # Or with Nx
+   npx nx docker-down api
    ```
+
+### Running with Nx
+
+The API project is integrated with Nx for workspace orchestration:
+
+```bash
+# Install Nx dependencies (first time only)
+npm install
+
+# Run API server with hot reload
+npx nx serve api
+
+# Build Docker image
+npx nx build api
+
+# Run tests
+npx nx test api
+
+# Lint code
+npx nx lint api
+
+# Format code
+npx nx format api
+
+# Start Docker container
+npx nx docker-up api
+
+# Stop Docker container
+npx nx docker-down api
+```
+
+**Benefits of using Nx:**
+- **Caching**: Task results are cached for faster rebuilds
+- **Affected commands**: Only test/build changed code
+- **Dependency graph**: Visualize project dependencies
+- **Parallel execution**: Run tasks in parallel
+
+See [`NX_QUICK_START.md`](../NX_QUICK_START.md) for more Nx commands.
 
 ## GraphQL Schema
 
