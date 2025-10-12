@@ -164,26 +164,6 @@ def cli(
     show_default=True,
 )
 @click.option(
-    "--output",
-    "-o",
-    type=click.Path(path_type=Path, dir_okay=False),
-    help="Output file path for results (must be a file, not a directory)",
-)
-@click.option(
-    "--format",
-    "output_format",
-    type=click.Choice(["json", "yaml", "csv"], case_sensitive=False),
-    default="json",
-    help="Output format",
-    show_default=True,
-)
-@click.option("--pretty/--no-pretty", default=True, help="Pretty-print output", show_default=True)
-@click.option(
-    "--database/--no-database",
-    default=None,
-    help="Store results in database (overrides config setting)",
-)
-@click.option(
     "--incremental/--full-scan",
     default=False,
     help="Skip files that were recently scanned and found healthy",
@@ -198,10 +178,6 @@ def scan(
     recursive,
     extensions,
     resume,
-    output,
-    output_format,
-    pretty,
-    database,
     incremental,
     config,
 ):
@@ -220,12 +196,10 @@ def scan(
     - hybrid: Quick scan first, then deep scan for suspicious files
     - full: Complete scan of entire video stream without timeout
 
-    Database Integration:
+    All scan results are stored in the SQLite database.
 
     \b
-    - Use --database to store results in SQLite database
     - Use --incremental to skip files recently scanned and found healthy
-    - Database must be enabled in configuration
 
     Examples:
 
@@ -234,12 +208,12 @@ def scan(
     corrupt-video-inspector scan /path/to/videos
 
     \b
-    # Quick scan with database storage
-    corrupt-video-inspector scan --mode quick --database /path/to/videos
+    # Quick scan
+    corrupt-video-inspector scan --mode quick /path/to/videos
 
     \b
     # Incremental scan (skip recently healthy files)
-    corrupt-video-inspector scan --incremental --database /path/to/videos
+    corrupt-video-inspector scan --incremental /path/to/videos
 
     \b
     # Full scan without timeout (for thorough analysis)
@@ -253,10 +227,6 @@ def scan(
         # Load configuration
         app_config = load_config(config_path=config)
 
-        # Override database setting if provided
-        if database is not None:
-            app_config.database.enabled = database
-
         # Override config with CLI options
         if max_workers:
             app_config.scan.max_workers = max_workers
@@ -269,7 +239,7 @@ def scan(
         scan_mode = ScanMode(mode.lower())
 
         # Handle incremental scanning
-        if incremental and app_config.database.enabled:
+        if incremental:
             try:
                 from src.database.service import DatabaseService
 
@@ -296,13 +266,11 @@ def scan(
             scan_mode=scan_mode,
             recursive=recursive,
             resume=resume,
-            output_file=output,
-            output_format=output_format,
-            pretty_print=pretty,
         )
         if summary is not None:
             click.echo("\nScan Summary:")
-            click.echo(json.dumps(summary.model_dump(), indent=2 if pretty else None))
+            click.echo(json.dumps(summary.model_dump(), indent=2))
+            click.echo(f"\nResults stored in database at: {app_config.database.path}")
         else:
             click.echo("No video files found to scan.")
 
