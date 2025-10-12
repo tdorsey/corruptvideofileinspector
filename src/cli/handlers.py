@@ -160,7 +160,8 @@ class ScanHandler(BaseHandler):
                     self._progress_callback if self.config.logging.level != "QUIET" else None
                 ),
             )
-            if output_file or self.config.output.default_json:
+            # Generate output if: output file specified, default JSON enabled, or database enabled
+            if output_file or self.config.output.default_json or self.config.database.enabled:
                 self._generate_output(
                     summary=summary,
                     output_file=output_file,
