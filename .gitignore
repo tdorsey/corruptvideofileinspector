@@ -97,7 +97,9 @@ secrets/*
 docker/secrets/*
 videos/
 
-
+# Test artifacts
+<Mock *
+<MagicMock *
 
 # Nx
 .nx/cache

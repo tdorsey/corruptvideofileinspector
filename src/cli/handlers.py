@@ -66,62 +66,32 @@ class BaseHandler:
 
         sys.exit(1)
 
-    def _generate_output(
+    def _store_scan_results(
         self,
         summary: ScanSummary,
-        output_file: Path | None = None,
-        output_format: str = "json",
-        pretty_print: bool = True,
-        store_in_database: bool = True,
-    ) -> None:
-        """Generate output file from scan summary and optionally store in database.
+    ) -> int:
+        """Store scan summary in database.
 
         Args:
-            summary: Scan summary to output
-            output_file: Optional output file path
-            output_format: Output format (json, yaml, csv)
-            pretty_print: Whether to pretty-print output
-            store_in_database: Whether to store in database (if enabled in config)
+            summary: Scan summary to store
+
+        Returns:
+            Scan ID in database
         """
         try:
-            # Use OutputFormatter to write results and store in database
+            # Store results in database
             # Note: Individual scan results are not currently tracked by scanner,
             # so we only store the summary. This is sufficient for basic database
             # functionality and incremental scanning.
-            self.output_formatter.write_scan_results(
+            scan_id = self.output_formatter.store_scan_results(
                 summary=summary,
-                scan_results=None,  # Scanner doesn't currently provide individual results
-                output_file=output_file,
-                format=output_format,
-                pretty_print=pretty_print,
-                store_in_database=store_in_database,
+                scan_results=None,  # Scanner doesn't provide individual results
             )
-
-            if output_file:
-                logger.info(f"Scan results saved to: {output_file}")
+            logger.info(f"Scan results stored in database with ID: {scan_id}")
+            return scan_id
         except Exception:
-            logger.exception("Failed to write scan results")
-            # Fallback to manual JSON write if OutputFormatter fails
-            try:
-                target_file = output_file
-                if target_file is None:
-                    target_file = (
-                        self.config.output.default_output_dir / self.config.output.default_filename
-                    )
-
-                # Ensure parent directory exists
-                target_file.parent.mkdir(parents=True, exist_ok=True)
-
-                # Write JSON manually as fallback
-                with target_file.open("w", encoding="utf-8") as f:
-                    if output_format.lower() == "json":
-                        indent = 2 if pretty_print else None
-                        json.dump(summary.model_dump(), f, indent=indent)
-                    else:
-                        logger.warning(f"Unsupported output format in fallback: {output_format}")
-                logger.info(f"Scan results saved to fallback location: {target_file}")
-            except Exception as fallback_exc:
-                logger.warning(f"Failed to save fallback output: {fallback_exc}")
+            logger.exception("Failed to store scan results in database")
+            raise
 
 
 class ScanHandler(BaseHandler):
@@ -138,12 +108,10 @@ class ScanHandler(BaseHandler):
         scan_mode: ScanMode,
         recursive: bool = True,
         resume: bool = True,
-        output_file: Path | None = None,
-        output_format: str = "json",
-        pretty_print: bool = True,
     ) -> ScanSummary | None:
         """
         Run a video corruption scan and return ScanSummary or None.
+        Results are stored in the database.
         """
         try:
             video_files = self.scanner.get_video_files(directory, recursive=recursive)
@@ -160,14 +128,8 @@ class ScanHandler(BaseHandler):
                     self._progress_callback if self.config.logging.level != "QUIET" else None
                 ),
             )
-            # Generate output if: output file specified, default JSON enabled, or database enabled
-            if output_file or self.config.output.default_json or self.config.database.enabled:
-                self._generate_output(
-                    summary=summary,
-                    output_file=output_file,
-                    output_format=output_format,
-                    pretty_print=pretty_print,
-                )
+            # Store results in database
+            self._store_scan_results(summary=summary)
             return summary
         except KeyboardInterrupt:
             logger.warning("Scan interrupted by user.")
@@ -373,6 +335,51 @@ class TraktHandler(BaseHandler):
     def __init__(self, config: AppConfig):
         """Initialize Trakt handler."""
         super().__init__(config)
+
+    def sync_to_watchlist_from_results(
+        self,
+        scan_results: list[Any],
+        interactive: bool = False,  # noqa: ARG002
+        watchlist: str | None = None,
+    ) -> TraktSyncResult | None:
+        """
+        Sync database scan results to Trakt.tv watchlist.
+
+        Args:
+            scan_results: List of ScanResultDatabaseModel objects
+            interactive: Enable interactive mode (not yet implemented)
+            watchlist: Optional watchlist name/slug to sync to
+        """
+        # Validate Trakt credentials early
+        validation_result = validate_trakt_secrets()
+        if not validation_result.is_valid:
+            handle_credential_error(validation_result)
+
+        try:
+            logger.info(f"Syncing {len(scan_results)} scan results to Trakt.tv watchlist.")
+
+            # Extract filenames from database results
+            filenames = [result.filename for result in scan_results]
+
+            # For now, return a mock result indicating the feature needs full implementation
+            # This would require updating the core watchlist module to accept filenames directly
+            result = TraktSyncResult(
+                total=len(filenames),
+                movies_added=0,
+                shows_added=0,
+                failed=0,
+                watchlist=watchlist,
+                results=[],
+            )
+
+            logger.info(
+                "Trakt sync from database not fully implemented yet. "
+                "This requires updating the watchlist module."
+            )
+            return result
+        except Exception as e:
+            self._handle_error(e, "Trakt sync failed")
+            return None
 
     def sync_to_watchlist(
         self,

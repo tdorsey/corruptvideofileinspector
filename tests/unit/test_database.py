@@ -498,12 +498,10 @@ class TestDatabaseIntegrationWithOutput:
             completed_at=time.time() + 120,
         )
 
-        # Write results without output file (database only)
-        formatter.write_scan_results(
+        # Store results in database
+        formatter.store_scan_results(
             summary=summary,
             scan_results=None,
-            output_file=None,
-            store_in_database=True,
         )
 
         # Verify data was stored in database
