@@ -109,15 +109,19 @@ async def create_scan(request: ScanRequest) -> ScanResponse:
     job_id = str(uuid.uuid4())
 
     # Validate scan mode
+    def _validate_scan_mode(mode: str) -> ScanModeType:
+        """Validate and convert scan mode string to enum."""
+        mode_lower = mode.lower()
+        if mode_lower == "quick":
+            return ScanModeType.QUICK
+        if mode_lower == "deep":
+            return ScanModeType.DEEP
+        if mode_lower == "hybrid":
+            return ScanModeType.HYBRID
+        raise ValueError(f"Invalid scan mode: {mode}")
+
     try:
-        if request.scan_mode.lower() == "quick":
-            scan_mode_type = ScanModeType.QUICK
-        elif request.scan_mode.lower() == "deep":
-            scan_mode_type = ScanModeType.DEEP
-        elif request.scan_mode.lower() == "hybrid":
-            scan_mode_type = ScanModeType.HYBRID
-        else:
-            raise ValueError(f"Invalid scan mode: {request.scan_mode}")
+        scan_mode_type = _validate_scan_mode(request.scan_mode)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 

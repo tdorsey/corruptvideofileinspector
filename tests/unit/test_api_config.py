@@ -1,6 +1,5 @@
 """Unit tests for API configuration."""
 
-
 import pytest
 
 # Mark all tests in this module as unit tests

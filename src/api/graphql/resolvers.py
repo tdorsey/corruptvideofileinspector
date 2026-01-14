@@ -106,7 +106,7 @@ class Query:
     """GraphQL queries."""
 
     @strawberry.field
-    def scan_jobs(self, info: Info) -> list[ScanJobType]:
+    def scan_jobs(self, _info: Info) -> list[ScanJobType]:
         """Get all scan jobs."""
         jobs = []
         for job_id, job_data in _scan_jobs.items():
@@ -124,7 +124,7 @@ class Query:
         return jobs
 
     @strawberry.field
-    def scan_job(self, info: Info, job_id: str) -> ScanJobType | None:
+    def scan_job(self, _info: Info, job_id: str) -> ScanJobType | None:
         """Get a specific scan job by ID."""
         job_data = _scan_jobs.get(job_id)
         if not job_data:
@@ -141,13 +141,13 @@ class Query:
         )
 
     @strawberry.field
-    def scan_results(self, info: Info, job_id: str) -> list[ScanResultType]:
+    def scan_results(self, _info: Info, job_id: str) -> list[ScanResultType]:
         """Get scan results for a specific job."""
         results = _scan_results.get(job_id, [])
         return [convert_scan_result_to_graphql(r) for r in results]
 
     @strawberry.field
-    def scan_summary(self, info: Info, job_id: str) -> ScanSummaryType | None:
+    def scan_summary(self, _info: Info, job_id: str) -> ScanSummaryType | None:
         """Get scan summary for a specific job."""
         job_data = _scan_jobs.get(job_id)
         if not job_data or "summary" not in job_data:
@@ -248,6 +248,6 @@ class Mutation:
                 scan_summary=convert_scan_summary_to_graphql(summary),
             )
 
-        except Exception as e:
+        except Exception:
             logger.exception("Report generation failed")
             return None
