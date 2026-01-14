@@ -199,7 +199,7 @@ class Mutation:
                 _scan_results[job_id] = []
 
         except Exception as e:
-            logger.exception(f"Scan failed: {e}")
+            logger.exception("Scan failed")
             _scan_jobs[job_id]["status"] = "failed"
             _scan_jobs[job_id]["completed_at"] = datetime.now()
             _scan_jobs[job_id]["error"] = str(e)
