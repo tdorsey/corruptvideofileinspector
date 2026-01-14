@@ -249,5 +249,5 @@ class Mutation:
             )
 
         except Exception as e:
-            logger.exception(f"Report generation failed: {e}")
+            logger.exception("Report generation failed")
             return None
