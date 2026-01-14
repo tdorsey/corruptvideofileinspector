@@ -93,7 +93,6 @@ async def verify_token(
     if not oidc_config.enabled:
         return {"sub": "anonymous", "email": "anonymous@localhost"}
 
-
     # TODO: Implement proper JWT verification using OIDC provider's public keys
     # For now, this is a placeholder that returns anonymous access
     # In production, use libraries like python-jose or authlib to verify JWTs
