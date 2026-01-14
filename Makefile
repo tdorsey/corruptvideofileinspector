@@ -175,8 +175,6 @@ web-docker-down:   ## Stop web UI services
 	docker compose -f docker/docker-compose.web.yml down
 
 # API targets
-api-dev:           ## Run API server in development mode
-	python api_server.py
 
 docker-api-build:  ## Build the API Docker image
 	docker compose -f docker/docker-compose.yml build api
