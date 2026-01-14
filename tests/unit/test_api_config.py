@@ -1,7 +1,6 @@
 """Unit tests for API configuration."""
 
 import pytest
-from unittest.mock import MagicMock, patch
 
 # Mark all tests in this module as unit tests
 pytestmark = pytest.mark.unit
@@ -41,7 +40,7 @@ def test_api_config_with_values():
 
 def test_app_config_includes_api_config():
     """Test that AppConfig includes api field."""
-    from src.config.config import AppConfig, APIConfig
+    from src.config.config import APIConfig, AppConfig
 
     # Create minimal valid AppConfig
     config_dict = {

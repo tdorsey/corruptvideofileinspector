@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 import strawberry
 
@@ -33,7 +32,7 @@ class ScanResultType:
     path: str
     is_corrupt: bool
     confidence: float
-    error_message: Optional[str]
+    error_message: str | None
     file_size_bytes: int
     scan_mode: ScanModeType
     status: FileStatusType
@@ -55,7 +54,7 @@ class ScanSummaryType:
     success_rate: float
     files_per_second: float
     started_at: datetime
-    completed_at: Optional[datetime]
+    completed_at: datetime | None
 
 
 @strawberry.type
@@ -67,7 +66,7 @@ class ScanJobType:
     scan_mode: ScanModeType
     status: str
     started_at: datetime
-    completed_at: Optional[datetime]
+    completed_at: datetime | None
     results_count: int
 
 
@@ -100,3 +99,77 @@ class ReportInputType:
     format: str = "json"
     include_healthy: bool = False
     pretty_print: bool = True
+
+
+@strawberry.type
+class DatabaseStatsType:
+    """Statistics about the database contents."""
+
+    total_scans: int
+    total_files: int
+    corrupt_files: int
+    healthy_files: int
+    oldest_scan: float | None
+    newest_scan: float | None
+    database_size_bytes: int
+
+
+@strawberry.type
+class CorruptionTrendDataType:
+    """Corruption rate trend data point."""
+
+    scan_date: str
+    corrupt_files: int
+    total_files: int
+    corruption_rate: float
+
+
+@strawberry.type
+class ScanHistoryType:
+    """Historical scan record."""
+
+    id: int
+    directory: str
+    scan_mode: str
+    started_at: float
+    completed_at: float | None
+    total_files: int
+    processed_files: int
+    corrupt_files: int
+    healthy_files: int
+    success_rate: float
+    scan_time: float
+
+
+@strawberry.type
+class ScanResultHistoryType:
+    """Historical scan result record."""
+
+    id: int
+    scan_id: int
+    filename: str
+    file_size: int
+    is_corrupt: bool
+    confidence: float
+    inspection_time: float
+    scan_mode: str
+    status: str
+    created_at: float
+
+
+@strawberry.input
+class DatabaseQueryFilterInput:
+    """Filter options for database queries."""
+
+    directory: str | None = None
+    is_corrupt: bool | None = None
+    scan_mode: str | None = None
+    min_confidence: float | None = None
+    max_confidence: float | None = None
+    min_file_size: int | None = None
+    max_file_size: int | None = None
+    since_date: float | None = None
+    until_date: float | None = None
+    filename_pattern: str | None = None
+    limit: int | None = None
+    offset: int = 0

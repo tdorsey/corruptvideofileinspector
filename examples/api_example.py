@@ -13,9 +13,9 @@ Usage:
     python examples/api_example.py
 """
 
-import json
-import requests
 import time
+
+import requests
 
 # API endpoint
 API_URL = "http://localhost:8000/graphql"
@@ -29,9 +29,8 @@ def health_check():
     if response.status_code == 200:
         print("✓ API is healthy:", response.json())
         return True
-    else:
-        print("✗ API health check failed")
-        return False
+    print("✗ API health check failed")
+    return False
 
 
 def get_api_info():
@@ -69,9 +68,7 @@ def start_scan(directory: str = "/app/videos", scan_mode: str = "QUICK"):
 
     variables = {"directory": directory, "scanMode": scan_mode}
 
-    response = requests.post(
-        API_URL, json={"query": mutation, "variables": variables}
-    )
+    response = requests.post(API_URL, json={"query": mutation, "variables": variables})
 
     if response.status_code == 200:
         data = response.json()
@@ -80,15 +77,14 @@ def start_scan(directory: str = "/app/videos", scan_mode: str = "QUICK"):
             return None
 
         scan_job = data["data"]["startScan"]
-        print(f"\n✓ Scan started successfully!")
+        print("\n✓ Scan started successfully!")
         print(f"  Job ID: {scan_job['id']}")
         print(f"  Directory: {scan_job['directory']}")
         print(f"  Mode: {scan_job['scanMode']}")
         print(f"  Status: {scan_job['status']}")
         return scan_job
-    else:
-        print(f"✗ Request failed with status {response.status_code}")
-        return None
+    print(f"✗ Request failed with status {response.status_code}")
+    return None
 
 
 def get_all_scan_jobs():
@@ -123,9 +119,8 @@ def get_all_scan_jobs():
             print(f"    Status: {job['status']}")
             print(f"    Results: {job['resultsCount']}")
         return jobs
-    else:
-        print(f"✗ Request failed with status {response.status_code}")
-        return []
+    print(f"✗ Request failed with status {response.status_code}")
+    return []
 
 
 def get_scan_summary(job_id: str):
@@ -148,9 +143,7 @@ def get_scan_summary(job_id: str):
 
     variables = {"jobId": job_id}
 
-    response = requests.post(
-        API_URL, json={"query": query, "variables": variables}
-    )
+    response = requests.post(API_URL, json={"query": query, "variables": variables})
 
     if response.status_code == 200:
         data = response.json()
@@ -168,12 +161,10 @@ def get_scan_summary(job_id: str):
             print(f"  Scan Time: {summary['scanTimeSeconds']:.2f}s")
             print(f"  Success Rate: {summary['successRate']:.1f}%")
             return summary
-        else:
-            print(f"✗ No summary found for job {job_id}")
-            return None
-    else:
-        print(f"✗ Request failed with status {response.status_code}")
+        print(f"✗ No summary found for job {job_id}")
         return None
+    print(f"✗ Request failed with status {response.status_code}")
+    return None
 
 
 def generate_report(job_id: str, format: str = "json"):
@@ -200,9 +191,7 @@ def generate_report(job_id: str, format: str = "json"):
 
     variables = {"jobId": job_id, "format": format}
 
-    response = requests.post(
-        API_URL, json={"query": mutation, "variables": variables}
-    )
+    response = requests.post(API_URL, json={"query": mutation, "variables": variables})
 
     if response.status_code == 200:
         data = response.json()
@@ -212,17 +201,15 @@ def generate_report(job_id: str, format: str = "json"):
 
         report = data["data"]["generateReport"]
         if report:
-            print(f"\n✓ Report generated successfully!")
+            print("\n✓ Report generated successfully!")
             print(f"  Report ID: {report['id']}")
             print(f"  Format: {report['format']}")
             print(f"  File Path: {report['filePath']}")
             return report
-        else:
-            print("✗ Failed to generate report")
-            return None
-    else:
-        print(f"✗ Request failed with status {response.status_code}")
+        print("✗ Failed to generate report")
         return None
+    print(f"✗ Request failed with status {response.status_code}")
+    return None
 
 
 def main():

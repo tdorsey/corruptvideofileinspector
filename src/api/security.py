@@ -4,9 +4,9 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from authlib.integrations.starlette_client import OAuth
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +93,6 @@ async def verify_token(
     if not oidc_config.enabled:
         return {"sub": "anonymous", "email": "anonymous@localhost"}
 
-    token = credentials.credentials
-
     # TODO: Implement proper JWT verification using OIDC provider's public keys
     # For now, this is a placeholder that returns anonymous access
     # In production, use libraries like python-jose or authlib to verify JWTs
@@ -112,7 +110,7 @@ async def verify_token(
         return {"sub": "authenticated_user", "email": "user@example.com"}
 
     except Exception as e:
-        logger.error(f"Token verification failed: {e}")
+        logger.exception(f"Token verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
