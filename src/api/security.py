@@ -110,7 +110,7 @@ async def verify_token(
         return {"sub": "authenticated_user", "email": "user@example.com"}
 
     except Exception as e:
-        logger.exception(f"Token verification failed: {e}")
+        logger.exception("Token verification failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
