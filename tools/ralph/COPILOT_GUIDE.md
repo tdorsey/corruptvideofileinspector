@@ -6,23 +6,51 @@ This guide explains how to use Ralph within GitHub Copilot for autonomous develo
 
 Ralph is an autonomous development tool that processes work items from a Product Requirements Document (prd.json) and implements them automatically. When integrated with GitHub Copilot, Ralph becomes a conversational AI assistant that helps you implement features systematically.
 
+Ralph can work from multiple sources:
+- **prd.json**: Local work item queue in `tools/ralph/config/prd.json`
+- **GitHub Projects**: Track work items and status in GitHub Projects
+- **GitHub Issues**: Individual issues that need implementation
+
 ## Quick Start (5 Minutes)
 
-### Step 1: Review Example Work Items
+### Step 1: Check Available Work
 
-The repository includes example work items at `tools/ralph/config/prd.json`:
+Ralph can pull work from multiple sources:
 
+**Option A: Local prd.json**
 ```bash
 cat tools/ralph/config/prd.json
+```
+
+**Option B: GitHub Project**
+```
+@workspace Check GitHub Project 6 for Todo items and show me what needs to be done
+```
+
+**Option C: GitHub Issues**
+```
+@workspace List open issues labeled with 'feature' or specific component
 ```
 
 ### Step 2: Ask Copilot to Process a Work Item
 
 Simply ask Copilot in your editor or chat:
 
+**From prd.json:**
 ```
 @workspace Read the next unprocessed work item from tools/ralph/config/prd.json 
 and implement it following all the steps. Ensure all success criteria pass.
+```
+
+**From GitHub Project:**
+```
+@workspace Get the next Todo item from GitHub Project 6 and implement it. 
+Update the project status to 'In Progress' when starting and 'Done' when complete.
+```
+
+**From GitHub Issue:**
+```
+@workspace Implement issue #236 following all requirements. Update status when complete.
 ```
 
 ### Step 3: Review and Commit
@@ -32,6 +60,7 @@ Copilot will:
 - Explain its approach
 - Run tests if requested
 - Commit with proper conventional commit messages
+- **Update project/issue status** when complete
 
 That's it! You're using Ralph through Copilot.
 
@@ -87,22 +116,44 @@ Edit `tools/ralph/config/prd.json` with this structure:
 
 ### Process Next Work Item
 
+**From prd.json:**
 ```
 @workspace Process the next work item from tools/ralph/config/prd.json
+```
+
+**From GitHub Project:**
+```
+@workspace Process the next Todo item from GitHub Project 6
+```
+
+**From GitHub Issues:**
+```
+@workspace Pick the highest priority open issue and implement it
 ```
 
 ### Process All Work Items
 
 ```
-@workspace Process all unfinished work items from tools/ralph/config/prd.json 
-one at a time. After each work item, run tests and commit if passing.
+@workspace Process all Todo items from GitHub Project 6 one at a time. 
+After each item:
+1. Implement all requirements
+2. Run tests
+3. Commit with conventional commit message
+4. Update project status to Done
+5. Move to next item
 ```
 
 ### Check Progress
 
+**Check prd.json:**
 ```
 @workspace Show me which work items from tools/ralph/config/prd.json 
 have been completed by checking git history and progress.txt
+```
+
+**Check GitHub Project:**
+```
+@workspace Show me the status of all items in GitHub Project 6
 ```
 
 ### Validate Work Item
@@ -113,6 +164,13 @@ have been completed by checking git history and progress.txt
 2. All success criteria pass
 3. Tests are passing
 4. Code follows project standards
+5. Project status updated (if applicable)
+```
+
+### Update Project Status
+
+```
+@workspace Update GitHub Project 6 item for issue #236 to status 'Done'
 ```
 
 ## Advantages Over CLI Mode
@@ -125,6 +183,63 @@ have been completed by checking git history and progress.txt
 | Flexibility | Easy to adjust mid-implementation | Fixed automation |
 | Feedback | Real-time, explanatory | Post-iteration only |
 | Learning Curve | Minimal - natural language | Moderate - config files |
+| GitHub Projects | Can query and update status | No integration |
+| Work Sources | prd.json, Projects, Issues | prd.json only |
+
+## Working with GitHub Projects
+
+### Checking Project Status
+
+Ralph can query GitHub Projects to see what needs to be done:
+
+```
+@workspace Show me all Todo items from GitHub Project 6
+```
+
+This is useful when:
+- Multiple people are working on different items
+- You want to prioritize based on project board
+- Issues are tracked in GitHub Projects
+
+### Updating Project Status
+
+When Ralph completes a work item, it should update the project status:
+
+**Manual update:**
+```
+@workspace Update GitHub Project 6 item for issue #236 to status 'Done'
+```
+
+**Automatic during implementation:**
+```
+@workspace Implement issue #236. When starting, update status to 'In Progress'. 
+When complete and tests pass, update status to 'Done'.
+```
+
+### Project Field IDs
+
+For the corruptvideofileinspector repository, Project 6 has:
+- **Project ID**: `PVT_kwHOABKXZM4BMv4j`
+- **Status Field ID**: `PVTSSF_lAHOABKXZM4BMv4jzg78XIM`
+- **Status Options**:
+  - Todo: `f75ad846`
+  - In Progress: `47fc9ee4`
+  - Done: `98236657`
+
+Ralph can use these IDs to update project status programmatically.
+
+### Example: Full Project Workflow
+
+```
+@workspace 
+1. Check GitHub Project 6 for next Todo item
+2. Implement that item following all requirements
+3. Update status to 'In Progress' when starting
+4. Run tests to verify implementation
+5. Update status to 'Done' when complete
+6. Create PR with conventional commit message
+7. Move to next Todo item
+```
 
 ## Best Practices
 

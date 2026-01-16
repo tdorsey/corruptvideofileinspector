@@ -231,23 +231,37 @@ Ralph can be used in two ways:
 
 ### Using Ralph within GitHub Copilot (Recommended)
 
-When working with GitHub Copilot agent, simply ask Copilot to process work items:
+When working with GitHub Copilot agent, Ralph can pull work from multiple sources:
 
+**From prd.json:**
 ```
 @workspace Process the next work item from tools/ralph/config/prd.json
 ```
 
+**From GitHub Projects:**
+```
+@workspace Check GitHub Project 6 for Todo items and implement the next one.
+Update status to 'In Progress' when starting and 'Done' when complete.
+```
+
+**From GitHub Issues:**
+```
+@workspace Implement issue #236 following all requirements. 
+Update project status when complete.
+```
+
 Copilot will:
-- Read the work item from prd.json
+- Read the work item from chosen source
 - Implement the changes using its AI capabilities
 - Commit changes with conventional commit messages
-- Update progress tracking
+- Update progress tracking (progress.txt and/or GitHub Project status)
 
 **Advantages**:
 - No external dependencies required
 - Works directly in your development environment
 - Full context awareness of the codebase
 - Interactive feedback and clarification
+- Can query and update GitHub Projects
 
 ### Using Ralph with Nx and Copilot CLI (Traditional)
 
