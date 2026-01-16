@@ -139,7 +139,7 @@ When analyzing issue content, use these keywords to determine the appropriate ca
 
 The agent uses enhanced keyword detection to identify the correct component:
 
-- **GitHub Actions**: agent, agent file, .github/agents, .github/workflows, github actions, action, workflow file, yml workflow, yaml workflow, issue template
+- **GitHub Actions**: agent, agent file, .github/agents, .github/workflows, github actions, action, workflow file, yml workflow, yaml workflow
 - **CI/CD**: ci, cd, pipeline, continuous integration, continuous deployment, build pipeline, automation workflow
 - **Trakt Integration**: trakt, sync, watchlist, collection
 - **Docker**: docker, container, dockerfile, compose
