@@ -165,6 +165,37 @@ Runs on pull request events (opened, edited, synchronize):
 - In title: `feat: add feature (#123)`
 - In body: `Fixes #123`, `Closes #456`, or similar
 
+## Automation Workflows
+
+### `issue-triage-agent.yml` - Issue Triage Agent
+Automatically triages and formats issues submitted via the Quick Capture template.
+
+**Triggers:** Issue opened or labeled with `triage:agent-pending`
+
+**Features:**
+- **Data Preservation**: Archives original issue content as a comment before modification
+- **Classification**: Keyword-based scoring to classify issues as bug, feature, documentation, performance, or task
+- **Component Detection**: Automatically detects component/domain from content keywords
+- **Stakeholder Detection**: Infers stakeholder type from context
+- **Formatting**: Reformats issue body to match project templates
+- **Metadata**: Posts confidence score and gap analysis as a comment
+- **Label Management**: Removes `triage:agent-pending`, adds `triage:agent-processed` and type-specific labels
+
+**Security:**
+- Uses heredoc syntax for environment variables to prevent script injection
+- Validates and truncates large content to fit GitHub Actions limits
+- Specific error handling for label operations
+
+**Related Resources:**
+- Quick Capture Template: `.github/ISSUE_TEMPLATE/00-quick-capture.yml`
+- Issue Creation Agent: `.github/agents/issue-creation-agent.md`
+- Issue Creation Skill: `.github/skills/issue-creation/SKILL.md`
+
+### `issue-form-labeler.yml` - Issue Form Auto-Labeler
+Automatically applies component and stakeholder labels based on issue form selections.
+
+**Triggers:** Issue opened or edited (skips triage-labeled issues to avoid conflicts)
+
 ## Migration Notes
 
 - **Old workflows**: `docker-build.yml` and `python-test.yml` have been consolidated into `build.yml` and `test.yml`

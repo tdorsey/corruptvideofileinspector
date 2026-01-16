@@ -10,7 +10,10 @@ permissions:
 
 jobs:
   auto-label-issue-form:
-    if: github.event.issue.state == 'open'
+    if: |
+      github.event.issue.state == 'open' &&
+      !contains(github.event.issue.labels.*.name, 'triage:agent-pending') &&
+      !contains(github.event.issue.labels.*.name, 'triage:agent-processed')
     runs-on: ubuntu-latest
     steps:
       - name: Auto-label based on issue form

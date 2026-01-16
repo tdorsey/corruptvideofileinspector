@@ -1,0 +1,35 @@
+name: ⚡ Quick Capture
+description: Quickly log an idea, bug, or feedback without filling out a full template
+title: "[QUICK]: "
+labels: ["triage:agent-pending"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Quick Capture** allows you to log ideas, bugs, or feedback without structured fields.
+        
+        An automated agent will process your input and structure it appropriately.
+        
+        Just provide a brief summary and any relevant details—the agent will handle the rest!
+
+  - type: textarea
+    id: quick-summary
+    attributes:
+      label: "Summary"
+      description: "Briefly describe your idea, bug, or feedback"
+      placeholder: "What's on your mind?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-details
+    attributes:
+      label: "Additional Details"
+      description: "Add any relevant context, logs, screenshots, or examples"
+      placeholder: |
+        Examples:
+        - Error messages or logs
+        - Steps to reproduce (if bug)
+        - Use cases or examples (if feature)
+        - Screenshots or links
