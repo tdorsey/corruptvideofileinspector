@@ -22,7 +22,7 @@ tests/
 #### Running Tests
 ```bash
 # Run all tests
-make test                        # 1-15 min, timeout 30+ min
+make test                        # Unit tests: 1-3 min; full suite with integration: 5-15 min, set timeout to at least 30 minutes
 
 # Run only unit tests (faster)
 pytest tests/ -v -m "unit"       # 30 sec-2 min, timeout 10+ min

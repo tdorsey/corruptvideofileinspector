@@ -42,7 +42,7 @@ The original implementation had performance and maintainability issues:
 - **After**: 160 lines (~6.7 KB)
 - **Reduction**: 74% smaller
 - **Approach**: References modular files instead of duplicating content
-- **Benefit**: 74% faster context loading for Copilot agents
+- **Benefit**: Reduced context size, which can improve context loading performance for Copilot agents
 
 ### 3. Enhanced CI/CD Caching
 
@@ -63,7 +63,7 @@ The original implementation had performance and maintainability issues:
 ```
 
 **Benefits**:
-- 30-50% faster setup on cache hits
+- Significantly faster setup on cache hits
 - Multiple restore keys for better cache reuse
 - Includes both pip cache and virtual environment
 - Cache invalidates when dependencies change
@@ -83,12 +83,12 @@ The original implementation had performance and maintainability issues:
 
 ### Context Loading Performance
 - **Main file**: 74% smaller (616 → 160 lines)
-- **Loading time**: 74% faster for main instructions
+- **Loading time**: Improved context loading with reduced file size
 - **Modularity**: Load only relevant topic files
 - **Total content**: Better organized across 10 focused files
 
 ### CI/CD Performance
-- **Setup time**: 30-50% faster with cache hits
+- **Setup time**: Significantly faster with cache hits
 - **Cache strategy**: Multi-level with restore keys
 - **Dependencies**: Cached based on lock file hash
 - **Workflow runs**: Faster Copilot agent initialization
@@ -152,7 +152,7 @@ instructions/
 - **Total instruction content**: 3,084 lines across 10 files
 - **Main file reduction**: 616 → 160 lines (74%)
 - **Average file size**: 7.6 KB (optimal for context loading)
-- **Cache hit improvement**: 30-50% faster setup
+- **Cache improvement**: Significantly faster setup with cache hits
 
 ## Usage Guide
 

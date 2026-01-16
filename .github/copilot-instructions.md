@@ -20,7 +20,7 @@ This project uses **modular instructions** for better performance and maintainab
 
 ### Project Knowledge
 - **[Project-Specific Guidelines](../instructions/project-specific.md)** - Architecture, entry points, patterns
-- **[Complete Reference](../instructions/copilot-instructions.md)** - Master reference and navigation guide
+- **[Extended Copilot Instructions](../instructions/copilot-instructions.md)** - In-depth Copilot usage guide (secondary to this primary file)
 
 ## 🚀 Quick Start
 

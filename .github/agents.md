@@ -47,7 +47,7 @@ This file defines the capabilities, boundaries, and guidelines for GitHub Copilo
 - Update issues, PRs, or labels directly (no GitHub API access)
 - Pull branches from GitHub (can only work with local state)
 - Force push or rewrite history
-- Access files in .github/agents directory (except this file)
+- Access files in the .github/agents/ subdirectory; you may only read this configuration file (.github/agents.md)
 - Clone other repositories
 - Use git reset --hard or git rebase (force push unavailable)
 

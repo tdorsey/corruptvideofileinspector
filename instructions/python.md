@@ -28,7 +28,7 @@ src/
 
 ### Python Best Practices
 - Use f-strings for string formatting
-- Maintain 79-character line length for code (100 for comments/docs per Black config)
+- Follow Black formatting (100-character line length for code and docs)
 - Always use proper type annotations
 - Follow PEP 8 style guide
 - Use descriptive variable and function names
