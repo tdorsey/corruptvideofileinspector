@@ -89,6 +89,7 @@ test-larger/
 !project.json
 !tsconfig*.json
 !.vscode/*.json
+!tools/ralph/config/prd.json
 
 # Testing artifacts
 test_copilot_setup.py
