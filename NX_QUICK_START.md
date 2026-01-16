@@ -1,12 +1,15 @@
 # Nx Monorepo Quick Start
 
-This repository uses Nx for workspace orchestration and caching. This guide provides quick reference commands for common tasks.
+This repository uses Nx for workspace orchestration and caching with pnpm workspaces. This guide provides quick reference commands for common tasks.
 
 ## Prerequisites
 
 ```bash
+# Install pnpm (if not already installed)
+npm install -g pnpm
+
 # Install Node.js dependencies
-npm install
+pnpm install
 
 # Install Python dependencies
 make install-dev
@@ -18,58 +21,58 @@ make install-dev
 
 ```bash
 # Run tests for all projects
-npm test
+pnpm test
 
 # Run lint for all projects
-npm run lint
+pnpm run lint
 
 # Run build for all projects
-npm run build
+pnpm run build
 
 # Format code
-npm run format
+pnpm run format
 ```
 
 ### Nx-Specific Commands
 
 ```bash
 # Show all projects
-npx nx show projects
+pnpm nx show projects
 
 # Run specific target for a project
-npx nx run <project>:<target>
+pnpm nx run <project>:<target>
 
 # Example: Run CLI tests
-npx nx run cli:test
+pnpm nx run cli:test
 
 # Run target for all projects in parallel
-npx nx run-many --target=<target> --all --parallel=3
+pnpm nx run-many --target=<target> --all --parallel=3
 ```
 
 ### Affected Commands
 
 ```bash
 # Test only changed projects
-npx nx affected --target=test
+pnpm nx affected --target=test
 
 # Build only changed projects
-npx nx affected --target=build
+pnpm nx affected --target=build
 
 # Show what would be affected
-npx nx affected:graph
+pnpm nx affected:graph
 ```
 
 ### Workspace Commands
 
 ```bash
 # View dependency graph (opens in browser)
-npm run graph
+pnpm run graph
 
 # Clear Nx cache
-npx nx reset
+pnpm nx reset
 
 # Show Nx configuration
-npx nx report
+pnpm nx report
 ```
 
 ## Project Structure
@@ -123,17 +126,17 @@ For detailed information, see:
 
 **Projects not showing?**
 ```bash
-npx nx daemon --stop
-npx nx reset
+pnpm nx daemon --stop
+pnpm nx reset
 ```
 
 **Cache issues?**
 ```bash
-npx nx reset
+pnpm nx reset
 ```
 
 **Need help?**
 ```bash
-npx nx help
-npx nx list  # Show installed plugins
+pnpm nx help
+pnpm nx list  # Show installed plugins
 ```

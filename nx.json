@@ -30,13 +30,5 @@
       "!{projectRoot}/**/*.md"
     ],
     "sharedGlobals": []
-  },
-  "generators": {
-    "@nx/python": {
-      "library": {
-        "buildable": true,
-        "publishable": false
-      }
-    }
   }
 }
