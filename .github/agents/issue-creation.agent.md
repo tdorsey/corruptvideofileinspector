@@ -1,6 +1,7 @@
 ---
 name: Issue Creation Agent
 description: Drafts and creates new issues, identifies duplicates, and structures issue metadata
+model: claude-haiku-4-5
 tools:
   - read
   - edit
