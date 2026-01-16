@@ -152,6 +152,91 @@ The agent uses enhanced keyword detection to identify the correct component:
 - **Documentation**: documentation, docs, readme, guide, tutorial
 - **Unknown**: fallback when no component keywords match
 
+## File Format Selection Guidelines
+
+When working with issue creation, triage, and formatting, choose the appropriate file format based on access patterns and optimization goals:
+
+### JSON Lines (.jsonl)
+
+**Primary Goal**: Speed of access and scalability for massive data
+
+- **Access Frequency**: High (frequent "lookups")
+- **Speed**: **Fastest** for large files - use `grep`, `sed`, or `tail` to grab specific lines without loading entire file into memory
+- **Token Use**: Moderate
+- **Information Density**: Low - structure is repeated on every line, which wastes tokens if reading the whole file
+- **Skill Advantage**: When searching through issue processing history (e.g., "Find all issues triaged in last week"), use shell tools to return just the relevant lines. This keeps the context window clean and tool execution instant.
+
+**When to Use**:
+- Issue processing logs and history
+- Triage operation tracking
+- Bulk issue import/export
+- When you need to append without parsing entire file
+
+**Example Use Cases**:
+- Issue triage agent operation logs
+- Historical issue classification records
+- Automated label application history
+
+### YAML (.yaml)
+
+**Primary Goal**: Token efficiency and visual hierarchy for the LLM
+
+- **Access Frequency**: Low (usually read once at the start of a task)
+- **Speed**: Slower to parse for machines (Python's YAML libraries are slower than JSON)
+- **Token Use**: **Most Efficient** - removing brackets, quotes, and commas can reduce token counts by 20-40% compared to JSON
+- **Information Density**: High - indentation provides spatial cues that help LLMs understand nested relationships
+- **Skill Advantage**: Best for issue template definitions where you need to see the entire structure. Leaves more room in the context window for actual triage logic.
+
+**When to Use**:
+- Issue template definitions
+- Label configuration
+- Workflow automation rules
+- When human readability is important
+
+**Example Use Cases**:
+- Issue templates (.github/ISSUE_TEMPLATE/*.yml)
+- GitHub Actions workflow files
+- Issue labeling rules configuration
+
+### Markdown (.md)
+
+**Primary Goal**: Information density and semantic understanding
+
+- **Access Frequency**: High (issue bodies, comments)
+- **Speed**: Fast to parse - plain text with minimal structure
+- **Token Use**: Efficient - natural language with semantic structure
+- **Information Density**: **Highest** - combines prose with structure, allows LLMs to understand context and relationships naturally
+- **Skill Advantage**: Best for issue descriptions, comments, and triage explanations. Headers, lists, and formatting provide semantic cues for understanding issue context and classification reasoning.
+
+**When to Use**:
+- Issue descriptions and bodies
+- Comments and triage explanations
+- Agent instructions and skill documentation
+- When context and explanation are critical
+
+**Example Use Cases**:
+- Issue bodies (all issue content is Markdown)
+- Triage metadata comments
+- Classification explanations
+- Agent instruction files
+
+### Format Selection Decision Tree
+
+1. **Need to track issue operations over time?** → Use JSONL
+2. **Need to define issue template structure?** → Use YAML
+3. **Need to write issue content or explanations?** → Use Markdown
+4. **Need to search through historical triage data?** → Use JSONL
+5. **Need to configure labeling rules?** → Use YAML
+6. **Need to provide classification reasoning?** → Use Markdown
+
+### Optimization Trade-offs
+
+| Format   | Parse Speed | Token Efficiency | Information Density | Random Access |
+|----------|-------------|------------------|---------------------|---------------|
+| JSONL    | ★★★★★       | ★★★              | ★★                  | ★★★★★         |
+| YAML     | ★★          | ★★★★★            | ★★★★                | ★★            |
+| Markdown | ★★★★        | ★★★★             | ★★★★★               | ★★★           |
+
 ## Example Usage
 
 ### Creating a Bug Report

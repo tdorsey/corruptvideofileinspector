@@ -309,6 +309,93 @@ Example work item format:
 }
 ```
 
+## File Format Selection Guidelines
+
+When creating or parsing data in your operations, choose the appropriate file format based on access patterns and optimization goals:
+
+### JSON Lines (.jsonl)
+
+**Primary Goal**: Speed of access and scalability for massive data
+
+- **Access Frequency**: High (frequent "lookups")
+- **Speed**: **Fastest** for large files - use `grep`, `sed`, or `tail` to grab specific lines without loading entire file into memory
+- **Token Use**: Moderate
+- **Information Density**: Low - structure is repeated on every line, which wastes tokens if reading the whole file
+- **Agent Advantage**: When searching for specific records (e.g., "Search the logs for an error"), use shell tools to return just the relevant lines. This keeps the context window clean and tool execution instant.
+
+**When to Use**:
+- Large log files that need frequent searching
+- Datasets with high-frequency random access patterns
+- Streaming data that's processed line-by-line
+- When you need to append without parsing entire file
+
+**Example Use Cases**:
+- Issue processing logs
+- Triage agent operation history
+- Build/test result logs
+
+### YAML (.yaml)
+
+**Primary Goal**: Token efficiency and visual hierarchy for the LLM
+
+- **Access Frequency**: Low (usually read once at the start of a task)
+- **Speed**: Slower to parse for machines (Python's YAML libraries are slower than JSON)
+- **Token Use**: **Most Efficient** - removing brackets, quotes, and commas can reduce token counts by 20-40% compared to JSON
+- **Information Density**: High - indentation provides spatial cues that help LLMs understand nested relationships
+- **Agent Advantage**: Best for configuration files or system prompts where the agent needs to see the entire state. Leaves more room in the context window for actual "thinking."
+
+**When to Use**:
+- Configuration files (issue templates, agent configs)
+- System prompts or instructions
+- Structured metadata that needs full review
+- When human readability is important
+
+**Example Use Cases**:
+- Issue template definitions (.github/ISSUE_TEMPLATE/)
+- Agent configuration files
+- CI/CD workflow definitions
+- Application configuration (config.yaml)
+
+### Markdown (.md)
+
+**Primary Goal**: Information density and semantic understanding
+
+- **Access Frequency**: Low to Medium (documentation, guides)
+- **Speed**: Fast to parse - plain text with minimal structure
+- **Token Use**: Efficient - natural language with semantic structure
+- **Information Density**: **Highest** - combines prose with structure, allows LLMs to understand context and relationships naturally
+- **Agent Advantage**: Best for documentation, instructions, and knowledge that benefits from natural language explanation. Headers, lists, and formatting provide semantic cues for LLM understanding.
+
+**When to Use**:
+- Agent instruction files
+- Documentation and guides
+- Issue descriptions and comments
+- README files and changelogs
+- When context and explanation are critical
+
+**Example Use Cases**:
+- Agent definition files (.github/agents/*.md)
+- Skill documentation (.github/skills/*/SKILL.md)
+- Project documentation (README.md, CHANGELOG.md)
+- Issue bodies and comments
+
+### Format Selection Decision Tree
+
+1. **Need frequent random access to large datasets?** → Use JSONL
+2. **Need configuration read once at startup?** → Use YAML
+3. **Need human-readable documentation with context?** → Use Markdown
+4. **Need to log events for later searching?** → Use JSONL
+5. **Need to define structured data with nested relationships?** → Use YAML
+6. **Need to provide instructions or explanations?** → Use Markdown
+
+### Optimization Trade-offs
+
+| Format   | Parse Speed | Token Efficiency | Information Density | Random Access |
+|----------|-------------|------------------|---------------------|---------------|
+| JSONL    | ★★★★★       | ★★★              | ★★                  | ★★★★★         |
+| YAML     | ★★          | ★★★★★            | ★★★★                | ★★            |
+| Markdown | ★★★★        | ★★★★             | ★★★★★               | ★★★           |
+
 ## Summary
 
 You are the Issue Creation Agent. You **ONLY**:
