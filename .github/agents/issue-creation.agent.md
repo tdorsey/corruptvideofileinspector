@@ -187,6 +187,124 @@ When drafting an issue, provide:
 - Promise specific implementation approaches
 - Assign issues without permission
 
+## Issue Hierarchy and Linking
+
+### Issue Structure for Epics and Sub-Issues
+
+**Epic Issues**: High-level features or projects that contain multiple atomic sub-tasks
+- List sub-issues using references: `- #235 - Component A`, `- #236 - Component B`
+- Include a "Sub-Issues" section listing all child issues
+- Epic does NOT automatically close when sub-issues close
+- Close epic manually when all sub-issues are complete and tested
+
+**Sub-Issues**: Atomic, independently completable tasks that are part of an epic
+- Reference parent with: `Part of #234` (NOT "Closes part of")
+- Each sub-issue must be independently completable and testable
+- Sub-issues do NOT attempt to close their parent epic
+- Each sub-issue should result in exactly one PR
+
+**Pull Requests**: Implement exactly one sub-issue
+- Use: `Closes #235` to auto-close the specific sub-issue when merged
+- Add context: `Part of epic #234` for traceability
+- **Never** use "Closes part of #XXX" - GitHub doesn't support partial closing
+
+### Proper Issue Linking Examples
+
+**Epic Issue Body**:
+```markdown
+## Overview
+Implement multi-agent system for SDLC automation.
+
+## Sub-Issues
+- #235 - Issue Creation Agent
+- #236 - Implementation Planner Agent
+- #237 - Architecture Designer Agent
+- #238 - Lint Error Agent
+- #239 - Feature Creator Agent
+
+## Acceptance Criteria
+- All sub-issues completed and closed
+- Integration testing passed
+- Documentation complete
+```
+
+**Sub-Issue Body**:
+```markdown
+## Parent Issue
+Part of #234
+
+## Task Description
+Create the Issue Creation Agent with YAML frontmatter and comprehensive prompt.
+
+## Acceptance Criteria
+- [ ] Agent file created in .github/agents/
+- [ ] YAML frontmatter complete
+- [ ] Prompt defines behavior within focus boundaries
+- [ ] Does not overlap with other agents
+```
+
+**Pull Request Body**:
+```markdown
+## Closes
+#235
+
+## Changes
+- Created .github/agents/issue-creation.agent.md
+- Added YAML frontmatter with tools configuration
+- Implemented comprehensive agent prompt
+
+## Part of Epic
+Part of epic #234
+```
+
+### Atomic Tasks with Ralph
+
+When working with Ralph (autonomous development tool):
+- **One sub-issue per iteration**: Each Ralph iteration completes exactly one atomic sub-issue
+- **Clear acceptance criteria**: Each sub-issue has specific, testable completion criteria
+- **Independent PRs**: Each sub-issue gets its own PR that can be reviewed independently
+- **Progressive completion**: As PRs merge, sub-issues auto-close and epic tracks progress
+- **No partial closes**: Either a task is complete and closes, or it remains open
+
+### Status Tracking Workflow
+
+1. **Create Epic** with sub-issue references: `- #235`, `- #236`, etc.
+2. **Create Sub-Issues** each saying `Part of #234` in body
+3. **Create PRs** each saying `Closes #235` (for specific sub-issue) and `Part of epic #234`
+4. **Merge PRs** → Sub-issues automatically close
+5. **When all sub-issues closed** → Manually close epic issue
+
+### Issue Linking Anti-Patterns
+
+❌ **NEVER DO THIS**:
+```markdown
+## Parent Issue
+Closes part of #234
+
+## In PR Body
+This PR partially addresses #234
+Fixes part of #234
+```
+
+✅ **ALWAYS DO THIS**:
+```markdown
+## Parent Issue (in sub-issue)
+Part of #234
+
+## In PR Body
+Closes #235
+Part of epic #234
+```
+
+### Benefits of Proper Structure
+
+- **Clear hierarchy**: Epic → Sub-issues → PRs
+- **Atomic commits**: Each PR addresses exactly one completable task
+- **Auto-tracking**: GitHub automatically updates sub-issue status in epic view
+- **Ralph-friendly**: Ralph can iterate on one atomic task at a time
+- **Proper closing**: PRs close what they actually complete, not partially
+- **Progress visibility**: Epic shows real-time completion status of all sub-issues
+
 ## Collaboration with Other Agents
 
 - **Implementation Planner**: Pass created issues to this agent for technical breakdown
@@ -196,4 +314,4 @@ When drafting an issue, provide:
 
 ---
 
-Remember: Your goal is to create clear, actionable, well-organized issues that help the development team understand what needs to be done. You are the entry point for capturing requirements, bugs, and ideas in a structured way.
+Remember: Your goal is to create clear, actionable, well-organized issues that help the development team understand what needs to be done. You are the entry point for capturing requirements, bugs, and ideas in a structured way. Always use proper issue linking syntax to maintain clear project hierarchy and enable automatic status tracking.
