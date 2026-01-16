@@ -42,7 +42,82 @@ branches:
       restrictions: null
 
 # Labels for issue and PR management
+# Prefix-based label system for agent workflow automation
+# - status:* = Current stage in workflow
+# - needs:* = Blocking requirements
+# - component:* = Affected area
+# - stakeholder:* = Target audience
 labels:
+  # ============ Status Labels (Workflow Stages) ============
+  - name: status:draft
+    color: "6a737d"
+    description: "Work in progress, not ready for review"
+  - name: status:in-triage
+    color: "fbca04"
+    description: "Being evaluated by triage agent"
+  - name: status:planning
+    color: "d4c5f9"
+    description: "Architecture and planning phase"
+  - name: status:in-development
+    color: "0366d6"
+    description: "Active development in progress"
+  - name: status:in-review
+    color: "e99695"
+    description: "Under code review"
+  - name: status:security-review
+    color: "d73a4a"
+    description: "Under security review - do not merge"
+  - name: status:merge-conflict
+    color: "d93f0b"
+    description: "Has unresolved merge conflicts"
+  - name: status:ready-to-merge
+    color: "0e8a16"
+    description: "Approved and ready to merge"
+
+  # ============ Needs Labels (Blocking Requirements) ============
+  - name: needs:architecture-design
+    color: "d4c5f9"
+    description: "Requires architecture design"
+  - name: needs:implementation
+    color: "0366d6"
+    description: "Requires code implementation"
+  - name: needs:tests
+    color: "f9d0c4"
+    description: "Requires test coverage"
+  - name: needs:documentation
+    color: "0075ca"
+    description: "Requires documentation updates"
+  - name: needs:lint-fixes
+    color: "fbca04"
+    description: "Requires code style/lint fixes"
+  - name: needs:code-review
+    color: "e99695"
+    description: "Requires code review"
+  - name: needs:security-review
+    color: "d73a4a"
+    description: "Requires security review"
+  - name: needs:conflict-resolution
+    color: "d93f0b"
+    description: "Requires merge conflict resolution"
+  - name: needs:maintainer-approval
+    color: "b60205"
+    description: "Requires maintainer approval"
+  - name: needs:changes
+    color: "e4e669"
+    description: "Changes requested from review"
+
+  # ============ Help Labels (Author Needs Assistance) ============
+  - name: help:conflict-resolution
+    color: "cc317c"
+    description: "Author needs help resolving conflicts"
+  - name: help:architecture
+    color: "cc317c"
+    description: "Author needs architecture guidance"
+  - name: help:testing
+    color: "cc317c"
+    description: "Author needs help with tests"
+
+  # ============ Legacy/Admin Labels ============
   - name: security
     color: "d73a4a"
     description: "Security-related issues or changes"
