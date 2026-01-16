@@ -1,18 +1,28 @@
 [
   {
-    "category": "Example Work Item",
-    "description": "This is a sample work item demonstrating the Ralph prd.json format. Replace this with actual work items for Ralph to implement.",
+    "category": "Ralph Progress Tracking Dashboard",
+    "description": "Create a progress tracking command for Ralph work items that displays status, completion info, and metrics. This provides visibility into which work items are completed, in progress, or pending.",
     "steps": [
-      "Step 1: Understand the requirement",
-      "Step 2: Implement the solution",
-      "Step 3: Test the implementation",
-      "Step 4: Document the changes"
+      "Create tools/ralph/scripts/ralph-status.sh script",
+      "Add logic to read all work items from config/prd.json",
+      "Parse tools/ralph/progress.txt for completion information",
+      "Query git log for Ralph-related commits to match work items",
+      "Generate formatted table showing: category, status, timestamp, commit SHA",
+      "Add status calculation logic: pending (not in progress.txt), completed (in progress.txt with commit), failed (in progress.txt without success)",
+      "Create Nx target 'ralph:status' in tools/ralph/project.json",
+      "Add optional JSON export flag for programmatic access",
+      "Update tools/ralph/README.md with ralph:status documentation",
+      "Test with current prd.json work items",
+      "Commit with message: 'feat(ralph): add progress tracking dashboard'"
     ],
     "passes": [
-      "Implementation is complete and functional",
-      "Tests pass successfully",
-      "Code follows project standards",
-      "Documentation is updated"
+      "Command 'nx run ralph:status' executes successfully",
+      "Shows all work items from prd.json with accurate status",
+      "Completed work items show commit SHA and timestamp",
+      "Output is clearly formatted and easy to read",
+      "Works when run from workspace root",
+      "Documentation in README.md is complete",
+      "Status correctly identifies: pending, in-progress, completed, failed states"
     ]
   }
 ]
