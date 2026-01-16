@@ -26,6 +26,35 @@ This project follows the [Conventional Commits](https://www.conventionalcommits.
 - **build**: Changes that affect the build system or external dependencies (pip, poetry, npm, etc.)
 - **chore**: Changes to the build process or auxiliary tools and libraries such as documentation generation
 
+### Agent and Skill Changes are Documentation
+
+**IMPORTANT: Custom agent and skill changes are contributor documentation, NOT user-facing features.**
+
+Changes to GitHub Copilot agents and skills should use the `docs` type because they are development tools that help contributors work more effectively. They document how to contribute to the project, not add features to the application itself.
+
+**What qualifies as agent/skill documentation:**
+- Files in `.github/agents/` directory → use `docs(agents):`
+- Files in `.github/skills/` directory → use `docs(skills):`
+- Agent-related Copilot instructions → use `docs(copilot):` or `docs(agents):`
+- Workflow files that support agent functionality → use `docs(agents):` or `ci(agents):`
+
+**Examples:**
+
+✅ **Correct:**
+```bash
+docs(agents): add issue creation agent
+docs(agents): update lint-error agent with improved error detection
+docs(skills): create issue creation skill
+docs(copilot): update agent usage guidelines in instructions
+```
+
+❌ **Incorrect:**
+```bash
+feat(agents): add issue creation agent      # Wrong - agents aren't user features
+feat: create lint-error agent               # Wrong - this is contributor documentation
+chore(agents): update issue creation agent  # Wrong - use docs, not chore
+```
+
 ### Description Format Rules
 - **Description must start with lowercase letter** (after the type and scope)
 - **Description must NOT end with punctuation** (no period, exclamation mark, etc.)

@@ -129,6 +129,27 @@ See the [Ralph Copilot Guide](../tools/ralph/COPILOT_GUIDE.md) for detailed usag
 - **Atomic commits**: Each commit should represent a single, focused change. Avoid combining unrelated changes in one commit.
 - See [Git & Version Control](instructions/git.md) for detailed commit guidelines
 
+#### Agent and Skill Changes are Documentation
+**IMPORTANT: Custom agent and skill changes are contributor documentation, NOT user-facing features:**
+- Changes to `.github/agents/` files should use `docs(agents):` commit type
+- Changes to `.github/skills/` files should use `docs(skills):` commit type
+- Agent-related instructions should use `docs(copilot):` or `docs(agents):` commit type
+
+**Rationale:** Agents and skills are development tools that help contributors work more effectively with GitHub Copilot. They document how to contribute to the project, not add features to the application itself.
+
+**Examples:**
+```bash
+# ✅ Correct
+docs(agents): add issue creation agent
+docs(agents): update lint-error agent with improved detection
+docs(skills): create issue creation skill
+docs(copilot): update agent usage guidelines
+
+# ❌ Incorrect
+feat(agents): add issue creation agent  # Wrong - not a user feature
+feat: create lint-error agent  # Wrong - agents are docs
+```
+
 ### Issue Creation (REQUIRED)
 **Always select a relevant issue template when creating issues:**
 - **Template selection is enforced** (blank issues are disabled)
