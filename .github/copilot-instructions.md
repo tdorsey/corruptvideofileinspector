@@ -111,8 +111,28 @@ This includes detailed guidance on:
   - Updates labels (`triage:agent-pending` → `triage:agent-processed`)
 
 **Agent & Skill Resources:**
+
+All agents follow the agent skills specification and include related skills with detailed documentation. Agents are configured with appropriate models based on complexity and expected invocation frequency.
+
+**Issue Triage and Management (Haiku model - frequent, lower cost):**
 - **Issue Creation Agent**: `.github/agents/issue-creation-agent.md`
-- **Issue Creation Skill**: `.github/skills/issue-creation/SKILL.md`
+  - **Issue Creation Skill**: `.github/skills/issue-creation/SKILL.md`
+
+**Code Quality and Review (Haiku model - frequent, lower cost):**
+- **Code Review Agent**: `.github/agents/code-review-agent.md`
+  - **Code Review Skill**: `.github/skills/code-review/SKILL.md`
+- **Testing Agent**: `.github/agents/testing-agent.md`
+  - **Testing Skill**: `.github/skills/testing/SKILL.md`
+- **Documentation Agent**: `.github/agents/documentation-agent.md`
+  - **Documentation Skill**: `.github/skills/documentation/SKILL.md`
+
+**Complex Development Tasks (Sonnet model - complex, less frequent):**
+- **Feature Development Agent**: `.github/agents/feature-development-agent.md`
+  - **Feature Development Skill**: `.github/skills/feature-development/SKILL.md`
+- **Refactoring Agent**: `.github/agents/refactoring-agent.md`
+  - **Refactoring Skill**: `.github/skills/refactoring/SKILL.md`
+- **Performance Optimization Agent**: `.github/agents/performance-optimization-agent.md`
+  - **Performance Optimization Skill**: `.github/skills/performance-optimization/SKILL.md`
 
 ### Code Quality Standards
 - **⚠️ CRITICAL: `make check` MUST pass successfully before every commit** - ensures formatting, linting, and type checking pass
