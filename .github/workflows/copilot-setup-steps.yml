@@ -46,6 +46,21 @@ jobs:
         with:
           python-version: ${{ vars.DEFAULT_PYTHON_VERSION || '3.13' }}
           cache: 'pip'
+          cache-dependency-path: |
+            pyproject.toml
+            poetry.lock
+
+      - name: Cache Python dependencies
+        id: cache-python-deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-
+            ${{ runner.os }}-python-
 
       - name: Install dependencies
         run: |

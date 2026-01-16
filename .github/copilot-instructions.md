@@ -1,616 +1,160 @@
-# Corrupt Video Inspector Development Instructions
+# Corrupt Video Inspector - Copilot Instructions
 
 A comprehensive Python CLI tool for detecting corrupted video files using FFmpeg, with optional Trakt.tv synchronization and Docker containerization support.
 
-Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
-## GitHub Copilot Usage Guidelines
+## 📚 Modular Instruction Files
 
-### Primary Use Cases for GitHub Copilot Chat
-Use GitHub Copilot Chat for these primary scenarios in this repository:
+This project uses **modular instructions** for better performance and maintainability. Each file focuses on a specific aspect of development:
 
-1. **Code Implementation & Refactoring**
-   - Writing new Python functions with proper type annotations
-   - Implementing FFmpeg integration and video processing logic
-   - Creating CLI commands and handlers using Typer framework
-   - Building configuration management with Pydantic models
+### Core Development
+- **[General Instructions](../instructions/instructions.md)** - Project overview, setup, and common commands
+- **[Python Development](../instructions/python.md)** - Python patterns, code quality, and CLI development
+- **[Configuration Management](../instructions/configuration.md)** - Environment variables, config files, secrets
+- **[Docker & Containerization](../instructions/docker.md)** - Docker builds, compose files, container workflows
+- **[Testing](../instructions/testing.md)** - Test structure, fixtures, and testing patterns
 
-2. **Testing & Quality Assurance**
-   - Writing unit tests with pytest markers (`@pytest.mark.unit`)
-   - Creating integration tests for video processing workflows
-   - Debugging test failures and improving test coverage
-   - Implementing test fixtures for video file scenarios
+### Version Control & CI/CD
+- **[Git & Version Control](../instructions/git.md)** - Commit conventions, branching, and PR requirements
+- **[GitHub Actions & CI/CD](../instructions/github-actions.md)** - Workflow patterns and marketplace actions
+- **[Workflow File Instructions](../instructions/workflows.md)** - Workflow commit guidelines
 
-3. **Docker & Containerization**
-   - Optimizing Dockerfile configurations for multi-stage builds
-   - Setting up docker-compose workflows for development
-   - Troubleshooting container environment issues
-   - Implementing container-based testing strategies
+### Project Knowledge
+- **[Project-Specific Guidelines](../instructions/project-specific.md)** - Architecture, entry points, patterns
+- **[Complete Reference](../instructions/copilot-instructions.md)** - Master reference and navigation guide
 
-4. **Configuration & Environment Setup**
-   - Setting up environment variables and configuration files
-   - Creating Pydantic configuration models
-   - Managing Docker secrets and environment-specific settings
-   - Troubleshooting CLI configuration issues
+## 🚀 Quick Start
 
-### Primary Use Cases for GitHub Copilot Code Review
-Use GitHub Copilot Code Review for these key scenarios:
+### Key Project Context
+- **Language**: Python 3.13 with strict type checking
+- **Build System**: pyproject.toml with Poetry
+- **Testing**: pytest with unit/integration separation
+- **Code Quality**: Black + Ruff + MyPy via `make check`
+- **CLI**: Typer framework
+- **Containerization**: Docker with multi-stage builds
+- **Core Dependency**: FFmpeg for video analysis
 
-1. **Code Quality & Standards Enforcement**
-   - Ensuring Black formatting, Ruff linting, and MyPy type checking compliance
-   - Validating proper type annotations and Python best practices
-   - Checking adherence to 79-character line length and f-string usage
-   - Reviewing import organization and code structure consistency
-
-2. **Security & Best Practices**
-   - Identifying hardcoded secrets or security vulnerabilities
-   - Validating proper environment variable usage
-   - Ensuring container security practices are followed
-   - Checking input validation and error handling patterns
-
-3. **Testing & Documentation Coverage**
-   - Verifying that changes include appropriate unit tests
-   - Ensuring pytest markers are correctly applied
-   - Checking for adequate documentation updates
-   - Validating that public APIs have proper docstrings
-
-4. **Architecture & Integration Compliance**
-   - Ensuring changes align with existing project structure
-   - Validating FFmpeg integration patterns
-   - Checking Docker and containerization compatibility
-   - Reviewing CLI framework usage and command structure
-
-### For Other Copilot Scenarios
-For comprehensive guidance on all other GitHub Copilot usage scenarios, development patterns, and detailed instructions, please refer to:
-
-**📖 [Complete Copilot Instructions](instructions/copilot-instructions.md)**
-
-This includes detailed guidance on:
-- Advanced development workflows and patterns
-- Specialized testing scenarios and fixtures
-- Complex Docker configurations and troubleshooting
-- Extended configuration management patterns
-- CI/CD integration with Copilot workflows
-- Project-specific architectural considerations
-
-### Key Project Context for Copilot
-- **Primary language**: Python 3.13 with strict type checking
-- **Build system**: pyproject.toml with Poetry-style configuration
-- **Testing framework**: pytest with unit/integration separation
-- **Code quality**: Black + Ruff + MyPy enforcement via `make check`
-- **Containerization**: Docker with multi-stage builds and docker-compose
-- **CLI framework**: Typer with Click integration
-- **Core dependency**: FFmpeg for video analysis and corruption detection
-## Development Standards and Requirements
-
-### Commit Standards (REQUIRED)
-**All commits MUST follow the [Conventional Commits](https://www.conventionalcommits.org/) standard:**
-- Use format: `<type>[optional scope]: <description>`
-- Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
-- **Description format**: After the type and scope, the brief description should begin in lowercase
-- Examples: `feat(cli): add video scan command`, `fix(config): resolve YAML parsing error`
-- **Atomic commits**: Each commit should represent a single, focused change. Avoid combining unrelated changes in one commit.
-- See [Git & Version Control](instructions/git.md) for detailed commit guidelines
-
-### Issue Creation (REQUIRED)
-**Always select a relevant issue template when creating issues:**
-- **Template selection is enforced** (blank issues are disabled)
-- **Quick Capture** (`00-quick-capture.yml`) - **Recommended default** for unstructured input; the Issue Triage Agent will automatically format it
-- Available templates: Feature Request, Bug Report, Documentation Update, Testing Issue, Chore/Maintenance, Performance Issue, Refactor Request, Code Style Issue
-- **All templates create proper conventional commit titles** with prefixes like `[FEAT]:`, `[FIX]:`, `[DOCS]:`, `[TEST]:`, `[CHORE]:`, `[PERF]:`, `[REFACTOR]:`, `[STYLE]:`
-- Templates ensure required information is provided and consistent formatting
-
-### Quick Capture & Issue Triage Agent
-**For rapid issue creation, use the Quick Capture template:**
-- Submit unstructured ideas, bug reports, or feedback quickly
-- The **Issue Triage Agent** automatically processes Quick Capture issues:
-  - Preserves original content as a comment
-  - Classifies issue type (bug, feature, docs, performance, task)
-  - Detects component and stakeholder from content
-  - Reformats body to match project templates
-  - Posts confidence score and gap analysis
-  - Updates labels (`triage:agent-pending` → `triage:agent-processed`)
-
-**Agent & Skill Resources:**
-- **Issue Creation Agent**: `.github/agents/issue-creation-agent.md`
-- **Issue Creation Skill**: `.github/skills/issue-creation/SKILL.md`
-
-### Code Quality Standards
-- **⚠️ CRITICAL: `make check` MUST pass successfully before every commit** - ensures formatting, linting, and type checking pass
-- All tests must pass before submitting changes
-- Follow existing code style and patterns in the repository
-
-### Dependency Management (REQUIRED)
-**When adding or updating dependencies:**
-- **MUST update `poetry.lock`** after any changes to dependencies in `pyproject.toml`
-- Run `poetry lock --no-update` to update only the changed dependencies
-- Run `poetry lock` to update all dependencies to latest compatible versions
-- Always commit `poetry.lock` changes alongside `pyproject.toml` changes
-- Verify changes with `poetry check` before committing
-
-### Pull Request Requirements (REQUIRED)
-**Before submitting a pull request:**
-- **MUST resolve all merge conflicts** - PRs with unresolved conflicts will not be accepted
-- **MUST update `poetry.lock`** if dependencies were modified
-- **MUST pass all CI/CD checks** including tests, linting, and formatting
-- Pre-commit hook `check-merge-conflict` automatically detects conflict markers
-- Run `git status` and `git diff` to verify no conflicts remain
-
-## Additional Resources
-
-For comprehensive guidance on specific aspects of development, refer to these specialized instruction files:
-
-- **[General Instructions](instructions/instructions.md)** - Project overview, getting started, and basic setup
-- **[Python Development](instructions/python.md)** - Python-specific development patterns and project structure
-- **[Configuration Management](instructions/configuration.md)** - Environment variables, configuration files, and secrets
-- **[Docker & Containerization](instructions/docker.md)** - Docker builds, compose files, and container workflows
-- **[Testing](instructions/testing.md)** - Test structure, containerized testing, and testing patterns
-- **[Git & Version Control](instructions/git.md)** - Commit conventions, branching strategies, and version control
-- **[GitHub Actions & CI/CD](instructions/github-actions.md)** - Workflow patterns, marketplace actions, and automation
-- **[Project-Specific Guidelines](instructions/project-specific.md)** - Architecture, key entry points, and project-specific patterns
-- **[Workflow File Commit Instructions](instructions/workflows.md)** - Commit message and review guidelines for workflow files
-
-## Changelog
-
-For the latest updates, fixes, and changes, see the [CHANGELOG.md](../CHANGELOG.md).
-
-## GitHub Actions and Automation Guidelines
-
-### Prefer Marketplace Actions
-**ALWAYS** use well-known marketplace actions before creating custom workflows:
-- Search the [GitHub Actions Marketplace](https://github.com/marketplace?type=actions) first
-- Use official GitHub actions (e.g., `actions/checkout`, `actions/setup-node`) when available
-- Use popular community actions with good maintenance and star ratings
-- Only create custom workflows when marketplace actions don't meet specific requirements
-- Document the reason for custom solutions in comments
-
-### Common Recommended Actions
-- **Code checkout**: `actions/checkout@v4`
-- **Language setup**: `actions/setup-python@v5`, `actions/setup-node@v4`
-- **Caching**: `actions/cache@v3`
-- **Issue/PR labeling**: `github/issue-labeler@v3.4`
-- **File-based labeling**: `actions/labeler@v5`
-- **Release automation**: `actions/create-release@v1`
-- **Docker**: `docker/build-push-action@v5`
-
-### Custom Workflow Guidelines
-When marketplace actions are insufficient:
-- Keep custom logic minimal and focused
-- Use `actions/github-script@v7` for simple API operations
-- **NEVER write Python code to test GitHub Actions workflow files**
-- Use `actionlint` or GitHub's built-in validation instead
-- Document complex workflows thoroughly
-- Consider contributing useful patterns back to the community
-
-## Issue Template Guidelines
-
-### Required Issue Templates
-**All issues MUST use approved issue templates** - blank issues are disabled (`blank_issues_enabled: false`).
-
-### Available Issue Types
-The repository provides comprehensive issue templates aligned with Conventional Commit types:
-- **🚀 Feature Request** (`feat`): New features and enhancements
-- **🐛 Bug Report** (`fix`): Bug reports and fixes
-- **🔧 Chore/Maintenance** (`chore`): Maintenance tasks, dependencies, tooling
-- **📚 Documentation** (`docs`): Documentation updates and improvements
-- **🧪 Testing** (`test`): Test coverage gaps and testing improvements
-- **⚡ Performance** (`perf`): Performance issues and optimizations
-- **♻️ Refactor** (`refactor`): Code structure and maintainability improvements
-- **🎨 Code Style** (`style`): Formatting, style, and consistency issues
-
-### Title Requirements
-All issue templates include **Title Examples** showing proper conventional commit format:
-```
-feat(component): brief description of feature
-fix(component): brief description of fix
-chore(component): brief description of maintenance task
-docs(component): brief description of documentation update
-test(component): brief description of testing improvement
-perf(component): brief description of performance improvement
-refactor(component): brief description of refactoring
-style(component): brief description of style improvement
-```
-
-### Automatic Labeling
-Issues are automatically labeled based on:
-- **Issue Type**: Determined by template (feat, fix, chore, etc.)
-- **Component/Domain**: Based on dropdown selection (cli, scanner, trakt, config, etc.)
-- **Stakeholder Type**: Based on dropdown selection (maintainer, contributor, user)
-
-### Maintenance Task Types
-The chore template includes "Issue creation" as a maintenance task type for meta-improvements to the issue process itself.
-
-## Quick Reference
-
-### Essential Setup (Network Required)
+### Essential Commands
 ```bash
-sudo apt-get install -y ffmpeg    # Install FFmpeg dependency
-make install-dev                  # Install all dependencies (2-5 min, timeout 10+ min)
-make pre-commit-install          # Setup code quality hooks
+make check              # Format, lint, type check (MUST pass before commit)
+make test               # Run all tests
+make docker-env         # Generate Docker environment
+export PYTHONPATH=src   # Enable imports without installation
+```
+
+### Copilot Agent Environment
+- **Pre-installed**: FFmpeg, build-essential, all Python dev dependencies
+- **No Network Required**: Testing, linting, formatting work offline
+- **Network Required**: Only for new dependency installation locally
+## ⚙️ Development Standards (REQUIRED)
+
+### Commit Standards
+**All commits MUST follow [Conventional Commits](https://www.conventionalcommits.org/):**
+- Format: `<type>[optional scope]: <description>` (lowercase description)
+- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
+- Examples: `feat(cli): add video scan command`, `fix(config): resolve parsing error`
+- See [Git & Version Control](../instructions/git.md) for details
+
+### Code Quality
+- **⚠️ CRITICAL: `make check` MUST pass before every commit**
+- All tests must pass before submitting changes
+- Update `poetry.lock` when modifying dependencies
+- Resolve all merge conflicts before PR submission
+
+### Pull Request Requirements
+- Pass all CI/CD checks (formatting, linting, type checking, tests)
+- Update `poetry.lock` if dependencies changed
+- Resolve merge conflicts (run `git status` and `git diff` to verify)
+
+## 🎯 GitHub Copilot Usage Best Practices
+
+### For Copilot Agents
+1. **Load relevant modular instructions** - use topic-specific files
+2. **Follow existing patterns** - match repository code style
+3. **Make minimal changes** - surgical modifications only
+4. **Test thoroughly** - validate all changes before reporting progress
+5. **Use report_progress tool** - commit and push changes
+
+### Primary Use Cases
+
+#### Code Implementation & Refactoring
+- Write Python functions with proper type annotations
+- Implement FFmpeg integration and video processing logic
+- Create CLI commands using Typer framework
+- Build Pydantic configuration models
+
+#### Testing & Quality Assurance
+- Write unit tests with `@pytest.mark.unit` markers
+- Create integration tests for video workflows
+- Debug test failures and improve coverage
+- Implement test fixtures for video scenarios
+
+#### Docker & Containerization
+- Optimize Dockerfile multi-stage builds
+- Setup docker-compose workflows
+- Troubleshoot container environment issues
+- Implement container-based testing
+
+#### Configuration & Environment Setup
+- Setup environment variables and config files
+- Create Pydantic configuration models
+- Manage Docker secrets and environment settings
+- Troubleshoot CLI configuration
+
+### Code Review Focus Areas
+- Black formatting, Ruff linting, MyPy type checking compliance
+- Proper type annotations and Python best practices
+- No hardcoded secrets or security vulnerabilities
+- Appropriate unit test coverage with pytest markers
+- Documentation updates for public APIs
+
+## 📖 Additional Resources
+
+- **[CHANGELOG.md](../CHANGELOG.md)** - Latest updates and changes
+- **Detailed Documentation**: `docs/` directory for module-specific docs
+- **Issue Templates**: `.github/ISSUE_TEMPLATE/` - Required for all issues
+- **Workflow Documentation**: `.github/workflows/README.md`
+
+## 🛠️ Issue Creation Guidelines
+
+### Required Templates
+- **Template selection is enforced** (blank issues disabled)
+- **Quick Capture** recommended for unstructured input (auto-triaged by agent)
+- Available: Feature Request, Bug Report, Docs, Testing, Chore, Performance, Refactor, Style
+
+### Issue Triage Agent
+- Automatically processes Quick Capture issues
+- Classifies type (bug, feature, docs, performance, task)
+- Applies appropriate labels and reformats body
+- Resources: `.github/agents/issue-creation-agent.md`, `.github/skills/issue-creation/SKILL.md`
+
+## 🚦 Quick Reference Summary
+
+### Critical Commands
+```bash
+make check              # ⚠️ MUST pass before commit
+make test               # Validate all functionality
+export PYTHONPATH=src   # Enable imports without install
 ```
 
 ### Development Workflow
-```bash
-make check                       # Format, lint, type check (1-3 min, timeout 10+ min)
-make test                        # Run all tests (1-15 min, timeout 30+ min)
-make docker-build               # Build container (5-15 min, timeout 30+ min)
-```
+1. Load relevant instruction file for your task
+2. Make minimal, focused changes
+3. Run `make check` (must pass)
+4. Run targeted tests
+5. Use `report_progress` to commit
 
-### CLI Usage Examples
-```bash
-# Using installed package (after 'make install' or 'pip install -e .')
-corrupt-video-inspector --help
-corrupt-video-inspector scan /path/to/videos --mode hybrid --output results.json
+### Timing Expectations
+- `make check`: 30-60 sec (timeout 5+ min)
+- Unit tests: 30 sec-2 min (timeout 10+ min)
+- Full test suite: 1-15 min (timeout 30+ min)
+- Docker builds: 5-15 min (timeout 30+ min)
 
-# Using without installation (requires PYTHONPATH=src)
-export PYTHONPATH=$(pwd)/src
-python3 cli_handler.py --config config.yaml --help
-python3 cli_handler.py --config config.yaml scan --directory /path/to/videos --mode hybrid --output results.json
-```
+### Common Issues
+- **Import errors**: `export PYTHONPATH=/path/to/repo/src`
+- **CLI config errors**: CLI requires valid `config.yaml` file
+- **Test failures**: Check FFmpeg installation and file permissions
+- **Network timeouts**: Use Docker as fallback for local dev
 
-Note: CLI requires a configuration file. Use the sample config from "Application Validation" section below.
+---
 
-## Working Effectively
-
-### GitHub Copilot Agent Environment
-**All required dependencies are pre-installed in the Copilot agent environment:**
-- **System Dependencies**: FFmpeg and build-essential are pre-installed during agent setup
-- **Python Dependencies**: All development dependencies (black, ruff, mypy, pytest, etc.) are pre-installed
-- **No Network Access Required**: Testing, linting, and formatting work without network access
-
-### Verified Commands (Network-Independent)
-These commands work without network access in the Copilot environment:
-- `make help` - Show all available targets
-- `make clean` - Clean build artifacts
-- `make check` - Format, lint, and type check (requires pre-installed dev dependencies)
-- `make test` - Run all tests (requires pre-installed dev dependencies)
-- `make format` - Format code with black
-- `make lint` - Lint code with ruff
-- `make type` - Type check with mypy
-- `make docker-env` - Generate Docker environment files
-- `make secrets-init` - Create Trakt secret files
-- Basic Python module imports work with PYTHONPATH set to src/
-
-### Prerequisites and System Setup (For Local Development)
-- Install system dependencies first:
-  ```bash
-  sudo apt-get install -y ffmpeg build-essential
-  ```
-- Verify FFmpeg installation: `ffmpeg -version`
-- Python 3.13+ is required and should be available
-
-### Installation and Environment Setup (For Local Development)
-- **Network connectivity to PyPI is required for local development**. In Copilot environments, dependencies are pre-installed.
-- **Install Poetry** (if not already installed):
-  ```bash
-  curl -sSL https://install.python-poetry.org | python3 -
-  # or
-  pip install poetry
-  ```
-- Install development dependencies:
-  ```bash
-  make install-dev
-  ```
-  - **Expected time**: 2-5 minutes. NEVER CANCEL - Set timeout to 10+ minutes.
-  - **Alternative if network issues occur**: `pip install -e ".[dev]" --timeout 300 --retries 3`
-  - **Fallback for network issues**: Use Docker development environment instead
-- **Verify Poetry installation**:
-  ```bash
-  poetry --version
-  poetry check  # Validates pyproject.toml and poetry.lock consistency
-  ```
-
-### Project Setup (Works Without Network)
-- **Setup project directories and secrets**:
-  ```bash
-  make setup
-  ```
-  - This runs: `make install docker-env secrets-init`
-  - **Expected time**: 10-30 seconds
-- **Generate Docker environment files**:
-  ```bash
-  make docker-env
-  ```
-  - Creates docker/.env with required volume paths
-- **Initialize Trakt secrets** (for Trakt.tv integration):
-  ```bash
-  make secrets-init
-  ```
-  - Creates docker/secrets/trakt_client_id.txt and trakt_client_secret.txt
-
-### Build and Development Workflow
-- **Setup pre-commit hooks** (run after install-dev):
-  ```bash
-  make pre-commit-install
-  ```
-- **Format and lint code** before making changes:
-  ```bash
-  make check
-  ```
-  - **Expected time**: 30-60 seconds. NEVER CANCEL - Set timeout to 5+ minutes.
-  - This runs: black formatting, ruff linting, and mypy type checking
-
-### Testing
-- **Run all tests**:
-  ```bash
-  make test
-  ```
-  - **Expected time**: 1-3 minutes for unit tests, 5-15 minutes including integration tests. NEVER CANCEL - Set timeout to 30+ minutes.
-- **Run only unit tests** (faster):
-  ```bash
-  pytest tests/ -v -m "unit"
-  ```
-  - **Expected time**: 30 seconds to 2 minutes. NEVER CANCEL - Set timeout to 10+ minutes.
-- **Run with coverage**:
-  ```bash
-  make test-cov
-  ```
-  - **Expected time**: 2-5 minutes. NEVER CANCEL - Set timeout to 15+ minutes.
-
-### Docker Development (Network-Independent Alternative)
-- **Build development Docker image**:
-  ```bash
-  make dev-build
-  ```
-  - **Expected time**: 5-15 minutes. NEVER CANCEL - Set timeout to 30+ minutes.
-- **Run development container with shell access**:
-  ```bash
-  make dev-shell
-  ```
-- **Note**: Use Docker environment if local pip installation fails due to network issues
-
-## Application Validation
-
-### CLI Testing Scenarios
-Always manually validate changes by running these complete scenarios:
-
-1. **Basic CLI functionality**:
-   ```bash
-   # First create a minimal config file (required for CLI operation)
-   cat > /tmp/config.yaml << 'EOF'
-   logging:
-     level: INFO
-     file: /tmp/inspector.log
-   ffmpeg:
-     command: /usr/bin/ffmpeg
-     quick_timeout: 30
-     deep_timeout: 1800
-   processing:
-     max_workers: 8
-     default_mode: "quick"
-   output:
-     default_json: true
-     default_output_dir: /tmp/output
-     default_filename: "scan_results.json"
-   scan:
-     recursive: true
-     max_workers: 8
-     mode: "quick"
-     default_input_dir: /tmp/videos
-     extensions: [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv"]
-   trakt:
-     client_id: ""
-     client_secret: ""
-     include_statuses: ["healthy"]
-   EOF
-
-   # Test CLI with PYTHONPATH (works without full installation)
-   export PYTHONPATH=$(pwd)/src
-   python3 cli_handler.py --config config.yaml --help
-   python3 cli_handler.py --config config.yaml scan --help
-   ```
-
-2. **CLI validation commands**:
-   ```bash
-   python3 cli_handler.py --config config.yaml test-ffmpeg
-   python3 cli_handler.py --config config.yaml show-config
-   ```
-
-3. **Video scanning workflow** (basic functionality test):
-   ```bash
-   mkdir -p test-videos /tmp/output
-   # Test with empty directory (should complete successfully)
-   python3 cli_handler.py --config config.yaml scan --directory test-videos --output /tmp/test-results.json
-   echo "Scan completed successfully if no errors above"
-   ```
-
-4. **Docker scanning workflow**:
-   ```bash
-   make docker-env  # Generate environment files
-   make docker-scan  # Run scan via Docker Compose (requires network)
-   ```
-
-### Manual Testing Requirements
-- **ALWAYS** run through at least one complete end-to-end scenario after making changes
-- **CRITICAL**: CLI requires a configuration file to operate. Use the sample config above or create via `make docker-env && make secrets-init`
-- Test the CLI with actual video files when possible
-- Verify that configuration files are properly generated and read
-- Check that output formats (JSON, CSV, YAML) are properly generated
-- Use `export PYTHONPATH=/path/to/repo/src` for testing without full installation
-
-### Quick Start in Copilot Environment
-In the Copilot environment, all dependencies are pre-installed, so you can immediately start development:
-
-```bash
-# Basic functionality testing (all dependencies pre-installed)
-make docker-env && make secrets-init
-export PYTHONPATH=/path/to/repo/src
-
-# Create minimal config (copy from Application Validation section above)
-# Then test CLI functionality
-python3 cli_handler.py --config config.yaml --help
-```
-
-### Quick Start for Local Development
-If developing locally and network installation fails, you can still validate basic functionality:
-
-```bash
-# System dependencies (requires network for initial setup)
-sudo apt-get install -y ffmpeg
-
-# Basic functionality testing (no pip install required)
-make clean && make docker-env && make secrets-init
-export PYTHONPATH=/path/to/repo/src
-
-# Create minimal config (copy from Application Validation section above)
-# Then test CLI functionality
-python3 cli_handler.py --config config.yaml --help
-```
-
-## Common Tasks and Commands
-
-### Development Commands
-```bash
-# Project setup (network-independent)
-make setup                          # Full setup: install + docker-env + secrets
-make docker-env                     # Generate Docker env files (10-30 sec)
-make secrets-init                   # Create secret files (5-10 sec)
-
-# Install dependencies (NETWORK REQUIRED)
-make install-dev                    # 2-5 min, timeout 10+ min
-
-# Dependency management (when dependencies change)
-poetry lock --no-update             # Update lock file for changed deps only
-poetry lock                         # Update all dependencies to latest compatible
-poetry check                        # Verify pyproject.toml and poetry.lock consistency
-poetry show --tree                  # Show dependency tree
-
-# Code quality and validation
-make format                         # 30-60 sec, timeout 5+ min
-make lint                           # 10-30 sec, timeout 5+ min
-make type                           # 30 sec-2 min, timeout 5+ min
-make check                          # All above combined, timeout 10+ min
-make clean                          # Clean build artifacts (5-10 sec)
-
-# Testing
-make test                           # 1-15 min, timeout 30+ min
-make test-integration              # 5-15 min, timeout 30+ min
-pytest tests/ -v -m "unit"        # 30 sec-2 min, timeout 10+ min
-
-# Pre-commit
-make pre-commit-install            # 10-30 sec, timeout 2+ min
-make pre-commit-run                # 1-3 min, timeout 10+ min
-
-# Docker workflow
-make docker-build                  # 5-15 min, timeout 30+ min
-make docker-build-clean            # Build without cache, 10-20 min, timeout 45+ min
-make build-clean                   # Alias for docker-build-clean
-make dev-build                     # 5-15 min, timeout 30+ min
-make dev-up                        # Start dev container (detached)
-make dev-down                      # Stop dev container
-make dev-shell                     # Interactive shell access
-make docker-dev                    # Build and run dev container
-make docker-scan                   # Run scan via Docker
-make docker-report                 # Run report via Docker
-make docker-trakt                  # Run Trakt sync via Docker
-make docker-all                    # Run scan + report sequence
-```
-
-### CI/CD Validation Commands
-Always run these before committing to ensure CI will pass:
-```bash
-make check    # Format, lint, and type check
-make test     # Run all tests
-```
-
-**Note**: The CI pipeline (.github/workflows/ci.yml) references make targets that are now available:
-- `make docker-test` - ✅ Available (placeholder implementation)
-- `make security-scan` - ✅ Available (placeholder implementation)
-
-These targets were added as placeholders. If you need to implement full functionality for these targets, add proper implementations to the Makefile.
-
-## Repository Structure and Key Files
-
-### Project Root
-```
-corruptvideofileinspector/
-├── README.md                      # Project documentation
-├── pyproject.toml                 # Python project configuration and dependencies
-├── Makefile                       # Development automation commands
-├── .pre-commit-config.yaml        # Code quality automation
-├── src/                           # Main source code
-├── tests/                         # Test suite (unit and integration)
-├── docs/                          # Detailed documentation by module
-├── docker/                        # Docker configuration and compose files
-└── .github/workflows/             # CI/CD pipeline definitions
-```
-
-### Important Source Files
-```
-src/
-├── cli/                           # Command-line interface → docs/CLI.md
-├── core/                          # Core business logic → docs/CORE.md
-├── config/                        # Configuration management → docs/CONFIG.md
-├── ffmpeg/                        # FFmpeg integration → docs/FFMPEG.md
-├── output.py                      # Output formatting and file handling
-├── version.py                     # Version information
-└── __main__.py                    # Main entry point: python -m src
-```
-
-### Testing Structure
-```
-tests/
-├── unit/                          # Unit tests (mark with @pytest.mark.unit)
-├── integration/                   # Integration tests
-├── fixtures/                      # Test data and fixtures
-└── test_*.py                      # Direct test files
-```
-
-## Critical Warnings and Timing
-
-### Dependencies in Copilot Environment
-- **Pre-installed**: All system dependencies (FFmpeg, build-essential) and Python dependencies are pre-installed
-- **No Network Access Required**: Testing, linting, formatting, and type checking work without network access
-- **Local Development**: Network connectivity to PyPI required only for local development environments
-
-### Build and Test Timeouts
-- **Testing**: Unit tests 30 sec-2 min, full test suite up to 15 minutes with video processing
-- **CLI Operations**: Basic commands (help, config validation) complete in <1 second
-- **Basic Scans**: Empty directory scans complete in <1 second
-- **NEVER CANCEL** long-running operations - video processing tests take time
-
-### File Processing Notes
-- **Video Dependencies**: FFmpeg is pre-installed and accessible in PATH
-- **Test Files**: Integration tests may require actual video files
-- **File Permissions**: Ensure read/write access to test directories and output paths
-
-## Troubleshooting Common Issues
-
-### Development Issues (Copilot Environment)
-- **Import errors**: Ensure PYTHONPATH includes src: `export PYTHONPATH=/path/to/repo/src`
-- **Permission errors**: Check file/directory permissions for video processing
-- **CLI configuration errors**: CLI requires a valid config.yaml file. See "Application Validation" section for sample config
-- **Missing CLI entry point**: If cli_handler.py is empty, it has been fixed in recent updates
-- **Missing make targets**: `docker-test` and `security-scan` targets have been added as placeholders
-
-### Local Development Issues
-- **Network timeouts**: Increase pip timeout: `pip install --timeout 300`
-- **SSL errors**: May indicate firewall/proxy issues - use Docker as fallback
-- **Poetry conflicts**: Clear cache: `pip cache purge` and retry
-- **Build system failures**: Ensure build-essential is installed: `sudo apt-get install build-essential`
-- **FFmpeg not found**: Install system package: `sudo apt-get install ffmpeg`
-
-### Testing Failures
-- **Missing test videos**: Some integration tests require actual video files
-- **Timeout errors**: Video processing can be slow - use appropriate timeouts
-- **Docker issues**: Ensure Docker service is running and accessible
-- **Import errors in tests**: Set PYTHONPATH before running tests manually
-
-### Commands by Network Requirement
-
-**Network-Independent Commands** (Work in Copilot environment):
-```bash
-make help, make clean, make docker-env, make secrets-init
-make check, make test, make format, make lint, make type  # Now work with pre-installed dependencies
-make docker-test, make security-scan  # Placeholder implementations
-PYTHONPATH=src python3 -c "import sys; print('PYTHONPATH test success')"  # Basic import test
-# CLI testing (requires config file)
-PYTHONPATH=src python3 cli_handler.py --config config.yaml --help
-```
-
-**Network-Dependent Commands** (For local development only):
-```bash
-make install-dev, make install, make setup  # Local development setup requires PyPI access
-make docker-build  # Requires network for base image downloads
-```
-
-Remember: This is a video processing application that requires actual video files for complete testing. Always validate with real video scanning workflows when possible.
+**Remember**: These instructions use a modular structure for optimal Copilot performance. Always reference the specific instruction file relevant to your task.
