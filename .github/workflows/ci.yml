@@ -165,6 +165,34 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Required for Nx affected commands
+        submodules: recursive  # Initialize Ralph submodule
+
+    - name: Validate Ralph submodule is pinned to release tag
+      run: |
+        set -e
+        if [ -d "tools/ralph/ralph-cli" ]; then
+          cd tools/ralph/ralph-cli
+          # Check if current commit is tagged with a release
+          if ! git describe --tags --exact-match 2>/dev/null; then
+            echo "ERROR: Ralph submodule is not pinned to a release tag"
+            echo "Current commit: $(git rev-parse HEAD)"
+            echo "Please pin the submodule to a release tag, not a branch"
+            echo ""
+            echo "To fix:"
+            echo "  cd tools/ralph/ralph-cli"
+            echo "  git fetch --tags"
+            echo "  git checkout <release-tag>  # e.g., v1.0.0"
+            echo "  cd ../../.."
+            echo "  git add tools/ralph/ralph-cli"
+            echo "  git commit -m 'fix(ralph): pin submodule to release tag'"
+            exit 1
+          fi
+          TAG=$(git describe --tags --exact-match)
+          echo "✅ Ralph submodule is correctly pinned to release tag: ${TAG}"
+          cd ../../..
+        else
+          echo "ℹ️ Ralph submodule not yet initialized (expected during initial setup)"
+        fi
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -207,6 +235,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive  # Initialize Ralph submodule
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -233,6 +263,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Required for Nx affected commands
+        submodules: recursive  # Initialize Ralph submodule
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -285,6 +316,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive  # Initialize Ralph submodule
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
