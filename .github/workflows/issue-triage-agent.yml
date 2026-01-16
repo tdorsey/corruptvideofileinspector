@@ -99,16 +99,20 @@ jobs:
             const docKeywords = ['documentation', 'docs', 'readme', 'typo', 'clarify', 'explain'];
             const perfKeywords = ['performance', 'slow', 'fast', 'optimize', 'speed', 'memory'];
             
-            // Component detection keywords
+            // Component detection keywords.
+            // Specificity is achieved via the chosen keyword sets and the
+            // scoring logic (counting matches), not by the order of entries.
+            // Entries are listed from more specific to more general for readability.
             const componentKeywords = {
-              'CLI': ['cli', 'command line', 'command-line', 'terminal', 'console', 'argv'],
-              'Scanner': ['scanner', 'scan', 'detect', 'analyze', 'corrupt'],
+              'GitHub Actions': ['agent', 'agent file', '.github/agents', '.github/workflows', 'github actions', 'action', 'workflow file', 'yml workflow', 'yaml workflow'],
+              'CI/CD': ['ci', 'cd', 'pipeline', 'continuous integration', 'continuous deployment', 'build pipeline', 'automation workflow'],
               'Trakt Integration': ['trakt', 'sync', 'watchlist', 'collection'],
-              'Config': ['config', 'configuration', 'settings', 'yaml', 'yml', 'options'],
+              'Docker': ['docker', 'container', 'dockerfile', 'compose'],
+              'CLI': ['cli', 'command line', 'command-line', 'terminal', 'console', 'argv'],
+              'Scanner': ['scanner', 'scanning', 'scan', 'detect', 'detection', 'analyze', 'analysis'],
+              'Config': ['config file', 'configuration file', 'config settings', 'config options', 'config.yaml', 'config.yml', 'app config', 'user config', 'yaml config'],
               'Reporter': ['reporter', 'report', 'summary', 'results'],
               'Output': ['output', 'export', 'csv', 'json', 'format'],
-              'Docker': ['docker', 'container', 'dockerfile', 'compose'],
-              'CI/CD': ['ci', 'cd', 'pipeline', 'workflow', 'github actions', 'automation'],
               'Tests': ['test', 'testing', 'pytest', 'unittest', 'coverage', 'mock'],
               'Documentation': ['documentation', 'docs', 'readme', 'guide', 'tutorial']
             };
@@ -124,7 +128,7 @@ jobs:
             const countMatches = (keywords) => keywords.filter(k => content.includes(k)).length;
             
             // Detect component based on keywords
-            let detectedComponent = 'Other';
+            let detectedComponent = 'Unknown';
             let maxComponentScore = 0;
             for (const [component, keywords] of Object.entries(componentKeywords)) {
               const score = countMatches(keywords);
@@ -133,6 +137,8 @@ jobs:
                 detectedComponent = component;
               }
             }
+            
+            // If no matches found, detectedComponent remains 'Unknown'
             
             // Detect stakeholder based on keywords
             let detectedStakeholder = 'End User';
@@ -230,6 +236,13 @@ jobs:
               gaps.push('Issue description is brief');
             }
             
+            // Override issue type for agent/workflow-related work
+            // Agent and workflow file work should NEVER be classified as feature
+            if ((detectedComponent === 'GitHub Actions' || detectedComponent === 'CI/CD') && issueType === 'feature') {
+              issueType = 'task';
+              console.log('Overriding issue type from "feature" to "task" for GitHub Actions/CI/CD component');
+            }
+            
             // Store classification results in environment file (safer approach)
             const fs = require('fs');
             fs.appendFileSync(process.env.GITHUB_ENV, 'ISSUE_TYPE=' + issueType + '\n');
@@ -251,8 +264,12 @@ jobs:
             const issue = context.payload.issue;
             const originalBody = process.env.ORIGINAL_BODY || '';
             const issueType = process.env.ISSUE_TYPE || 'task';
-            const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
+            const detectedComponent = process.env.DETECTED_COMPONENT || 'Unknown';
             const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
+            
+            // Remove tags like [QUICK], [FEAT], [FIX], etc. from the title
+            let cleanedTitle = issue.title || '';
+            cleanedTitle = cleanedTitle.replace(/^\[?[A-Z]+\]?:\s*/i, '').trim();
             
             // Helper function to build template body with proper newlines
             const buildBody = (sections) => sections.join('\n\n');
@@ -260,13 +277,10 @@ jobs:
             let formattedBody = '';
             
             // Generate formatted body based on issue type
+            // Note: Component/Domain and Stakeholder Type are now applied as labels instead of being in the body
             switch (issueType) {
               case 'bug':
                 formattedBody = buildBody([
-                  '### Stakeholder Type',
-                  detectedStakeholder,
-                  '### Component/Domain',
-                  detectedComponent,
                   '### I want to',
                   'Report and resolve the following issue:\n\n' + originalBody,
                   '### But',
@@ -286,10 +300,6 @@ jobs:
                 
               case 'feature':
                 formattedBody = buildBody([
-                  '### Stakeholder Type',
-                  detectedStakeholder,
-                  '### Component/Domain',
-                  detectedComponent,
                   '### I want to',
                   originalBody,
                   '### But',
@@ -305,10 +315,6 @@ jobs:
                 
               case 'documentation':
                 formattedBody = buildBody([
-                  '### Stakeholder Type',
-                  detectedStakeholder,
-                  '### Component/Domain',
-                  'Documentation',
                   '### I want to',
                   'Improve the documentation:\n\n' + originalBody,
                   '### But',
@@ -324,10 +330,6 @@ jobs:
                 
               case 'performance':
                 formattedBody = buildBody([
-                  '### Stakeholder Type',
-                  detectedStakeholder,
-                  '### Component/Domain',
-                  detectedComponent,
                   '### I want to',
                   'Address the following performance concern:\n\n' + originalBody,
                   '### But',
@@ -343,10 +345,6 @@ jobs:
                 
               default: // task/chore
                 formattedBody = buildBody([
-                  '### Stakeholder Type',
-                  detectedStakeholder,
-                  '### Component/Domain',
-                  detectedComponent,
                   '### I want to',
                   originalBody,
                   '### But',
@@ -362,12 +360,13 @@ jobs:
                 ]);
             }
             
-            // Update issue body
+            // Update issue body and title
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
-              body: formattedBody
+              body: formattedBody,
+              title: cleanedTitle
             });
 
       - name: Post Metadata Comment
@@ -376,11 +375,15 @@ jobs:
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
           CONFIDENCE: ${{ env.CONFIDENCE }}
           GAPS: ${{ env.GAPS }}
+          DETECTED_COMPONENT: ${{ env.DETECTED_COMPONENT }}
+          DETECTED_STAKEHOLDER: ${{ env.DETECTED_STAKEHOLDER }}
         with:
           script: |
             const issue = context.payload.issue;
             const issueType = process.env.ISSUE_TYPE || 'task';
             const confidence = process.env.CONFIDENCE || '50';
+            const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
+            const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
             
             // Parse gaps safely
             let gaps = [];
@@ -403,6 +406,8 @@ jobs:
               '|--------|-------|',
               '| **Classification** | ' + issueType.charAt(0).toUpperCase() + issueType.slice(1) + ' |',
               '| **Confidence** | ' + confidence + '% |',
+              '| **Detected Component** | ' + detectedComponent + ' |',
+              '| **Detected Stakeholder** | ' + detectedStakeholder + ' |',
               '| **Processing Time** | ' + new Date().toISOString() + ' |',
               '',
               '### Gap Analysis',
@@ -415,6 +420,7 @@ jobs:
               '',
               '> **Note**: This issue was automatically formatted by the Issue Triage Agent.',
               '> The original content has been preserved in a separate comment above.',
+              '> Component and stakeholder information have been applied as labels.',
               '> Please review and update any missing sections as needed.'
             ].join('\n');
             
@@ -429,10 +435,14 @@ jobs:
         uses: actions/github-script@v7
         env:
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
+          DETECTED_COMPONENT: ${{ env.DETECTED_COMPONENT }}
+          DETECTED_STAKEHOLDER: ${{ env.DETECTED_STAKEHOLDER }}
         with:
           script: |
             const issue = context.payload.issue;
             const issueType = process.env.ISSUE_TYPE || 'task';
+            const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
+            const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
             
             // Remove triage:agent-pending label
             try {
@@ -472,9 +482,57 @@ jobs:
                 labelsToAdd.push('chore');
             }
             
+            // Add component label based on detected component
+            const componentLabelMap = {
+              'CLI': 'component:cli',
+              'Scanner': 'component:scanner',
+              'Trakt Integration': 'component:trakt',
+              'Config': 'component:config',
+              'Reporter': 'component:reporter',
+              'Output': 'component:output',
+              'Docker': 'component:docker',
+              'CI/CD': 'component:cicd',
+              'GitHub Actions': 'component:github-actions',
+              'Tests': 'component:tests',
+              'Documentation': 'component:docs',
+              'Unknown': 'component:unknown',
+              'Other': 'component:other'
+            };
+            
+            const componentLabel = componentLabelMap[detectedComponent];
+            if (componentLabel) {
+              labelsToAdd.push(componentLabel);
+            }
+            
+            // Add stakeholder label based on detected stakeholder
+            const stakeholderLabelMap = {
+              'Project Maintainer': 'stakeholder:maintainer',
+              'Contributor': 'stakeholder:contributor',
+              'End User': 'stakeholder:user'
+            };
+            
+            const stakeholderLabel = stakeholderLabelMap[detectedStakeholder];
+            if (stakeholderLabel) {
+              labelsToAdd.push(stakeholderLabel);
+            }
+            
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
               labels: labelsToAdd
+            });
+
+      - name: Assign Issue to Copilot
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            
+            // Assign the triaged issue to Copilot
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              assignees: ['Copilot']
             });

@@ -118,15 +118,39 @@ When analyzing issue content, use these keywords to determine the appropriate ca
 3. Issue Triage Agent workflow triggers
 4. Original content is preserved as a comment
 5. Issue is classified based on keywords
-6. Issue body is reformatted to match appropriate template
-7. Metadata comment is posted with:
+6. Component and stakeholder are detected based on content analysis
+7. Issue title is cleaned (tags like [QUICK], [FEAT], etc. are removed)
+8. Issue body is reformatted to match appropriate template (without Component/Domain and Stakeholder Type sections)
+9. Metadata comment is posted with:
    - Classification type
    - Confidence percentage
+   - Detected component
+   - Detected stakeholder
    - Gap analysis (missing information)
-8. Labels are updated:
-   - `triage:agent-pending` removed
-   - `triage:agent-processed` added
-   - Type-specific label added (bug, feature, etc.)
+10. Labels are automatically applied:
+    - `triage:agent-pending` removed
+    - `triage:agent-processed` added
+    - Type-specific label added (bug, feature, chore, documentation, performance)
+    - Component label added (component:cli, component:scanner, component:github-actions, component:unknown, etc.)
+    - Stakeholder label added (stakeholder:maintainer, stakeholder:contributor, stakeholder:user)
+11. Issue is automatically assigned to @Copilot
+
+## Component Detection
+
+The agent uses enhanced keyword detection to identify the correct component:
+
+- **GitHub Actions**: agent, agent file, .github/agents, .github/workflows, github actions, action, workflow file, yml workflow, yaml workflow
+- **CI/CD**: ci, cd, pipeline, continuous integration, continuous deployment, build pipeline, automation workflow
+- **Trakt Integration**: trakt, sync, watchlist, collection
+- **Docker**: docker, container, dockerfile, compose
+- **CLI**: cli, command line, command-line, terminal, console, argv
+- **Scanner**: scanner, scanning, scan, detect, detection, analyze, analysis
+- **Config**: config file, configuration file, config settings, config options, config.yaml, config.yml, app config, user config, yaml config
+- **Reporter**: reporter, report, summary, results
+- **Output**: output, export, csv, json, format
+- **Tests**: test, testing, pytest, unittest, coverage, mock
+- **Documentation**: documentation, docs, readme, guide, tutorial
+- **Unknown**: fallback when no component keywords match
 
 ## Example Usage
 
