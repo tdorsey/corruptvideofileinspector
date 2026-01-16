@@ -1,0 +1,14 @@
+# Ralph Progress Log
+
+This file tracks the progress of Ralph iterations. Ralph will update this file after each iteration to record completed work items and iteration status.
+
+## Format
+Each iteration entry will include:
+- Iteration number
+- Timestamp
+- Work item completed
+- Status (success/failure)
+- Any relevant notes
+
+---
+
