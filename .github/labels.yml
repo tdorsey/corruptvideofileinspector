@@ -59,10 +59,13 @@
 # These labels are managed by the Issue Triage Agent workflow.
 # triage:agent-pending - Applied to Quick Capture issues awaiting agent processing
 # triage:agent-processed - Applied after agent has formatted the issue
+# triage:next - Applied when triage requires a next action from the submitter
 'triage:agent-pending':
   - 'triage:agent-pending'
 'triage:agent-processed':
   - 'triage:agent-processed'
+'triage:next':
+  - 'triage:next'
 
 # ------------------- Keyword Labels --------------------------
 # These labels are applied based on keywords in issue/PR content.

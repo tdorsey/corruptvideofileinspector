@@ -58,3 +58,6 @@ labels:
   - name: triage:agent-processed
     color: "0e8a16"
     description: "Issue has been processed by the triage agent"
+  - name: triage:next
+    color: "fbca04"
+    description: "Issue needs follow-up information to continue triage"

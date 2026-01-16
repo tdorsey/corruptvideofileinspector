@@ -35,6 +35,24 @@ jobs:
 
             const branchName = `issue-${issueNumber}-${slug}`;
             
+            const minimizeComment = async (nodeId) => {
+              if (!nodeId) {
+                return;
+              }
+              try {
+                await github.graphql(
+                  `mutation($subjectId:ID!, $classifier:ReportedContentClassifiers!) {
+                    minimizeComment(input:{subjectId:$subjectId, classifier:$classifier}) {
+                      minimizedComment { isMinimized }
+                    }
+                  }`,
+                  { subjectId: nodeId, classifier: 'OUTDATED' }
+                );
+              } catch (error) {
+                console.log('Unable to minimize branch comment:', error.message);
+              }
+            };
+            
             try {
               // Get the default branch reference
               const { data: defaultBranch } = await github.rest.repos.get({
@@ -80,12 +98,14 @@ jobs:
                 'Happy coding! 🚀'
               ].join('\n');
 
-              await github.rest.issues.createComment({
+              const { data: branchComment } = await github.rest.issues.createComment({
                 issue_number: issueNumber,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 body: commentBody
               });
+              
+              await minimizeComment(branchComment.node_id);
               
               console.log(`✅ Comment posted successfully on issue #${issueNumber}`);
               
@@ -109,12 +129,14 @@ jobs:
               ].join('\n');
 
               try {
-                await github.rest.issues.createComment({
+                const { data: failureCommentData } = await github.rest.issues.createComment({
                   issue_number: issueNumber,
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   body: failureComment
                 });
+                
+                await minimizeComment(failureCommentData.node_id);
               } catch (commentError) {
                 console.error('❌ Error posting failure comment:', commentError.message);
               }

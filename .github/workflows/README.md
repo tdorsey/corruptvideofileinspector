@@ -173,13 +173,14 @@ Automatically triages and formats issues submitted via the Quick Capture templat
 **Triggers:** Issue opened or labeled with `triage:agent-pending`
 
 **Features:**
-- **Data Preservation**: Archives original issue content as a comment before modification
+- **Data Preservation**: Archives original issue content as a minimized comment before modification
 - **Classification**: Keyword-based scoring to classify issues as bug, feature, documentation, performance, or task
 - **Component Detection**: Automatically detects component/domain from content keywords
 - **Stakeholder Detection**: Infers stakeholder type from context
 - **Formatting**: Reformats issue body to match project templates
-- **Metadata**: Posts confidence score and gap analysis as a comment
-- **Label Management**: Removes `triage:agent-pending`, adds `triage:agent-processed` and type-specific labels
+- **Metadata**: Posts confidence score and gap analysis as a minimized comment
+- **Questions**: Adds a minimized question history comment and mentions submitters when more details are needed
+- **Label Management**: Removes `triage:agent-pending`, adds `triage:agent-processed`, and sets `triage:next` when follow-up is required
 
 **Security:**
 - Uses heredoc syntax for environment variables to prevent script injection

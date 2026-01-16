@@ -44,12 +44,32 @@ jobs:
               '*Archived by Issue Triage Agent*'
             ].join('\n');
             
-            await github.rest.issues.createComment({
+            const { data: preservationCommentData } = await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
               body: preservationComment
             });
+            
+            const minimizeComment = async (nodeId) => {
+              if (!nodeId) {
+                return;
+              }
+              try {
+                await github.graphql(
+                  `mutation($subjectId:ID!, $classifier:ReportedContentClassifiers!) {
+                    minimizeComment(input:{subjectId:$subjectId, classifier:$classifier}) {
+                      minimizedComment { isMinimized }
+                    }
+                  }`,
+                  { subjectId: nodeId, classifier: 'OUTDATED' }
+                );
+              } catch (error) {
+                console.log('Unable to minimize preservation comment:', error.message);
+              }
+            };
+            
+            await minimizeComment(preservationCommentData.node_id);
             
             // Store original body and title for next steps using environment files
             // This is more secure than using step outputs for user-provided content
@@ -259,6 +279,7 @@ jobs:
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
           DETECTED_COMPONENT: ${{ env.DETECTED_COMPONENT }}
           DETECTED_STAKEHOLDER: ${{ env.DETECTED_STAKEHOLDER }}
+          GAPS: ${{ env.GAPS }}
         with:
           script: |
             const issue = context.payload.issue;
@@ -266,6 +287,24 @@ jobs:
             const issueType = process.env.ISSUE_TYPE || 'task';
             const detectedComponent = process.env.DETECTED_COMPONENT || 'Unknown';
             const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
+            const mention = issue.user?.login ? `@${issue.user.login}` : 'the submitter';
+            
+            let gaps = [];
+            try {
+              gaps = JSON.parse(process.env.GAPS || '[]');
+            } catch (e) {
+              console.log('Failed to parse gaps for formatting, using empty array');
+              gaps = [];
+            }
+            
+            const needsInfo = gaps.length > 0;
+            const questionSection = needsInfo
+              ? [
+                  `### Questions for ${mention}`,
+                  `The triage agent needs more details to proceed. ${mention}, please provide:`,
+                  gaps.map(gap => `- ${gap}`).join('\n')
+                ]
+              : [];
             
             // Remove tags like [QUICK], [FEAT], [FIX], etc. from the title
             let cleanedTitle = issue.title || '';
@@ -294,7 +333,8 @@ jobs:
                   '### Environment Information',
                   '_Please provide your environment details (OS, Python version, etc.)_',
                   '### Error Logs/Output',
-                  '```\n(No logs provided in original submission)\n```'
+                  '```\n(No logs provided in original submission)\n```',
+                  ...questionSection
                 ]);
                 break;
                 
@@ -309,7 +349,8 @@ jobs:
                   '### Unlike',
                   'The current implementation which does not include this feature.',
                   '### Additional Context',
-                  '_Please add any additional context about this feature request._'
+                  '_Please add any additional context about this feature request._',
+                  ...questionSection
                 ]);
                 break;
                 
@@ -324,7 +365,8 @@ jobs:
                   '### Unlike',
                   'The current documentation which may be incomplete or unclear.',
                   '### Documentation Details',
-                  '_Please specify which documentation files or sections need updates._'
+                  '_Please specify which documentation files or sections need updates._',
+                  ...questionSection
                 ]);
                 break;
                 
@@ -339,7 +381,8 @@ jobs:
                   '### Unlike',
                   'The current implementation which may be slower than expected.',
                   '### Performance Details',
-                  '_Please provide performance metrics, benchmarks, or specific scenarios._'
+                  '_Please provide performance metrics, benchmarks, or specific scenarios._',
+                  ...questionSection
                 ]);
                 break;
                 
@@ -356,7 +399,8 @@ jobs:
                   '### Maintenance Task Type',
                   'Other',
                   '### Specific Tasks',
-                  '_Please specify the exact tasks to be completed._'
+                  '_Please specify the exact tasks to be completed._',
+                  ...questionSection
                 ]);
             }
             
@@ -424,12 +468,124 @@ jobs:
               '> Please review and update any missing sections as needed.'
             ].join('\n');
             
-            await github.rest.issues.createComment({
+            const { data: metadataCommentData } = await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
               body: metadataComment
             });
+            
+            const minimizeComment = async (nodeId) => {
+              if (!nodeId) {
+                return;
+              }
+              try {
+                await github.graphql(
+                  `mutation($subjectId:ID!, $classifier:ReportedContentClassifiers!) {
+                    minimizeComment(input:{subjectId:$subjectId, classifier:$classifier}) {
+                      minimizedComment { isMinimized }
+                    }
+                  }`,
+                  { subjectId: nodeId, classifier: 'OUTDATED' }
+                );
+              } catch (error) {
+                console.log('Unable to minimize metadata comment:', error.message);
+              }
+            };
+            
+            await minimizeComment(metadataCommentData.node_id);
+      
+      - name: Update Triage Question History
+        uses: actions/github-script@v7
+        env:
+          GAPS: ${{ env.GAPS }}
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const mention = issue.user?.login ? `@${issue.user.login}` : 'the submitter';
+            const marker = '<!-- triage-question-history -->';
+            
+            let gaps = [];
+            try {
+              gaps = JSON.parse(process.env.GAPS || '[]');
+            } catch (e) {
+              console.log('Failed to parse gaps for question history, using empty array');
+              gaps = [];
+            }
+            
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: issue.number,
+              per_page: 100
+            });
+            
+            const existingComment = comments.find(comment => comment.body && comment.body.includes(marker));
+            
+            if (gaps.length === 0) {
+              if (existingComment) {
+                try {
+                  await github.rest.issues.deleteComment({
+                    owner,
+                    repo,
+                    comment_id: existingComment.id
+                  });
+                } catch (error) {
+                  console.log('Unable to delete question history comment:', error.message);
+                }
+              }
+              return;
+            }
+            
+            const gapsList = gaps.map(gap => `- ${gap}`).join('\n');
+            const questionBody = [
+              marker,
+              '## ❓ Triage Questions (History)',
+              '',
+              `Questions for ${mention}:`,
+              '',
+              gapsList,
+              '',
+              `*Updated: ${new Date().toISOString()}*`
+            ].join('\n');
+            
+            let commentNodeId = null;
+            if (existingComment) {
+              const { data: updatedComment } = await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body: questionBody
+              });
+              commentNodeId = updatedComment.node_id;
+            } else {
+              const { data: createdComment } = await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body: questionBody
+              });
+              commentNodeId = createdComment.node_id;
+            }
+            
+            if (!commentNodeId) {
+              return;
+            }
+            
+            try {
+              await github.graphql(
+                `mutation($subjectId:ID!, $classifier:ReportedContentClassifiers!) {
+                  minimizeComment(input:{subjectId:$subjectId, classifier:$classifier}) {
+                    minimizedComment { isMinimized }
+                  }
+                }`,
+                { subjectId: commentNodeId, classifier: 'OUTDATED' }
+              );
+            } catch (error) {
+              console.log('Unable to minimize question history comment:', error.message);
+            }
 
       - name: Update Labels
         uses: actions/github-script@v7
@@ -437,12 +593,23 @@ jobs:
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
           DETECTED_COMPONENT: ${{ env.DETECTED_COMPONENT }}
           DETECTED_STAKEHOLDER: ${{ env.DETECTED_STAKEHOLDER }}
+          GAPS: ${{ env.GAPS }}
         with:
           script: |
             const issue = context.payload.issue;
             const issueType = process.env.ISSUE_TYPE || 'task';
             const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
             const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
+            
+            let gaps = [];
+            try {
+              gaps = JSON.parse(process.env.GAPS || '[]');
+            } catch (e) {
+              console.log('Failed to parse gaps for labels, using empty array');
+              gaps = [];
+            }
+            
+            const needsInfo = gaps.length > 0;
             
             // Remove triage:agent-pending label
             try {
@@ -458,11 +625,32 @@ jobs:
                 console.log('Label triage:agent-pending not found or already removed');
               } else {
                 throw e;
+                }
+            }
+            
+            if (!needsInfo) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  name: 'triage:next'
+                });
+              } catch (e) {
+                const status = e?.status ?? e?.response?.status;
+                if (status === 404) {
+                  console.log('Label triage:next not found or already removed');
+                } else {
+                  throw e;
+                }
               }
             }
             
             // Add triage:agent-processed label
             const labelsToAdd = ['triage:agent-processed'];
+            if (needsInfo) {
+              labelsToAdd.push('triage:next');
+            }
             
             // Add type-specific labels based on classification
             switch (issueType) {
@@ -536,3 +724,25 @@ jobs:
               issue_number: issue.number,
               assignees: ['Copilot']
             });
+      
+      - name: Remove triage:next on failure
+        if: ${{ failure() }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                name: 'triage:next'
+              });
+            } catch (error) {
+              const status = error?.status ?? error?.response?.status;
+              if (status === 404) {
+                console.log('Label triage:next not found or already removed');
+              } else {
+                console.log('Unable to remove triage:next label on failure:', error.message);
+              }
+            }
