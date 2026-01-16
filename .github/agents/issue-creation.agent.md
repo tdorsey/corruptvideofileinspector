@@ -189,9 +189,8 @@ The current behavior which fails to identify corruption in files over 4GB.
 - [ ] Tests added for large file scenarios
 - [ ] Documentation updated
 
-**Labels:** bug, component:scanner, stakeholder:user
-**Status:** ready
-**Project:** Add to "Bug Fixes" project in "Todo" column
+**Labels:** type: bug, component: core, priority: high
+**Status:** Add to "Bug Fixes" project in "Todo" column
 ```
 
 **Corresponding PR would use conventional commits:**
@@ -267,8 +266,8 @@ Epic #100: Implement Multi-Format Report Generation
 ```
 
 **4. Set Initial Status:**
-- Epic: `ready` label, add to project "Todo" column
-- Sub-issues: `ready` label, add to same project "Todo" column
+- Epic: Add priority label if applicable, add to project "Todo" column
+- Sub-issues: Add priority labels if applicable, add to same project "Todo" column
 - Link all sub-issues in epic description
 
 ### Status Lifecycle Management
@@ -277,16 +276,18 @@ Epic #100: Implement Multi-Format Report Generation
 ```
 Todo → In Progress → Review → Done
   ↓         ↓           ↓       ↓
-ready → in-progress → review → done
+status: blocked (any stage)
+status: in-progress
+status: needs-review
+status: needs-testing
 ```
 
 **Update status labels when:**
-- **Creating issue:** Add `ready` label and place in "Todo" column
-- **Work begins:** Replace `ready` with `in-progress`, move to "In Progress" column
-- **PR submitted:** Add `review` label, move to "Review" column
-- **Work blocked:** Add `blocked` label with comment explaining blocker
-- **Info needed:** Add `waiting-for-info` label with specific questions
-- **PR merged:** Add `done` label, move to "Done" column, close issue
+- **Creating issue:** Consider adding priority label, place in project "Todo" column
+- **Work begins:** Add `status: in-progress`, move to "In Progress" column
+- **PR submitted:** Add `status: needs-review`, move to "Review" column
+- **Work blocked:** Add `status: blocked` with comment explaining blocker
+- **PR merged:** Remove status labels, move to "Done" column, close issue
 
 **For Sub-Issues:**
 - Track individual sub-issue progress independently
@@ -319,50 +320,46 @@ ready → in-progress → review → done
 
 ### Metadata Guidelines
 
-**Labels** (see [.github/labels.yml](.github/labels.yml) for complete list):
+**Labels** (see [.github/labels.yml](.github/labels.yml) for labeling automation and [.github/settings.yaml](.github/settings.yaml) for label definitions):
 
 *Type labels:*
-- `bug` - Something isn't working
-- `enhancement` / `feature` - New feature or request
-- `documentation` / `docs` - Documentation changes
-- `security` - Security vulnerabilities
-- `test` - Testing improvements
-- `ci` - CI/CD pipeline changes
+- `type: bug` - Something isn't working
+- `type: feature` / `type: enhancement` - New feature or enhancement request
+- `type: documentation` - Improvements or additions to documentation
+- `type: refactor` - Code refactoring
+- `type: test` - Testing related changes
 
 *Component labels* (based on domain):
-- `component:cli` - CLI interface
-- `component:scanner` - Video scanning logic
-- `component:trakt` - Trakt.tv integration
-- `component:config` - Configuration management
-- `component:reporter` - Reporting functionality
-- `component:output` - Output formatting
-- `component:docker` - Docker/containerization
-- `component:cicd` - CI/CD workflows
-- `component:github-actions` - GitHub Actions
-- `component:tests` - Test infrastructure
-- `component:docs` - Documentation
-- `component:other` - Other components
+- `component: cli` - CLI interface
+- `component: core` - Core business logic
+- `component: ffmpeg` - FFmpeg integration
+- `component: trakt` - Trakt.tv integration
+- `component: docker` - Docker/containerization
+- `component: ci-cd` - CI/CD workflows
+- `component: tests` - Test infrastructure
+- `component: docs` - Documentation
+- `component: api` - FastAPI GraphQL API
 
 *Status labels:*
-- `ready` - Ready for work (🟢 ready)
-- `in-progress` - Currently being worked on (🟡 in progress)
-- `blocked` - Blocked by dependencies (🔴 blocked)
-- `review` - Needs review (🔍 review)
-- `waiting-for-info` - Awaiting more information (⏳ waiting for information)
+- `status: blocked` - Blocked by external dependency (🔴)
+- `status: in-progress` - Currently being worked on (🟡)
+- `status: needs-review` - Needs code review (🔍)
+- `status: needs-testing` - Needs testing
 
-*Stakeholder labels:*
-- `stakeholder:maintainer` - Affects project maintainers
-- `stakeholder:contributor` - Affects contributors
-- `stakeholder:user` - Affects end users
+*Priority labels:*
+- `priority: critical` - Critical priority
+- `priority: high` - High priority
+- `priority: medium` - Medium priority
+- `priority: low` - Low priority
 
 *Other labels:*
-- `wontfix` - Not planned (🚫 wontfix)
-- `question` - Question or help needed (❓ question)
-- `answered` - Question answered (✅ answered)
-- `done` - Completed (✔️ done)
+- `security` - Security vulnerabilities
+- `good first issue` - Good for newcomers
+- `help wanted` - Extra attention is needed
+- `dependencies` - Dependency updates
 
 **Assignees:**
-- **Note:** [.github/CODEOWNERS](.github/CODEOWNERS) only covers critical admin files (@tdorsey owns `.github/settings.yaml`, `.github/CODEOWNERS`, and `SECURITY.md`)
+- **Note:** [.github/CODEOWNERS](.github/CODEOWNERS) only covers critical admin files (`.github/settings.yaml`, `.github/CODEOWNERS`, and `SECURITY.md` owned by @tdorsey)
 - For component-level assignments, check who last worked on related code
 - Consider team structure and current responsibilities
 - Don't auto-assign without permission
