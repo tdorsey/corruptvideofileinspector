@@ -80,6 +80,44 @@ This includes detailed guidance on:
 - **Containerization**: Docker with multi-stage builds and docker-compose
 - **CLI framework**: Typer with Click integration
 - **Core dependency**: FFmpeg for video analysis and corruption detection
+
+### Using Ralph for Autonomous Development
+Ralph is an autonomous development tool integrated into this repository that helps implement features systematically from a Product Requirements Document.
+
+**Quick Start with Copilot:**
+```
+@workspace Process the next work item from tools/ralph/config/prd.json
+```
+
+**Key Benefits:**
+- **Systematic Implementation**: Work items define clear steps and success criteria
+- **Batch Processing**: Process multiple features from a backlog
+- **Conventional Commits**: Automatic proper commit messages
+- **Quality Assurance**: Built-in verification steps
+
+**Documentation:**
+- **[Ralph with Copilot Guide](../tools/ralph/COPILOT_GUIDE.md)** - Interactive development with Ralph
+- **[Ralph README](../tools/ralph/README.md)** - Complete Ralph documentation
+- **[Work Items Configuration](../tools/ralph/config/prd.json)** - Example work items
+
+**Work Item Structure:**
+```json
+{
+  "category": "Feature Name",
+  "description": "Detailed description",
+  "steps": ["Step 1", "Step 2", "Step 3"],
+  "passes": ["Success criterion 1", "Success criterion 2"]
+}
+```
+
+**Common Copilot Commands:**
+- Process single work item: `@workspace Process next work item from tools/ralph/config/prd.json`
+- Process all work items: `@workspace Process all work items from tools/ralph/config/prd.json`
+- Check progress: `@workspace Show completed work items from tools/ralph/config/prd.json`
+- Validate implementation: `@workspace Review last work item implementation`
+
+See the [Ralph Copilot Guide](../tools/ralph/COPILOT_GUIDE.md) for detailed usage examples and best practices.
+
 ## Development Standards and Requirements
 
 ### Commit Standards (REQUIRED)
@@ -148,6 +186,8 @@ For comprehensive guidance on specific aspects of development, refer to these sp
 - **[GitHub Actions & CI/CD](instructions/github-actions.md)** - Workflow patterns, marketplace actions, and automation
 - **[Project-Specific Guidelines](instructions/project-specific.md)** - Architecture, key entry points, and project-specific patterns
 - **[Workflow File Commit Instructions](instructions/workflows.md)** - Commit message and review guidelines for workflow files
+- **[Ralph with Copilot](../tools/ralph/COPILOT_GUIDE.md)** - Autonomous development with work items and AI assistance
+- **[Ralph Full Documentation](../tools/ralph/README.md)** - Complete Ralph setup and configuration
 
 ## Changelog
 

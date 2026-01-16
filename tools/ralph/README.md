@@ -1,6 +1,32 @@
 # Ralph - Autonomous Development Tool
 
-Ralph is an autonomous development tool that runs GitHub Copilot CLI in iterative loops to implement repository tasks automatically. This integration brings Ralph into the corruptvideofileinspector monorepo as an Nx project.
+Ralph is an autonomous development tool that processes work items from a Product Requirements Document (prd.json) and implements them automatically. Ralph can work in two modes:
+
+1. **GitHub Copilot Mode** (Recommended) - Interactive, conversational AI assistance within your editor
+2. **CLI Mode** - Automated batch processing using GitHub Copilot CLI
+
+## Quick Start
+
+### Using Ralph with GitHub Copilot (Easiest)
+
+Simply ask Copilot to process work items:
+
+```
+@workspace Process the next work item from tools/ralph/config/prd.json
+```
+
+**📖 [Complete Copilot Guide](COPILOT_GUIDE.md)** - Start here for interactive development
+
+### Using Ralph with Copilot CLI (Traditional)
+
+Run automated iterations:
+
+```bash
+nx run ralph:once              # Single work item
+nx run ralph:iterate --iterations=10  # Multiple work items
+```
+
+**📖 Continue reading below** for CLI setup and configuration
 
 ## Purpose
 
@@ -45,7 +71,19 @@ tools/ralph/
 
 ## Prerequisites
 
-Before using Ralph, ensure you have:
+Ralph can run in two modes:
+
+### Mode 1: GitHub Copilot Agent (Recommended)
+When using Ralph within GitHub Copilot:
+
+1. **GitHub Copilot subscription** - Active subscription with agent access
+2. **Ralph configuration** - Work items defined in config/prd.json
+3. **Clean working directory** - Commit or stash changes before running Ralph
+
+No additional installation required - Ralph leverages the Copilot agent environment.
+
+### Mode 2: GitHub Copilot CLI (Traditional)
+When using Ralph standalone with Copilot CLI:
 
 1. **GitHub Copilot CLI** installed and authenticated
    ```bash
@@ -189,9 +227,33 @@ nx run ralph:once
 
 ## Usage
 
-Ralph is integrated into the Nx workspace with three main targets:
+Ralph can be used in two ways:
 
-### 1. Single Iteration (`ralph:once`)
+### Using Ralph within GitHub Copilot (Recommended)
+
+When working with GitHub Copilot agent, simply ask Copilot to process work items:
+
+```
+@workspace Process the next work item from tools/ralph/config/prd.json
+```
+
+Copilot will:
+- Read the work item from prd.json
+- Implement the changes using its AI capabilities
+- Commit changes with conventional commit messages
+- Update progress tracking
+
+**Advantages**:
+- No external dependencies required
+- Works directly in your development environment
+- Full context awareness of the codebase
+- Interactive feedback and clarification
+
+### Using Ralph with Nx and Copilot CLI (Traditional)
+
+Ralph is also integrated into the Nx workspace with three main targets:
+
+#### 1. Single Iteration (`ralph:once`)
 
 Execute a single Ralph iteration. Ralph will:
 - Read the next work item from prd.json
@@ -284,7 +346,56 @@ These variables are automatically available when running Ralph through Nx target
 
 ## Common Workflows
 
-### Implementing a Feature Backlog
+### Using Ralph with GitHub Copilot Agent
+
+#### Processing Work Items Interactively
+
+1. **Add work items to prd.json**
+   ```bash
+   vim tools/ralph/config/prd.json
+   ```
+
+2. **Ask Copilot to process them**
+   ```
+   @workspace Read the next work item from tools/ralph/config/prd.json and implement it. 
+   Follow the steps defined in the work item and ensure all success criteria are met.
+   ```
+
+3. **Review and refine**
+   - Copilot will show you the changes
+   - You can ask for modifications: "Make the error messages more descriptive"
+   - You can validate: "Run tests to verify the implementation"
+
+4. **Commit the changes**
+   - Copilot will commit with proper conventional commit messages
+   - Review the commit before pushing
+
+#### Batch Processing with Copilot
+
+For processing multiple work items:
+
+```
+@workspace Process all work items from tools/ralph/config/prd.json one at a time. 
+After each work item:
+1. Implement all steps
+2. Verify all success criteria
+3. Run tests
+4. Commit with conventional commit message
+5. Move to next work item
+
+Stop if any work item fails.
+```
+
+#### Benefits of Copilot Mode
+- **Interactive**: Ask questions and get clarifications during implementation
+- **Context-aware**: Full understanding of codebase structure
+- **Flexible**: Easy to adjust implementation based on feedback
+- **Integrated**: Works directly in your editor/IDE
+- **No setup**: No external tools or authentication needed
+
+### Using Ralph with Copilot CLI (Traditional)
+
+#### Implementing a Feature Backlog
 
 1. **Prepare work items**
    ```bash
