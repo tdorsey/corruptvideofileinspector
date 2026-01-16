@@ -94,9 +94,25 @@ This includes detailed guidance on:
 ### Issue Creation (REQUIRED)
 **Always select a relevant issue template when creating issues:**
 - **Template selection is enforced** (blank issues are disabled)
+- **Quick Capture** (`00-quick-capture.yml`) - **Recommended default** for unstructured input; the Issue Triage Agent will automatically format it
 - Available templates: Feature Request, Bug Report, Documentation Update, Testing Issue, Chore/Maintenance, Performance Issue, Refactor Request, Code Style Issue
 - **All templates create proper conventional commit titles** with prefixes like `[FEAT]:`, `[FIX]:`, `[DOCS]:`, `[TEST]:`, `[CHORE]:`, `[PERF]:`, `[REFACTOR]:`, `[STYLE]:`
 - Templates ensure required information is provided and consistent formatting
+
+### Quick Capture & Issue Triage Agent
+**For rapid issue creation, use the Quick Capture template:**
+- Submit unstructured ideas, bug reports, or feedback quickly
+- The **Issue Triage Agent** automatically processes Quick Capture issues:
+  - Preserves original content as a comment
+  - Classifies issue type (bug, feature, docs, performance, task)
+  - Detects component and stakeholder from content
+  - Reformats body to match project templates
+  - Posts confidence score and gap analysis
+  - Updates labels (`triage:agent-pending` → `triage:agent-processed`)
+
+**Agent & Skill Resources:**
+- **Issue Creation Agent**: `.github/agents/issue-creation-agent.md`
+- **Issue Creation Skill**: `.github/skills/issue-creation/SKILL.md`
 
 ### Code Quality Standards
 - **⚠️ CRITICAL: `make check` MUST pass successfully before every commit** - ensures formatting, linting, and type checking pass

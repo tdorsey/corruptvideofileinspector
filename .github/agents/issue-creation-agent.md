@@ -5,11 +5,22 @@ tools:
   - github-issues
   - read
   - edit
+skills:
+  - issue-creation
 ---
 
 # Issue Creation Agent
 
 This agent assists with issue creation, triage, and formatting for the Corrupt Video File Inspector project.
+
+## Related Skill
+
+This agent uses the **Issue Creation Skill** (`.github/skills/issue-creation/SKILL.md`) which provides detailed documentation on:
+- Issue types and required sections
+- Component/Domain options
+- Stakeholder types
+- Classification keywords
+- Automated triage process
 
 ## Capabilities
 

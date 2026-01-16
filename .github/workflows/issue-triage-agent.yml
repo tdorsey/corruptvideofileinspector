@@ -11,8 +11,12 @@ permissions:
 jobs:
   triage-issue:
     if: |
-      github.event.issue.state == 'open' && 
-      contains(github.event.issue.labels.*.name, 'triage:agent-pending')
+      github.event.issue.state == 'open' &&
+      contains(github.event.issue.labels.*.name, 'triage:agent-pending') &&
+      (
+        github.event.action == 'opened' ||
+        (github.event.action == 'labeled' && github.event.label.name == 'triage:agent-pending')
+      )
     runs-on: ubuntu-latest
     steps:
       - name: Preserve Original Issue Body
@@ -49,9 +53,32 @@ jobs:
             
             // Store original body and title for next steps using environment files
             // This is more secure than using step outputs for user-provided content
+            const MAX_ENV_VALUE_LENGTH = 30000;
+            
+            function sanitizeForEnv(name, value) {
+              if (!value) {
+                return '';
+              }
+              
+              if (value.length <= MAX_ENV_VALUE_LENGTH) {
+                return value;
+              }
+              
+              const note = '\n\n[' + name + ' truncated to ' + MAX_ENV_VALUE_LENGTH + ' characters to fit GitHub Actions environment limits.]';
+              const maxContentLength = MAX_ENV_VALUE_LENGTH - note.length;
+              const truncatedValue = value.slice(0, Math.max(0, maxContentLength)) + note;
+              
+              console.warn('Value for ' + name + ' exceeded ' + MAX_ENV_VALUE_LENGTH + ' characters and was truncated before writing to GITHUB_ENV.');
+              
+              return truncatedValue;
+            }
+            
+            const safeOriginalBody = sanitizeForEnv('ORIGINAL_BODY', originalBody);
+            const safeIssueTitle = sanitizeForEnv('ISSUE_TITLE', issueTitle);
+            
             const fs = require('fs');
-            fs.appendFileSync(process.env.GITHUB_ENV, 'ORIGINAL_BODY<<EOF\n' + originalBody + '\nEOF\n');
-            fs.appendFileSync(process.env.GITHUB_ENV, 'ISSUE_TITLE<<EOF\n' + issueTitle + '\nEOF\n');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'ORIGINAL_BODY<<EOF\n' + safeOriginalBody + '\nEOF\n');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'ISSUE_TITLE<<EOF\n' + safeIssueTitle + '\nEOF\n');
 
       - name: Classify Issue
         uses: actions/github-script@v7
@@ -72,8 +99,51 @@ jobs:
             const docKeywords = ['documentation', 'docs', 'readme', 'typo', 'clarify', 'explain'];
             const perfKeywords = ['performance', 'slow', 'fast', 'optimize', 'speed', 'memory'];
             
+            // Component detection keywords
+            const componentKeywords = {
+              'CLI': ['cli', 'command line', 'command-line', 'terminal', 'console', 'argv'],
+              'Scanner': ['scanner', 'scan', 'detect', 'analyze', 'corrupt'],
+              'Trakt Integration': ['trakt', 'sync', 'watchlist', 'collection'],
+              'Config': ['config', 'configuration', 'settings', 'yaml', 'yml', 'options'],
+              'Reporter': ['reporter', 'report', 'summary', 'results'],
+              'Output': ['output', 'export', 'csv', 'json', 'format'],
+              'Docker': ['docker', 'container', 'dockerfile', 'compose'],
+              'CI/CD': ['ci', 'cd', 'pipeline', 'workflow', 'github actions', 'automation'],
+              'Tests': ['test', 'testing', 'pytest', 'unittest', 'coverage', 'mock'],
+              'Documentation': ['documentation', 'docs', 'readme', 'guide', 'tutorial']
+            };
+            
+            // Stakeholder detection keywords
+            const stakeholderKeywords = {
+              'Project Maintainer': ['maintain', 'maintainer', 'admin', 'release', 'deploy', 'merge', 'ci/cd', 'workflow'],
+              'Contributor': ['contribute', 'contributor', 'pr', 'pull request', 'implement', 'refactor', 'code review'],
+              'End User': ['user', 'install', 'run', 'use', 'help', 'how to', 'error message']
+            };
+            
             // Count keyword matches
             const countMatches = (keywords) => keywords.filter(k => content.includes(k)).length;
+            
+            // Detect component based on keywords
+            let detectedComponent = 'Other';
+            let maxComponentScore = 0;
+            for (const [component, keywords] of Object.entries(componentKeywords)) {
+              const score = countMatches(keywords);
+              if (score > maxComponentScore) {
+                maxComponentScore = score;
+                detectedComponent = component;
+              }
+            }
+            
+            // Detect stakeholder based on keywords
+            let detectedStakeholder = 'End User';
+            let maxStakeholderScore = 0;
+            for (const [stakeholder, keywords] of Object.entries(stakeholderKeywords)) {
+              const score = countMatches(keywords);
+              if (score > maxStakeholderScore) {
+                maxStakeholderScore = score;
+                detectedStakeholder = stakeholder;
+              }
+            }
             
             const bugScore = countMatches(bugKeywords);
             const featureScore = countMatches(featureKeywords);
@@ -82,50 +152,76 @@ jobs:
             
             const maxScore = Math.max(bugScore, featureScore, docScore, perfScore);
             
+            // Calculate keyword density for tie-breaking
+            const bugDensity = bugScore / bugKeywords.length;
+            const featureDensity = featureScore / featureKeywords.length;
+            const docDensity = docScore / docKeywords.length;
+            const perfDensity = perfScore / perfKeywords.length;
+            
             let issueType = 'task';
             let confidence = 0;
             let gaps = [];
             
-            // Determine issue type based on scores
+            // Determine issue type based on scores with density tie-breaking
             if (maxScore === 0) {
               issueType = 'task';
               confidence = 50;
               gaps.push('No clear category keywords detected');
-            } else if (bugScore === maxScore && bugScore > 0) {
-              issueType = 'bug';
-              confidence = Math.min(95, 60 + (bugScore * 5));
-              // Check for missing bug report elements
-              if (!content.includes('step') && !content.includes('reproduce')) {
-                gaps.push('Steps to reproduce missing');
-              }
-              if (!content.includes('version') && !content.includes('environment') && !content.includes('os')) {
-                gaps.push('Environment information missing');
-              }
-              if (!content.includes('expect') && !content.includes('should')) {
-                gaps.push('Expected behavior not specified');
-              }
-            } else if (featureScore === maxScore && featureScore > 0) {
-              issueType = 'feature';
-              confidence = Math.min(95, 60 + (featureScore * 5));
-              // Check for missing feature request elements
-              if (!content.includes('use case') && !content.includes('why') && !content.includes('benefit')) {
-                gaps.push('Use case or benefit not specified');
-              }
-              if (!content.includes('example') && !content.includes('scenario')) {
-                gaps.push('Example or scenario missing');
-              }
-            } else if (docScore === maxScore && docScore > 0) {
-              issueType = 'documentation';
-              confidence = Math.min(95, 60 + (docScore * 5));
-            } else if (perfScore === maxScore && perfScore > 0) {
-              issueType = 'performance';
-              confidence = Math.min(95, 60 + (perfScore * 5));
-              if (!content.includes('benchmark') && !content.includes('metric') && !content.includes('time')) {
-                gaps.push('Performance metrics missing');
-              }
             } else {
-              issueType = 'task';
-              confidence = 50;
+              // Find all types with the max score
+              const candidates = [];
+              if (bugScore === maxScore) candidates.push({ type: 'bug', density: bugDensity });
+              if (featureScore === maxScore) candidates.push({ type: 'feature', density: featureDensity });
+              if (docScore === maxScore) candidates.push({ type: 'documentation', density: docDensity });
+              if (perfScore === maxScore) candidates.push({ type: 'performance', density: perfDensity });
+              
+              // Use density as tie-breaker
+              candidates.sort((a, b) => b.density - a.density);
+              issueType = candidates[0].type;
+              
+              // Calculate base confidence from keyword matches (more conservative)
+              const baseConfidence = Math.min(90, 40 + (maxScore * 4));
+              let completenessPenalty = 0;
+              
+              if (issueType === 'bug') {
+                // Check for missing bug report elements
+                if (!content.includes('step') && !content.includes('reproduce')) {
+                  gaps.push('Steps to reproduce missing');
+                  completenessPenalty += 10;
+                }
+                if (!content.includes('version') && !content.includes('environment') && !content.includes('os')) {
+                  gaps.push('Environment information missing');
+                  completenessPenalty += 10;
+                }
+                if (!content.includes('expect') && !content.includes('should')) {
+                  gaps.push('Expected behavior not specified');
+                  completenessPenalty += 10;
+                }
+                // Check for missing code snippets or error logs
+                if (!content.includes('```') && !content.includes('error') && !content.includes('exception') && 
+                    !content.includes('traceback') && !content.includes('stack trace') && !content.includes('log')) {
+                  gaps.push('Code snippet or error log/stack trace missing');
+                  completenessPenalty += 5;
+                }
+              } else if (issueType === 'feature') {
+                // Check for missing feature request elements
+                if (!content.includes('use case') && !content.includes('why') && !content.includes('benefit')) {
+                  gaps.push('Use case or benefit not specified');
+                  completenessPenalty += 10;
+                }
+                if (!content.includes('example') && !content.includes('scenario')) {
+                  gaps.push('Example or scenario missing');
+                  completenessPenalty += 10;
+                }
+              } else if (issueType === 'performance') {
+                if (!content.includes('benchmark') && !content.includes('metric') && !content.includes('time')) {
+                  gaps.push('Performance metrics missing');
+                  completenessPenalty += 10;
+                }
+              }
+              
+              // Reduce confidence when important details are missing
+              confidence = Math.max(30, baseConfidence - completenessPenalty);
             }
             
             // If content is very short, lower confidence
@@ -139,6 +235,8 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_ENV, 'ISSUE_TYPE=' + issueType + '\n');
             fs.appendFileSync(process.env.GITHUB_ENV, 'CONFIDENCE=' + confidence + '\n');
             fs.appendFileSync(process.env.GITHUB_ENV, 'GAPS<<EOF\n' + JSON.stringify(gaps) + '\nEOF\n');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'DETECTED_COMPONENT=' + detectedComponent + '\n');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'DETECTED_STAKEHOLDER=' + detectedStakeholder + '\n');
 
       - name: Format Issue Body
         uses: actions/github-script@v7
@@ -146,11 +244,15 @@ jobs:
         env:
           ORIGINAL_BODY: ${{ env.ORIGINAL_BODY }}
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
+          DETECTED_COMPONENT: ${{ env.DETECTED_COMPONENT }}
+          DETECTED_STAKEHOLDER: ${{ env.DETECTED_STAKEHOLDER }}
         with:
           script: |
             const issue = context.payload.issue;
             const originalBody = process.env.ORIGINAL_BODY || '';
             const issueType = process.env.ISSUE_TYPE || 'task';
+            const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
+            const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
             
             // Helper function to build template body with proper newlines
             const buildBody = (sections) => sections.join('\n\n');
@@ -162,9 +264,9 @@ jobs:
               case 'bug':
                 formattedBody = buildBody([
                   '### Stakeholder Type',
-                  'End User',
+                  detectedStakeholder,
                   '### Component/Domain',
-                  'Other',
+                  detectedComponent,
                   '### I want to',
                   'Report and resolve the following issue:\n\n' + originalBody,
                   '### But',
@@ -185,9 +287,9 @@ jobs:
               case 'feature':
                 formattedBody = buildBody([
                   '### Stakeholder Type',
-                  'End User',
+                  detectedStakeholder,
                   '### Component/Domain',
-                  'Other',
+                  detectedComponent,
                   '### I want to',
                   originalBody,
                   '### But',
@@ -204,7 +306,7 @@ jobs:
               case 'documentation':
                 formattedBody = buildBody([
                   '### Stakeholder Type',
-                  'End User',
+                  detectedStakeholder,
                   '### Component/Domain',
                   'Documentation',
                   '### I want to',
@@ -223,9 +325,9 @@ jobs:
               case 'performance':
                 formattedBody = buildBody([
                   '### Stakeholder Type',
-                  'End User',
+                  detectedStakeholder,
                   '### Component/Domain',
-                  'Other',
+                  detectedComponent,
                   '### I want to',
                   'Address the following performance concern:\n\n' + originalBody,
                   '### But',
@@ -242,9 +344,9 @@ jobs:
               default: // task/chore
                 formattedBody = buildBody([
                   '### Stakeholder Type',
-                  'End User',
+                  detectedStakeholder,
                   '### Component/Domain',
-                  'Other',
+                  detectedComponent,
                   '### I want to',
                   originalBody,
                   '### But',
@@ -341,7 +443,12 @@ jobs:
                 name: 'triage:agent-pending'
               });
             } catch (e) {
-              console.log('Label triage:agent-pending not found or already removed');
+              const status = e?.status ?? e?.response?.status;
+              if (status === 404) {
+                console.log('Label triage:agent-pending not found or already removed');
+              } else {
+                throw e;
+              }
             }
             
             // Add triage:agent-processed label

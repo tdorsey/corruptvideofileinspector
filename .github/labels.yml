@@ -60,9 +60,9 @@
 # triage:agent-pending - Applied to Quick Capture issues awaiting agent processing
 # triage:agent-processed - Applied after agent has formatted the issue
 'triage:agent-pending':
-  - '*triage:agent-pending*'
+  - 'triage:agent-pending'
 'triage:agent-processed':
-  - '*triage:agent-processed*'
+  - 'triage:agent-processed'
 
 # ------------------- Keyword Labels --------------------------
 # These labels are applied based on keywords in issue/PR content.
