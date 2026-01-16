@@ -1,6 +1,7 @@
 ---
 name: issue-creation-agent
 description: Automates issue creation, triage, and formatting for the Corrupt Video File Inspector project
+model: claude-3-5-haiku-20241022
 tools:
   - github-issues
   - read
