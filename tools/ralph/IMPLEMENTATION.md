@@ -140,7 +140,7 @@ All commits follow Conventional Commits standard:
 3. **26c915d** - `feat(ralph): add prd.json configuration and update gitignore`
 4. **b092461** - `feat(ralph): add integration scripts for running and updating ralph`
 5. **6d4184a** - `docs(ralph): add comprehensive documentation and readme updates`
-6. **27c1050** - `ci(ralph): add submodule initialization and release tag validation`
+6. **27c1050** - `ci(ralph): add submodule initialization to CI workflows`
 7. **1946ae0** - `docs(ralph): add detailed submodule setup instructions`
 
 Total: 7 commits, each atomic and focused on a single concern.
@@ -200,7 +200,6 @@ These validations can only be completed after adding the Ralph submodule:
 - [ ] Single iteration runs successfully (`nx run ralph:once`)
 - [ ] Multiple iterations run successfully (`nx run ralph:iterate`)
 - [ ] Update script works (`nx run ralph:update`)
-- [ ] CI validation step passes
 - [ ] Progress tracking works correctly
 - [ ] Work items are processed correctly
 
@@ -211,7 +210,7 @@ These validations can only be completed after adding the Ralph submodule:
 - ✅ Nx project structure with three targets
 - ✅ All scripts use Nx environment variables correctly
 - ✅ Documentation is comprehensive and accurate
-- ✅ CI validates submodule pinning (when submodule exists)
+- ✅ CI initializes submodules for Ralph integration
 - ✅ progress.txt is version controlled
 - ✅ Scripts have proper error handling and validation
 - ⏳ Submodule pinned to latest release tag (pending manual addition)

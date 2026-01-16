@@ -140,7 +140,6 @@ After completing setup, verify:
 - [ ] Submodule is pinned to a release tag (check with `cd tools/ralph/ralph-cli && git describe --tags --exact-match`)
 - [ ] `.gitmodules` file exists and references the submodule
 - [ ] `git submodule status` shows the tag name in parentheses
-- [ ] CI validation passes (checks release tag pinning)
 - [ ] Nx recognizes the ralph project (`nx show project ralph`)
 - [ ] Scripts are executable (`ls -l tools/ralph/scripts/*.sh`)
 
