@@ -548,3 +548,5 @@ When these agents or roles exist, coordinate with them to:
 ---
 
 Remember: Your goal is to create clear, actionable, well-organized issues that help the development team understand what needs to be done. You are the entry point for capturing requirements, bugs, and ideas in a structured way. Always use proper issue linking syntax to maintain clear project hierarchy and enable automatic status tracking.
+
+For general agent guidance and common instructions, see [docs/agents.md](../../docs/agents.md).

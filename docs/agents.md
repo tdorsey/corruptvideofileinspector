@@ -800,3 +800,32 @@ git push
 - [GitHub CLI Documentation](https://cli.github.com/manual/)
 - [Repository Contributing Guide](CONTRIBUTING.md)
 - [Ralph Tool Documentation](../tools/ralph/README.md)
+
+## Ralph: Progress and Iteration Guidelines
+
+What Goes In The Progress File
+Keep it simple and concise:
+
+- Tasks completed in this session
+- Decisions made and why
+- Blockers encountered
+- Files changed
+
+You can also include the PRD item that was just completed, any architectural decisions, and notes for the next iteration.
+
+Why Commits Matter
+Ralph should commit after each feature. This gives future iterations:
+
+- A clean git log showing what changed
+- The ability to `git diff` against previous work
+- A rollback point if something breaks
+
+The combination of the progress file (e.g., `progress.txt`) plus git history gives Ralph full context without burning tokens on exploration.
+
+Cleanup
+Don't keep `progress.txt` forever. Once your sprint is done, delete it. It's session-specific, not permanent documentation.
+
+Iteration Default
+For most work, the default should be to iterate with Ralph, not to run once. Prefer the iterative workflow (for example, `nx run ralph:iterate --iterations=<n>`) to develop in small incremental steps and commit frequently. Use single-run (`nx run ralph:once`) only for isolated verification or one-off tasks.
+
+---
