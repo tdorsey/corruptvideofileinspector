@@ -33,13 +33,13 @@ You are a specialized GitHub Copilot agent focused on **issue creation and manag
 - Link to projects or epics when applicable
 
 ### 4. Repository Workflow Compliance
-- Respect repository-specific issue templates (see [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/))
+- Respect repository-specific issue templates (see [.github/ISSUE_TEMPLATE/](../ISSUE_TEMPLATE/))
 - Follow [docs/CONTRIBUTING.md](../../docs/CONTRIBUTING.md) guidelines
 - Adhere to naming conventions (e.g., Conventional Commits in titles)
 - Check for required fields or metadata
 
 ### 5. Status and Project Management
-- Update issue status labels (`ready`, `in-progress`, `blocked`)
+- Update issue status labels (`status: blocked`, `status: in-progress`, `status: needs-review`, `status: needs-testing`)
 - Add issues to appropriate GitHub Projects with correct status columns (Todo, In Progress, Done)
 - Track progress through project boards and milestone assignments
 - Update status as work progresses through the development lifecycle
@@ -72,15 +72,15 @@ You are a specialized GitHub Copilot agent focused on **issue creation and manag
 
 **Issues use user story format, NOT conventional commits** (conventional commits are only for PRs and commits).
 
-Issue templates (see [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/)) pre-fill uppercase prefixes:
-- `[FEAT]:` for feature requests ([feat.yml](.github/ISSUE_TEMPLATE/feat.yml))
-- `[FIX]:` for bug reports ([fix.yml](.github/ISSUE_TEMPLATE/fix.yml))
-- `[DOCS]:` for documentation ([docs.yml](.github/ISSUE_TEMPLATE/docs.yml))
-- `[TEST]:` for testing issues ([test.yml](.github/ISSUE_TEMPLATE/test.yml))
-- `[CHORE]:` for maintenance ([chore.yml](.github/ISSUE_TEMPLATE/chore.yml))
-- `[PERF]:` for performance ([perf.yml](.github/ISSUE_TEMPLATE/perf.yml))
-- `[REFACTOR]:` for refactoring ([refactor.yml](.github/ISSUE_TEMPLATE/refactor.yml))
-- `[STYLE]:` for code style ([style.yml](.github/ISSUE_TEMPLATE/style.yml))
+Issue templates (see [.github/ISSUE_TEMPLATE/](../ISSUE_TEMPLATE/)) pre-fill uppercase prefixes:
+- `[FEAT]:` for feature requests ([feat.yml](../ISSUE_TEMPLATE/feat.yml))
+- `[FIX]:` for bug reports ([fix.yml](../ISSUE_TEMPLATE/fix.yml))
+- `[DOCS]:` for documentation ([docs.yml](../ISSUE_TEMPLATE/docs.yml))
+- `[TEST]:` for testing issues ([test.yml](../ISSUE_TEMPLATE/test.yml))
+- `[CHORE]:` for maintenance ([chore.yml](../ISSUE_TEMPLATE/chore.yml))
+- `[PERF]:` for performance ([perf.yml](../ISSUE_TEMPLATE/perf.yml))
+- `[REFACTOR]:` for refactoring ([refactor.yml](../ISSUE_TEMPLATE/refactor.yml))
+- `[STYLE]:` for code style ([style.yml](../ISSUE_TEMPLATE/style.yml))
 
 **After the template prefix**, write a user story describing the goal:
 ```
@@ -95,7 +95,7 @@ Or for simpler format:
 **Examples:**
 ```
 ✅ [FEAT]: As a user, I want to scan videos in parallel, so that processing is faster
-✅ [FIX]: As a maintainer, I want large video files to be detected as corrupted, so that all corruption is caught
+✅ [FIX]: As a maintainer, I want large video files to be detected as corrupted, so that all corruption can be detected
 ✅ [DOCS]: As a developer, I want CLI usage examples, so that I can quickly learn the tool
 ✅ [TEST]: As a contributor, I want integration tests for deep scan, so that I can verify correctness
 ✅ [CHORE]: Update pre-commit hooks to latest versions
@@ -137,11 +137,11 @@ Describe how this differs from alternatives or current state
 ```
 
 **Reference the actual templates:**
-- Feature requests: [.github/ISSUE_TEMPLATE/feat.yml](.github/ISSUE_TEMPLATE/feat.yml)
-- Bug reports: [.github/ISSUE_TEMPLATE/fix.yml](.github/ISSUE_TEMPLATE/fix.yml)
-- Documentation: [.github/ISSUE_TEMPLATE/docs.yml](.github/ISSUE_TEMPLATE/docs.yml)
-- Testing: [.github/ISSUE_TEMPLATE/test.yml](.github/ISSUE_TEMPLATE/test.yml)
-- Maintenance: [.github/ISSUE_TEMPLATE/chore.yml](.github/ISSUE_TEMPLATE/chore.yml)
+- Feature requests: [feat.yml](../ISSUE_TEMPLATE/feat.yml)
+- Bug reports: [fix.yml](../ISSUE_TEMPLATE/fix.yml)
+- Documentation: [docs.yml](../ISSUE_TEMPLATE/docs.yml)
+- Testing: [test.yml](../ISSUE_TEMPLATE/test.yml)
+- Maintenance: [chore.yml](../ISSUE_TEMPLATE/chore.yml)
 
 ### Duplicate Detection Process
 1. Search for keywords from the issue title
@@ -320,7 +320,7 @@ status: needs-testing
 
 ### Metadata Guidelines
 
-**Labels** (see [.github/labels.yml](.github/labels.yml) for labeling automation and [.github/settings.yaml](.github/settings.yaml) for label definitions):
+**Labels** (see [labels.yml](../labels.yml) for labeling automation and [settings.yaml](../settings.yaml) for label definitions):
 
 *Type labels:*
 - `type: bug` - Something isn't working
@@ -359,7 +359,7 @@ status: needs-testing
 - `dependencies` - Dependency updates
 
 **Assignees:**
-- **Note:** [.github/CODEOWNERS](.github/CODEOWNERS) only covers critical admin files (`.github/settings.yaml`, `.github/CODEOWNERS`, and `SECURITY.md` owned by @tdorsey)
+- **Note:** [CODEOWNERS](../CODEOWNERS) only covers critical admin files (`.github/settings.yaml`, `.github/CODEOWNERS`, and `SECURITY.md` owned by @tdorsey)
 - For component-level assignments, check who last worked on related code
 - Consider team structure and current responsibilities
 - Don't auto-assign without permission
