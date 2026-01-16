@@ -7,6 +7,177 @@ description: Skill for implementing new features in the Corrupt Video File Inspe
 
 This skill provides comprehensive guidance for designing and implementing new features in the Corrupt Video File Inspector project.
 
+## Required Tools
+
+### Allowed Tools
+
+**Development Tools (REQUIRED)**
+- `python` - Python interpreter (3.13+)
+- `pip` / `poetry` - Dependency management
+- `black` - Code formatting
+- `ruff` - Linting
+- `mypy` - Type checking
+- `pytest` - Testing
+
+**Design Tools (RECOMMENDED)**
+- `mermaid` - Architecture diagrams (text-based)
+- UML in markdown - Class diagrams
+
+**Database Tools (When Needed)**
+- `sqlite3` - SQLite operations
+- SQL migrations scripts
+
+**What to Use:**
+```bash
+# ✅ DO: Use project-standard development tools
+python -m pytest tests/
+black src/ tests/
+ruff check src/
+mypy src/
+
+# ✅ DO: Use mermaid for architecture diagrams
+```mermaid
+classDiagram
+    class VideoScanner {
+        +scan(path: Path) ScanResult
+    }
+    class ScanResult {
+        +status: str
+        +path: Path
+    }
+```
+
+# ✅ DO: Use SQLite for data persistence
+sqlite3 scan_history.db ".schema"
+```
+
+**What NOT to Use:**
+```bash
+# ❌ DON'T: Use unapproved external services
+# Without explicit approval:
+- External APIs for core functionality
+- Cloud services (AWS, GCP, Azure)
+- Third-party SaaS platforms
+
+# ❌ DON'T: Use heavyweight databases
+postgresql              # Use SQLite for local storage
+mongodb                 # Use SQLite
+redis                   # Use SQLite or in-memory dict
+
+# ❌ DON'T: Use non-standard Python tools
+pipenv                  # Use poetry or pip
+conda                   # Use pip/poetry
+```
+
+### Tool Usage Examples
+
+**Example 1: Design Feature Architecture**
+```markdown
+## Architecture Design
+
+```mermaid
+graph TD
+    A[CLI Command] --> B[Scanner Service]
+    B --> C[FFmpeg Wrapper]
+    B --> D[History Store]
+    D --> E[(SQLite DB)]
+    B --> F[Result Formatter]
+```
+
+### Components
+- **Scanner Service**: Coordinates scanning logic
+- **FFmpeg Wrapper**: Executes video analysis
+- **History Store**: Manages scan history
+```
+
+**Example 2: Implement with Type Safety**
+```python
+from typing import Protocol, Optional
+from pathlib import Path
+from datetime import datetime
+
+class ScanHistoryStore(Protocol):
+    """Protocol for scan history storage."""
+    
+    def get_last_scan(self, path: Path) -> Optional[datetime]:
+        """Get timestamp of last scan."""
+        ...
+    
+    def record_scan(
+        self,
+        path: Path,
+        status: str,
+        timestamp: datetime
+    ) -> None:
+        """Record scan result."""
+        ...
+
+class SQLiteScanHistory:
+    """SQLite implementation of scan history."""
+    
+    def __init__(self, db_path: Path) -> None:
+        self.db_path = db_path
+        self._init_db()
+    
+    def _init_db(self) -> None:
+        """Initialize database schema."""
+        import sqlite3
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS scans (
+                path TEXT PRIMARY KEY,
+                status TEXT NOT NULL,
+                timestamp REAL NOT NULL
+            )
+        """)
+        conn.commit()
+        conn.close()
+```
+
+**Example 3: Test Feature Implementation**
+```python
+import pytest
+from pathlib import Path
+
+@pytest.mark.unit
+def test_scan_history_stores_result(tmp_path: Path) -> None:
+    """Test scan history storage."""
+    db_path = tmp_path / "test.db"
+    history = SQLiteScanHistory(db_path)
+    
+    # Record scan
+    test_path = Path("/test.mp4")
+    history.record_scan(test_path, "healthy", datetime.now())
+    
+    # Verify stored
+    last_scan = history.get_last_scan(test_path)
+    assert last_scan is not None
+```
+
+**Example 4: Integrate with Configuration**
+```python
+from pydantic import BaseModel, Field
+
+class IncrementalScanConfig(BaseModel):
+    """Configuration for incremental scanning."""
+    
+    enabled: bool = Field(
+        default=False,
+        description="Enable incremental scanning"
+    )
+    
+    database_path: Path = Field(
+        default=Path(".scan_history.db"),
+        description="Path to scan history database"
+    )
+    
+    max_age_days: int = Field(
+        default=30,
+        gt=0,
+        description="Maximum age of cached scans"
+    )
+```
+
 ## When to Use
 
 Use this skill when:

@@ -7,6 +7,145 @@ description: Skill for creating and maintaining documentation in the Corrupt Vid
 
 This skill provides comprehensive documentation capabilities including writing, updating, and maintaining project documentation.
 
+## Required Tools
+
+### Allowed Tools
+
+**Documentation Formats (REQUIRED)**
+- `markdown` - Primary documentation format
+- `YAML` - Configuration documentation
+- `reStructuredText` - Python docstrings (Google style)
+
+**Documentation Tools (RECOMMENDED)**
+- `markdown-link-check` - Validate links
+- `markdownlint` - Markdown linting
+- `grep` / `view` - Documentation inspection
+
+**What to Use:**
+```bash
+# ✅ DO: Use standard markdown
+# Write clear, valid markdown files
+vim docs/README.md
+
+# ✅ DO: Check for broken links
+markdown-link-check docs/**/*.md
+
+# ✅ DO: Validate markdown format
+markdownlint docs/ README.md
+
+# ✅ DO: Use code blocks with language tags
+```python
+def example():
+    pass
+```
+```
+
+**What NOT to Use:**
+```bash
+# ❌ DON'T: Use proprietary formats
+# No .docx, .pdf, or other binary formats
+# for primary documentation
+
+# ❌ DON'T: Use complex diagram tools without approval
+# Avoid:
+- Visio diagrams
+- Binary image formats for diagrams
+- Proprietary diagramming tools
+
+# ❌ DON'T: Generate docs with unapproved tools
+sphinx-build              # Not configured for this project
+doxygen                   # Not configured for this project
+```
+
+### Allowed Diagramming Tools
+
+**Text-Based Diagrams (PREFERRED)**
+```markdown
+# ✅ DO: Use mermaid for diagrams
+```mermaid
+graph TD
+    A[Start] --> B[Process]
+    B --> C[End]
+```
+
+# ✅ DO: Use ASCII art for simple diagrams
+```
+┌─────────┐      ┌─────────┐
+│ Scanner │─────>│ FFmpeg  │
+└─────────┘      └─────────┘
+```
+```
+
+### Tool Usage Examples
+
+**Example 1: Create Documentation**
+```markdown
+# Feature: Video Scanning
+
+## Overview
+Clear explanation of the feature.
+
+## Usage
+```bash
+corrupt-video-inspector scan /videos
+```
+
+## Configuration
+```yaml
+scan:
+  mode: quick
+  timeout: 30
+```
+```
+
+**Example 2: Add Code Documentation**
+```python
+def scan_video(path: Path, mode: str = "quick") -> ScanResult:
+    """Scan a video file for corruption.
+    
+    Args:
+        path: Path to video file to scan
+        mode: Scan mode - "quick", "deep", or "hybrid"
+        
+    Returns:
+        ScanResult with status and details
+        
+    Raises:
+        FileNotFoundError: If video file does not exist
+        
+    Examples:
+        >>> result = scan_video(Path("/video.mp4"))
+        >>> print(result.status)
+        'healthy'
+    """
+    ...
+```
+
+**Example 3: Create Architecture Diagram**
+```markdown
+## System Architecture
+
+```mermaid
+flowchart LR
+    CLI[CLI Interface] --> Scanner[Video Scanner]
+    Scanner --> FFmpeg[FFmpeg Service]
+    Scanner --> DB[Scan History DB]
+    Scanner --> Trakt[Trakt API]
+```
+```
+
+**Example 4: Check Documentation Quality**
+```bash
+# Check for broken links
+markdown-link-check docs/**/*.md README.md
+
+# Lint markdown files
+markdownlint docs/ README.md --fix
+
+# Verify code examples are valid
+grep -A 10 '```python' docs/*.md | python -m py_compile
+```
+
 ## When to Use
 
 Use this skill when:

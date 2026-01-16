@@ -7,6 +7,136 @@ description: Skill for creating and triaging issues in the Corrupt Video File In
 
 This skill provides capabilities for creating, triaging, and formatting issues in the Corrupt Video File Inspector project.
 
+## Required Tools
+
+### Allowed Tools
+
+**Issue Management (REQUIRED)**
+- GitHub Issues API - Create, update, and label issues
+- GitHub CLI (`gh`) - Issue operations via command line
+- `grep` / `view` - Inspect issue templates
+
+**Text Processing (RECOMMENDED)**
+- `jq` - JSON processing for API responses
+- Standard text tools (`sed`, `awk`) - Issue formatting
+
+**What to Use:**
+```bash
+# ✅ DO: Use GitHub CLI for issue operations
+gh issue create --title "bug: video scan fails" --body "..."
+gh issue list --label "bug" --state "open"
+gh issue view 123
+
+# ✅ DO: Use GitHub API for programmatic access
+curl -H "Authorization: token $GITHUB_TOKEN" \
+  https://api.github.com/repos/owner/repo/issues
+
+# ✅ DO: Follow issue templates
+ls .github/ISSUE_TEMPLATE/
+cat .github/ISSUE_TEMPLATE/bug_report.yml
+```
+
+**What NOT to Use:**
+```bash
+# ❌ DON'T: Create issues without templates
+# Always use provided templates
+
+# ❌ DON'T: Use external issue tracking
+jira                        # Use GitHub Issues
+trello                      # Use GitHub Projects
+asana                       # Use GitHub Issues
+
+# ❌ DON'T: Bypass issue validation
+# Don't skip required fields or labels
+```
+
+### Tool Usage Examples
+
+**Example 1: Create Bug Report**
+```bash
+# Using GitHub CLI
+gh issue create \
+  --title "[FIX]: scanner crashes on MKV files" \
+  --body "$(cat <<EOF
+### Stakeholder Type
+End User
+
+### Component/Domain
+Scanner
+
+### I want to
+Scan MKV video files without crashes
+
+### But
+The scanner crashes when processing MKV files
+
+### Steps to Reproduce
+1. Run: corrupt-video-inspector scan /videos
+2. Scanner crashes on first MKV file
+
+### Environment
+- OS: Ubuntu 22.04
+- Python: 3.13
+- FFmpeg: 4.4.2
+EOF
+)" \
+  --label "bug" \
+  --label "component:scanner"
+```
+
+**Example 2: Triage Issue**
+```bash
+# Add labels based on content
+gh issue edit 123 --add-label "priority:high"
+gh issue edit 123 --add-label "component:cli"
+
+# Move through triage workflow
+gh issue edit 123 --remove-label "triage:agent-pending"
+gh issue edit 123 --add-label "triage:agent-processed"
+```
+
+**Example 3: Classify Issue Type**
+```python
+# Issue classification logic
+def classify_issue(issue_body: str) -> str:
+    """Classify issue based on keywords."""
+    content = issue_body.lower()
+    
+    bug_keywords = ['bug', 'error', 'crash', 'fail']
+    feature_keywords = ['feature', 'enhancement', 'add']
+    
+    if any(kw in content for kw in bug_keywords):
+        return 'bug'
+    elif any(kw in content for kw in feature_keywords):
+        return 'feature'
+    return 'task'
+```
+
+**Example 4: Format Issue Body**
+```python
+# Format issue to match template
+def format_bug_report(original_body: str) -> str:
+    """Format bug report to template."""
+    return f"""### Stakeholder Type
+End User
+
+### Component/Domain
+Scanner
+
+### I want to
+{extract_goal(original_body)}
+
+### But
+{extract_problem(original_body)}
+
+### Steps to Reproduce
+{extract_steps(original_body)}
+
+### Environment Information
+{extract_environment(original_body)}
+"""
+```
+
 ## When to Use
 
 Use this skill when:

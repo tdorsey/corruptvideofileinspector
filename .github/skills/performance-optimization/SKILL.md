@@ -7,6 +7,180 @@ description: Skill for performance analysis and optimization in the Corrupt Vide
 
 This skill provides comprehensive guidance for analyzing and optimizing performance in the Corrupt Video File Inspector project.
 
+## Required Tools
+
+### Allowed Tools
+
+**Profiling Tools (REQUIRED)**
+- `cProfile` - CPU profiling
+- `pstats` - Profile statistics analysis
+- `memory_profiler` - Memory usage profiling
+- `line_profiler` - Line-by-line profiling
+- `py-spy` - Sampling profiler
+
+**Benchmarking (REQUIRED)**
+- `pytest-benchmark` - Performance testing
+- `timeit` - Micro-benchmarking
+
+**Monitoring (RECOMMENDED)**
+- `psutil` - System resource monitoring
+- `time` command - Basic timing
+
+**What to Use:**
+```bash
+# ✅ DO: Use cProfile for CPU profiling
+python -m cProfile -o profile.stats script.py
+python -m pstats profile.stats
+
+# ✅ DO: Use memory_profiler
+python -m memory_profiler script.py
+
+# ✅ DO: Use pytest-benchmark
+pytest tests/ --benchmark-only
+
+# ✅ DO: Use py-spy for sampling
+py-spy record -o profile.svg -- python script.py
+```
+
+**What NOT to Use:**
+```bash
+# ❌ DON'T: Use commercial profilers without approval
+# Intel VTune, JProfiler, etc.
+
+# ❌ DON'T: Use experimental profilers
+# Unvetted third-party tools
+# Beta profiling software
+
+# ❌ DON'T: Optimize without measuring
+# Never guess at bottlenecks
+# Always profile first
+```
+
+### Tool Usage Examples
+
+**Example 1: Profile CPU Usage**
+```python
+import cProfile
+import pstats
+
+def profile_scan_directory(directory: Path) -> None:
+    """Profile directory scanning."""
+    profiler = cProfile.Profile()
+    
+    # Start profiling
+    profiler.enable()
+    
+    # Code to profile
+    scan_directory(directory)
+    
+    # Stop profiling
+    profiler.disable()
+    
+    # Analyze results
+    stats = pstats.Stats(profiler)
+    stats.sort_stats('cumulative')
+    stats.print_stats(20)  # Top 20 functions
+```
+
+**Example 2: Memory Profiling**
+```python
+from memory_profiler import profile
+
+@profile
+def process_large_dataset():
+    """Profile memory usage line by line."""
+    videos = load_all_videos()  # Check memory here
+    results = [scan(v) for v in videos]  # And here
+    return aggregate_results(results)
+
+# Run with: python -m memory_profiler script.py
+```
+
+**Example 3: Benchmark Performance**
+```python
+import pytest
+
+@pytest.mark.benchmark(group="scanning")
+def test_quick_scan_performance(benchmark, sample_video):
+    """Benchmark quick scan mode."""
+    result = benchmark(scan_video, sample_video, mode="quick")
+    assert result.status in ["healthy", "corrupt"]
+
+# Run: pytest tests/ --benchmark-only --benchmark-compare
+```
+
+**Example 4: Line-by-Line Profiling**
+```python
+from line_profiler import LineProfiler
+
+def profile_function():
+    """Profile specific function line by line."""
+    profiler = LineProfiler()
+    profiler.add_function(scan_video)
+    profiler.enable()
+    
+    scan_video(sample_video)
+    
+    profiler.disable()
+    profiler.print_stats()
+
+# Or use decorator:
+@profile  # When running kernprof
+def scan_video(path: Path) -> ScanResult:
+    """Video scanning with line profiling."""
+    ...
+```
+
+**Example 5: Monitor System Resources**
+```python
+import psutil
+import time
+
+def monitor_scan_resources(directory: Path):
+    """Monitor CPU and memory during scan."""
+    process = psutil.Process()
+    
+    start_time = time.time()
+    start_mem = process.memory_info().rss / 1024 / 1024  # MB
+    
+    # Run scan
+    results = scan_directory(directory)
+    
+    end_time = time.time()
+    end_mem = process.memory_info().rss / 1024 / 1024  # MB
+    
+    print(f"Time: {end_time - start_time:.2f}s")
+    print(f"Memory: {end_mem - start_mem:.2f} MB increase")
+    print(f"CPU: {process.cpu_percent()}%")
+    
+    return results
+```
+
+**Example 6: Performance Testing**
+```bash
+# Run benchmarks
+pytest tests/ --benchmark-only
+
+# Compare with baseline
+pytest tests/ --benchmark-only --benchmark-compare=0001
+
+# Save benchmark results
+pytest tests/ --benchmark-only --benchmark-save=baseline
+
+# Generate performance report
+pytest tests/ --benchmark-only --benchmark-histogram
+```
+
+**Example 7: Flame Graph Profiling**
+```bash
+# Generate flame graph with py-spy
+py-spy record -o profile.svg --format speedscope \
+  -- python -m corrupt_video_inspector scan /videos
+
+# View in browser
+firefox profile.svg
+```
+
 ## When to Use
 
 Use this skill when:

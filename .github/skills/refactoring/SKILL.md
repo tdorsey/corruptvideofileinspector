@@ -7,6 +7,150 @@ description: Skill for code refactoring and architecture improvements in the Cor
 
 This skill provides comprehensive refactoring capabilities including code restructuring, architecture improvements, and technical debt reduction.
 
+## Required Tools
+
+### Allowed Tools
+
+**Code Analysis (REQUIRED)**
+- `radon` - Complexity analysis
+- `pylint` - Additional code analysis (specific checks)
+- `grep` / `view` - Code inspection
+- `git diff` - Review refactoring changes
+
+**Refactoring Tools (RECOMMENDED)**
+- `rope` - Python refactoring library
+- IDE refactoring features (PyCharm, VSCode)
+
+**What to Use:**
+```bash
+# ✅ DO: Use complexity analysis
+radon cc src/ -a           # Cyclomatic complexity
+radon mi src/ -s           # Maintainability index
+
+# ✅ DO: Find duplicate code
+pylint src/ --disable=all --enable=duplicate-code
+
+# ✅ DO: Use grep to find patterns
+grep -rn "class.*:" src/   # Find all classes
+grep -rn "def.*:" src/     # Find all functions
+
+# ✅ DO: Validate with tests after each change
+pytest tests/ -v
+```
+
+**What NOT to Use:**
+```bash
+# ❌ DON'T: Use aggressive auto-refactoring tools
+# without review
+autoflake --remove-all    # Too aggressive
+autopep8 --aggressive     # Use black instead
+
+# ❌ DON'T: Refactor without tests
+# Always ensure tests pass before and after
+
+# ❌ DON'T: Use external code generation
+# AI code generators for bulk changes
+# Code transformation services
+```
+
+### Tool Usage Examples
+
+**Example 1: Analyze Complexity**
+```bash
+# Check cyclomatic complexity
+radon cc src/ -a -nc
+
+# Find functions with high complexity (>10)
+radon cc src/ -n D
+
+# Check maintainability index
+radon mi src/ -s
+```
+
+**Example 2: Find Code Smells**
+```bash
+# Find long functions (>50 lines)
+for file in src/**/*.py; do
+  awk '/^def / {start=NR} /^def /||/^class / {
+    if(start && NR-start>50) print FILENAME":"start
+  }' "$file"
+done
+
+# Find duplicate code
+pylint src/ --disable=all --enable=duplicate-code
+
+# Find complex conditionals
+grep -rn "if.*and.*or" src/
+```
+
+**Example 3: Extract Method Refactoring**
+```python
+# Before: Long function
+def process_video(path: Path) -> ScanResult:
+    # 100+ lines of mixed concerns
+    # validation, scanning, error handling, reporting
+    ...
+
+# After: Extracted methods
+def process_video(path: Path) -> ScanResult:
+    """Process video file with specified scan mode."""
+    _validate_inputs(path)
+    scan_result = _perform_scan(path)
+    return _generate_result(scan_result)
+
+def _validate_inputs(path: Path) -> None:
+    """Validate video path."""
+    if not path.exists():
+        raise FileNotFoundError(f"Video not found: {path}")
+
+def _perform_scan(path: Path) -> RawScanResult:
+    """Execute video scan."""
+    scanner = get_scanner()
+    return scanner.scan(path)
+
+def _generate_result(scan_result: RawScanResult) -> ScanResult:
+    """Generate final result."""
+    return ScanResult(
+        status=scan_result.status,
+        path=scan_result.path
+    )
+```
+
+**Example 4: Validate Refactoring**
+```bash
+# 1. Ensure tests pass before refactoring
+pytest tests/ -v
+git commit -m "checkpoint: tests pass"
+
+# 2. Make refactoring change
+# Edit code...
+
+# 3. Verify tests still pass
+pytest tests/ -v
+
+# 4. Check code quality
+make check
+
+# 5. Commit if successful
+git commit -m "refactor: extract method from process_video"
+```
+
+**Example 5: Architecture Improvement**
+```mermaid
+graph LR
+    subgraph Before
+        A1[Large Class<br/>20+ methods] 
+    end
+    
+    subgraph After
+        B1[Scanner<br/>5 methods]
+        B2[Validator<br/>3 methods]
+        B3[Reporter<br/>4 methods]
+        B1 --> B2
+        B1 --> B3
+    end
+```
+
 ## When to Use
 
 Use this skill when:

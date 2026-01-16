@@ -7,6 +7,87 @@ description: Skill for performing code reviews in the Corrupt Video File Inspect
 
 This skill provides capabilities for automated code review, ensuring code quality, standards compliance, and best practices in the Corrupt Video File Inspector project.
 
+## Required Tools
+
+### Allowed Tools
+
+**Code Quality Tools (REQUIRED)**
+- `black` - Code formatting verification
+- `ruff` - Python linting
+- `mypy` - Type checking
+- `pytest` - Running and validating tests
+- `grep` / `view` - Code inspection
+- `git diff` - Reviewing changes
+
+**Security Tools (RECOMMENDED)**
+- `bandit` - Python security linting (when available)
+- GitHub security scanning APIs
+
+**What to Use:**
+```bash
+# ✅ DO: Use project-standard tools
+make check           # Runs black, ruff, mypy
+make test            # Runs pytest
+git diff HEAD~1      # Review recent changes
+
+# ✅ DO: Use grep for pattern searching
+grep -r "hardcoded_password" src/
+
+# ✅ DO: Use view to inspect specific files
+# (via view tool in agent context)
+```
+
+**What NOT to Use:**
+```bash
+# ❌ DON'T: Use non-standard linters
+pylint               # Use ruff instead
+flake8               # Use ruff instead
+autopep8             # Use black instead
+
+# ❌ DON'T: Run arbitrary security scanners
+# without project approval
+pip install some-random-scanner
+
+# ❌ DON'T: Modify code during review
+# Reviews should only analyze, not change code
+```
+
+### Tool Usage Examples
+
+**Example 1: Check Code Quality**
+```bash
+# Verify formatting
+black src/ tests/ --check
+
+# Run linter
+ruff check src/ tests/
+
+# Type check
+mypy src/ tests/
+```
+
+**Example 2: Review for Security Issues**
+```bash
+# Search for potential secrets
+grep -rn "password\s*=\s*['\"]" src/
+grep -rn "api_key\s*=\s*['\"]" src/
+
+# Check for SQL injection risks
+grep -rn "execute.*%.*%" src/
+```
+
+**Example 3: Validate Test Coverage**
+```bash
+# Run tests with coverage
+pytest tests/ --cov=src --cov-report=term-missing
+
+# Check if new code has tests
+git diff HEAD~1 --name-only | grep "^src/" | while read f; do
+  test_file="tests/unit/test_${f#src/}"
+  [ -f "$test_file" ] || echo "Missing tests for $f"
+done
+```
+
 ## When to Use
 
 Use this skill when:

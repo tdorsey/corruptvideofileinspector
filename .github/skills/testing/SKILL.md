@@ -7,6 +7,99 @@ description: Skill for test generation and analysis in the Corrupt Video File In
 
 This skill provides comprehensive testing capabilities including test generation, analysis, and quality improvement for the Corrupt Video File Inspector project.
 
+## Required Tools
+
+### Allowed Tools
+
+**Testing Framework (REQUIRED)**
+- `pytest` - Test execution and framework
+- `pytest-cov` - Coverage analysis
+- `pytest-mock` - Mocking utilities
+- `pytest-benchmark` - Performance testing
+
+**Mocking and Fixtures (REQUIRED)**
+- `unittest.mock` - Standard library mocking
+- `fixtures` - Test data setup
+
+**What to Use:**
+```bash
+# ✅ DO: Use pytest for all testing
+pytest tests/ -v
+pytest tests/unit/ -m unit
+pytest tests/ --cov=src --cov-report=html
+
+# ✅ DO: Use pytest markers
+pytest -m "unit and not slow"
+pytest -m integration
+
+# ✅ DO: Use coverage tools
+coverage run -m pytest tests/
+coverage report --show-missing
+```
+
+**What NOT to Use:**
+```bash
+# ❌ DON'T: Use other test frameworks
+unittest                    # Use pytest instead
+nose                        # Deprecated, use pytest
+nose2                       # Use pytest instead
+
+# ❌ DON'T: Use non-standard test runners
+python -m unittest discover # Use pytest instead
+
+# ❌ DON'T: Create custom test frameworks
+# Use pytest's built-in features instead
+```
+
+### Tool Usage Examples
+
+**Example 1: Run Tests with Coverage**
+```bash
+# Run all tests with coverage
+pytest tests/ --cov=src --cov-report=term-missing --cov-report=html
+
+# Run only unit tests
+pytest tests/unit/ -v -m unit
+
+# Run specific test file
+pytest tests/unit/test_scanner.py -v
+```
+
+**Example 2: Use Mocking**
+```python
+from unittest.mock import Mock, patch
+import pytest
+
+@pytest.mark.unit
+def test_with_mock(mocker):
+    """Use pytest-mock for mocking."""
+    mock_ffmpeg = mocker.patch("src.ffmpeg.run_command")
+    mock_ffmpeg.return_value = Mock(returncode=0, stdout="OK")
+    
+    result = scan_video("/test.mp4")
+    
+    assert result.status == "healthy"
+    mock_ffmpeg.assert_called_once()
+```
+
+**Example 3: Performance Testing**
+```python
+@pytest.mark.benchmark
+def test_scan_performance(benchmark):
+    """Benchmark video scanning."""
+    result = benchmark(scan_video, sample_video_path)
+    assert result.status in ["healthy", "corrupt"]
+```
+
+**Example 4: Check Coverage**
+```bash
+# Generate coverage report
+pytest tests/ --cov=src --cov-report=term-missing
+
+# Fail if coverage below threshold
+pytest tests/ --cov=src --cov-fail-under=80
+```
+
 ## When to Use
 
 Use this skill when:
