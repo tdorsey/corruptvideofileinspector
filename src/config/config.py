@@ -10,8 +10,8 @@ from src.core.models.scanning import FileStatus, ScanMode
 
 
 class LoggingConfig(BaseModel):
-    level: str = Field(default="WARNING")
-    file: Path = Field(default=Path("/app/output/inspector.log"))
+    level: str = Field(default="INFO")
+    file: Path = Field(default=Path("/tmp/inspector.log"))
     date_format: str = Field(default="%Y-%m-%dT%H:%M:%S%z")
     format: str = Field(default="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -78,7 +78,7 @@ class APIConfig(BaseModel):
 
 
 class AppConfig(BaseModel):
-    logging: LoggingConfig
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
     ffmpeg: FFmpegConfig
     processing: ProcessingConfig
     output: OutputConfig

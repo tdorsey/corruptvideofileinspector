@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> Any:
+async def lifespan(_app: FastAPI) -> Any:
     """Lifespan context manager for FastAPI application."""
     # Startup
     logger.info("Starting corrupt-video-inspector API")

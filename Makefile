@@ -158,7 +158,6 @@ docker-trakt: docker-env ## Run trakt sync service via Docker Compose
 docker-all:       ## Run scan and report in sequence via Docker Compose
 	docker compose -f docker/docker-compose.yml up --build scan report
 
-<<<<<<< HEAD
 # Web UI targets
 web-dev:           ## Run web UI in development mode (requires Node.js)
 	cd frontend && npm install && npm run dev
@@ -175,10 +174,8 @@ web-docker-up:     ## Start web UI services via Docker Compose
 web-docker-down:   ## Stop web UI services
 	docker compose -f docker/docker-compose.web.yml down
 
-api-dev:           ## Run API server in development mode
-	python api_server.py
-=======
 # API targets
+
 docker-api-build:  ## Build the API Docker image
 	docker compose -f docker/docker-compose.yml build api
 
@@ -190,7 +187,6 @@ docker-api-down:   ## Stop API service
 
 run-api:          ## Run API locally (requires dependencies installed)
 	python -m uvicorn src.api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
->>>>>>> origin/main
 
 # CI/CD targets referenced in workflows
 docker-test:       ## Test Docker image functionality
