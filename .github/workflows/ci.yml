@@ -171,10 +171,27 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+
+    - name: Get pnpm store directory
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+    - name: Setup pnpm cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
 
     - name: Install Node dependencies
-      run: npm ci
+      run: pnpm install --frozen-lockfile
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -186,7 +203,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: .nx/cache
-        key: nx-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pyproject.toml') }}
+        key: nx-cache-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', '**/pyproject.toml') }}
         restore-keys: |
           nx-cache-${{ runner.os }}-
 
@@ -242,10 +259,27 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+
+    - name: Get pnpm store directory
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+    - name: Setup pnpm cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
 
     - name: Install Node dependencies
-      run: npm ci
+      run: pnpm install --frozen-lockfile
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -257,7 +291,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: .nx/cache
-        key: nx-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pyproject.toml') }}
+        key: nx-cache-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', '**/pyproject.toml') }}
         restore-keys: |
           nx-cache-${{ runner.os }}-
 
