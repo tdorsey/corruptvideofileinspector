@@ -191,6 +191,21 @@ Automatically triages and formats issues submitted via the Quick Capture templat
 - Issue Creation Agent: `.github/agents/issue-creation-agent.md`
 - Issue Creation Skill: `.github/skills/issue-creation/SKILL.md`
 
+### `pr-conflict-resolution.yml` - PR Conflict Resolution Agent
+Labels pull requests with merge conflicts and assigns them to the conflict
+resolution agent for targeted fixes.
+
+**Triggers:** Pull request opened, reopened, synchronized, or ready for review
+
+**Features:**
+- Applies `status:merge-conflict` when a PR is not mergeable (`dirty`/conflicts)
+- Assigns the PR to the conflict resolution agent for follow-up
+- Removes the conflict label once the PR is mergeable
+
+**Related Resources:**
+- PR Conflict Resolution Agent: `.github/agents/pr-conflict-resolution-agent.md`
+- PR Conflict Resolution Skill: `.github/skills/pr-conflict-resolution/SKILL.md`
+
 ### `issue-form-labeler.yml` - Issue Form Auto-Labeler
 Automatically applies component and stakeholder labels based on issue form selections.
 

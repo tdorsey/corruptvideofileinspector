@@ -133,3 +133,6 @@ labels:
   - name: triage:agent-processed
     color: "0e8a16"
     description: "Issue has been processed by the triage agent"
+  - name: status:merge-conflict
+    color: "b60205"
+    description: "Pull request has merge conflicts"
