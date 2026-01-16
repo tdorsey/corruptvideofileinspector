@@ -1,18 +1,1 @@
-[
-  {
-    "category": "Example Work Item",
-    "description": "This is a sample work item demonstrating the Ralph prd.json format. Replace this with actual work items for Ralph to implement.",
-    "steps": [
-      "Step 1: Understand the requirement",
-      "Step 2: Implement the solution",
-      "Step 3: Test the implementation",
-      "Step 4: Document the changes"
-    ],
-    "passes": [
-      "Implementation is complete and functional",
-      "Tests pass successfully",
-      "Code follows project standards",
-      "Documentation is updated"
-    ]
-  }
-]
+[]
