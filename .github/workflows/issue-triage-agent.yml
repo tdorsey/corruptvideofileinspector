@@ -8,6 +8,10 @@ permissions:
   issues: write
   contents: read
 
+concurrency:
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   triage-issue:
     if: |
@@ -26,11 +30,15 @@ jobs:
         with:
           script: |
             const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
             const originalBody = issue.body || '';
             const issueTitle = issue.title || '';
+            const marker = '<!-- triage-preservation -->';
             
             // Post comment with original content for data preservation
             const preservationComment = [
+              marker,
               '## 📋 Original Issue Content (Preserved)',
               '',
               '> This comment preserves the original issue content before agent processing.',
@@ -45,12 +53,28 @@ jobs:
               '*Archived by Issue Triage Agent*'
             ].join('\n');
             
-            const { data: preservationCommentData } = await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
               issue_number: issue.number,
-              body: preservationComment
+              per_page: 100
             });
+            
+            const existingComment = comments.find(comment =>
+              comment.body &&
+              (comment.body.includes(marker) || comment.body.includes('## 📋 Original Issue Content (Preserved)'))
+            );
+            let preservationCommentData = existingComment || null;
+            
+            if (!existingComment) {
+              const { data: createdComment } = await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body: preservationComment
+              });
+              preservationCommentData = createdComment;
+            }
             
             const minimizeComment = async (nodeId) => {
               if (!nodeId) {
@@ -70,7 +94,7 @@ jobs:
               }
             };
             
-            await minimizeComment(preservationCommentData.node_id);
+            await minimizeComment(preservationCommentData?.node_id);
             
             // Store original body and title for next steps using environment files
             // This is more secure than using step outputs for user-provided content
@@ -425,10 +449,13 @@ jobs:
         with:
           script: |
             const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
             const issueType = process.env.ISSUE_TYPE || 'task';
             const confidence = process.env.CONFIDENCE || '50';
             const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
             const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
+            const marker = '<!-- triage-metadata -->';
             
             // Parse gaps safely
             let gaps = [];
@@ -445,6 +472,7 @@ jobs:
               : '- None identified';
             
             const metadataComment = [
+              marker,
               '## 🤖 Agent Processing Metadata',
               '',
               '| Metric | Value |',
@@ -469,12 +497,36 @@ jobs:
               '> Please review and update any missing sections as needed.'
             ].join('\n');
             
-            const { data: metadataCommentData } = await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
               issue_number: issue.number,
-              body: metadataComment
+              per_page: 100
             });
+            
+            const existingComment = comments.find(comment =>
+              comment.body &&
+              (comment.body.includes(marker) || comment.body.includes('## 🤖 Agent Processing Metadata'))
+            );
+            let metadataCommentData = null;
+            
+            if (existingComment) {
+              const { data: updatedComment } = await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body: metadataComment
+              });
+              metadataCommentData = updatedComment;
+            } else {
+              const { data: createdComment } = await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body: metadataComment
+              });
+              metadataCommentData = createdComment;
+            }
             
             const minimizeComment = async (nodeId) => {
               if (!nodeId) {
@@ -494,7 +546,7 @@ jobs:
               }
             };
             
-            await minimizeComment(metadataCommentData.node_id);
+            await minimizeComment(metadataCommentData?.node_id);
       
       - name: Update Triage Question History
         uses: actions/github-script@v7

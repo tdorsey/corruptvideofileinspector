@@ -18,6 +18,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const issueNumber = context.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const commentMarker = '<!-- auto-assign-comment -->';
             
             const minimizeComment = async (nodeId) => {
               if (!nodeId) {
@@ -37,11 +40,25 @@ jobs:
               }
             };
             
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100
+            });
+            
+            const existingComment = comments.find(comment =>
+              comment.body &&
+              (comment.body.includes(commentMarker) ||
+                comment.body.includes('🤖 **Issue Assigned to Copilot**') ||
+                comment.body.includes('⚠️ **Auto-assignment Notice**'))
+            );
+            
             try {
               // Assign the issue to @copilot
               await github.rest.issues.addAssignees({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 issue_number: issueNumber,
                 assignees: ['copilot']
               });
@@ -50,6 +67,7 @@ jobs:
               
               // Add a welcome comment
               const welcomeComment = [
+                commentMarker,
                 '🤖 **Issue Assigned to Copilot**',
                 '',
                 'Thank you for opening this issue! This has been automatically assigned to @copilot for review and assistance.',
@@ -62,14 +80,18 @@ jobs:
                 'Happy coding! 🚀'
               ].join('\n');
 
-              const { data: welcomeCommentData } = await github.rest.issues.createComment({
-                issue_number: issueNumber,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: welcomeComment
-              });
-              
-              await minimizeComment(welcomeCommentData.node_id);
+              if (existingComment) {
+                await minimizeComment(existingComment.node_id);
+              } else {
+                const { data: welcomeCommentData } = await github.rest.issues.createComment({
+                  issue_number: issueNumber,
+                  owner,
+                  repo,
+                  body: welcomeComment
+                });
+                
+                await minimizeComment(welcomeCommentData.node_id);
+              }
               
               console.log(`✅ Posted welcome comment on issue #${issueNumber}`);
               
@@ -79,6 +101,7 @@ jobs:
               // Still try to post a comment even if assignment fails
               try {
                 const fallbackComment = [
+                  commentMarker,
                   '⚠️ **Auto-assignment Notice**',
                   '',
                   'There was an issue with automatic assignment, but this issue has been logged for review.',
@@ -88,14 +111,18 @@ jobs:
                   'Thank you for your contribution! 🙏'
                 ].join('\n');
 
-                const { data: fallbackCommentData } = await github.rest.issues.createComment({
-                  issue_number: issueNumber,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: fallbackComment
-                });
-                
-                await minimizeComment(fallbackCommentData.node_id);
+                if (existingComment) {
+                  await minimizeComment(existingComment.node_id);
+                } else {
+                  const { data: fallbackCommentData } = await github.rest.issues.createComment({
+                    issue_number: issueNumber,
+                    owner,
+                    repo,
+                    body: fallbackComment
+                  });
+                  
+                  await minimizeComment(fallbackCommentData.node_id);
+                }
                 
                 console.log(`✅ Posted fallback comment on issue #${issueNumber}`);
               } catch (commentError) {

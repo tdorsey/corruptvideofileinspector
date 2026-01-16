@@ -23,6 +23,9 @@ jobs:
           script: |
             const issueNumber = context.issue.number;
             const issueTitle = context.payload.issue.title;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const commentMarker = '<!-- auto-branch-comment -->';
             
             // Create a slug from the issue title
             const slug = issueTitle
@@ -53,24 +56,38 @@ jobs:
               }
             };
             
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100
+            });
+            
+            const existingComment = comments.find(comment =>
+              comment.body &&
+              (comment.body.includes(commentMarker) ||
+                comment.body.includes('🌿 **Branch Created**') ||
+                comment.body.includes('⚠️ **Branch Creation Failed**'))
+            );
+            
             try {
               // Get the default branch reference
               const { data: defaultBranch } = await github.rest.repos.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo
+                owner,
+                repo
               });
               
               // Get the SHA of the default branch
               const { data: ref } = await github.rest.git.getRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 ref: `heads/${defaultBranch.default_branch}`
               });
               
               // Create the new branch
               await github.rest.git.createRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 ref: `refs/heads/${branchName}`,
                 sha: ref.object.sha
               });
@@ -79,6 +96,7 @@ jobs:
               
               // Post a success comment on the issue
               const commentBody = [
+                commentMarker,
                 `🌿 **Branch Created**: \`${branchName}\``,
                 '',
                 'Thank you for opening this issue! A branch has been automatically created for you to work on this feature/fix.',
@@ -98,14 +116,18 @@ jobs:
                 'Happy coding! 🚀'
               ].join('\n');
 
-              const { data: branchComment } = await github.rest.issues.createComment({
-                issue_number: issueNumber,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: commentBody
-              });
-              
-              await minimizeComment(branchComment.node_id);
+              if (existingComment) {
+                await minimizeComment(existingComment.node_id);
+              } else {
+                const { data: branchComment } = await github.rest.issues.createComment({
+                  issue_number: issueNumber,
+                  owner,
+                  repo,
+                  body: commentBody
+                });
+                
+                await minimizeComment(branchComment.node_id);
+              }
               
               console.log(`✅ Comment posted successfully on issue #${issueNumber}`);
               
@@ -114,6 +136,7 @@ jobs:
               
               // If branch creation fails, post a comment about the failure
               const failureComment = [
+                commentMarker,
                 '⚠️ **Branch Creation Failed**',
                 '',
                 'There was an issue creating an automatic branch for this issue. This might be because:',
@@ -129,14 +152,18 @@ jobs:
               ].join('\n');
 
               try {
-                const { data: failureCommentData } = await github.rest.issues.createComment({
-                  issue_number: issueNumber,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: failureComment
-                });
-                
-                await minimizeComment(failureCommentData.node_id);
+                if (existingComment) {
+                  await minimizeComment(existingComment.node_id);
+                } else {
+                  const { data: failureCommentData } = await github.rest.issues.createComment({
+                    issue_number: issueNumber,
+                    owner,
+                    repo,
+                    body: failureComment
+                  });
+                  
+                  await minimizeComment(failureCommentData.node_id);
+                }
               } catch (commentError) {
                 console.error('❌ Error posting failure comment:', commentError.message);
               }
