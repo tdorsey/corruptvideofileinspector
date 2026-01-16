@@ -99,15 +99,18 @@ jobs:
             const docKeywords = ['documentation', 'docs', 'readme', 'typo', 'clarify', 'explain'];
             const perfKeywords = ['performance', 'slow', 'fast', 'optimize', 'speed', 'memory'];
             
-            // Component detection keywords (ordered by specificity - more specific first)
+            // Component detection keywords.
+            // Specificity is achieved via the chosen keyword sets and the
+            // scoring logic (counting matches), not by the order of entries.
+            // Entries are listed from more specific to more general for readability.
             const componentKeywords = {
               'GitHub Actions': ['agent', 'agent file', '.github/agents', '.github/workflows', 'github actions', 'action', 'workflow file', 'yml workflow', 'yaml workflow', 'issue template'],
               'CI/CD': ['ci', 'cd', 'pipeline', 'continuous integration', 'continuous deployment', 'build pipeline', 'automation workflow'],
               'Trakt Integration': ['trakt', 'sync', 'watchlist', 'collection'],
               'Docker': ['docker', 'container', 'dockerfile', 'compose'],
               'CLI': ['cli', 'command line', 'command-line', 'terminal', 'console', 'argv'],
-              'Scanner': ['video scan', 'scan video', 'detect corruption', 'analyze video', 'corrupt video', 'ffmpeg scan', 'scanner', 'scan', 'detect', 'analyze'],
-              'Config': ['config file', 'configuration', 'settings', 'config.yaml', 'config.yml', 'app config', 'user config', 'options'],
+              'Scanner': ['scanner', 'scanning', 'scan', 'detect', 'detection', 'analyze', 'analysis'],
+              'Config': ['config file', 'configuration file', 'config settings', 'config options', 'config.yaml', 'config.yml', 'app config', 'user config', 'yaml config'],
               'Reporter': ['reporter', 'report', 'summary', 'results'],
               'Output': ['output', 'export', 'csv', 'json', 'format'],
               'Tests': ['test', 'testing', 'pytest', 'unittest', 'coverage', 'mock'],
@@ -125,7 +128,7 @@ jobs:
             const countMatches = (keywords) => keywords.filter(k => content.includes(k)).length;
             
             // Detect component based on keywords
-            let detectedComponent = 'Other';
+            let detectedComponent = 'Unknown';
             let maxComponentScore = 0;
             for (const [component, keywords] of Object.entries(componentKeywords)) {
               const score = countMatches(keywords);
@@ -134,6 +137,8 @@ jobs:
                 detectedComponent = component;
               }
             }
+            
+            // If no matches found, detectedComponent remains 'Unknown'
             
             // Detect stakeholder based on keywords
             let detectedStakeholder = 'End User';
@@ -259,8 +264,12 @@ jobs:
             const issue = context.payload.issue;
             const originalBody = process.env.ORIGINAL_BODY || '';
             const issueType = process.env.ISSUE_TYPE || 'task';
-            const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
+            const detectedComponent = process.env.DETECTED_COMPONENT || 'Unknown';
             const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
+            
+            // Remove tags like [QUICK], [FEAT], [FIX], etc. from the title
+            let cleanedTitle = issue.title || '';
+            cleanedTitle = cleanedTitle.replace(/^\[?[A-Z]+\]?:\s*/i, '').trim();
             
             // Helper function to build template body with proper newlines
             const buildBody = (sections) => sections.join('\n\n');
@@ -351,12 +360,13 @@ jobs:
                 ]);
             }
             
-            // Update issue body
+            // Update issue body and title
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
-              body: formattedBody
+              body: formattedBody,
+              title: cleanedTitle
             });
 
       - name: Post Metadata Comment
@@ -485,6 +495,7 @@ jobs:
               'GitHub Actions': 'component:github-actions',
               'Tests': 'component:tests',
               'Documentation': 'component:docs',
+              'Unknown': 'component:unknown',
               'Other': 'component:other'
             };
             
