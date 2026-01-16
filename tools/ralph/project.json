@@ -1,0 +1,36 @@
+{
+  "name": "ralph",
+  "sourceRoot": "tools/ralph",
+  "projectType": "library",
+  "targets": {
+    "once": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./scripts/run-ralph-once.sh",
+        "cwd": "tools/ralph"
+      },
+      "outputs": ["{projectRoot}/progress.txt"]
+    },
+    "iterate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./scripts/run-ralph-iterations.sh {args.iterations}",
+        "cwd": "tools/ralph"
+      },
+      "configurations": {
+        "default": {
+          "iterations": 10
+        }
+      },
+      "outputs": ["{projectRoot}/progress.txt"]
+    },
+    "update": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./scripts/update-ralph.sh",
+        "cwd": "tools/ralph"
+      }
+    }
+  },
+  "tags": ["type:tool", "scope:development"]
+}
