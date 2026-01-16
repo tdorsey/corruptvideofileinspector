@@ -101,10 +101,10 @@ Or for simpler format:
 ✅ [CHORE]: Update pre-commit hooks to latest versions
 ```
 
-**Note:** Conventional commit format (e.g., `feat(cli):`, `fix(scanner):`) is ONLY used in:
-- PR titles
-- Commit messages
-- NOT in issue titles
+**Note:** 
+- Conventional commit format (e.g., `feat(cli):`, `fix(scanner):`) is ONLY used in PR titles and commit messages
+- Issue templates may show conventional commit examples in their guidance, but issues should use user story format
+- The template body follows user story format (I want to, But, This helps by, Unlike)
 
 ### Issue Description Structure
 
