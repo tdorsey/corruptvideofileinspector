@@ -13,6 +13,7 @@ jobs:
     if: |
       github.event.issue.state == 'open' &&
       contains(github.event.issue.labels.*.name, 'triage:agent-pending') &&
+      !contains(github.event.issue.labels.*.name, 'triage:agent-processed') &&
       (
         github.event.action == 'opened' ||
         (github.event.action == 'labeled' && github.event.label.name == 'triage:agent-pending')
