@@ -52,3 +52,9 @@ labels:
   - name: admin-required
     color: "b60205"
     description: "Requires admin approval"
+  - name: triage:agent-pending
+    color: "fbca04"
+    description: "Issue awaiting automated agent processing"
+  - name: triage:agent-processed
+    color: "0e8a16"
+    description: "Issue has been processed by the triage agent"
