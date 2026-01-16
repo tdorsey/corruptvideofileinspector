@@ -63,14 +63,19 @@ This project uses the following issue templates:
    - **Performance**: performance, slow, fast, optimize, speed, memory
 
 2. Format issues using the project's standard sections:
-   - Stakeholder Type
-   - Component/Domain
    - I want to / But / This helps by / Unlike
+   - Note: Component/Domain and Stakeholder Type are applied as labels, not in the body
 
 3. Always preserve original content when reformatting
 
-4. Apply appropriate labels:
+4. Apply appropriate labels automatically:
    - `triage:agent-pending` - For issues awaiting processing
    - `triage:agent-processed` - For issues that have been triaged
-   - Component labels (`component:cli`, `component:scanner`, etc.)
+   - Component labels (`component:cli`, `component:scanner`, `component:github-actions`, etc.)
+   - Stakeholder labels (`stakeholder:maintainer`, `stakeholder:contributor`, `stakeholder:user`)
    - Type labels (`bug`, `feature`, `chore`, etc.)
+
+5. Component detection includes:
+   - GitHub Actions/Workflows: agent, agent file, .github/agents, .github/workflows, github actions, workflow file
+   - CI/CD: ci, cd, pipeline, continuous integration, build pipeline
+   - Application components: CLI, Scanner, Trakt Integration, Config, Reporter, Output, Docker, Tests, Documentation

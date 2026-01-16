@@ -99,16 +99,17 @@ jobs:
             const docKeywords = ['documentation', 'docs', 'readme', 'typo', 'clarify', 'explain'];
             const perfKeywords = ['performance', 'slow', 'fast', 'optimize', 'speed', 'memory'];
             
-            // Component detection keywords
+            // Component detection keywords (ordered by specificity - more specific first)
             const componentKeywords = {
-              'CLI': ['cli', 'command line', 'command-line', 'terminal', 'console', 'argv'],
-              'Scanner': ['scanner', 'scan', 'detect', 'analyze', 'corrupt'],
+              'GitHub Actions': ['agent', 'agent file', '.github/agents', '.github/workflows', 'github actions', 'action', 'workflow file', 'yml workflow', 'yaml workflow', 'issue template'],
+              'CI/CD': ['ci', 'cd', 'pipeline', 'continuous integration', 'continuous deployment', 'build pipeline', 'automation workflow'],
               'Trakt Integration': ['trakt', 'sync', 'watchlist', 'collection'],
-              'Config': ['config', 'configuration', 'settings', 'yaml', 'yml', 'options'],
+              'Docker': ['docker', 'container', 'dockerfile', 'compose'],
+              'CLI': ['cli', 'command line', 'command-line', 'terminal', 'console', 'argv'],
+              'Scanner': ['scanner', 'scan video', 'detect corruption', 'analyze video', 'corrupt video', 'ffmpeg scan'],
+              'Config': ['config', 'configuration', 'settings', 'yaml config', 'yml config', 'config file', 'options'],
               'Reporter': ['reporter', 'report', 'summary', 'results'],
               'Output': ['output', 'export', 'csv', 'json', 'format'],
-              'Docker': ['docker', 'container', 'dockerfile', 'compose'],
-              'CI/CD': ['ci', 'cd', 'pipeline', 'workflow', 'github actions', 'automation'],
               'Tests': ['test', 'testing', 'pytest', 'unittest', 'coverage', 'mock'],
               'Documentation': ['documentation', 'docs', 'readme', 'guide', 'tutorial']
             };
@@ -260,13 +261,10 @@ jobs:
             let formattedBody = '';
             
             // Generate formatted body based on issue type
+            // Note: Component/Domain and Stakeholder Type are now applied as labels instead of being in the body
             switch (issueType) {
               case 'bug':
                 formattedBody = buildBody([
-                  '### Stakeholder Type',
-                  detectedStakeholder,
-                  '### Component/Domain',
-                  detectedComponent,
                   '### I want to',
                   'Report and resolve the following issue:\n\n' + originalBody,
                   '### But',
@@ -286,10 +284,6 @@ jobs:
                 
               case 'feature':
                 formattedBody = buildBody([
-                  '### Stakeholder Type',
-                  detectedStakeholder,
-                  '### Component/Domain',
-                  detectedComponent,
                   '### I want to',
                   originalBody,
                   '### But',
@@ -305,10 +299,6 @@ jobs:
                 
               case 'documentation':
                 formattedBody = buildBody([
-                  '### Stakeholder Type',
-                  detectedStakeholder,
-                  '### Component/Domain',
-                  'Documentation',
                   '### I want to',
                   'Improve the documentation:\n\n' + originalBody,
                   '### But',
@@ -324,10 +314,6 @@ jobs:
                 
               case 'performance':
                 formattedBody = buildBody([
-                  '### Stakeholder Type',
-                  detectedStakeholder,
-                  '### Component/Domain',
-                  detectedComponent,
                   '### I want to',
                   'Address the following performance concern:\n\n' + originalBody,
                   '### But',
@@ -343,10 +329,6 @@ jobs:
                 
               default: // task/chore
                 formattedBody = buildBody([
-                  '### Stakeholder Type',
-                  detectedStakeholder,
-                  '### Component/Domain',
-                  detectedComponent,
                   '### I want to',
                   originalBody,
                   '### But',
@@ -376,11 +358,15 @@ jobs:
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
           CONFIDENCE: ${{ env.CONFIDENCE }}
           GAPS: ${{ env.GAPS }}
+          DETECTED_COMPONENT: ${{ env.DETECTED_COMPONENT }}
+          DETECTED_STAKEHOLDER: ${{ env.DETECTED_STAKEHOLDER }}
         with:
           script: |
             const issue = context.payload.issue;
             const issueType = process.env.ISSUE_TYPE || 'task';
             const confidence = process.env.CONFIDENCE || '50';
+            const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
+            const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
             
             // Parse gaps safely
             let gaps = [];
@@ -403,6 +389,8 @@ jobs:
               '|--------|-------|',
               '| **Classification** | ' + issueType.charAt(0).toUpperCase() + issueType.slice(1) + ' |',
               '| **Confidence** | ' + confidence + '% |',
+              '| **Detected Component** | ' + detectedComponent + ' |',
+              '| **Detected Stakeholder** | ' + detectedStakeholder + ' |',
               '| **Processing Time** | ' + new Date().toISOString() + ' |',
               '',
               '### Gap Analysis',
@@ -415,6 +403,7 @@ jobs:
               '',
               '> **Note**: This issue was automatically formatted by the Issue Triage Agent.',
               '> The original content has been preserved in a separate comment above.',
+              '> Component and stakeholder information have been applied as labels.',
               '> Please review and update any missing sections as needed.'
             ].join('\n');
             
@@ -429,10 +418,14 @@ jobs:
         uses: actions/github-script@v7
         env:
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
+          DETECTED_COMPONENT: ${{ env.DETECTED_COMPONENT }}
+          DETECTED_STAKEHOLDER: ${{ env.DETECTED_STAKEHOLDER }}
         with:
           script: |
             const issue = context.payload.issue;
             const issueType = process.env.ISSUE_TYPE || 'task';
+            const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
+            const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
             
             // Remove triage:agent-pending label
             try {
@@ -470,6 +463,39 @@ jobs:
                 break;
               default:
                 labelsToAdd.push('chore');
+            }
+            
+            // Add component label based on detected component
+            const componentLabelMap = {
+              'CLI': 'component:cli',
+              'Scanner': 'component:scanner',
+              'Trakt Integration': 'component:trakt',
+              'Config': 'component:config',
+              'Reporter': 'component:reporter',
+              'Output': 'component:output',
+              'Docker': 'component:docker',
+              'CI/CD': 'component:cicd',
+              'GitHub Actions': 'component:github-actions',
+              'Tests': 'component:tests',
+              'Documentation': 'component:docs',
+              'Other': 'component:other'
+            };
+            
+            const componentLabel = componentLabelMap[detectedComponent];
+            if (componentLabel) {
+              labelsToAdd.push(componentLabel);
+            }
+            
+            // Add stakeholder label based on detected stakeholder
+            const stakeholderLabelMap = {
+              'Project Maintainer': 'stakeholder:maintainer',
+              'Contributor': 'stakeholder:contributor',
+              'End User': 'stakeholder:user'
+            };
+            
+            const stakeholderLabel = stakeholderLabelMap[detectedStakeholder];
+            if (stakeholderLabel) {
+              labelsToAdd.push(stakeholderLabel);
             }
             
             await github.rest.issues.addLabels({
