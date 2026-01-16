@@ -16,9 +16,14 @@ npm test          # Run all tests
 npm run lint      # Lint all code
 npm run graph     # View dependency graph
 npx nx reset      # Clear cache
+
+# Ralph - Autonomous Development Tool
+nx run ralph:once              # Run single Ralph iteration
+nx run ralph:iterate           # Run multiple iterations (default: 10)
+nx run ralph:iterate --iterations=20  # Run 20 iterations
 ```
 
-📖 See [`NX_QUICK_START.md`](NX_QUICK_START.md) for Nx commands | [`docs/NX_MONOREPO.md`](docs/NX_MONOREPO.md) for full documentation
+📖 See [`NX_QUICK_START.md`](NX_QUICK_START.md) for Nx commands | [`docs/NX_MONOREPO.md`](docs/NX_MONOREPO.md) for full documentation | [`tools/ralph/README.md`](tools/ralph/README.md) for Ralph tool
 
 ## 🚀 Quick Start
 
@@ -276,6 +281,7 @@ For security policies and reporting vulnerabilities, see [SECURITY.md](SECURITY.
 ## Development
 
 - **[Contributing Guidelines](docs/CONTRIBUTING.md)** - Development setup, code quality, and submission process
+- **[Ralph Tool](tools/ralph/README.md)** - Autonomous development tool for implementing features with AI assistance
 - **[Repository Configuration](docs/REPOSITORY_CONFIGURATION.md)** - Repository settings management and code ownership
 - **[Version Management](docs/VERSIONING.md)** - Dynamic versioning with Git tags
 - **[Tests Documentation](docs/tests.md)** - Testing framework and test execution
