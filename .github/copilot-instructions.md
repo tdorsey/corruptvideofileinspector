@@ -81,16 +81,101 @@ This includes detailed guidance on:
 - **CLI framework**: Typer with Click integration
 - **Core dependency**: FFmpeg for video analysis and corruption detection
 
+### Build and Test Commands
+
+**Development Setup:**
+```bash
+# Install FFmpeg (required)
+sudo apt-get install -y ffmpeg
+
+# Install development dependencies (requires network, 2-5 min)
+make install-dev
+
+# Setup pre-commit hooks
+make pre-commit-install
+```
+
+**Code Quality (Required Before Commit):**
+```bash
+# Format, lint, and type check (MUST pass)
+make check
+
+# Individual commands
+make format    # Black formatting
+make lint      # Ruff linting  
+make type      # MyPy type checking
+```
+
+**Testing:**
+```bash
+# Run all tests (1-15 min)
+make test
+
+# Unit tests only (30 sec-2 min)
+pytest tests/ -v -m "unit"
+
+# Integration tests
+pytest tests/ -v -m "integration"
+
+# With coverage
+make test-cov
+```
+
+**Docker:**
+```bash
+# Build image (5-15 min)
+make docker-build
+
+# Run scan via Docker
+make docker-scan
+```
+
 ### Using Ralph for Autonomous Development
-Ralph is an autonomous development tool integrated into this repository that helps implement features systematically from a Product Requirements Document.
+Ralph is an autonomous development tool integrated into this repository that helps implement features systematically from multiple sources.
+
+**Work Sources:**
+1. **prd.json** - Local work item queue in `tools/ralph/config/prd.json`
+2. **GitHub Projects** - Query Project 6 for Todo items
+3. **GitHub Issues** - Individual issues to implement
+
+**Ralph Workflow:**
+```
+Read → Pick → Implement → Verify → Update → Commit → Repeat
+```
 
 **Quick Start with Copilot:**
 ```
+# From prd.json
 @workspace Process the next work item from tools/ralph/config/prd.json
+
+# From GitHub Project
+@workspace Check GitHub Project 6 for next Todo item and implement it.
+Update status to 'In Progress' when starting and 'Done' when complete.
+
+# From GitHub Issue
+@workspace Implement issue #XXX following all requirements.
+Update project status when complete.
 ```
+
+**When Completing Work:**
+1. Implement all steps from work item
+2. Run tests: `make test`
+3. Run quality checks: `make check`
+4. Update `tools/ralph/progress.txt` with iteration notes
+5. Remove completed item from `prd.json` (if applicable)
+6. Update GitHub Project status to 'Done' (if applicable)
+7. Commit with conventional commit message
+8. Create PR with issue number in branch name
+
+**GitHub Project Integration:**
+- Project ID: `PVT_kwHOABKXZM4BMv4j`
+- Status Field ID: `PVTSSF_lAHOABKXZM4BMv4jzg78XIM`
+- Update status using: `gh project item-edit`
 
 **Key Benefits:**
 - **Systematic Implementation**: Work items define clear steps and success criteria
+- **Multiple Work Sources**: prd.json, GitHub Projects, or Issues
+- **Automatic Tracking**: Updates progress.txt and project status
 - **Batch Processing**: Process multiple features from a backlog
 - **Conventional Commits**: Automatic proper commit messages
 - **Quality Assurance**: Built-in verification steps
