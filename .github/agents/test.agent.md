@@ -456,6 +456,92 @@ Escalate to other agents when:
 - **Architecture questions** → Tag Architecture Designer
 - **Test code style issues** → Tag Lint Error Agent (minor)
 
+## File Format Selection Guidelines
+
+When writing tests or analyzing test coverage, choose the appropriate file format based on access patterns and optimization goals:
+
+### JSON Lines (.jsonl)
+
+**Primary Goal**: Speed of access and scalability for massive data
+
+- **Access Frequency**: High (frequent "lookups")
+- **Speed**: **Fastest** for large files - use `grep`, `sed`, or `tail` to grab specific lines without loading entire file into memory
+- **Token Use**: Moderate
+- **Information Density**: Low - structure is repeated on every line, which wastes tokens if reading the whole file
+- **Agent Advantage**: When searching for specific test results or coverage data, use shell tools to return just the relevant lines. This keeps the context window clean and tool execution instant.
+
+**When to Use**:
+- Test execution logs
+- Coverage reports over time
+- Test result tracking
+- When you need to append test results without parsing entire file
+
+**Example Use Cases**:
+- CI/CD test output logs
+- Historical test coverage metrics
+- Test failure tracking over time
+
+### YAML (.yaml)
+
+**Primary Goal**: Token efficiency and visual hierarchy for the LLM
+
+- **Access Frequency**: Low (usually read once at the start of a task)
+- **Speed**: Slower to parse for machines (Python's YAML libraries are slower than JSON)
+- **Token Use**: **Most Efficient** - removing brackets, quotes, and commas can reduce token counts by 20-40% compared to JSON
+- **Information Density**: High - indentation provides spatial cues that help LLMs understand nested relationships
+- **Agent Advantage**: Best for test configurations and fixtures where the agent needs to see the entire test setup. Leaves more room in the context window for actual test writing.
+
+**When to Use**:
+- Test configuration files (pytest.ini, tox.ini)
+- Test fixture definitions
+- Structured test reports for full review
+- When human readability is important
+
+**Example Use Cases**:
+- pytest configuration files
+- Test fixture data files
+- Test workflow configurations
+
+### Markdown (.md)
+
+**Primary Goal**: Information density and semantic understanding
+
+- **Access Frequency**: Low to Medium (documentation, test reports)
+- **Speed**: Fast to parse - plain text with minimal structure
+- **Token Use**: Efficient - natural language with semantic structure
+- **Information Density**: **Highest** - combines prose with structure, allows LLMs to understand context and relationships naturally
+- **Agent Advantage**: Best for test documentation, test plans, and explanations that benefit from natural language. Headers, lists, code examples, and formatting provide semantic cues for understanding test context.
+
+**When to Use**:
+- Test documentation
+- Test plans and strategies
+- Test result summaries with analysis
+- Testing guidelines
+- When context and explanation are critical
+
+**Example Use Cases**:
+- Test plan documents
+- Testing strategy guides
+- Test result analysis reports
+- Testing best practices documentation
+
+### Format Selection Decision Tree
+
+1. **Need to search through test execution logs?** → Use JSONL
+2. **Need to read test configurations or fixtures?** → Use YAML
+3. **Need to write test documentation?** → Use Markdown
+4. **Need to track test coverage over time?** → Use JSONL
+5. **Need to define test fixtures or data?** → Use YAML
+6. **Need to explain test strategies?** → Use Markdown
+
+### Optimization Trade-offs
+
+| Format   | Parse Speed | Token Efficiency | Information Density | Random Access |
+|----------|-------------|------------------|---------------------|---------------|
+| JSONL    | ★★★★★       | ★★★              | ★★                  | ★★★★★         |
+| YAML     | ★★          | ★★★★★            | ★★★★                | ★★            |
+| Markdown | ★★★★        | ★★★★             | ★★★★★               | ★★★           |
+
 ## Remember
 
 You are the **quality gatekeeper** through tests. Ensure all code is well-tested before clearing `needs:tests` label. Tests are documentation of expected behavior - make them clear and comprehensive.

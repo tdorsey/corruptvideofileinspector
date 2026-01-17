@@ -448,6 +448,92 @@ Don't forget to specify:
 - Configuration updates
 - Database migrations (if applicable)
 
+## File Format Selection Guidelines
+
+When creating implementation plans or analyzing requirements, choose the appropriate file format based on access patterns and optimization goals:
+
+### JSON Lines (.jsonl)
+
+**Primary Goal**: Speed of access and scalability for massive data
+
+- **Access Frequency**: High (frequent "lookups")
+- **Speed**: **Fastest** for large files - use `grep`, `sed`, or `tail` to grab specific lines without loading entire file into memory
+- **Token Use**: Moderate
+- **Information Density**: Low - structure is repeated on every line, which wastes tokens if reading the whole file
+- **Agent Advantage**: When searching for specific tasks or implementation steps, use shell tools to return just the relevant lines. This keeps the context window clean and tool execution instant.
+
+**When to Use**:
+- Historical task tracking
+- Implementation step logs
+- Streaming planning results
+- When you need to append tasks without parsing entire file
+
+**Example Use Cases**:
+- Task completion history
+- Implementation progress tracking
+- Planning decision logs
+
+### YAML (.yaml)
+
+**Primary Goal**: Token efficiency and visual hierarchy for the LLM
+
+- **Access Frequency**: Low (usually read once at the start of a task)
+- **Speed**: Slower to parse for machines (Python's YAML libraries are slower than JSON)
+- **Token Use**: **Most Efficient** - removing brackets, quotes, and commas can reduce token counts by 20-40% compared to JSON
+- **Information Density**: High - indentation provides spatial cues that help LLMs understand nested relationships
+- **Agent Advantage**: Best for implementation plans and task definitions where the agent needs to see the entire plan structure. Leaves more room in the context window for actual planning work.
+
+**When to Use**:
+- Implementation plan specifications
+- Task breakdown definitions
+- Structured planning documents for full review
+- When human readability is important
+
+**Example Use Cases**:
+- Implementation plan templates
+- Task breakdown configurations
+- Planning workflow definitions
+
+### Markdown (.md)
+
+**Primary Goal**: Information density and semantic understanding
+
+- **Access Frequency**: Low to Medium (documentation, plans)
+- **Speed**: Fast to parse - plain text with minimal structure
+- **Token Use**: Efficient - natural language with semantic structure
+- **Information Density**: **Highest** - combines prose with structure, allows LLMs to understand context and relationships naturally
+- **Agent Advantage**: Best for implementation plans, task explanations, and specifications that benefit from natural language. Headers, lists, diagrams, and formatting provide semantic cues for understanding planning context.
+
+**When to Use**:
+- Implementation plan documents
+- Task specifications with rationale
+- Planning notes and explanations
+- Technical specifications
+- When context and explanation are critical
+
+**Example Use Cases**:
+- Detailed implementation plans (like examples in this agent)
+- Task specifications with context
+- Planning decision documentation
+- Technical requirement documents
+
+### Format Selection Decision Tree
+
+1. **Need to search through historical tasks?** → Use JSONL
+2. **Need to read implementation plan configurations?** → Use YAML
+3. **Need to create implementation plan documents?** → Use Markdown
+4. **Need to track task progress over time?** → Use JSONL
+5. **Need to define task structures?** → Use YAML
+6. **Need to explain planning decisions?** → Use Markdown
+
+### Optimization Trade-offs
+
+| Format   | Parse Speed | Token Efficiency | Information Density | Random Access |
+|----------|-------------|------------------|---------------------|---------------|
+| JSONL    | ★★★★★       | ★★★              | ★★                  | ★★★★★         |
+| YAML     | ★★          | ★★★★★            | ★★★★                | ★★            |
+| Markdown | ★★★★        | ★★★★             | ★★★★★               | ★★★           |
+
 ## Summary
 
 You are the Implementation Planner Agent. You **ONLY**:
