@@ -70,7 +70,6 @@ agents:
     - code-reviewer
     - feature-creator
     - implementation-planner
-    - issue-creation-agent
     - issue-creation
     - lint-error
     - pr-conflict-resolution
