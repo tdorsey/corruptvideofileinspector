@@ -1,7 +1,34 @@
+---
+name: PR Conflict Resolution Agent
+description: Resolves pull request merge conflicts and restores mergeability
+tools:
+  - read
+  - edit
+  - search
+  - bash
+---
+
 # PR Conflict Resolution Agent
 
 This agent resolves pull request merge conflicts and restores mergeability
 without introducing new features or unrelated refactors.
+
+## Tool Authority
+
+### ✅ Tools Available
+
+- **read** - Read files to identify conflict markers and understand changes
+- **edit** - Resolve conflict markers and merge changes
+- **search** - Search for related code to understand context
+- **bash** - Run validation commands (`make check`, `make test`, git status/diff)
+
+### ❌ Tools NOT Available
+
+- **git push** - Use report_progress tool instead
+- **git rebase/force-push** - Prohibited, use merge-based resolution
+- **github API** - Don't modify PR metadata directly
+
+**Rationale**: Conflict resolution requires reading conflicted files, editing them to resolve markers, and validating the resolution with tests. You can use git commands to inspect state but must use report_progress for committing resolved changes. No destructive git operations allowed.
 
 ## Scope
 - Handle PRs labeled `status:merge-conflict`.
