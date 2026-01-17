@@ -27,6 +27,7 @@ tools:
   bash:
     enabled: true
     description: "Execute shell commands for building, testing, and validation"
+    note: "All agents can use bash if necessary for their work, even if not their primary tool"
     allowed_commands:
       - make check
       - make test
@@ -36,6 +37,10 @@ tools:
       - pytest
       - git status
       - git diff
+      - git log
+      - git show
+      - git branch
+      - git checkout
       - pre-commit
     restricted: false
   
@@ -116,6 +121,21 @@ ci:
     - "Run Tests"
     - "Build and Test Docker Image"
     - "Security Scan"
+
+# Git and branch management
+git:
+  branch_protection:
+    main:
+      direct_push: false  # No agent can push directly to main
+      require_pr: true
+      require_reviews: true
+  
+  agent_permissions:
+    can_create_branches: true  # All agents can create feature branches
+    can_push_to_branches: true  # All agents can push to their own branches
+    can_commit: true  # All agents can make commits
+    can_create_pr: true  # All agents can create pull requests
+    cannot_push_to: ["main", "production"]  # Protected branches
 
 # Documentation
 documentation:

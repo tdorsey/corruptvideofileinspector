@@ -126,6 +126,9 @@ agent_tools:
     shell: /bin/bash
     working_directory: "${WORKSPACE}"
     timeout: 300  # 5 minutes default timeout
+    note: |
+      All agents have access to bash when needed for their work, even if not their primary tool.
+      Agents are encouraged to use the tools they need to complete their tasks effectively.
     allowed_commands:
       # Build and validation
       - make check
@@ -135,11 +138,17 @@ agent_tools:
       # Testing
       - make test
       - pytest
-      # Git operations (read-only)
+      # Git operations
       - git status
       - git diff
       - git log
       - git show
+      - git branch
+      - git checkout -b  # Create feature branches
+      - git add
+      - git commit
+      - git push origin  # Push to feature branches (main is protected)
+      # Note: Direct push to main blocked by branch protection rules
       # File operations
       - ls
       - cat
@@ -155,6 +164,7 @@ agent_tools:
   edit:
     enabled: true
     backup_before_edit: true
+    note: "All agents can create and modify files as needed"
     
   search:
     enabled: true
@@ -163,6 +173,14 @@ agent_tools:
   github-issues:
     enabled: true
     rate_limit: 100  # requests per hour
+    note: "Available to issue-related agents"
+  
+  report_progress:
+    enabled: true
+    note: |
+      All agents use report_progress to commit and push changes.
+      This tool handles git operations and PR updates safely.
+      Agents can create PRs and push to feature branches, but not to main.
 
 # Notes for maintainers
 notes: |
@@ -174,6 +192,17 @@ notes: |
   2. Execute tests (make test, pytest)
   3. Validate changes with bash commands
   4. Interact with the repository
+  5. Create branches and push changes to feature branches
+  6. Create pull requests
   
   The setup steps run once when an agent session starts, ensuring a consistent
   environment across all agent invocations.
+  
+  IMPORTANT: Tool Usage Philosophy
+  - All agents have access to ALL tools (bash, read, edit, search, report_progress)
+  - Agents are encouraged to use whatever tools they need to complete their work
+  - Tool listings in agent files indicate PRIMARY tools, not EXCLUSIVE tools
+  - If an agent needs bash to validate their work, they CAN and SHOULD use it
+  - Architecture agents CAN use bash if needed (e.g., to verify file structure)
+  - All agents CAN create branches, commit, and push (via report_progress)
+  - Direct pushes to main are blocked by branch protection, not agent restrictions
