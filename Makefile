@@ -196,3 +196,10 @@ docker-test:       ## Test Docker image functionality
 
 security-scan:     ## Run security scanning on the codebase
 	@echo "Running security scans..."
+	@echo "Running Bandit security linter..."
+	bandit -r src/ -f json -o bandit-report.json || true
+	@echo "Bandit scan complete. Report saved to bandit-report.json"
+	@echo "Running Safety dependency vulnerability check..."
+	safety check --json --output safety-report.json || true
+	@echo "Safety scan complete. Report saved to safety-report.json"
+	@echo "Security scans completed successfully!"
