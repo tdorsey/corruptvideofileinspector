@@ -555,6 +555,92 @@ Track improvement:
 - **Test coverage** - Maintained or improved
 - **Cyclomatic complexity** - Lower is better
 
+## File Format Selection Guidelines
+
+When refactoring code or analyzing code quality, choose the appropriate file format based on access patterns and optimization goals:
+
+### JSON Lines (.jsonl)
+
+**Primary Goal**: Speed of access and scalability for massive data
+
+- **Access Frequency**: High (frequent "lookups")
+- **Speed**: **Fastest** for large files - use `grep`, `sed`, or `tail` to grab specific lines without loading entire file into memory
+- **Token Use**: Moderate
+- **Information Density**: Low - structure is repeated on every line, which wastes tokens if reading the whole file
+- **Agent Advantage**: When searching for specific code smells or refactoring opportunities, use shell tools to return just the relevant lines. This keeps the context window clean and tool execution instant.
+
+**When to Use**:
+- Refactoring history logs
+- Code quality metric tracking
+- Code smell detection logs
+- When you need to append refactoring results without parsing entire file
+
+**Example Use Cases**:
+- Refactoring progress tracking
+- Code complexity metrics over time
+- Code smell detection history
+
+### YAML (.yaml)
+
+**Primary Goal**: Token efficiency and visual hierarchy for the LLM
+
+- **Access Frequency**: Low (usually read once at the start of a task)
+- **Speed**: Slower to parse for machines (Python's YAML libraries are slower than JSON)
+- **Token Use**: **Most Efficient** - removing brackets, quotes, and commas can reduce token counts by 20-40% compared to JSON
+- **Information Density**: High - indentation provides spatial cues that help LLMs understand nested relationships
+- **Agent Advantage**: Best for refactoring plans and code quality standards where the agent needs to see the entire refactoring strategy. Leaves more room in the context window for actual refactoring work.
+
+**When to Use**:
+- Refactoring plan specifications
+- Code quality standards definitions
+- Structured refactoring reports for full review
+- When human readability is important
+
+**Example Use Cases**:
+- Refactoring plan templates
+- Code quality configuration files
+- Refactoring workflow definitions
+
+### Markdown (.md)
+
+**Primary Goal**: Information density and semantic understanding
+
+- **Access Frequency**: Low to Medium (documentation, refactoring docs)
+- **Speed**: Fast to parse - plain text with minimal structure
+- **Token Use**: Efficient - natural language with semantic structure
+- **Information Density**: **Highest** - combines prose with structure, allows LLMs to understand context and relationships naturally
+- **Agent Advantage**: Best for refactoring documentation, code improvement explanations, and rationale that benefits from natural language. Headers, lists, code comparisons, and formatting provide semantic cues for understanding refactoring context.
+
+**When to Use**:
+- Refactoring documentation with before/after examples
+- Code improvement suggestions with rationale
+- Refactoring notes and explanations
+- Code quality guidelines
+- When context and explanation are critical
+
+**Example Use Cases**:
+- Refactoring guides with code examples
+- Code improvement suggestions with before/after comparisons
+- Refactoring decision documentation
+- Code quality best practices
+
+### Format Selection Decision Tree
+
+1. **Need to search through refactoring history?** → Use JSONL
+2. **Need to read refactoring plans or standards?** → Use YAML
+3. **Need to document refactoring changes?** → Use Markdown
+4. **Need to track code quality metrics over time?** → Use JSONL
+5. **Need to define refactoring strategies?** → Use YAML
+6. **Need to explain refactoring rationale?** → Use Markdown
+
+### Optimization Trade-offs
+
+| Format   | Parse Speed | Token Efficiency | Information Density | Random Access |
+|----------|-------------|------------------|---------------------|---------------|
+| JSONL    | ★★★★★       | ★★★              | ★★                  | ★★★★★         |
+| YAML     | ★★          | ★★★★★            | ★★★★                | ★★            |
+| Markdown | ★★★★        | ★★★★             | ★★★★★               | ★★★           |
+
 ## Remember
 
 You are a **code improvement specialist**. Your goal is to make code clearer, simpler, and more maintainable **without changing behavior**. Every refactoring should make the codebase better, not just different.
