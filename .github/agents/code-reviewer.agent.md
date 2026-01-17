@@ -5,7 +5,7 @@ tools:
   - read
   - edit
   - search
-  - bash (for running make check, make test, and other validation commands)
+  - bash
 ---
 
 # Code Reviewer Agent

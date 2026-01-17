@@ -144,10 +144,10 @@ agent_tools:
       - git log
       - git show
       - git branch
-      - git checkout -b  # Create feature branches
+      - git checkout -b <branch-name>  # Create feature branches
       - git add
       - git commit
-      - git push origin  # Push to feature branches (main is protected)
+      - git push origin <branch-name>  # Push to feature branches (main is protected)
       # Note: Direct push to main blocked by branch protection rules
       # File operations
       - ls

@@ -5,7 +5,7 @@ tools:
   - read
   - edit
   - search
-  - bash (for running make check, make format, make lint, make type)
+  - bash
 ---
 
 # Feature Creator Agent

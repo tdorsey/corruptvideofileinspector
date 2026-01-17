@@ -97,12 +97,20 @@ subprocess.run(["ffmpeg", "-i", str(video_path)], shell=False)
 ```python
 from pathlib import Path
 
-def read_file(file_path: Path) -> str:
-    """Read file with path validation."""
+def read_file(file_path: Path, base_dir: Path) -> str:
+    """Read file with path validation.
+    
+    Args:
+        file_path: Path to file to read
+        base_dir: Expected base directory for security validation
+        
+    Raises:
+        ValueError: If file is outside allowed directory
+    """
     # Validate path is within expected directory
     resolved = file_path.resolve()
-    if not resolved.is_relative_to(expected_base_dir):
-        raise ValueError("Invalid file path")
+    if not resolved.is_relative_to(base_dir):
+        raise ValueError(f"Invalid file path: {file_path} is outside {base_dir}")
     return resolved.read_text()
 ```
 
