@@ -900,10 +900,33 @@ def test_ffmpeg(ctx, config):
     help="Scan ID from database (use latest scan if not specified)",
 )
 @click.option(
+    "--compare",
+    nargs=2,
+    type=int,
+    help="Compare two scans by ID (e.g., --compare 41 42)",
+)
+@click.option(
+    "--trend",
+    is_flag=True,
+    help="Show corruption trend analysis over time",
+)
+@click.option(
+    "--directory",
+    "-d",
+    help="Directory for trend analysis (required with --trend)",
+)
+@click.option(
+    "--days",
+    type=click.IntRange(1, 365),
+    default=30,
+    help="Days to analyze for trend report",
+    show_default=True,
+)
+@click.option(
     "--format",
     "output_format",
-    type=click.Choice(["html", "pdf", "json"], case_sensitive=False),
-    default="json",
+    type=click.Choice(["text", "json", "csv", "html", "pdf"], case_sensitive=False),
+    default="text",
     help="Report format",
     show_default=True,
 )
@@ -917,25 +940,38 @@ def test_ffmpeg(ctx, config):
 def report(
     ctx,
     scan_id,
+    compare,
+    trend,
+    directory,
+    days,
     output_format,
     include_healthy,
     config,
 ):
     """
-    Generate a detailed report from scan results stored in database.
+    Generate detailed reports from scan results stored in database.
 
     Creates formatted reports with statistics, file lists, and analysis
-    from database scan results.
+    from database scan results. Supports single scan reports, comparison
+    between two scans, and trend analysis over time.
 
     Examples:
 
     \b
-    # Generate JSON report from latest scan
+    # Generate text report from latest scan
     corrupt-video-inspector report
 
     \b
     # Generate report from specific scan ID
     corrupt-video-inspector report --scan-id 42
+
+    \b
+    # Compare two scans
+    corrupt-video-inspector report --compare 41 42
+
+    \b
+    # Show corruption trend for directory
+    corrupt-video-inspector report --trend --directory /media/movies --days 30
 
     """
     try:
@@ -952,7 +988,104 @@ def report(
             app_config.database.path, app_config.database.auto_cleanup_days
         )
 
-        # Get scan from database
+        # Handle trend report
+        if trend:
+            if not directory:
+                click.echo("Error: --directory is required with --trend", err=True)
+                sys.exit(1)
+
+            trend_data = db_service.get_corruption_trend(directory, days)
+
+            if not trend_data:
+                click.echo(f"No scan data found for directory: {directory}")
+                return
+
+            if output_format == "json":
+                click.echo(json.dumps({"directory": directory, "days": days, "trend": trend_data}, indent=2))
+            elif output_format == "csv":
+                import csv as csv_module
+                import io
+
+                output_io = io.StringIO()
+                writer = csv_module.DictWriter(output_io, fieldnames=trend_data[0].keys())
+                writer.writeheader()
+                for row in trend_data:
+                    writer.writerow(row)
+                click.echo(output_io.getvalue())
+            else:  # text format
+                from datetime import datetime
+
+                click.echo(f"\n=== Corruption Trend Report ===")
+                click.echo(f"Directory: {directory}")
+                click.echo(f"Period: Last {days} days")
+                click.echo(f"Data Points: {len(trend_data)}\n")
+                click.echo(f"{'Date':<12} {'Files':<8} {'Corrupt':<8} {'Rate':<10}")
+                click.echo("-" * 50)
+
+                for point in trend_data:
+                    date_str = datetime.fromtimestamp(point["timestamp"]).strftime("%Y-%m-%d")
+                    total = point.get("total_files", 0)
+                    corrupt = point.get("corrupt_files", 0)
+                    rate = point.get("corruption_rate", 0.0)
+                    click.echo(f"{date_str:<12} {total:<8} {corrupt:<8} {rate:<10.1f}%")
+            return
+
+        # Handle comparison report
+        if compare:
+            scan1_id, scan2_id = compare
+            scan1 = db_service.get_scan(scan1_id)
+            scan2 = db_service.get_scan(scan2_id)
+
+            if not scan1:
+                click.echo(f"Error: Scan ID {scan1_id} not found", err=True)
+                sys.exit(1)
+            if not scan2:
+                click.echo(f"Error: Scan ID {scan2_id} not found", err=True)
+                sys.exit(1)
+
+            results1 = db_service.get_scan_results(scan1_id)
+            results2 = db_service.get_scan_results(scan2_id)
+
+            if output_format == "json":
+                comparison = {
+                    "scan1": {"id": scan1_id, "summary": scan1.to_scan_summary().model_dump()},
+                    "scan2": {"id": scan2_id, "summary": scan2.to_scan_summary().model_dump()},
+                    "changes": {
+                        "files_change": scan2.total_files - scan1.total_files,
+                        "corrupt_change": scan2.corrupt_files - scan1.corrupt_files,
+                        "rate_change": (scan2.corrupt_files / max(scan2.total_files, 1) * 100) - (scan1.corrupt_files / max(scan1.total_files, 1) * 100),
+                    },
+                }
+                click.echo(json.dumps(comparison, indent=2, default=str))
+            else:  # text format
+                from datetime import datetime
+
+                click.echo(f"\n=== Scan Comparison Report ===\n")
+                click.echo(f"Scan 1 (ID: {scan1_id})")
+                click.echo(f"  Date: {datetime.fromtimestamp(scan1.started_at).strftime('%Y-%m-%d %H:%M:%S')}")
+                click.echo(f"  Directory: {scan1.directory}")
+                click.echo(f"  Files: {scan1.total_files}")
+                click.echo(f"  Corrupt: {scan1.corrupt_files}")
+                click.echo(f"  Rate: {scan1.corrupt_files / max(scan1.total_files, 1) * 100:.1f}%\n")
+
+                click.echo(f"Scan 2 (ID: {scan2_id})")
+                click.echo(f"  Date: {datetime.fromtimestamp(scan2.started_at).strftime('%Y-%m-%d %H:%M:%S')}")
+                click.echo(f"  Directory: {scan2.directory}")
+                click.echo(f"  Files: {scan2.total_files}")
+                click.echo(f"  Corrupt: {scan2.corrupt_files}")
+                click.echo(f"  Rate: {scan2.corrupt_files / max(scan2.total_files, 1) * 100:.1f}%\n")
+
+                click.echo("Changes:")
+                files_delta = scan2.total_files - scan1.total_files
+                corrupt_delta = scan2.corrupt_files - scan1.corrupt_files
+                rate_delta = (scan2.corrupt_files / max(scan2.total_files, 1) * 100) - (scan1.corrupt_files / max(scan1.total_files, 1) * 100)
+
+                click.echo(f"  Files: {files_delta:+d}")
+                click.echo(f"  Corrupt: {corrupt_delta:+d}")
+                click.echo(f"  Rate: {rate_delta:+.1f}%\n")
+            return
+
+        # Handle single scan report
         if scan_id is None:
             # Get latest scan
             recent_scans = db_service.get_recent_scans(limit=1)
@@ -975,26 +1108,67 @@ def report(
         scan_results_db = db_service.get_scan_results(scan_model.id or 0)
         results = [result.to_scan_result() for result in scan_results_db]
 
-        # Display report as JSON to stdout
-        if output_format.lower() == "json":
+        # Filter results if needed
+        if not include_healthy:
+            results = [r for r in results if r.is_corrupt]
+
+        # Display report based on format
+        if output_format == "json":
             report_data = {
                 "scan_id": scan_model.id,
                 "summary": summary.model_dump(),
-                "results": (
-                    [r.model_dump() for r in results]
-                    if include_healthy
-                    else [r.model_dump() for r in results if r.is_corrupt]
-                ),
+                "results": [r.model_dump() for r in results],
             }
             click.echo(json.dumps(report_data, indent=2, default=str))
-        else:
-            # For other formats, use ReportService if available
+
+        elif output_format == "csv":
+            import csv as csv_module
+            import io
+
+            output_io = io.StringIO()
+            if results:
+                writer = csv_module.DictWriter(output_io, fieldnames=results[0].model_dump().keys())
+                writer.writeheader()
+                for result in results:
+                    writer.writerow(result.model_dump())
+            click.echo(output_io.getvalue())
+
+        elif output_format == "text":
+            from datetime import datetime
+
+            click.echo(f"\n=== Scan Report ===")
+            click.echo(f"Scan ID: {scan_model.id}")
+            click.echo(f"Directory: {scan_model.directory}")
+            click.echo(f"Mode: {scan_model.scan_mode}")
+            click.echo(f"Started: {datetime.fromtimestamp(scan_model.started_at).strftime('%Y-%m-%d %H:%M:%S')}")
+            click.echo(f"Duration: {scan_model.scan_time:.1f}s\n")
+
+            click.echo("Summary:")
+            click.echo(f"  Total Files: {scan_model.total_files}")
+            click.echo(f"  Processed: {scan_model.processed_files}")
+            click.echo(f"  Corrupt: {scan_model.corrupt_files}")
+            click.echo(f"  Healthy: {scan_model.healthy_files}")
+            click.echo(f"  Corruption Rate: {scan_model.corrupt_files / max(scan_model.total_files, 1) * 100:.1f}%\n")
+
+            if results:
+                click.echo("Files:")
+                click.echo(f"{'Filename':<50} {'Status':<10} {'Confidence':<12}")
+                click.echo("-" * 80)
+                for result in results:
+                    filename = result.filename
+                    if len(filename) > 47:
+                        filename = "..." + filename[-44:]
+                    status = "CORRUPT" if result.is_corrupt else "HEALTHY"
+                    confidence = f"{result.confidence:.2f}"
+                    click.echo(f"{filename:<50} {status:<10} {confidence:<12}")
+
+        else:  # html, pdf - try ReportService
             try:
                 service = ReportService(app_config)
                 report_path = service.generate_report(
                     summary=summary,
                     results=results,
-                    format=output_format.lower(),
+                    format=output_format,
                     include_healthy=include_healthy,
                 )
                 click.echo(f"Report generated: {report_path}")
