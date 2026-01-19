@@ -132,7 +132,7 @@ See the [Ralph Copilot Guide](../tools/ralph/COPILOT_GUIDE.md) for detailed usag
 #### Agent and Skill Changes are Documentation
 **IMPORTANT: Custom agent and skill changes are contributor documentation, NOT user-facing features:**
 - Changes to `.github/agents/` files should use `docs(agents):` commit type
-- Changes to `.github/skills/` files should use `docs(skills):` commit type
+- Changes to `.github/agents/skills/` files should use `docs(skills):` commit type
 - Agent-related instructions should use `docs(copilot):` or `docs(agents):` commit type
 
 **Rationale:** Agents and skills are development tools that help contributors work more effectively with GitHub Copilot. They document how to contribute to the project, not add features to the application itself.
@@ -170,8 +170,8 @@ feat: create lint-error agent  # Wrong - agents are docs
   - Updates labels (`triage:agent-pending` → `triage:agent-processed`)
 
 **Agent & Skill Resources:**
-- **Issue Creation Agent**: `.github/agents/issue-creation.agent.md`
-- **Issue Creation Skill**: `.github/skills/issue-creation/SKILL.md`
+- **Issue Creation Agent**: `.github/agents/personas/issue-creation.agent.md`
+- **Issue Creation Skill**: `.github/agents/skills/issue-creation/SKILL.md`
 
 ### Code Quality Standards
 - **⚠️ CRITICAL: `make check` MUST pass successfully before every commit** - ensures formatting, linting, and type checking pass

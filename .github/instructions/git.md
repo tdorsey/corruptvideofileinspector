@@ -34,7 +34,7 @@ Changes to GitHub Copilot agents and skills should use the `docs` type because t
 
 **What qualifies as agent/skill documentation:**
 - Files in `.github/agents/` directory → use `docs(agents):`
-- Files in `.github/skills/` directory → use `docs(skills):`
+- Files in `.github/agents/skills/` directory → use `docs(skills):`
 - Agent-related Copilot instructions → use `docs(copilot):` or `docs(agents):`
 - Workflow files that support agent functionality → use `docs(agents):` or `ci(agents):`
 
