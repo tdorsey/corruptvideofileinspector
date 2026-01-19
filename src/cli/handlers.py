@@ -66,6 +66,54 @@ class BaseHandler:
 
         sys.exit(1)
 
+    def _check_duplicate_scan(self, directory: Path) -> None:
+        """Check for recent scans of the same directory and warn user.
+
+        Args:
+            directory: Directory being scanned
+        """
+        try:
+            from src.database.service import DatabaseService
+
+            db_service = DatabaseService(
+                self.config.database.path, self.config.database.auto_cleanup_days
+            )
+            
+            # Check for scans in the last hour
+            recent_scan = db_service.get_recent_scan_for_directory(
+                str(directory), max_age_seconds=3600
+            )
+            
+            if recent_scan:
+                from datetime import datetime
+                
+                scan_time = datetime.fromtimestamp(recent_scan.started_at)
+                minutes_ago = int((time.time() - recent_scan.started_at) / 60)
+                
+                logger.warning(
+                    f"Directory was scanned {minutes_ago} minutes ago "
+                    f"(scan ID: {recent_scan.id}, mode: {recent_scan.scan_mode})"
+                )
+                import click
+                click.echo(
+                    f"\n⚠️  Warning: This directory was recently scanned {minutes_ago} minutes ago",
+                    err=True,
+                )
+                click.echo(
+                    f"   Previous scan: {scan_time.strftime('%Y-%m-%d %H:%M:%S')} "
+                    f"(ID: {recent_scan.id}, mode: {recent_scan.scan_mode})",
+                    err=True,
+                )
+                click.echo(
+                    f"   Found {recent_scan.corrupt_files}/{recent_scan.total_files} corrupt files",
+                    err=True,
+                )
+                click.echo()
+                
+        except Exception as e:
+            # Don't fail scan if duplicate check fails
+            logger.debug(f"Could not check for duplicate scans: {e}")
+
     def _store_scan_results(
         self, summary: ScanSummary, results: list[ScanResult] | None = None
     ) -> int:
@@ -86,9 +134,17 @@ class BaseHandler:
             )
             logger.info(f"Scan results stored in database with ID: {scan_id}")
             return scan_id
-        except Exception:
+        except Exception as e:
             logger.exception("Failed to store scan results in database")
-            raise
+            # Log the error but don't fail the scan
+            # The scan itself was successful, just the storage failed
+            import click
+            click.echo(
+                f"\n⚠️  Warning: Failed to store scan results in database: {e}",
+                err=True,
+            )
+            click.echo("   Scan completed successfully but results were not persisted.", err=True)
+            return -1  # Return invalid ID to indicate storage failure
 
 
 class ScanHandler(BaseHandler):
@@ -111,6 +167,9 @@ class ScanHandler(BaseHandler):
         Results are stored in the database.
         """
         try:
+            # Check for recent scans of the same directory
+            self._check_duplicate_scan(directory)
+            
             video_files = self.scanner.get_video_files(directory, recursive=recursive)
             if not video_files:
                 logger.info("No video files found to scan.")
