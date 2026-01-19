@@ -67,25 +67,22 @@ class BaseHandler:
         sys.exit(1)
 
     def _store_scan_results(
-        self,
-        summary: ScanSummary,
+        self, summary: ScanSummary, results: list[ScanResult] | None = None
     ) -> int:
-        """Store scan summary in database.
+        """Store scan summary and results in database.
 
         Args:
             summary: Scan summary to store
+            results: Optional list of individual scan results
 
         Returns:
             Scan ID in database
         """
         try:
             # Store results in database
-            # Note: Individual scan results are not currently tracked by scanner,
-            # so we only store the summary. This is sufficient for basic database
-            # functionality and incremental scanning.
             scan_id = self.output_formatter.store_scan_results(
                 summary=summary,
-                scan_results=None,  # Scanner doesn't provide individual results
+                scan_results=results,  # Now passing actual results
             )
             logger.info(f"Scan results stored in database with ID: {scan_id}")
             return scan_id
@@ -119,7 +116,7 @@ class ScanHandler(BaseHandler):
                 logger.info("No video files found to scan.")
                 return None
             logger.info(f"Found {len(video_files)} video files to scan.")
-            summary = self.scanner.scan_directory(
+            summary, scan_results = self.scanner.scan_directory(
                 directory=directory,
                 scan_mode=scan_mode,
                 recursive=recursive,
@@ -129,7 +126,7 @@ class ScanHandler(BaseHandler):
                 ),
             )
             # Store results in database
-            self._store_scan_results(summary=summary)
+            self._store_scan_results(summary=summary, results=scan_results)
             return summary
         except KeyboardInterrupt:
             logger.warning("Scan interrupted by user.")

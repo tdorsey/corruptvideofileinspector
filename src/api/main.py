@@ -285,7 +285,9 @@ async def run_scan(scan_id: str, request: ScanRequest) -> None:
 
         # Run scan
         directory = Path(request.directory)
-        summary: ScanSummary | None = scanner.scan_directory(
+        summary: ScanSummary | None
+        results: list[ScanResult]
+        summary, results = scanner.scan_directory(
             directory=directory,
             scan_mode=request.mode,
             recursive=request.recursive,
@@ -297,10 +299,10 @@ async def run_scan(scan_id: str, request: ScanRequest) -> None:
             scan_data["error"] = "Scan completed with no results"
         else:
             scan_data["status"] = ScanStatusEnum.COMPLETED
-            # Store summary data - individual file results not available from scan_directory
+            # Store summary and individual file results
             scan_data["results"] = {
                 "summary": summary.model_dump(),
-                "details": [],  # TODO: Implement file-level results storage
+                "details": [result.model_dump() for result in results],
             }
 
     except Exception:
