@@ -167,7 +167,7 @@ Runs on pull request events (opened, edited, synchronize):
 
 ## Automation Workflows
 
-### `issue-triage-agent.yml` - Issue Triage Agent
+### `issue-triage.yml` - Issue Triage Workflow
 Automatically triages and formats issues submitted via the Quick Capture template.
 
 **Triggers:** Issue opened or labeled with `triage:agent-pending`
