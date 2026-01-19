@@ -368,4 +368,4 @@ After initial implementation:
 - AWS Nx Plugin: https://awslabs.github.io/nx-plugin-for-aws/
 - Nx Documentation: https://nx.dev/getting-started/intro
 - Repository Structure: docs/NX_MONOREPO.md
-- Issue: #[TBD] - Configure Nx for Python
+- Issue: #319 - Configure Nx for Python
