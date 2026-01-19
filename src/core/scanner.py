@@ -260,6 +260,8 @@ class VideoScanner:
         recursive: bool = True,
         resume: bool = True,
         progress_callback: Callable[[ScanProgress], None] | None = None,
+        incremental: bool = False,
+        max_age_days: int = 7,
     ) -> tuple[ScanSummary, list[ScanResult]]:
         """Scan a directory for corrupt video files.
 
@@ -269,12 +271,17 @@ class VideoScanner:
             recursive: Whether to scan subdirectories
             resume: Whether to resume from previous scan state
             progress_callback: Optional callback for progress updates
+            incremental: Whether to skip recently scanned healthy files
+            max_age_days: Maximum age in days for incremental scans (default: 7)
 
         Returns:
             tuple[ScanSummary, list[ScanResult]]: Summary and detailed results of the scan operation
         """
         logger.info("Starting directory scan: %s", directory)
         logger.info("Scan mode: %s, recursive: %s", scan_mode.value, recursive)
+        
+        if incremental:
+            logger.info("Incremental scan enabled (max age: %d days)", max_age_days)
 
         # Get video files
         video_files = self.get_video_files(directory, recursive=recursive)
@@ -289,6 +296,29 @@ class VideoScanner:
                 scan_mode=scan_mode,
                 scan_time=0.0,
             ), []
+        
+        # Apply incremental filtering if enabled
+        original_count = len(video_files)
+        if incremental:
+            video_files = self._filter_incremental_files(
+                directory, video_files, max_age_days
+            )
+            skipped_count = original_count - len(video_files)
+            if skipped_count > 0:
+                logger.info(
+                    f"Incremental scan: skipping {skipped_count} recently scanned healthy files"
+                )
+            if not video_files:
+                logger.info("All files were recently scanned and healthy - nothing to scan")
+                return ScanSummary(
+                    directory=directory,
+                    total_files=original_count,
+                    processed_files=0,
+                    corrupt_files=0,
+                    healthy_files=original_count,
+                    scan_mode=scan_mode,
+                    scan_time=0.0,
+                ), []
 
         logger.info("Found %d video files to scan", len(video_files))
         resume_path = self._get_resume_path(directory)
@@ -547,6 +577,54 @@ class VideoScanner:
         video_files = await loop.run_in_executor(None, lambda: list(_scan_directory()))
 
         return sorted(video_files, key=lambda x: x.path)
+
+    def _filter_incremental_files(
+        self, directory: Path, video_files: list[VideoFile], max_age_days: int
+    ) -> list[VideoFile]:
+        """Filter out recently scanned healthy files for incremental scanning.
+
+        Args:
+            directory: Directory being scanned
+            video_files: List of all video files found
+            max_age_days: Maximum age in days for considering files "recent"
+
+        Returns:
+            Filtered list of video files that need scanning
+        """
+        try:
+            from src.database.service import DatabaseService
+
+            db_service = DatabaseService(
+                self.config.database.path, self.config.database.auto_cleanup_days
+            )
+
+            # Get healthy files from recent scans
+            max_age_seconds = max_age_days * 24 * 60 * 60
+            healthy_files = db_service.get_healthy_files_recently_scanned(
+                str(directory), max_age_seconds
+            )
+
+            # Convert to set for O(1) lookup
+            healthy_set = set(healthy_files)
+
+            # Filter out healthy files
+            filtered_files = [
+                vf for vf in video_files if str(vf.path) not in healthy_set
+            ]
+
+            logger.debug(
+                f"Incremental filter: {len(video_files)} total, "
+                f"{len(healthy_set)} healthy in DB, "
+                f"{len(filtered_files)} need scanning"
+            )
+
+            return filtered_files
+
+        except Exception as e:
+            # If database query fails, scan all files
+            logger.warning(f"Failed to apply incremental filtering: {e}")
+            logger.warning("Falling back to full scan")
+            return video_files
 
 
 def validate_scan_results(results: list[ScanResult]) -> list[str]:

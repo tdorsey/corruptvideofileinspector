@@ -403,6 +403,50 @@ class DatabaseService:
 
             return [row["filename"] for row in cursor.fetchall()]
 
+    def get_healthy_files_recently_scanned(
+        self, directory: str, max_age_seconds: int
+    ) -> list[str]:
+        """Get list of healthy files scanned recently within time window.
+
+        Args:
+            directory: Directory being scanned
+            max_age_seconds: Maximum age in seconds for "recent" scans
+
+        Returns:
+            List of filenames that were healthy in recent scans
+        """
+        cutoff_time = time.time() - max_age_seconds
+
+        with self._get_connection() as conn:
+            # Get recent scans for this directory
+            cursor = conn.execute(
+                """
+                SELECT id FROM scans
+                WHERE directory = ? AND started_at >= ?
+                ORDER BY started_at DESC
+            """,
+                (directory, cutoff_time),
+            )
+
+            scan_ids = [row["id"] for row in cursor.fetchall()]
+            if not scan_ids:
+                return []  # No recent scans
+
+            # Get healthy files from recent scans
+            placeholders = ",".join("?" * len(scan_ids))
+            cursor = conn.execute(
+                f"""
+                SELECT DISTINCT filename FROM scan_results
+                WHERE scan_id IN ({placeholders})
+                AND is_corrupt = 0
+                AND status = 'HEALTHY'
+                ORDER BY filename
+            """,
+                scan_ids,
+            )
+
+            return [row["filename"] for row in cursor.fetchall()]
+
     def get_database_stats(self) -> DatabaseStats:
         """Get statistics about the database contents.
 

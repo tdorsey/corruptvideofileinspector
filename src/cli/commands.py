@@ -168,6 +168,13 @@ def cli(
     help="Skip files that were recently scanned and found healthy",
     show_default=True,
 )
+@click.option(
+    "--max-age",
+    type=int,
+    default=7,
+    help="Maximum age in days for incremental scans (default: 7 days)",
+    show_default=True,
+)
 @click.pass_context
 def scan(
     ctx,
@@ -178,6 +185,7 @@ def scan(
     extensions,
     resume,
     incremental,
+    max_age,
     config,
 ):
     # If no arguments are provided, show the help for the scan subcommand
@@ -237,27 +245,6 @@ def scan(
         # Convert mode string to ScanMode enum
         scan_mode = ScanMode(mode.lower())
 
-        # Handle incremental scanning
-        if incremental:
-            try:
-                from src.database.service import DatabaseService
-
-                db_service = DatabaseService(
-                    app_config.database.path, app_config.database.auto_cleanup_days
-                )
-
-                # Get files that were recently scanned and found healthy
-                recent_healthy = db_service.get_files_needing_rescan(
-                    str(directory), scan_mode.value
-                )
-                # Invert the logic - skip files NOT in the rescan list
-                # (these are files that were healthy in recent scans)
-                click.echo(
-                    f"Incremental scan: focusing on {len(recent_healthy)} files that need rescanning"
-                )
-            except Exception as e:
-                logger.warning(f"Could not perform incremental scan: {e}")
-
         # Create and run scan handler
         handler = ScanHandler(app_config)
         summary = handler.run_scan(
@@ -265,6 +252,8 @@ def scan(
             scan_mode=scan_mode,
             recursive=recursive,
             resume=resume,
+            incremental=incremental,
+            max_age_days=max_age,
         )
         if summary is not None:
             click.echo("\nScan Summary:")
