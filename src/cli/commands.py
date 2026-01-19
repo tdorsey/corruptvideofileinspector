@@ -1484,5 +1484,268 @@ def backup(ctx, backup_path, config):
         sys.exit(1)
 
 
+@database.command(name="list-scans")
+@global_options
+@click.option(
+    "--limit",
+    type=click.IntRange(1, 1000),
+    default=20,
+    help="Maximum number of scans to show",
+    show_default=True,
+)
+@click.option(
+    "--directory",
+    "-d",
+    help="Filter by directory path",
+)
+@click.pass_context
+def list_scans(ctx, limit, directory, config):
+    """List recent scans from database.
+
+    Show recent scans in reverse chronological order with summary information.
+
+    Examples:
+
+    \b
+    # Show last 20 scans
+    corrupt-video-inspector database list-scans
+
+    \b
+    # Show last 50 scans for specific directory
+    corrupt-video-inspector database list-scans --limit 50 --directory /media/videos
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Import database components
+        from src.database.service import DatabaseService
+
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        # Get recent scans
+        scans = db_service.get_recent_scans(limit=limit)
+
+        # Filter by directory if specified
+        if directory:
+            scans = [s for s in scans if directory in s.directory]
+
+        if not scans:
+            click.echo("No scans found.")
+            return
+
+        # Display scans in table format
+        from datetime import datetime
+
+        click.echo(f"\nFound {len(scans)} scans:\n")
+        click.echo(
+            f"{'ID':<6} {'Directory':<40} {'Started':<20} {'Files':<8} {'Corrupt':<8} {'Mode':<8} {'Time (s)':<10}"
+        )
+        click.echo("-" * 110)
+
+        for scan in scans:
+            directory_str = scan.directory
+            if len(directory_str) > 37:
+                directory_str = "..." + directory_str[-34:]
+
+            started = datetime.fromtimestamp(scan.started_at).strftime("%Y-%m-%d %H:%M:%S")
+            files = f"{scan.processed_files}/{scan.total_files}"
+            corrupt = str(scan.corrupt_files)
+            mode = scan.scan_mode
+            scan_time = f"{scan.scan_time:.1f}"
+
+            click.echo(
+                f"{scan.id:<6} {directory_str:<40} {started:<20} {files:<8} {corrupt:<8} {mode:<8} {scan_time:<10}"
+            )
+
+    except Exception as e:
+        logger.exception("Failed to list scans")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--input",
+    type=PathType(),
+    required=True,
+    help="Path to backup file to restore from",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Skip confirmation prompt",
+)
+@click.pass_context
+def restore(ctx, input, force, config):
+    """Restore database from backup.
+
+    Restore the database from a previously created backup file.
+    This will overwrite the current database.
+
+    Example:
+
+    \b
+    # Restore from backup
+    corrupt-video-inspector database restore --input backup.db
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Check if backup file exists
+        if not input.exists():
+            click.echo(f"Error: Backup file not found: {input}", err=True)
+            sys.exit(1)
+
+        # Confirm before overwriting
+        if not force:
+            click.echo(f"This will overwrite the current database at: {app_config.database.path}")
+            if not click.confirm("Are you sure you want to continue?"):
+                click.echo("Restore cancelled.")
+                return
+
+        # Import database components
+        import shutil
+
+        # Create backup of current database if it exists
+        if app_config.database.path.exists():
+            backup_current = app_config.database.path.parent / f"{app_config.database.path.name}.pre-restore"
+            shutil.copy2(app_config.database.path, backup_current)
+            click.echo(f"Current database backed up to: {backup_current}")
+
+        # Copy backup file to database location
+        shutil.copy2(input, app_config.database.path)
+        click.echo(f"Database restored from: {input}")
+
+        # Verify restored database
+        from src.database.service import DatabaseService
+
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+        stats = db_service.get_database_stats()
+        click.echo(f"Restored database contains {stats.total_scans} scans and {stats.total_files} files")
+
+    except Exception as e:
+        logger.exception("Database restore failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--scan-id",
+    type=int,
+    help="Export specific scan by ID (default: all results)",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["csv", "json", "yaml"], case_sensitive=False),
+    default="json",
+    help="Output format",
+    show_default=True,
+)
+@click.option(
+    "--output",
+    "-o",
+    type=PathType(),
+    help="Save to file (default: stdout)",
+)
+@click.option(
+    "--corrupt-only",
+    is_flag=True,
+    help="Only export corrupt files",
+)
+@click.pass_context
+def export(ctx, scan_id, output_format, output, corrupt_only, config):
+    """Export scan results to various formats.
+
+    Export scan results to CSV, JSON, or YAML format for external analysis.
+
+    Examples:
+
+    \b
+    # Export all results to JSON
+    corrupt-video-inspector database export --format json --output results.json
+
+    \b
+    # Export specific scan to CSV
+    corrupt-video-inspector database export --scan-id 123 --format csv --output scan-123.csv
+
+    \b
+    # Export only corrupt files to YAML
+    corrupt-video-inspector database export --corrupt-only --format yaml --output corrupt.yaml
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Import database components
+        from src.database.models import DatabaseQueryFilter
+        from src.database.service import DatabaseService
+
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        # Get results based on filters
+        if scan_id:
+            results = db_service.get_scan_results(scan_id)
+        else:
+            filter_opts = DatabaseQueryFilter(
+                is_corrupt=True if corrupt_only else None,
+                limit=100000,  # Large limit for export
+            )
+            results = db_service.query_results(filter_opts)
+
+        if not results:
+            click.echo("No results to export.")
+            return
+
+        # Convert to dictionaries
+        data = [result.model_dump() for result in results]
+
+        # Format output
+        if output_format == "json":
+            import json
+
+            output_str = json.dumps(data, indent=2)
+        elif output_format == "csv":
+            import csv as csv_module
+            import io
+
+            output_io = io.StringIO()
+            if data:
+                writer = csv_module.DictWriter(output_io, fieldnames=data[0].keys())
+                writer.writeheader()
+                for row in data:
+                    writer.writerow(row)
+            output_str = output_io.getvalue()
+        elif output_format == "yaml":
+            import yaml
+
+            output_str = yaml.dump(data, default_flow_style=False, sort_keys=False)
+
+        # Write to file or stdout
+        if output:
+            output.write_text(output_str, encoding="utf-8")
+            click.echo(f"Exported {len(results)} results to {output}")
+        else:
+            click.echo(output_str)
+
+    except Exception as e:
+        logger.exception("Database export failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     cli()
