@@ -170,7 +170,7 @@ feat: create lint-error agent  # Wrong - agents are docs
   - Updates labels (`triage:agent-pending` → `triage:agent-processed`)
 
 **Agent & Skill Resources:**
-- **Issue Creation Agent**: `.github/agents/issue-creation-agent.md`
+- **Issue Creation Agent**: `.github/agents/issue-creation.agent.md`
 - **Issue Creation Skill**: `.github/skills/issue-creation/SKILL.md`
 
 ### Code Quality Standards
