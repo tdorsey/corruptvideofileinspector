@@ -316,3 +316,105 @@ corrupt-video-inspector report --scan-id 42 --format csv > report.csv
 **Tests**: Not yet written (integration tests pending in REQ-6)
 
 **Next Work Item**: REQ-5 - Trakt Integration with Database (MEDIUM priority)
+
+---
+
+## Iteration 7 - 2026-01-21
+
+**Work Item**: REQ-5 - Trakt Integration with Database
+
+**Status**: ✅ COMPLETED
+
+**Branch**: task/req-5-trakt-integration
+
+**Commit**: 8186a39
+
+**Changes**:
+
+CLI Commands (src/cli/commands.py): +18 lines, -2 lines (net: +16 lines)
+
+**Enhanced trakt sync Command**:
+
+1. **Minimum Confidence Filtering** (NEW)
+   - Option: --min-confidence (0.0-1.0)
+   - Filter files by confidence level threshold
+   - Works with status filtering for precise selection
+   - Example: `trakt sync --min-confidence 0.8`
+
+2. **Database-Aware Implementation**
+   - Already supported --scan-id (use latest if not specified)
+   - Already supported --include-status filtering
+   - Added confidence threshold filtering
+   - Displays count of files matching all filters
+
+CLI Handlers (src/cli/handlers.py): +113 lines, -13 lines (net: +100 lines)
+
+**Complete Implementation of sync_to_watchlist_from_results()**:
+
+1. **Filename Parsing**
+   - Uses MediaParser.parse_filename() from watchlist module
+   - Extracts movie/show title, year, season/episode
+   - Handles parsing errors gracefully with warnings
+   - Continues with remaining files on parse failure
+
+2. **Trakt API Integration**
+   - Initializes TraktAPI with app config
+   - Searches for movies and shows using parsed metadata
+   - Adds found items to Trakt watchlist
+   - Proper error handling per item
+
+3. **Sync Statistics**
+   - Tracks movies_added, shows_added, failed counts
+   - Builds detailed results list with status per file
+   - Reports: added, not_found, failed, error
+   - Includes original filename for reference
+
+4. **Result Structure**
+   - Returns TraktSyncResult Pydantic model
+   - Contains summary counts and detailed item results
+   - Each result includes: title, year, type, status, filename
+   - Trakt IDs included for successful additions
+
+**Acceptance Criteria Verified**:
+✅ Read healthy files from database scan (via get_scan_results)
+✅ Support filtering by scan ID (--scan-id option)
+✅ Support filtering by confidence (--min-confidence option)
+✅ Support filtering by status (--include-status option)
+✅ Report sync statistics (movies added, shows added, failed)
+✅ Track operations with detailed results list
+✅ Optional watchlist parameter supported
+
+**Impact**:
+- Complete Trakt integration with database-backed scans
+- Smart filtering by scan ID, status, and confidence
+- Robust filename parsing and matching
+- Comprehensive sync statistics and error tracking
+- +131 lines, -15 lines (net: +116 lines)
+
+**Example Usage**:
+```bash
+# Sync latest scan (healthy files only, default)
+corrupt-video-inspector trakt sync
+
+# Sync specific scan with confidence threshold
+corrupt-video-inspector trakt sync --scan-id 42 --min-confidence 0.8
+
+# Dry run to preview what would be synced
+corrupt-video-inspector trakt sync --dry-run
+
+# Sync to custom watchlist
+corrupt-video-inspector trakt sync --watchlist "my-list"
+
+# Include suspicious files too
+corrupt-video-inspector trakt sync --include-status healthy --include-status suspicious
+```
+
+**Database Methods Used**:
+- `get_scan()` - retrieve specific scan by ID
+- `get_recent_scans()` - get latest scan when no ID specified
+- `get_scan_results()` - retrieve all results for a scan
+- Filtering done in-memory after retrieval
+
+**Tests**: Not yet written (integration tests pending in REQ-6)
+
+**Next Work Item**: REQ-6 - Comprehensive Integration Tests (HIGH priority)

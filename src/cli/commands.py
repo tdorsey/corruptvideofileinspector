@@ -406,6 +406,11 @@ def trakt(ctx):
     help="Include files with these statuses (default: healthy only)",
     show_default=True,
 )
+@click.option(
+    "--min-confidence",
+    type=click.FloatRange(0.0, 1.0),
+    help="Minimum confidence level (0.0-1.0) for files to include",
+)
 @global_options
 @click.pass_context
 def sync(
@@ -416,6 +421,7 @@ def sync(
     dry_run,
     watchlist,
     include_status,
+    min_confidence,
     config,
 ):
     """
@@ -442,6 +448,10 @@ def sync(
     \b
     # Dry run to see what would be synced
     corrupt-video-inspector trakt sync --dry-run
+    
+    \b
+    # Sync with minimum confidence threshold
+    corrupt-video-inspector trakt sync --min-confidence 0.8
     """
     try:
         # Load configuration
@@ -486,8 +496,16 @@ def sync(
             for result in scan_results_db
             if FileStatus(result.status.upper()) in include_statuses
         ]
+        
+        # Filter by confidence if specified
+        if min_confidence is not None:
+            filtered_results = [
+                result
+                for result in filtered_results
+                if result.confidence >= min_confidence
+            ]
 
-        click.echo(f"Found {len(filtered_results)} files matching status filter")
+        click.echo(f"Found {len(filtered_results)} files matching filters")
 
         # Handle dry-run mode
         if dry_run:
