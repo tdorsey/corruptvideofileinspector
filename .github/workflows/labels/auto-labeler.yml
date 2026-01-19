@@ -1,0 +1,24 @@
+name: 🏷️ Auto Label Issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  label-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Auto label issues
+        uses: github/issue-labeler@v3.4
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-path: .github/labels.yml
+          include-title: false
+          enable-versioned-regex: true
