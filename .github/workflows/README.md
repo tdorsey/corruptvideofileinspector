@@ -189,7 +189,7 @@ Automatically triages and formats issues submitted via the Quick Capture templat
 
 **Related Resources:**
 - Quick Capture Template: `.github/ISSUE_TEMPLATE/00-quick-capture.yml`
-- Issue Creation Agent: `.github/agents/issue-creation-agent.md`
+- Issue Creation Agent: `.github/agents/issue-creation.agent.md`
 - Issue Creation Skill: `.github/skills/issue-creation/SKILL.md`
 
 ### `pr-conflict-resolution.yml` - PR Conflict Resolution Agent
@@ -204,7 +204,7 @@ resolution agent for targeted fixes.
 - Removes the conflict label once the PR is mergeable
 
 **Related Resources:**
-- PR Conflict Resolution Agent: `.github/agents/pr-conflict-resolution-agent.md`
+- PR Conflict Resolution Agent: `.github/agents/pr-conflict-resolution.agent.md`
 - PR Conflict Resolution Skill: `.github/skills/pr-conflict-resolution/SKILL.md`
 
 ### `issue-form-labeler.yml` - Issue Form Auto-Labeler
