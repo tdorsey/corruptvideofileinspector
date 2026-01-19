@@ -32,3 +32,33 @@ Each iteration entry will include:
   7. Repeat
 
 **Next**: Continue with prd.json work items using this workflow
+
+---
+
+## Iteration 2 - 2026-01-19
+
+**Work Item**: REQ-1.1 - Update Scanner to Return Detailed Results
+
+**Status**: ✅ COMPLETED
+
+**Branch**: task/req-1.1-scanner-detailed-results → feature/complete-sqlite-integration
+
+**Commit**: 817dd4d
+
+**Changes**:
+- Modified `VideoScanner.scan_directory()` to return `tuple[ScanSummary, list[ScanResult]]`
+- Replaced direct FFmpeg subprocess calls with FFmpegClient methods
+- Track individual ScanResult objects for each scanned file during scan
+- Updated all callers: handlers.py, api/main.py, __init__.py
+- Updated _store_scan_results to accept individual results parameter
+- Removed unused subprocess import
+
+**Impact**:
+- Foundation established for database storage of individual scan results
+- Better code organization using FFmpegClient abstraction
+- API can now return detailed per-file scan results
+- -126 lines, +53 lines (net: -73 lines)
+
+**Tests**: Not yet written (database integration tests pending)
+
+**Next Work Item**: REQ-1 - Complete Scan-to-Database Integration (CRITICAL priority)
