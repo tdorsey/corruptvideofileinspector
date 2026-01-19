@@ -62,3 +62,43 @@ Each iteration entry will include:
 **Tests**: Not yet written (database integration tests pending)
 
 **Next Work Item**: REQ-1 - Complete Scan-to-Database Integration (CRITICAL priority)
+
+---
+
+## Iteration 3 - 2026-01-19
+
+**Work Item**: REQ-1 - Complete Scan-to-Database Integration
+
+**Status**: ✅ COMPLETED
+
+**Branch**: task/req-1-scan-database-integration → feature/complete-sqlite-integration
+
+**Commit**: 90a5ac5
+
+**Changes**:
+- Added `get_recent_scan_for_directory()` to DatabaseService for duplicate detection
+- Added `_check_duplicate_scan()` to ScanHandler to warn about recent scans
+- Improved error handling in `_store_scan_results()`
+  * Non-fatal errors: warns user but doesn't crash
+  * Returns -1 on storage failure instead of raising exception
+- Duplicate scan warning displays:
+  * Minutes since last scan
+  * Previous scan details (ID, mode, corruption stats)
+  * User-friendly formatting with click.echo()
+
+**Acceptance Criteria Verified**:
+✅ All scan operations store results in database automatically (via run_scan)
+✅ Both directory and file scans persist results (handlers + API)
+✅ Scan summary and individual results stored atomically (OutputFormatter)
+✅ Failed scans logged without corrupting database (try-except with logging)
+✅ Duplicate scan prevention implemented (warns if scanned within last hour)
+
+**Impact**:
+- Robust database integration with comprehensive error handling
+- Users warned about potentially redundant scans
+- Database corruption prevented even on storage failures
+- +104 lines, -2 lines (net: +102 lines)
+
+**Tests**: Not yet written (integration tests pending in REQ-6)
+
+**Next Work Item**: REQ-2 - Implement Incremental Scanning (HIGH priority)
