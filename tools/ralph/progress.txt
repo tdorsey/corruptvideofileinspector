@@ -165,3 +165,73 @@ corrupt-video-inspector scan /media/videos --incremental --max-age 14
 **Tests**: Not yet written (integration tests pending in REQ-6)
 
 **Next Work Item**: REQ-3 - Complete Database CLI Commands (HIGH priority)
+
+---
+
+## Iteration 5 - 2026-01-19
+
+**Work Item**: REQ-3 - Complete Database CLI Commands
+
+**Status**: ✅ COMPLETED
+
+**Branch**: task/req-3-database-cli-commands → feature/complete-sqlite-integration
+
+**Commit**: e0de60c
+
+**Changes**:
+
+CLI Commands (src/cli/commands.py): +263 lines
+
+**New Commands Implemented**:
+
+1. **list-scans** - List recent scans from database
+   - Options: --limit (default: 20), --directory filter
+   - Table output: ID, Directory, Started, Files, Corrupt, Mode, Time
+   - Reverse chronological order
+   - Directory truncation for readability
+
+2. **restore** - Restore database from backup
+   - Options: --input (required), --force
+   - Confirmation prompt (unless --force)
+   - Auto-backup current database before restore
+   - Validation after restore with stats display
+
+3. **export** - Export scan results to various formats
+   - Options: --scan-id, --format (csv/json/yaml), --output, --corrupt-only
+   - Supports stdout or file output
+   - Large limit (100k) for complete exports
+   - Format-specific serialization
+
+**Reused Existing Commands**:
+- **query** - Already existed (comprehensive filtering)
+- **stats** - Already existed (database statistics)
+- **cleanup** - Already existed (--days, --dry-run)
+- **backup** - Already existed (--backup-path)
+
+**Acceptance Criteria Verified**:
+✅ list-scans shows recent scans with summary info
+✅ cleanup with --dry-run and --days options works
+✅ backup creates database copies
+✅ restore with confirmation and validation
+✅ export supports csv/json/yaml formats
+✅ All commands use consistent error handling
+✅ Foreign key constraints respected
+
+**Impact**:
+- Complete database management CLI suite
+- 5 commands total (3 new + 2 existing)
+- Export functionality for external analysis
+- Backup/restore for data protection
+- User-friendly table formats
+- +263 lines
+
+**Database Methods Used**:
+- `get_recent_scans()` - for list-scans
+- `get_scan_results()` - for export by scan-id
+- `query_results()` - for export with filters
+- `backup_database()` - for backup command
+- `get_database_stats()` - for restore validation
+
+**Tests**: Not yet written (integration tests pending in REQ-6)
+
+**Next Work Item**: REQ-4 - Report Generation from Database (MEDIUM priority)
