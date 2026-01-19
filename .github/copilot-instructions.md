@@ -118,6 +118,53 @@ Ralph is an autonomous development tool integrated into this repository that hel
 
 See the [Ralph Copilot Guide](../tools/ralph/COPILOT_GUIDE.md) for detailed usage examples and best practices.
 
+## When to Invoke Specialized Agents
+
+GitHub Copilot provides specialized agents for specific tasks. Use these when you need focused expertise:
+
+### Quick Selection Guide
+
+**Need to...**
+- **Fix linting/formatting errors** → `@lint-error` agent
+- **Debug failing CI workflows** → `@github-actions-troubleshooter` agent  
+- **Resolve merge conflicts** → `@pr-conflict-resolution` agent
+- **Review code for security** → `@security-reviewer` agent
+- **Create comprehensive tests** → `@test` agent
+- **Refactor code** → `@refactoring` agent
+- **Design architecture** → `@architecture-designer` agent
+- **Plan implementation** → `@implementation-planner` agent
+- **Create features** → `@feature-creator` agent
+- **Review pull requests** → `@code-reviewer` agent
+- **Create/triage issues** → `@issue-creation` agent
+
+### How to Invoke Agents
+
+**Mention the agent in your message:**
+```
+@lint-error Please fix the ruff errors in src/scanner.py
+```
+
+**Or use workspace with agent context:**
+```
+@workspace Review the security of the authentication module using @security-reviewer
+```
+
+### When NOT to Use Agents
+
+Use regular Copilot Chat (not specialized agents) for:
+- Simple code completion
+- Explaining existing code
+- Quick syntax questions
+- General development questions
+
+**Rule of thumb**: Use agents for complete tasks, regular Copilot for quick help.
+
+### Agent Details
+
+For complete agent capabilities, see:
+- **[Agent System README](agents/README.md)** - Overview of all agents
+- **[Agent Personas](agents/personas/)** - Individual agent capabilities
+
 ## Development Standards and Requirements
 
 ### Commit Standards (REQUIRED)
