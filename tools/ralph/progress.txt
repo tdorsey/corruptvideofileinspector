@@ -564,3 +564,177 @@ pytest tests/integration/test_database_integration.py --cov=src/database --cov-r
 ```
 
 **Next Work Item**: REQ-7 - Documentation Updates (MEDIUM priority)
+
+---
+
+## Iteration 9 - 2026-01-21
+
+**Work Item**: REQ-7 - Documentation Updates
+
+**Status**: ✅ COMPLETED
+
+**Branch**: task/req-7-documentation-updates
+
+**Commit**: 72eb7a8
+
+**Changes**:
+
+Updated all project documentation to reflect the new SQLite database features implemented in REQ-1 through REQ-6.
+
+**Documentation Files Updated**: (5 files, +1,252 lines, -73 lines)
+
+1. **docs/DATABASE.md** (+218 lines)
+   - Added comprehensive incremental scanning section
+     * How it works (4-step process)
+     * Usage examples with different time windows
+     * Performance benefits (50-90% time reduction)
+     * When to use vs. when not to use guidance
+   - Added complete CLI command reference section
+     * query: Search and filter with all options documented
+     * stats: Database statistics display
+     * list-scans: Recent scans table with filters
+     * cleanup: Old scan removal with dry-run
+     * backup: Database backup creation
+     * restore: Restore from backup with safety features
+     * export: Export to JSON/CSV/YAML formats
+   - All commands include usage examples, options, and features
+
+2. **docs/CLI.md** (+368 lines)
+   - Reorganized with clear command groups
+   - **Scan Commands**: 
+     * Documented --incremental and --max-age options
+     * All scan modes (quick, deep, hybrid)
+     * Database integration notes
+   - **Report Commands**:
+     * Single scan reports (latest or by ID)
+     * Comparison reports (--compare)
+     * Trend analysis (--trend with --directory and --days)
+     * Multiple output formats
+   - **Database Commands**:
+     * Complete documentation for all 7 database commands
+     * Usage examples for each command
+     * Options and features clearly listed
+   - **Trakt Commands**:
+     * Database-aware sync command
+     * Filtering options (--min-confidence, --include-status)
+     * Sync statistics tracking
+   - **Configuration Commands**:
+     * init-config and validate-config documented
+
+3. **README.md** (+72 lines)
+   - Expanded Quick Start section
+     * Incremental scanning example
+     * Database management commands
+     * Report generation (latest, specific, compare, trend)
+     * Query and export examples
+   - Enhanced Database Storage section
+     * 11 key features bulleted with descriptions
+     * 7 quick example commands
+     * Performance highlights (50-90% faster)
+     * Reference to DATABASE_MIGRATION.md guide
+
+4. **docs/CONTRIBUTING.md** (+186 lines)
+   - Added comprehensive Database Testing Guidelines section
+     * 9 testing best practices with code examples
+     * Use temporary databases (fixture example)
+     * Test database integration (end-to-end)
+     * Test error handling
+     * Test query methods with filters
+     * Test data integrity and foreign keys
+     * Test cleanup operations
+     * Reference to 8 integration tests
+     * Performance testing guidance
+     * Pytest fixture examples
+   - Documented test execution commands
+   - Listed all tests in test_database_integration.py
+
+5. **docs/DATABASE_MIGRATION.md** (NEW FILE, +478 lines)
+   - Complete migration guide from file-based to database storage
+   - **Overview**: What changed (before/after comparison)
+   - **Migration Steps**:
+     * New workflow examples
+     * Database location and customization
+     * Two options for migrating existing files (re-run or import)
+     * Python script for importing old JSON files
+     * Script and automation updates
+   - **New Features to Leverage**:
+     * Incremental scanning
+     * Historical comparisons
+     * Trend analysis
+     * Advanced queries
+   - **Backward Compatibility**:
+     * Configuration file compatibility
+     * API migration examples
+   - **Performance Considerations**:
+     * Database size management
+     * Automatic cleanup configuration
+     * Fast storage recommendations
+     * Backup strategy
+   - **Troubleshooting**: 8 common problems with solutions
+   - **Docker Usage**: Volume mapping and backup in containers
+   - **FAQ**: 9 frequently asked questions
+   - **Migration Checklist**: 10-step checklist
+
+**Acceptance Criteria Met**:
+✅ Updated docs/DATABASE.md with incremental scanning section
+✅ Updated docs/DATABASE.md with complete CLI command reference
+✅ Updated docs/CLI.md with all database commands documented
+✅ Updated docs/CLI.md with extensive usage examples
+✅ Updated README.md with database examples in Quick Start
+✅ Updated README.md highlighting new database features
+✅ Updated docs/CONTRIBUTING.md with database testing guidelines
+✅ Updated docs/CONTRIBUTING.md referencing integration tests
+✅ Created docs/DATABASE_MIGRATION.md with migration guide
+✅ Created docs/DATABASE_MIGRATION.md with backward compatibility notes
+✅ Created docs/DATABASE_MIGRATION.md with performance considerations
+✅ Created docs/DATABASE_MIGRATION.md with troubleshooting guide
+
+**Documentation Coverage**:
+
+All features from REQ-1 through REQ-6 are now fully documented:
+
+- **REQ-1** (Scan-to-Database Integration): Automatic storage documented in CLI.md and DATABASE.md
+- **REQ-2** (Incremental Scanning): Comprehensive section in DATABASE.md, examples in README.md
+- **REQ-3** (Database CLI Commands): All 7 commands documented with examples in CLI.md and DATABASE.md
+- **REQ-4** (Report Generation): Single/compare/trend reports documented in CLI.md
+- **REQ-5** (Trakt Integration): Database-aware sync documented in CLI.md
+- **REQ-6** (Testing): Complete testing guidelines in CONTRIBUTING.md
+
+**Documentation Style**:
+- Clear, concise language throughout
+- Practical examples for all commands
+- Command-line snippets in code blocks
+- Consistent markdown formatting
+- Extensive cross-references between docs
+
+**Impact**:
+- Complete documentation suite for SQLite integration
+- Users have clear migration path from file-based storage
+- Database features are easily discoverable
+- Testing practices clearly documented for contributors
+- +1,252 lines of comprehensive documentation
+- Professional, user-friendly documentation
+
+**Example Documentation Highlights**:
+
+```bash
+# Incremental scanning (from DATABASE.md)
+corrupt-video-inspector scan /media/videos --incremental --max-age 14
+
+# Comparison reports (from CLI.md)
+corrupt-video-inspector report --compare 41 42
+
+# Advanced queries (from README.md)
+corrupt-video-inspector database query --corrupt --min-confidence 0.8
+```
+
+**Testing Impact**:
+Database testing guidelines provide clear patterns for contributors to test database features properly, ensuring future code quality.
+
+**User Experience**:
+- Migration guide reduces friction for existing users
+- Feature documentation enables users to leverage new capabilities
+- Troubleshooting section helps users solve problems independently
+- FAQ addresses common questions proactively
+
+**Next Work Item**: REQ-8 - Configuration Enhancements (LOW priority) - OR - All requirements complete, ready for final integration and release!
