@@ -161,10 +161,20 @@ class ScanHandler(BaseHandler):
         scan_mode: ScanMode,
         recursive: bool = True,
         resume: bool = True,
+        incremental: bool = False,
+        max_age_days: int = 7,
     ) -> ScanSummary | None:
         """
         Run a video corruption scan and return ScanSummary or None.
         Results are stored in the database.
+
+        Args:
+            directory: Directory to scan
+            scan_mode: Scan mode to use
+            recursive: Whether to scan subdirectories
+            resume: Whether to resume from previous scan
+            incremental: Whether to skip recently scanned healthy files
+            max_age_days: Maximum age in days for incremental scans
         """
         try:
             # Check for recent scans of the same directory
@@ -175,6 +185,7 @@ class ScanHandler(BaseHandler):
                 logger.info("No video files found to scan.")
                 return None
             logger.info(f"Found {len(video_files)} video files to scan.")
+            
             summary, scan_results = self.scanner.scan_directory(
                 directory=directory,
                 scan_mode=scan_mode,
@@ -183,6 +194,8 @@ class ScanHandler(BaseHandler):
                 progress_callback=(
                     self._progress_callback if self.config.logging.level != "QUIET" else None
                 ),
+                incremental=incremental,
+                max_age_days=max_age_days,
             )
             # Store results in database
             self._store_scan_results(summary=summary, results=scan_results)
