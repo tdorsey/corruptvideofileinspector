@@ -12,7 +12,7 @@ The repository currently:
 - Uses GitHub Actions CI/CD that calls Make targets
 
 ## Requirements
-Per issue #[number], we need to:
+Per issue #319, we need to:
 1. Install and configure AWS Nx plugin for Python support (https://awslabs.github.io/nx-plugin-for-aws/)
 2. Configure Python executors for standard targets (lint, test, format, type)
 3. Update agents and workflows to use `nx` commands instead of Python tool commands
