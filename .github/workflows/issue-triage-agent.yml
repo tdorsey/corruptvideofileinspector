@@ -30,71 +30,8 @@ jobs:
         with:
           script: |
             const issue = context.payload.issue;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
             const originalBody = issue.body || '';
             const issueTitle = issue.title || '';
-            const marker = '<!-- triage-preservation -->';
-            
-            // Post comment with original content for data preservation
-            const preservationComment = [
-              marker,
-              '## 📋 Original Issue Content (Preserved)',
-              '',
-              '> This comment preserves the original issue content before agent processing.',
-              '> If any context was lost during formatting, refer to this archive.',
-              '',
-              '---',
-              '',
-              originalBody,
-              '',
-              '---',
-              '',
-              '*Archived by Issue Triage Agent*'
-            ].join('\n');
-            
-            const { data: comments } = await github.rest.issues.listComments({
-              owner,
-              repo,
-              issue_number: issue.number,
-              per_page: 100
-            });
-            
-            const existingComment = comments.find(comment =>
-              comment.body &&
-              (comment.body.includes(marker) || comment.body.includes('## 📋 Original Issue Content (Preserved)'))
-            );
-            let preservationCommentData = existingComment || null;
-            
-            if (!existingComment) {
-              const { data: createdComment } = await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: issue.number,
-                body: preservationComment
-              });
-              preservationCommentData = createdComment;
-            }
-            
-            const minimizeComment = async (nodeId) => {
-              if (!nodeId) {
-                return;
-              }
-              try {
-                await github.graphql(
-                  `mutation($subjectId:ID!, $classifier:ReportedContentClassifiers!) {
-                    minimizeComment(input:{subjectId:$subjectId, classifier:$classifier}) {
-                      minimizedComment { isMinimized }
-                    }
-                  }`,
-                  { subjectId: nodeId, classifier: 'OUTDATED' }
-                );
-              } catch (error) {
-                console.log('Unable to minimize preservation comment:', error.message);
-              }
-            };
-            
-            await minimizeComment(preservationCommentData?.node_id);
             
             // Store original body and title for next steps using environment files
             // This is more secure than using step outputs for user-provided content
@@ -441,6 +378,7 @@ jobs:
       - name: Post Metadata Comment
         uses: actions/github-script@v7
         env:
+          ORIGINAL_BODY: ${{ env.ORIGINAL_BODY }}
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
           CONFIDENCE: ${{ env.CONFIDENCE }}
           GAPS: ${{ env.GAPS }}
@@ -451,11 +389,13 @@ jobs:
             const issue = context.payload.issue;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+            const originalBody = process.env.ORIGINAL_BODY || '';
             const issueType = process.env.ISSUE_TYPE || 'task';
             const confidence = process.env.CONFIDENCE || '50';
             const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
             const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
-            const marker = '<!-- triage-metadata -->';
+            const marker = '<!-- triage-summary -->';
+            const mention = issue.user?.login ? `@${issue.user.login}` : 'the submitter';
             
             // Parse gaps safely
             let gaps = [];
@@ -471,9 +411,17 @@ jobs:
               ? gaps.map(g => `- ${g}`).join('\n')
               : '- None identified';
             
+            const questionSection = gaps.length > 0
+              ? [`Questions for ${mention}:`, '', gapsList]
+              : ['No open questions at this time.'];
+            
+            const originalContent = originalBody.trim().length > 0
+              ? originalBody
+              : '_No original content provided._';
+            
             const metadataComment = [
               marker,
-              '## 🤖 Agent Processing Metadata',
+              '## 🤖 Issue Triage Summary',
               '',
               '| Metric | Value |',
               '|--------|-------|',
@@ -483,16 +431,35 @@ jobs:
               '| **Detected Stakeholder** | ' + detectedStakeholder + ' |',
               '| **Processing Time** | ' + new Date().toISOString() + ' |',
               '',
+              '<details>',
+              '<summary>Original Issue Content</summary>',
+              '',
+              originalContent,
+              '',
+              '</details>',
+              '',
+              '<details>',
+              '<summary>Gap Analysis</summary>',
+              '',
               '### Gap Analysis',
               '',
               'The following information was not found in the original submission:',
               '',
               gapsList,
               '',
+              '</details>',
+              '',
+              '<details>',
+              '<summary>Question History</summary>',
+              '',
+              ...questionSection,
+              '',
+              '</details>',
+              '',
               '---',
               '',
               '> **Note**: This issue was automatically formatted by the Issue Triage Agent.',
-              '> The original content has been preserved in a separate comment above.',
+              '> The original content and history are preserved in the folded sections above.',
               '> Component and stakeholder information have been applied as labels.',
               '> Please review and update any missing sections as needed.'
             ].join('\n');
@@ -506,7 +473,9 @@ jobs:
             
             const existingComment = comments.find(comment =>
               comment.body &&
-              (comment.body.includes(marker) || comment.body.includes('## 🤖 Agent Processing Metadata'))
+              (comment.body.includes(marker) ||
+                comment.body.includes('## 🤖 Issue Triage Summary') ||
+                comment.body.includes('## 🤖 Agent Processing Metadata'))
             );
             let metadataCommentData = null;
             
@@ -528,118 +497,31 @@ jobs:
               metadataCommentData = createdComment;
             }
             
-            const minimizeComment = async (nodeId) => {
-              if (!nodeId) {
-                return;
+            const cleanupMarkers = [
+              '<!-- triage-preservation -->',
+              '## 📋 Original Issue Content (Preserved)',
+              '<!-- triage-question-history -->',
+              '## ❓ Triage Questions (History)',
+              '<!-- triage-metadata -->'
+            ];
+            
+            for (const comment of comments) {
+              if (!comment.body || comment.id === metadataCommentData?.id) {
+                continue;
               }
-              try {
-                await github.graphql(
-                  `mutation($subjectId:ID!, $classifier:ReportedContentClassifiers!) {
-                    minimizeComment(input:{subjectId:$subjectId, classifier:$classifier}) {
-                      minimizedComment { isMinimized }
-                    }
-                  }`,
-                  { subjectId: nodeId, classifier: 'OUTDATED' }
-                );
-              } catch (error) {
-                console.log('Unable to minimize metadata comment:', error.message);
-              }
-            };
-            
-            await minimizeComment(metadataCommentData?.node_id);
-      
-      - name: Update Triage Question History
-        uses: actions/github-script@v7
-        env:
-          GAPS: ${{ env.GAPS }}
-        with:
-          script: |
-            const issue = context.payload.issue;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const mention = issue.user?.login ? `@${issue.user.login}` : 'the submitter';
-            const marker = '<!-- triage-question-history -->';
-            
-            let gaps = [];
-            try {
-              gaps = JSON.parse(process.env.GAPS || '[]');
-            } catch (e) {
-              console.log('Failed to parse gaps for question history, using empty array');
-              gaps = [];
-            }
-            
-            const { data: comments } = await github.rest.issues.listComments({
-              owner,
-              repo,
-              issue_number: issue.number,
-              per_page: 100
-            });
-            
-            const existingComment = comments.find(comment => comment.body && comment.body.includes(marker));
-            
-            if (gaps.length === 0) {
-              if (existingComment) {
+              if (cleanupMarkers.some(token => comment.body.includes(token))) {
                 try {
                   await github.rest.issues.deleteComment({
                     owner,
                     repo,
-                    comment_id: existingComment.id
+                    comment_id: comment.id
                   });
                 } catch (error) {
-                  console.log('Unable to delete question history comment:', error.message);
+                  console.log('Unable to delete legacy triage comment:', error.message);
                 }
               }
-              return;
             }
-            
-            const gapsList = gaps.map(gap => `- ${gap}`).join('\n');
-            const questionBody = [
-              marker,
-              '## ❓ Triage Questions (History)',
-              '',
-              `Questions for ${mention}:`,
-              '',
-              gapsList,
-              '',
-              `*Updated: ${new Date().toISOString()}*`
-            ].join('\n');
-            
-            let commentNodeId = null;
-            if (existingComment) {
-              const { data: updatedComment } = await github.rest.issues.updateComment({
-                owner,
-                repo,
-                comment_id: existingComment.id,
-                body: questionBody
-              });
-              commentNodeId = updatedComment.node_id;
-            } else {
-              const { data: createdComment } = await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: issue.number,
-                body: questionBody
-              });
-              commentNodeId = createdComment.node_id;
-            }
-            
-            if (!commentNodeId) {
-              return;
-            }
-            
-            try {
-              await github.graphql(
-                `mutation($subjectId:ID!, $classifier:ReportedContentClassifiers!) {
-                  minimizeComment(input:{subjectId:$subjectId, classifier:$classifier}) {
-                    minimizedComment { isMinimized }
-                  }
-                }`,
-                { subjectId: commentNodeId, classifier: 'OUTDATED' }
-              );
-            } catch (error) {
-              console.log('Unable to minimize question history comment:', error.message);
-            }
-
+      
       - name: Update Labels
         uses: actions/github-script@v7
         env:

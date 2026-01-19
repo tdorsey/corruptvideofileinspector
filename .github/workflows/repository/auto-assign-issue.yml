@@ -22,24 +22,6 @@ jobs:
             const repo = context.repo.repo;
             const commentMarker = '<!-- auto-assign-comment -->';
             
-            const minimizeComment = async (nodeId) => {
-              if (!nodeId) {
-                return;
-              }
-              try {
-                await github.graphql(
-                  `mutation($subjectId:ID!, $classifier:ReportedContentClassifiers!) {
-                    minimizeComment(input:{subjectId:$subjectId, classifier:$classifier}) {
-                      minimizedComment { isMinimized }
-                    }
-                  }`,
-                  { subjectId: nodeId, classifier: 'OUTDATED' }
-                );
-              } catch (error) {
-                console.log('Unable to minimize assignment comment:', error.message);
-              }
-            };
-            
             const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
@@ -70,6 +52,9 @@ jobs:
                 commentMarker,
                 '🤖 **Issue Assigned to Copilot**',
                 '',
+                '<details>',
+                '<summary>What happens next</summary>',
+                '',
                 'Thank you for opening this issue! This has been automatically assigned to @copilot for review and assistance.',
                 '',
                 '## Next Steps',
@@ -77,11 +62,13 @@ jobs:
                 '- If you\'d like to work on this yourself, feel free to comment and request assignment',
                 `- Follow the [development guidelines](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/.github/copilot-instructions.md) when contributing`,
                 '',
-                'Happy coding! 🚀'
+                'Happy coding! 🚀',
+                '',
+                '</details>'
               ].join('\n');
 
               if (existingComment) {
-                await minimizeComment(existingComment.node_id);
+                console.log('Assignment comment already exists; skipping create.');
               } else {
                 const { data: welcomeCommentData } = await github.rest.issues.createComment({
                   issue_number: issueNumber,
@@ -89,8 +76,6 @@ jobs:
                   repo,
                   body: welcomeComment
                 });
-                
-                await minimizeComment(welcomeCommentData.node_id);
               }
               
               console.log(`✅ Posted welcome comment on issue #${issueNumber}`);
@@ -104,15 +89,20 @@ jobs:
                   commentMarker,
                   '⚠️ **Auto-assignment Notice**',
                   '',
+                  '<details>',
+                  '<summary>Assignment details</summary>',
+                  '',
                   'There was an issue with automatic assignment, but this issue has been logged for review.',
                   '',
                   'A maintainer will review this issue and assign it appropriately.',
                   '',
-                  'Thank you for your contribution! 🙏'
+                  'Thank you for your contribution! 🙏',
+                  '',
+                  '</details>'
                 ].join('\n');
 
                 if (existingComment) {
-                  await minimizeComment(existingComment.node_id);
+                  console.log('Assignment comment already exists; skipping create.');
                 } else {
                   const { data: fallbackCommentData } = await github.rest.issues.createComment({
                     issue_number: issueNumber,
@@ -120,8 +110,6 @@ jobs:
                     repo,
                     body: fallbackComment
                   });
-                  
-                  await minimizeComment(fallbackCommentData.node_id);
                 }
                 
                 console.log(`✅ Posted fallback comment on issue #${issueNumber}`);
