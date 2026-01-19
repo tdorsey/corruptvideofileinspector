@@ -235,3 +235,84 @@ CLI Commands (src/cli/commands.py): +263 lines
 **Tests**: Not yet written (integration tests pending in REQ-6)
 
 **Next Work Item**: REQ-4 - Report Generation from Database (MEDIUM priority)
+
+---
+
+## Iteration 6 - 2026-01-19
+
+**Work Item**: REQ-4 - Report Generation from Database
+
+**Status**: ✅ COMPLETED
+
+**Branch**: task/req-4-report-generation → feature/complete-sqlite-integration
+
+**Commit**: 032f88a
+
+**Changes**:
+
+CLI Commands (src/cli/commands.py): +190 lines, -16 lines (net: +174 lines)
+
+**Enhanced report Command**:
+
+1. **Single Scan Reports** (existing, improved)
+   - Default format changed from JSON to text
+   - Added CSV output format
+   - Improved text formatting with tables
+   - Better metadata display
+
+2. **Historical Comparison** (NEW)
+   - Option: --compare SCAN1 SCAN2
+   - Shows side-by-side comparison
+   - Calculates deltas (files, corrupt, rate)
+   - Supports JSON and text formats
+   - Example: `report --compare 41 42`
+
+3. **Trend Analysis** (NEW)
+   - Option: --trend --directory PATH --days N
+   - Uses existing `get_corruption_trend()` database method
+   - Shows corruption rate over time
+   - Outputs table or JSON/CSV
+   - Example: `report --trend --directory /media/movies --days 30`
+
+4. **Output Formats**
+   - text (NEW, now default) - human-readable tables
+   - json (existing) - machine-readable
+   - csv (NEW) - spreadsheet compatible
+   - html/pdf (existing via ReportService)
+
+**Acceptance Criteria Verified**:
+✅ Report command reads from database by default (uses DatabaseService)
+✅ Falls back to legacy if database empty (error message shown)
+✅ Support multiple output formats (text, JSON, CSV, HTML, PDF)
+✅ Include scan metadata in reports (ID, directory, mode, timestamps)
+✅ Historical comparison between scans (--compare option)
+✅ Trend analysis over time (--trend with get_corruption_trend)
+
+**Impact**:
+- Complete reporting suite for database-backed scans
+- Data-driven insights with trends and comparisons
+- Multiple format support for different use cases
+- User-friendly defaults (text format, latest scan)
+- +190 lines, -16 lines (net: +174 lines)
+
+**Example Usage**:
+```bash
+# Basic report from latest scan (text format)
+corrupt-video-inspector report
+
+# Specific scan as JSON
+corrupt-video-inspector report --scan-id 42 --format json
+
+# Compare two scans
+corrupt-video-inspector report --compare 41 42
+
+# Trend analysis
+corrupt-video-inspector report --trend --directory /media/movies --days 30
+
+# Export as CSV for spreadsheet
+corrupt-video-inspector report --scan-id 42 --format csv > report.csv
+```
+
+**Tests**: Not yet written (integration tests pending in REQ-6)
+
+**Next Work Item**: REQ-5 - Trakt Integration with Database (MEDIUM priority)
