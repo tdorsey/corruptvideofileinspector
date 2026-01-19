@@ -41,6 +41,53 @@ General instructions and guidance for agents.
 - **issue-creation** - Creating, triaging, and formatting issues
 - **pr-conflict-resolution** - Resolving merge conflicts in pull requests
 
+## How to Invoke Agents
+
+### Using @mentions
+Mention the agent directly in your Copilot Chat message:
+
+```
+@lint-error Fix the ruff errors in src/scanner.py
+
+@test Add unit tests for the database service module
+
+@security-reviewer Review the authentication module for vulnerabilities
+```
+
+### Using @workspace with Agent Context
+For more complex tasks, combine @workspace with an agent:
+
+```
+@workspace Using @feature-creator, implement the video export feature from issue #45
+
+@workspace Have @code-reviewer analyze the changes in PR #123
+```
+
+### Quick Selection Guide
+
+**Need to...**
+- **Fix linting/formatting errors** → `@lint-error`
+- **Debug failing CI workflows** → `@github-actions-troubleshooter`  
+- **Resolve merge conflicts** → `@pr-conflict-resolution`
+- **Review code for security** → `@security-reviewer`
+- **Create comprehensive tests** → `@test`
+- **Refactor code** → `@refactoring`
+- **Design architecture** → `@architecture-designer`
+- **Plan implementation** → `@implementation-planner`
+- **Create features** → `@feature-creator`
+- **Review pull requests** → `@code-reviewer`
+- **Create/triage issues** → `@issue-creation`
+
+### When NOT to Use Agents
+
+Use regular Copilot Chat (not specialized agents) for:
+- Simple code completion
+- Explaining existing code
+- Quick syntax questions
+- General development questions
+
+**Rule of thumb**: Use agents for complete tasks requiring multiple steps, regular Copilot for quick help.
+
 ## Agent Capabilities Matrix
 
 | Agent | Primary Task | Tools | Runs Tests | Creates PRs | Example Use |
