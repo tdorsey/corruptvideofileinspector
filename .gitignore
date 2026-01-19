@@ -79,6 +79,7 @@ ipython_config.py
 
 # Project specific
 output/
+reports/
 *.log
 test-larger/
 *.json

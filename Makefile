@@ -138,7 +138,7 @@ clean:            ## Clean build artifacts
 	rm -rf .pytest_cache/
 	rm -rf .mypy_cache/
 	rm -rf .ruff_cache/
-	rm -f bandit-report.json safety-report.json
+	rm -rf reports/
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
@@ -196,3 +196,29 @@ docker-test:       ## Test Docker image functionality
 
 security-scan:     ## Run security scanning on the codebase
 	@echo "Running security scans..."
+	@mkdir -p reports/security
+	@echo "Running Bandit security linter..."
+	@bandit -r src/ -f json -o reports/security/bandit-report.json; \
+	BANDIT_STATUS=$$?; \
+	if [ $$BANDIT_STATUS -eq 0 ]; then \
+		echo "✅ Bandit completed successfully with no issues."; \
+	elif [ $$BANDIT_STATUS -eq 1 ]; then \
+		echo "⚠️  Bandit found security issues. See reports/security/bandit-report.json for details."; \
+		echo "   Continuing CI for review..."; \
+	else \
+		echo "❌ Bandit failed with exit code $$BANDIT_STATUS. Failing security-scan."; \
+		exit $$BANDIT_STATUS; \
+	fi
+	@echo "Running Safety dependency vulnerability check..."
+	@safety check --output json > reports/security/safety-report.json 2>&1; \
+	SAFETY_STATUS=$$?; \
+	if [ $$SAFETY_STATUS -eq 0 ]; then \
+		echo "✅ Safety completed successfully with no known vulnerabilities."; \
+	elif [ $$SAFETY_STATUS -eq 64 ]; then \
+		echo "⚠️  Safety found dependency vulnerabilities. See reports/security/safety-report.json for details."; \
+		echo "   Continuing CI for review..."; \
+	else \
+		echo "❌ Safety failed with exit code $$SAFETY_STATUS. Failing security-scan."; \
+		exit $$SAFETY_STATUS; \
+	fi
+	@echo "✅ Security scans completed (see JSON reports for details)."
