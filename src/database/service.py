@@ -545,3 +545,46 @@ class DatabaseService:
             )
 
             return [dict(row) for row in cursor.fetchall()]
+
+    def get_recent_scan_for_directory(
+        self, directory: str, max_age_seconds: int = 3600
+    ) -> ScanDatabaseModel | None:
+        """Get most recent scan for a directory within time window.
+
+        Args:
+            directory: Directory path to check
+            max_age_seconds: Maximum age in seconds (default: 1 hour)
+
+        Returns:
+            ScanDatabaseModel if found, None otherwise
+        """
+        cutoff_time = time.time() - max_age_seconds
+
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT * FROM scans
+                WHERE directory = ? AND started_at >= ?
+                ORDER BY started_at DESC
+                LIMIT 1
+            """,
+                (directory, cutoff_time),
+            )
+
+            row = cursor.fetchone()
+            if row is None:
+                return None
+
+            return ScanDatabaseModel(
+                id=row["id"],
+                directory=row["directory"],
+                scan_mode=row["scan_mode"],
+                started_at=row["started_at"],
+                completed_at=row["completed_at"],
+                total_files=row["total_files"],
+                processed_files=row["processed_files"],
+                corrupt_files=row["corrupt_files"],
+                healthy_files=row["healthy_files"],
+                success_rate=row["success_rate"],
+                scan_time=row["scan_time"],
+            )
