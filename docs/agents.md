@@ -141,6 +141,31 @@ docs(ralph): add comprehensive setup instructions
 docs(api): update endpoint examples with authentication
 docs: add troubleshooting section to main README
 docs(config): document environment variable precedence
+docs(agents): create new issue creation agent
+docs(agents): update lint-error agent with new capabilities
+```
+
+**IMPORTANT: Agent Changes are Documentation**
+
+Changes to GitHub Copilot agents and skills are **contributor documentation**, not user-facing features:
+- Agent files in `.github/agents/` should use `docs(agents):` type
+- Skill files in `.github/skills/` should use `docs(skills):` type
+- Agent-related instructions should use `docs(agents):` or `docs(copilot):` type
+
+**Why?** Agents and skills are development tools that help contributors work more effectively. They don't add features to the application itself—they document how to use GitHub Copilot to contribute to the project.
+
+**✅ Correct:**
+```bash
+docs(agents): add issue creation agent
+docs(agents): update lint-error agent with error detection improvements
+docs(skills): add issue creation skill documentation
+docs(copilot): update agent usage guidelines
+```
+
+**❌ Incorrect:**
+```bash
+feat(agents): add issue creation agent  # Wrong - not a user-facing feature
+feat: create lint-error agent  # Wrong - agents are contributor docs
 ```
 
 #### Code Style (`style`)

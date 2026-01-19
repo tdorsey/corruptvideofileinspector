@@ -138,7 +138,7 @@ clean:            ## Clean build artifacts
 	rm -rf .pytest_cache/
 	rm -rf .mypy_cache/
 	rm -rf .ruff_cache/
-	rm -f bandit-report.json safety-report.json
+	rm -rf reports/
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
@@ -158,7 +158,6 @@ docker-trakt: docker-env ## Run trakt sync service via Docker Compose
 docker-all:       ## Run scan and report in sequence via Docker Compose
 	docker compose -f docker/docker-compose.yml up --build scan report
 
-<<<<<<< HEAD
 # Web UI targets
 web-dev:           ## Run web UI in development mode (requires Node.js)
 	cd frontend && npm install && npm run dev
@@ -175,10 +174,8 @@ web-docker-up:     ## Start web UI services via Docker Compose
 web-docker-down:   ## Stop web UI services
 	docker compose -f docker/docker-compose.web.yml down
 
-api-dev:           ## Run API server in development mode
-	python api_server.py
-=======
 # API targets
+
 docker-api-build:  ## Build the API Docker image
 	docker compose -f docker/docker-compose.yml build api
 
@@ -190,7 +187,6 @@ docker-api-down:   ## Stop API service
 
 run-api:          ## Run API locally (requires dependencies installed)
 	python -m uvicorn src.api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
->>>>>>> origin/main
 
 # CI/CD targets referenced in workflows
 docker-test:       ## Test Docker image functionality
@@ -200,3 +196,29 @@ docker-test:       ## Test Docker image functionality
 
 security-scan:     ## Run security scanning on the codebase
 	@echo "Running security scans..."
+	@mkdir -p reports/security
+	@echo "Running Bandit security linter..."
+	@bandit -r src/ -f json -o reports/security/bandit-report.json; \
+	BANDIT_STATUS=$$?; \
+	if [ $$BANDIT_STATUS -eq 0 ]; then \
+		echo "✅ Bandit completed successfully with no issues."; \
+	elif [ $$BANDIT_STATUS -eq 1 ]; then \
+		echo "⚠️  Bandit found security issues. See reports/security/bandit-report.json for details."; \
+		echo "   Continuing CI for review..."; \
+	else \
+		echo "❌ Bandit failed with exit code $$BANDIT_STATUS. Failing security-scan."; \
+		exit $$BANDIT_STATUS; \
+	fi
+	@echo "Running Safety dependency vulnerability check..."
+	@safety check --output json > reports/security/safety-report.json 2>&1; \
+	SAFETY_STATUS=$$?; \
+	if [ $$SAFETY_STATUS -eq 0 ]; then \
+		echo "✅ Safety completed successfully with no known vulnerabilities."; \
+	elif [ $$SAFETY_STATUS -eq 64 ]; then \
+		echo "⚠️  Safety found dependency vulnerabilities. See reports/security/safety-report.json for details."; \
+		echo "   Continuing CI for review..."; \
+	else \
+		echo "❌ Safety failed with exit code $$SAFETY_STATUS. Failing security-scan."; \
+		exit $$SAFETY_STATUS; \
+	fi
+	@echo "✅ Security scans completed (see JSON reports for details)."

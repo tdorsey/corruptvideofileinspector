@@ -80,6 +80,44 @@ This includes detailed guidance on:
 - **Containerization**: Docker with multi-stage builds and docker-compose
 - **CLI framework**: Typer with Click integration
 - **Core dependency**: FFmpeg for video analysis and corruption detection
+
+### Using Ralph for Autonomous Development
+Ralph is an autonomous development tool integrated into this repository that helps implement features systematically from a Product Requirements Document.
+
+**Quick Start with Copilot:**
+```
+@workspace Process the next work item from tools/ralph/config/prd.json
+```
+
+**Key Benefits:**
+- **Systematic Implementation**: Work items define clear steps and success criteria
+- **Batch Processing**: Process multiple features from a backlog
+- **Conventional Commits**: Automatic proper commit messages
+- **Quality Assurance**: Built-in verification steps
+
+**Documentation:**
+- **[Ralph with Copilot Guide](../tools/ralph/COPILOT_GUIDE.md)** - Interactive development with Ralph
+- **[Ralph README](../tools/ralph/README.md)** - Complete Ralph documentation
+- **[Work Items Configuration](../tools/ralph/config/prd.json)** - Example work items
+
+**Work Item Structure:**
+```json
+{
+  "category": "Feature Name",
+  "description": "Detailed description",
+  "steps": ["Step 1", "Step 2", "Step 3"],
+  "passes": ["Success criterion 1", "Success criterion 2"]
+}
+```
+
+**Common Copilot Commands:**
+- Process single work item: `@workspace Process next work item from tools/ralph/config/prd.json`
+- Process all work items: `@workspace Process all work items from tools/ralph/config/prd.json`
+- Check progress: `@workspace Show completed work items from tools/ralph/config/prd.json`
+- Validate implementation: `@workspace Review last work item implementation`
+
+See the [Ralph Copilot Guide](../tools/ralph/COPILOT_GUIDE.md) for detailed usage examples and best practices.
+
 ## Development Standards and Requirements
 
 ### Commit Standards (REQUIRED)
@@ -90,6 +128,27 @@ This includes detailed guidance on:
 - Examples: `feat(cli): add video scan command`, `fix(config): resolve YAML parsing error`
 - **Atomic commits**: Each commit should represent a single, focused change. Avoid combining unrelated changes in one commit.
 - See [Git & Version Control](instructions/git.md) for detailed commit guidelines
+
+#### Agent and Skill Changes are Documentation
+**IMPORTANT: Custom agent and skill changes are contributor documentation, NOT user-facing features:**
+- Changes to `.github/agents/` files should use `docs(agents):` commit type
+- Changes to `.github/skills/` files should use `docs(skills):` commit type
+- Agent-related instructions should use `docs(copilot):` or `docs(agents):` commit type
+
+**Rationale:** Agents and skills are development tools that help contributors work more effectively with GitHub Copilot. They document how to contribute to the project, not add features to the application itself.
+
+**Examples:**
+```bash
+# ✅ Correct
+docs(agents): add issue creation agent
+docs(agents): update lint-error agent with improved detection
+docs(skills): create issue creation skill
+docs(copilot): update agent usage guidelines
+
+# ❌ Incorrect
+feat(agents): add issue creation agent  # Wrong - not a user feature
+feat: create lint-error agent  # Wrong - agents are docs
+```
 
 ### Issue Creation (REQUIRED)
 **Always select a relevant issue template when creating issues:**
@@ -148,6 +207,8 @@ For comprehensive guidance on specific aspects of development, refer to these sp
 - **[GitHub Actions & CI/CD](instructions/github-actions.md)** - Workflow patterns, marketplace actions, and automation
 - **[Project-Specific Guidelines](instructions/project-specific.md)** - Architecture, key entry points, and project-specific patterns
 - **[Workflow File Commit Instructions](instructions/workflows.md)** - Commit message and review guidelines for workflow files
+- **[Ralph with Copilot](../tools/ralph/COPILOT_GUIDE.md)** - Autonomous development with work items and AI assistance
+- **[Ralph Full Documentation](../tools/ralph/README.md)** - Complete Ralph setup and configuration
 
 ## Changelog
 

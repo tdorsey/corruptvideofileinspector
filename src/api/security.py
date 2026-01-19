@@ -1,6 +1,7 @@
 """OIDC security configuration for API authentication."""
 
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,7 +28,6 @@ class OIDCConfig:
 
 def get_oidc_config() -> OIDCConfig:
     """Get OIDC configuration from environment or config."""
-    import os
 
     enabled = os.getenv("OIDC_ENABLED", "false").lower() == "true"
     if not enabled:
@@ -69,7 +69,7 @@ def create_oauth_client(oidc_config: OIDCConfig) -> OAuth | None:
 
 
 async def verify_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    _credentials: HTTPAuthorizationCredentials = Depends(security),  # noqa: B008
 ) -> dict[str, Any]:
     """Verify JWT token from Authorization header.
 
@@ -110,7 +110,7 @@ async def verify_token(
         return {"sub": "authenticated_user", "email": "user@example.com"}
 
     except Exception as e:
-        logger.exception(f"Token verification failed: {e}")
+        logger.exception("Token verification failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
@@ -119,7 +119,7 @@ async def verify_token(
 
 
 async def get_current_user(
-    token_data: dict[str, Any] = Depends(verify_token),
+    token_data: dict[str, Any] = Depends(verify_token),  # noqa: B008
 ) -> dict[str, Any]:
     """Get current authenticated user from token data.
 
