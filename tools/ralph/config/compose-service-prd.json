@@ -1,0 +1,434 @@
+{
+  "title": "Add Corrupt Video Inspector to compose/services",
+  "description": "Create a compose service include file for corruptvideoinspector that follows the established patterns for included compose files, environment variables, networks, secrets, and bind mount volumes",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "title": "Create compose/services Directory Structure",
+      "priority": "HIGH",
+      "description": "Create the compose/services directory structure at the repository root to organize service include files",
+      "acceptance_criteria": [
+        "compose/services/ directory exists at repository root",
+        "compose/services/README.md explains the purpose and structure",
+        "README includes examples of how to use the include files",
+        "README documents environment variable requirements"
+      ],
+      "implementation_steps": [
+        "Create compose/services/ directory at repository root",
+        "Create comprehensive README.md explaining:",
+        "  - Purpose of service include files",
+        "  - How to add corruptvideoinspector.compose.include.yaml to main docker-compose.yml",
+        "  - Environment variable requirements ($SERVICE_ROOT, $PUID, $PGID, $DOCKER_NETWORK)",
+        "  - Network configuration patterns",
+        "  - Volume mounting patterns",
+        "  - Development vs production modes"
+      ],
+      "success_metrics": [
+        "Directory structure is clear and documented",
+        "README provides sufficient guidance for users"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "title": "Create corruptvideoinspector.compose.include.yaml",
+      "priority": "HIGH",
+      "description": "Create the main compose include file following established patterns from prometheus.compose.include.yaml and grafana.compose.include.yaml",
+      "acceptance_criteria": [
+        "File created at compose/services/corruptvideoinspector.compose.include.yaml",
+        "Follows naming convention: {service}.compose.include.yaml",
+        "Uses environment variables: ${PUID}, ${PGID}, ${DOCKER_NETWORK}, ${SERVICE_ROOT}",
+        "Defines corruptvideoinspector service with proper configuration",
+        "Uses bind mount volumes with driver_opts following ${SERVICE_ROOT} pattern",
+        "Includes networks configuration (default + service-specific private network)",
+        "Uses secrets for trakt credentials",
+        "Service runs with user: \"${PUID}:${PGID}\" for proper permissions",
+        "Includes healthcheck for service monitoring",
+        "Sets restart: unless-stopped for automatic recovery"
+      ],
+      "implementation_steps": [
+        "Create compose/services/corruptvideoinspector.compose.include.yaml",
+        "Define corruptvideoinspector service:",
+        "  - Use image from docker/Dockerfile",
+        "  - Set container_name: corruptvideoinspector",
+        "  - Set user: \"${PUID}:${PGID}\"",
+        "  - Set restart: unless-stopped",
+        "  - Add networks: [${DOCKER_NETWORK:-default}, cvi-private]",
+        "  - Add ports: [\"${CVI_PORT:-8000}:8000\"]",
+        "Define volumes using bind mounts:",
+        "  - cvi-config: ${SERVICE_ROOT}/corruptvideoinspector/config",
+        "  - cvi-videos: ${SERVICE_ROOT}/corruptvideoinspector/videos",
+        "  - cvi-output: ${SERVICE_ROOT}/corruptvideoinspector/output",
+        "  - cvi-logs: ${SERVICE_ROOT}/corruptvideoinspector/logs",
+        "Add secrets for trakt:",
+        "  - trakt_client_id: ${SERVICE_ROOT}/corruptvideoinspector/secrets/trakt_client_id.txt",
+        "  - trakt_client_secret: ${SERVICE_ROOT}/corruptvideoinspector/secrets/trakt_client_secret.txt",
+        "Define cvi-private network (bridge, internal: false)",
+        "Add environment variables:",
+        "  - PYTHONUNBUFFERED=1",
+        "  - TRAKT_CLIENT_ID (from secret)",
+        "Add healthcheck using CLI test command"
+      ],
+      "success_metrics": [
+        "Compose file validates with docker compose config",
+        "Follows exact pattern of existing include files",
+        "All environment variables use ${VAR} syntax with defaults where appropriate"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "title": "Create Development Mode Include File",
+      "priority": "HIGH",
+      "description": "Create a development mode compose file that bind mounts source code for live development",
+      "acceptance_criteria": [
+        "File created at compose/services/corruptvideoinspector-dev.compose.include.yaml",
+        "Extends base service configuration",
+        "Bind mounts src/ directory for live code changes",
+        "Bind mounts tests/ directory for test development",
+        "Uses Dockerfile.dev instead of production Dockerfile",
+        "Includes development environment variables",
+        "Mounts pyproject.toml and poetry.lock for dependency management"
+      ],
+      "implementation_steps": [
+        "Create compose/services/corruptvideoinspector-dev.compose.include.yaml",
+        "Define corruptvideoinspector-dev service:",
+        "  - Build using docker/Dockerfile.dev",
+        "  - Set image: corruptvideoinspector-dev",
+        "  - Set container_name: cvi-dev",
+        "  - Inherit user, networks, secrets from base pattern",
+        "Add development volume mounts:",
+        "  - ./src:/app/src (source code)",
+        "  - ./tests:/app/tests (test code)",
+        "  - ./pyproject.toml:/app/pyproject.toml",
+        "  - ./poetry.lock:/app/poetry.lock",
+        "  - ./config.sample.yaml:/app/config.yaml:ro",
+        "Add environment variables:",
+        "  - PYTHONUNBUFFERED=1",
+        "  - DEVELOPMENT=true",
+        "  - LOG_LEVEL=DEBUG",
+        "Set command to shell for interactive development",
+        "Add tty: true and stdin_open: true for interactive mode"
+      ],
+      "success_metrics": [
+        "Code changes reflected immediately without rebuild",
+        "Tests can be run from within container",
+        "Development workflow is streamlined"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "title": "Create API Service Include File",
+      "priority": "MEDIUM",
+      "description": "Create a separate include file for the API service following the same patterns",
+      "acceptance_criteria": [
+        "File created at compose/services/corruptvideoinspector-api.compose.include.yaml",
+        "Uses Dockerfile.api for building",
+        "Exposes port 8000 for GraphQL API",
+        "Depends on main corruptvideoinspector service",
+        "Includes OIDC environment variables",
+        "Has healthcheck endpoint at /health",
+        "Shares volumes with main service (read-only where appropriate)"
+      ],
+      "implementation_steps": [
+        "Create compose/services/corruptvideoinspector-api.compose.include.yaml",
+        "Define corruptvideoinspector-api service:",
+        "  - Build using docker/Dockerfile.api",
+        "  - Set container_name: cvi-api",
+        "  - Set user: \"${PUID}:${PGID}\"",
+        "  - Expose port: \"${CVI_API_PORT:-8000}:8000\"",
+        "  - Add networks: [${DOCKER_NETWORK:-default}, cvi-private]",
+        "Mount volumes (read-only where possible):",
+        "  - cvi-config: /app/config.yaml:ro",
+        "  - cvi-videos: /app/videos:ro",
+        "  - cvi-output: /app/output:ro",
+        "  - cvi-logs: /app/logs (read-write)",
+        "Add environment variables:",
+        "  - OIDC_ENABLED=${OIDC_ENABLED:-false}",
+        "  - OIDC_ISSUER=${OIDC_ISSUER:-}",
+        "  - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}",
+        "  - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}",
+        "  - OIDC_AUDIENCE=${OIDC_AUDIENCE:-}",
+        "Add healthcheck: curl -f http://localhost:8000/health",
+        "Add depends_on: [corruptvideoinspector]"
+      ],
+      "success_metrics": [
+        "API service starts successfully",
+        "API can access scan data via shared volumes",
+        "Healthcheck validates API availability"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "title": "Create Web UI Service Include File",
+      "priority": "MEDIUM",
+      "description": "Create include file for the web UI service (React/Vite frontend)",
+      "acceptance_criteria": [
+        "File created at compose/services/corruptvideoinspector-web.compose.include.yaml",
+        "Uses Dockerfile.web for building",
+        "Exposes port 3000 for web UI",
+        "Depends on API service",
+        "Passes API URL as environment variable",
+        "Includes nginx configuration for serving static files"
+      ],
+      "implementation_steps": [
+        "Create compose/services/corruptvideoinspector-web.compose.include.yaml",
+        "Define corruptvideoinspector-web service:",
+        "  - Build using docker/Dockerfile.web from apps/web context",
+        "  - Set container_name: cvi-web",
+        "  - Expose port: \"${CVI_WEB_PORT:-3000}:3000\"",
+        "  - Add networks: [${DOCKER_NETWORK:-default}]",
+        "Add environment variables:",
+        "  - VITE_API_URL=http://corruptvideoinspector-api:8000",
+        "  - NODE_ENV=production",
+        "Add depends_on: [corruptvideoinspector-api]",
+        "Add restart: unless-stopped"
+      ],
+      "success_metrics": [
+        "Web UI serves successfully",
+        "Web UI can communicate with API",
+        "Static assets are properly served"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "title": "Update Main docker-compose.yml to Include New Services",
+      "priority": "HIGH",
+      "description": "Update the root docker-compose.yml to include the new service files following the pattern of existing includes",
+      "acceptance_criteria": [
+        "Main docker-compose.yml includes new service files in include: section",
+        "Include paths follow the pattern: compose/services/*.compose.include.yaml",
+        "Development includes are commented or in a separate profile",
+        "Networks configuration includes ${DOCKER_NETWORK} pattern",
+        "File validates with docker compose config"
+      ],
+      "implementation_steps": [
+        "Update root docker-compose.yml include section:",
+        "  - Add: compose/services/corruptvideoinspector.compose.include.yaml",
+        "  - Add: compose/services/corruptvideoinspector-api.compose.include.yaml",
+        "  - Add: compose/services/corruptvideoinspector-web.compose.include.yaml",
+        "Add comment block explaining the new services",
+        "Ensure networks section includes ${DOCKER_NETWORK:-default}",
+        "Run docker compose config to validate syntax"
+      ],
+      "success_metrics": [
+        "docker compose config passes validation",
+        "All services are properly included",
+        "No syntax or reference errors"
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "title": "Create Example .env File",
+      "priority": "HIGH",
+      "description": "Create an example environment file documenting all required variables for the compose services",
+      "acceptance_criteria": [
+        "File created at compose/services/.env.example",
+        "Documents all environment variables with descriptions",
+        "Includes sensible defaults where appropriate",
+        "Groups variables by service",
+        "Includes comments explaining usage"
+      ],
+      "implementation_steps": [
+        "Create compose/services/.env.example with sections:",
+        "## Global Settings",
+        "  - PUID=1000",
+        "  - PGID=1000",
+        "  - DOCKER_NETWORK=default",
+        "  - SERVICE_ROOT=/path/to/services",
+        "## Corrupt Video Inspector",
+        "  - CVI_PORT=8000",
+        "  - CVI_API_PORT=8001",
+        "  - CVI_WEB_PORT=3000",
+        "## Trakt Integration",
+        "  - TRAKT_CLIENT_ID=",
+        "  - TRAKT_CLIENT_SECRET=",
+        "## OIDC Configuration (Optional)",
+        "  - OIDC_ENABLED=false",
+        "  - OIDC_ISSUER=",
+        "  - OIDC_CLIENT_ID=",
+        "  - OIDC_CLIENT_SECRET=",
+        "  - OIDC_AUDIENCE=",
+        "Add detailed comments explaining each variable",
+        "Add instructions for obtaining Trakt API credentials"
+      ],
+      "success_metrics": [
+        "All variables are documented",
+        "Comments provide clear guidance",
+        "Example values are realistic"
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "title": "Create Setup Script",
+      "priority": "MEDIUM",
+      "description": "Create a setup script that initializes the service directory structure and secrets",
+      "acceptance_criteria": [
+        "Script created at compose/services/setup.sh",
+        "Script is executable",
+        "Creates required directory structure under $SERVICE_ROOT",
+        "Creates placeholder secret files",
+        "Validates environment variables",
+        "Provides clear feedback and error messages"
+      ],
+      "implementation_steps": [
+        "Create compose/services/setup.sh",
+        "Add shebang: #!/bin/bash",
+        "Validate required environment variables:",
+        "  - SERVICE_ROOT must be set",
+        "  - PUID and PGID should default to current user if not set",
+        "Create directory structure:",
+        "  - ${SERVICE_ROOT}/corruptvideoinspector/config",
+        "  - ${SERVICE_ROOT}/corruptvideoinspector/videos",
+        "  - ${SERVICE_ROOT}/corruptvideoinspector/output",
+        "  - ${SERVICE_ROOT}/corruptvideoinspector/logs",
+        "  - ${SERVICE_ROOT}/corruptvideoinspector/secrets",
+        "Create placeholder secret files:",
+        "  - secrets/trakt_client_id.txt (empty with instructions)",
+        "  - secrets/trakt_client_secret.txt (empty with instructions)",
+        "Copy config.sample.yaml to config/ if not exists",
+        "Set proper ownership (PUID:PGID) on all created directories",
+        "Set proper permissions (755 for dirs, 600 for secrets)",
+        "Print success message with next steps"
+      ],
+      "success_metrics": [
+        "Script creates all required directories",
+        "Permissions are correctly set",
+        "Script handles errors gracefully"
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "title": "Create Comprehensive Documentation",
+      "priority": "HIGH",
+      "description": "Create documentation for the compose services including deployment guide and troubleshooting",
+      "acceptance_criteria": [
+        "compose/services/DEPLOYMENT.md created with deployment instructions",
+        "Documentation covers initial setup, configuration, and deployment",
+        "Includes troubleshooting section for common issues",
+        "Documents all service include files and their purposes",
+        "Provides examples of different deployment scenarios"
+      ],
+      "implementation_steps": [
+        "Create compose/services/DEPLOYMENT.md",
+        "Add sections:",
+        "  ## Prerequisites",
+        "    - Docker and Docker Compose versions",
+        "    - System requirements",
+        "    - Network requirements",
+        "  ## Initial Setup",
+        "    - Clone repository",
+        "    - Copy .env.example to .env",
+        "    - Edit .env with your values",
+        "    - Run setup.sh script",
+        "    - Configure Trakt API credentials",
+        "  ## Deployment Scenarios",
+        "    - Production deployment (all services)",
+        "    - API-only deployment",
+        "    - Development deployment with code mounting",
+        "  ## Service Descriptions",
+        "    - corruptvideoinspector: Main scanning service",
+        "    - corruptvideoinspector-api: GraphQL API service",
+        "    - corruptvideoinspector-web: Web UI service",
+        "    - corruptvideoinspector-dev: Development mode",
+        "  ## Configuration",
+        "    - Environment variables reference",
+        "    - Volume mounting strategy",
+        "    - Network configuration",
+        "    - Secrets management",
+        "  ## Usage Examples",
+        "    - Start all services: docker compose up -d",
+        "    - Start specific service: docker compose up -d corruptvideoinspector",
+        "    - View logs: docker compose logs -f corruptvideoinspector",
+        "    - Development mode: Use -dev include file",
+        "  ## Troubleshooting",
+        "    - Permission errors (PUID/PGID mismatch)",
+        "    - Network connectivity issues",
+        "    - Volume mount problems",
+        "    - Secret file errors",
+        "    - Service won't start (check logs)",
+        "  ## Maintenance",
+        "    - Updating services",
+        "    - Backing up data",
+        "    - Monitoring and health checks"
+      ],
+      "success_metrics": [
+        "Documentation is comprehensive and clear",
+        "All deployment scenarios are covered",
+        "Troubleshooting section addresses common issues"
+      ]
+    },
+    {
+      "id": "REQ-10",
+      "title": "Update Repository README",
+      "priority": "MEDIUM",
+      "description": "Update the main repository README to mention the new compose services deployment option",
+      "acceptance_criteria": [
+        "README.md includes section on compose services deployment",
+        "Links to compose/services/DEPLOYMENT.md for detailed instructions",
+        "Briefly explains benefits of using compose services",
+        "Adds this as an alternative deployment method"
+      ],
+      "implementation_steps": [
+        "Add \"Deployment Options\" section to README.md",
+        "Add subsection \"Deploy with Compose Services\":",
+        "  - Brief description of compose services approach",
+        "  - Link to compose/services/DEPLOYMENT.md",
+        "  - Mention integration with existing infrastructure",
+        "  - Note compatibility with other services (prometheus, grafana)",
+        "Update table of contents if present"
+      ],
+      "success_metrics": [
+        "README clearly presents deployment options",
+        "Links are correct and helpful",
+        "Information is concise but sufficient"
+      ]
+    }
+  ],
+  "technical_notes": {
+    "patterns_to_follow": {
+      "file_naming": "{service}.compose.include.yaml",
+      "user_permissions": "user: \"${PUID}:${PGID}\"",
+      "networks": "- ${DOCKER_NETWORK:-default} and service-specific private network",
+      "volumes": "Bind mounts using driver_opts with ${SERVICE_ROOT} variable",
+      "secrets": "File-based secrets in ${SERVICE_ROOT}/{service}/secrets/",
+      "environment_variables": "${VAR:-default} syntax with optional defaults",
+      "healthchecks": "Include healthcheck for all long-running services",
+      "restart_policy": "restart: unless-stopped for production services"
+    },
+    "reference_files": {
+      "prometheus": "prometheus.compose.include.yaml - Complex multi-service example",
+      "grafana": "grafana.compose.include.yaml - Simple single-service example",
+      "main": "docker-compose.yml - Include pattern reference",
+      "dev": "docker/docker-compose.dev.yml - Development bind mount reference"
+    },
+    "existing_dockerfiles": {
+      "production": "docker/Dockerfile - Multi-stage production build",
+      "development": "docker/Dockerfile.dev - Development with dependencies",
+      "api": "docker/Dockerfile.api - GraphQL API service",
+      "web": "docker/Dockerfile.web - React/Vite frontend"
+    }
+  },
+  "success_criteria": {
+    "docker_compose_config_passes": "docker compose config must validate without errors",
+    "services_start_successfully": "All services must start without errors",
+    "volumes_mount_correctly": "All volume mounts must be accessible with correct permissions",
+    "secrets_load_properly": "Secret files must be readable by services",
+    "networks_are_accessible": "Services can communicate over defined networks",
+    "health_checks_pass": "All healthchecks must report healthy status",
+    "development_mode_works": "Code changes must be reflected without rebuilds in dev mode",
+    "documentation_is_complete": "All documentation must be comprehensive and accurate"
+  },
+  "testing_checklist": [
+    "Run docker compose config to validate syntax",
+    "Test production deployment: docker compose up -d corruptvideoinspector",
+    "Test API service: docker compose up -d corruptvideoinspector-api",
+    "Test web UI: docker compose up -d corruptvideoinspector-web",
+    "Test development mode with code changes",
+    "Verify volume permissions with ls -la in containers",
+    "Verify secrets are loaded correctly",
+    "Test healthchecks: docker compose ps",
+    "Verify network connectivity between services",
+    "Test service restart: docker compose restart corruptvideoinspector",
+    "Verify logs are written correctly",
+    "Test setup.sh script on clean environment"
+  ]
+}
