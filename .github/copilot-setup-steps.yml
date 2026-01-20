@@ -1,0 +1,208 @@
+---
+# GitHub Copilot Setup Steps
+# This file configures the development environment before agents start working
+# Reference: https://docs.github.com/en/copilot/customizing-copilot/adding-custom-instructions-for-github-copilot
+
+# System dependencies that must be available for agents
+system_dependencies:
+  - name: bash
+    description: Shell for executing build, test, and validation commands
+    required: true
+  - name: git
+    description: Version control for repository operations
+    required: true
+  - name: make
+    description: Build automation tool
+    required: true
+  - name: python3
+    version: ">=3.13"
+    description: Python interpreter
+    required: true
+  - name: ffmpeg
+    description: Video processing dependency for testing
+    required: true
+
+# Python dependencies (already defined in pyproject.toml but needed for agent environment)
+python_dependencies:
+  install_method: pip
+  requirements:
+    - name: black
+      description: Code formatter
+      version: ">=24.0.0"
+    - name: ruff
+      description: Fast Python linter
+      version: ">=0.1.0"
+    - name: mypy
+      description: Static type checker
+      version: ">=1.0.0"
+    - name: pytest
+      description: Testing framework
+      version: ">=7.0.0"
+    - name: pytest-cov
+      description: Coverage plugin for pytest
+    - name: pre-commit
+      description: Git hook manager
+
+# Setup steps to run before agents start
+setup_steps:
+  - name: Install system dependencies
+    run: |
+      # Ensure bash and core tools are available
+      which bash || (echo "ERROR: bash not found" && exit 1)
+      which git || (echo "ERROR: git not found" && exit 1)
+      which make || (echo "ERROR: make not found" && exit 1)
+      which python3 || (echo "ERROR: python3 not found" && exit 1)
+      echo "✓ System dependencies verified"
+    
+  - name: Install Python development dependencies
+    run: |
+      # Install development tools that agents need to run validation
+      pip install --user black ruff mypy pytest pytest-cov pre-commit
+      echo "✓ Python development tools installed"
+    
+  - name: Verify FFmpeg availability
+    run: |
+      # FFmpeg is needed for integration tests
+      if which ffmpeg > /dev/null 2>&1; then
+        echo "✓ FFmpeg available: $(ffmpeg -version | head -1)"
+      else
+        echo "⚠ FFmpeg not available - integration tests may fail"
+      fi
+    
+  - name: Configure git
+    run: |
+      # Ensure git is configured for commits
+      git config --global user.email "copilot-agent@github.com" || true
+      git config --global user.name "GitHub Copilot Agent" || true
+      echo "✓ Git configured"
+    
+  - name: Verify repository structure
+    run: |
+      # Verify we're in the correct repository
+      if [ -f "pyproject.toml" ] && [ -d ".github/agents" ]; then
+        echo "✓ Repository structure verified"
+      else
+        echo "ERROR: Invalid repository structure"
+        exit 1
+      fi
+
+# Environment variables to set for agent execution
+environment:
+  # Ensure Python tools are in PATH
+  PATH: "${HOME}/.local/bin:${PATH}"
+  # Ensure Python can find the source code
+  PYTHONPATH: "${WORKSPACE}/src:${PYTHONPATH}"
+  # Set Python to use UTF-8
+  PYTHONIOENCODING: "utf-8"
+  # Disable Python bytecode to avoid cache issues
+  PYTHONDONTWRITEBYTECODE: "1"
+
+# Validation checks to ensure environment is ready
+validation:
+  - name: Verify bash availability
+    command: bash --version
+    expected_exit_code: 0
+    
+  - name: Verify make targets
+    command: make help
+    expected_exit_code: 0
+    
+  - name: Verify Python can import project
+    command: python3 -c "import sys; sys.path.insert(0, 'src'); print('✓ Python import successful')"
+    expected_exit_code: 0
+    
+  - name: Verify linters are available
+    command: |
+      black --version && \
+      ruff --version && \
+      mypy --version && \
+      pytest --version
+    expected_exit_code: 0
+
+# Agent-specific tool configurations
+agent_tools:
+  bash:
+    enabled: true
+    shell: /bin/bash
+    working_directory: "${WORKSPACE}"
+    timeout: 300  # 5 minutes default timeout
+    note: |
+      All agents have access to bash when needed for their work, even if not their primary tool.
+      Agents are encouraged to use the tools they need to complete their tasks effectively.
+    allowed_commands:
+      # Build and validation
+      - make check
+      - make format
+      - make lint
+      - make type
+      # Testing
+      - make test
+      - pytest
+      # Git operations
+      - git status
+      - git diff
+      - git log
+      - git show
+      - git branch
+      - git checkout -b <branch-name>  # Create feature branches
+      - git add
+      - git commit
+      - git push origin <branch-name>  # Push to feature branches (main is protected)
+      # Note: Direct push to main blocked by branch protection rules
+      # File operations
+      - ls
+      - cat
+      - grep
+      - find
+      # Pre-commit
+      - pre-commit run
+    
+  read:
+    enabled: true
+    max_file_size: 10485760  # 10MB
+    
+  edit:
+    enabled: true
+    backup_before_edit: true
+    note: "All agents can create and modify files as needed"
+    
+  search:
+    enabled: true
+    max_results: 100
+    
+  github-issues:
+    enabled: true
+    rate_limit: 100  # requests per hour
+    note: "Available to issue-related agents"
+  
+  report_progress:
+    enabled: true
+    note: |
+      All agents use report_progress to commit and push changes.
+      This tool handles git operations and PR updates safely.
+      Agents can create PRs and push to feature branches, but not to main.
+
+# Notes for maintainers
+notes: |
+  This configuration ensures that GitHub Copilot agents have all necessary
+  dependencies and tools available before they start working. This eliminates
+  the "setup" message from GitHub and allows agents to immediately:
+  
+  1. Run code quality checks (make check, make format, make lint, make type)
+  2. Execute tests (make test, pytest)
+  3. Validate changes with bash commands
+  4. Interact with the repository
+  5. Create branches and push changes to feature branches
+  6. Create pull requests
+  
+  The setup steps run once when an agent session starts, ensuring a consistent
+  environment across all agent invocations.
+  
+  IMPORTANT: Tool Usage Philosophy
+  - All agents have access to ALL tools (bash, read, edit, search, report_progress)
+  - Agents are encouraged to use whatever tools they need to complete their work
+  - Tool listings in agent files indicate PRIMARY tools, not EXCLUSIVE tools
+  - If an agent needs bash to validate their work, they CAN and SHOULD use it
+  - Architecture agents CAN use bash if needed (e.g., to verify file structure)
+  - All agents CAN create branches, commit, and push (via report_progress)
+  - Direct pushes to main are blocked by branch protection, not agent restrictions
