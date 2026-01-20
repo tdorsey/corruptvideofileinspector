@@ -66,32 +66,85 @@ class BaseHandler:
 
         sys.exit(1)
 
+    def _check_duplicate_scan(self, directory: Path) -> None:
+        """Check for recent scans of the same directory and warn user.
+
+        Args:
+            directory: Directory being scanned
+        """
+        try:
+            from src.database.service import DatabaseService
+
+            db_service = DatabaseService(
+                self.config.database.path, self.config.database.auto_cleanup_days
+            )
+            
+            # Check for scans in the last hour
+            recent_scan = db_service.get_recent_scan_for_directory(
+                str(directory), max_age_seconds=3600
+            )
+            
+            if recent_scan:
+                from datetime import datetime
+                
+                scan_time = datetime.fromtimestamp(recent_scan.started_at)
+                minutes_ago = int((time.time() - recent_scan.started_at) / 60)
+                
+                logger.warning(
+                    f"Directory was scanned {minutes_ago} minutes ago "
+                    f"(scan ID: {recent_scan.id}, mode: {recent_scan.scan_mode})"
+                )
+                import click
+                click.echo(
+                    f"\n⚠️  Warning: This directory was recently scanned {minutes_ago} minutes ago",
+                    err=True,
+                )
+                click.echo(
+                    f"   Previous scan: {scan_time.strftime('%Y-%m-%d %H:%M:%S')} "
+                    f"(ID: {recent_scan.id}, mode: {recent_scan.scan_mode})",
+                    err=True,
+                )
+                click.echo(
+                    f"   Found {recent_scan.corrupt_files}/{recent_scan.total_files} corrupt files",
+                    err=True,
+                )
+                click.echo()
+                
+        except Exception as e:
+            # Don't fail scan if duplicate check fails
+            logger.debug(f"Could not check for duplicate scans: {e}")
+
     def _store_scan_results(
-        self,
-        summary: ScanSummary,
+        self, summary: ScanSummary, results: list[ScanResult] | None = None
     ) -> int:
-        """Store scan summary in database.
+        """Store scan summary and results in database.
 
         Args:
             summary: Scan summary to store
+            results: Optional list of individual scan results
 
         Returns:
             Scan ID in database
         """
         try:
             # Store results in database
-            # Note: Individual scan results are not currently tracked by scanner,
-            # so we only store the summary. This is sufficient for basic database
-            # functionality and incremental scanning.
             scan_id = self.output_formatter.store_scan_results(
                 summary=summary,
-                scan_results=None,  # Scanner doesn't provide individual results
+                scan_results=results,  # Now passing actual results
             )
             logger.info(f"Scan results stored in database with ID: {scan_id}")
             return scan_id
-        except Exception:
+        except Exception as e:
             logger.exception("Failed to store scan results in database")
-            raise
+            # Log the error but don't fail the scan
+            # The scan itself was successful, just the storage failed
+            import click
+            click.echo(
+                f"\n⚠️  Warning: Failed to store scan results in database: {e}",
+                err=True,
+            )
+            click.echo("   Scan completed successfully but results were not persisted.", err=True)
+            return -1  # Return invalid ID to indicate storage failure
 
 
 class ScanHandler(BaseHandler):
@@ -108,18 +161,32 @@ class ScanHandler(BaseHandler):
         scan_mode: ScanMode,
         recursive: bool = True,
         resume: bool = True,
+        incremental: bool = False,
+        max_age_days: int = 7,
     ) -> ScanSummary | None:
         """
         Run a video corruption scan and return ScanSummary or None.
         Results are stored in the database.
+
+        Args:
+            directory: Directory to scan
+            scan_mode: Scan mode to use
+            recursive: Whether to scan subdirectories
+            resume: Whether to resume from previous scan
+            incremental: Whether to skip recently scanned healthy files
+            max_age_days: Maximum age in days for incremental scans
         """
         try:
+            # Check for recent scans of the same directory
+            self._check_duplicate_scan(directory)
+            
             video_files = self.scanner.get_video_files(directory, recursive=recursive)
             if not video_files:
                 logger.info("No video files found to scan.")
                 return None
             logger.info(f"Found {len(video_files)} video files to scan.")
-            summary = self.scanner.scan_directory(
+            
+            summary, scan_results = self.scanner.scan_directory(
                 directory=directory,
                 scan_mode=scan_mode,
                 recursive=recursive,
@@ -127,9 +194,11 @@ class ScanHandler(BaseHandler):
                 progress_callback=(
                     self._progress_callback if self.config.logging.level != "QUIET" else None
                 ),
+                incremental=incremental,
+                max_age_days=max_age_days,
             )
             # Store results in database
-            self._store_scan_results(summary=summary)
+            self._store_scan_results(summary=summary, results=scan_results)
             return summary
         except KeyboardInterrupt:
             logger.warning("Scan interrupted by user.")
@@ -339,7 +408,7 @@ class TraktHandler(BaseHandler):
     def sync_to_watchlist_from_results(
         self,
         scan_results: list[Any],
-        interactive: bool = False,  # noqa: ARG002
+        interactive: bool = False,
         watchlist: str | None = None,
     ) -> TraktSyncResult | None:
         """
@@ -347,7 +416,7 @@ class TraktHandler(BaseHandler):
 
         Args:
             scan_results: List of ScanResultDatabaseModel objects
-            interactive: Enable interactive mode (not yet implemented)
+            interactive: Enable interactive mode for ambiguous matches
             watchlist: Optional watchlist name/slug to sync to
         """
         # Validate Trakt credentials early
@@ -358,25 +427,112 @@ class TraktHandler(BaseHandler):
         try:
             logger.info(f"Syncing {len(scan_results)} scan results to Trakt.tv watchlist.")
 
-            # Extract filenames from database results
-            filenames = [result.filename for result in scan_results]
-
-            # For now, return a mock result indicating the feature needs full implementation
-            # This would require updating the core watchlist module to accept filenames directly
-            result = TraktSyncResult(
-                total=len(filenames),
+            # Parse filenames from database results
+            from src.core.watchlist import MediaParser, TraktAPI
+            
+            media_items = []
+            for result in scan_results:
+                try:
+                    media_item = MediaParser.parse_filename(result.filename)
+                    media_items.append(media_item)
+                except Exception as e:
+                    logger.warning(f"Failed to parse filename {result.filename}: {e}")
+                    continue
+            
+            if not media_items:
+                logger.warning("No media items could be parsed from scan results")
+                return TraktSyncResult(
+                    total=len(scan_results),
+                    movies_added=0,
+                    shows_added=0,
+                    failed=len(scan_results),
+                    watchlist=watchlist,
+                    results=[],
+                )
+            
+            # Initialize Trakt API
+            api = TraktAPI(self.config)
+            
+            # Sync items
+            summary = TraktSyncResult(
+                total=len(media_items),
                 movies_added=0,
                 shows_added=0,
                 failed=0,
                 watchlist=watchlist,
                 results=[],
             )
-
+            
+            for media_item in media_items:
+                try:
+                    # Search for the item
+                    if media_item.media_type == "movie":
+                        search_results = api.search_movie(media_item.title, media_item.year, limit=1)
+                    else:
+                        search_results = api.search_show(media_item.title, media_item.year, limit=1)
+                    
+                    if not search_results:
+                        logger.warning(f"No Trakt match found for: {media_item.title}")
+                        summary.failed += 1
+                        summary.results.append({
+                            "title": media_item.title,
+                            "year": media_item.year,
+                            "type": media_item.media_type,
+                            "status": "not_found",
+                            "filename": media_item.original_filename,
+                        })
+                        continue
+                    
+                    trakt_item = search_results[0]
+                    
+                    # Add to watchlist
+                    if media_item.media_type == "movie":
+                        success = api.add_movie_to_watchlist(trakt_item)
+                    else:
+                        success = api.add_show_to_watchlist(trakt_item)
+                    
+                    if success:
+                        if media_item.media_type == "movie":
+                            summary.movies_added += 1
+                        else:
+                            summary.shows_added += 1
+                        
+                        summary.results.append({
+                            "title": trakt_item.title,
+                            "year": trakt_item.year,
+                            "type": trakt_item.media_type,
+                            "status": "added",
+                            "trakt_id": trakt_item.trakt_id,
+                            "filename": media_item.original_filename,
+                        })
+                    else:
+                        summary.failed += 1
+                        summary.results.append({
+                            "title": media_item.title,
+                            "year": media_item.year,
+                            "type": media_item.media_type,
+                            "status": "failed",
+                            "filename": media_item.original_filename,
+                        })
+                        
+                except Exception as e:
+                    logger.warning(f"Error syncing {media_item.title}: {e}")
+                    summary.failed += 1
+                    summary.results.append({
+                        "title": media_item.title,
+                        "year": media_item.year,
+                        "type": media_item.media_type,
+                        "status": "error",
+                        "error": str(e),
+                        "filename": media_item.original_filename,
+                    })
+            
             logger.info(
-                "Trakt sync from database not fully implemented yet. "
-                "This requires updating the watchlist module."
+                f"Trakt sync complete. Movies added: {summary.movies_added}, "
+                f"Shows added: {summary.shows_added}, Failed: {summary.failed}"
             )
-            return result
+            return summary
+            
         except Exception as e:
             self._handle_error(e, "Trakt sync failed")
             return None
