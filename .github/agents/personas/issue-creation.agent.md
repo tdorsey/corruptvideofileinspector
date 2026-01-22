@@ -411,7 +411,7 @@ When creating or parsing data in your operations, choose the appropriate file fo
 
 **Example Use Cases**:
 - Agent definition files (.github/agents/*.md)
-- Skill documentation (.github/skills/*/SKILL.md)
+- Skill documentation (.github/agents/skills/*/SKILL.md)
 - Project documentation (README.md, CHANGELOG.md)
 - Issue bodies and comments
 

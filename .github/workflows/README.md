@@ -167,19 +167,20 @@ Runs on pull request events (opened, edited, synchronize):
 
 ## Automation Workflows
 
-### `issue-triage-agent.yml` - Issue Triage Agent
+### `issue-triage.yml` - Issue Triage Workflow
 Automatically triages and formats issues submitted via the Quick Capture template.
 
 **Triggers:** Issue opened or labeled with `triage:agent-pending`
 
 **Features:**
-- **Data Preservation**: Archives original issue content as a comment before modification
+- **Data Preservation**: Archives original issue content in a folded section of the triage summary comment
 - **Classification**: Keyword-based scoring to classify issues as bug, feature, documentation, performance, or task
 - **Component Detection**: Automatically detects component/domain from content keywords
 - **Stakeholder Detection**: Infers stakeholder type from context
 - **Formatting**: Reformats issue body to match project templates
-- **Metadata**: Posts confidence score and gap analysis as a comment
-- **Label Management**: Removes `triage:agent-pending`, adds `triage:agent-processed` and type-specific labels
+- **Metadata**: Posts confidence score and gap analysis in the triage summary comment
+- **Questions**: Adds a folded question history section and mentions submitters when more details are needed
+- **Label Management**: Removes `triage:agent-pending`, adds `triage:agent-processed`, and sets `triage:next` when follow-up is required
 
 **Security:**
 - Uses heredoc syntax for environment variables to prevent script injection
@@ -188,8 +189,8 @@ Automatically triages and formats issues submitted via the Quick Capture templat
 
 **Related Resources:**
 - Quick Capture Template: `.github/ISSUE_TEMPLATE/00-quick-capture.yml`
-- Issue Creation Agent: `.github/agents/issue-creation-agent.md`
-- Issue Creation Skill: `.github/skills/issue-creation/SKILL.md`
+- Issue Creation Agent: `.github/agents/personas/issue-creation.agent.md`
+- Issue Creation Skill: `.github/agents/skills/issue-creation/SKILL.md`
 
 ### `pr-conflict-resolution.yml` - PR Conflict Resolution Agent
 Labels pull requests with merge conflicts and assigns them to the conflict
@@ -203,8 +204,8 @@ resolution agent for targeted fixes.
 - Removes the conflict label once the PR is mergeable
 
 **Related Resources:**
-- PR Conflict Resolution Agent: `.github/agents/pr-conflict-resolution-agent.md`
-- PR Conflict Resolution Skill: `.github/skills/pr-conflict-resolution/SKILL.md`
+- PR Conflict Resolution Agent: `.github/agents/personas/pr-conflict-resolution.agent.md`
+- PR Conflict Resolution Skill: `.github/agents/skills/pr-conflict-resolution/SKILL.md`
 
 ### `issue-form-labeler.yml` - Issue Form Auto-Labeler
 Automatically applies component and stakeholder labels based on issue form selections.

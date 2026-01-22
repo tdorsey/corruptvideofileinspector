@@ -68,28 +68,64 @@ tools:
 # Agents configuration
 agents:
   enabled: true
-  directory: .github/agents
+  directory: .github/agents/personas
   
   available:
-    - architecture-designer
-    - code-reviewer
-    - feature-creator
-    - implementation-planner
-    - issue-creation
-    - lint-error
-    - pr-conflict-resolution
-    - refactoring
-    - security-reviewer
-    - test
+    - name: architecture-designer
+      description: "Design system architecture and component interactions"
+      use_when: "Planning system design, defining interfaces, designing data flow"
+      
+    - name: code-reviewer
+      description: "Review code for quality, correctness, and standards"
+      use_when: "Reviewing PRs, checking code quality, validating standards"
+      
+    - name: feature-creator
+      description: "Implement new features and enhancements"
+      use_when: "Building new features, adding functionality, extending APIs"
+      
+    - name: github-actions-troubleshooter
+      description: "Debug and fix GitHub Actions workflows"
+      use_when: "CI failures, workflow errors, action debugging"
+      
+    - name: implementation-planner
+      description: "Plan implementation strategies"
+      use_when: "Breaking down features, creating task lists, planning sprints"
+      
+    - name: issue-creation
+      description: "Create and triage issues"
+      use_when: "Creating issues, triaging Quick Capture submissions, formatting issues"
+      
+    - name: lint-error
+      description: "Fix linting and formatting errors"
+      use_when: "Black/Ruff/MyPy failures, code quality issues"
+      
+    - name: pr-conflict-resolution
+      description: "Resolve pull request merge conflicts"
+      use_when: "PRs have merge conflicts, need to resolve conflicts safely"
+      
+    - name: refactoring
+      description: "Refactor code for maintainability"
+      use_when: "Improving code structure, reducing complexity, modernizing code"
+      
+    - name: security-reviewer
+      description: "Review code for security issues"
+      use_when: "Security audits, checking for vulnerabilities, validating input handling"
+      
+    - name: test
+      description: "Create and maintain tests"
+      use_when: "Adding tests, fixing test failures, improving coverage"
 
 # Skills configuration
 skills:
   enabled: true
-  directory: .github/skills
+  directory: .github/agents/skills
   
   available:
-    - issue-creation
-    - pr-conflict-resolution
+    - name: issue-creation
+      description: "Creating, triaging, and formatting issues"
+      
+    - name: pr-conflict-resolution
+      description: "Resolving merge conflicts in pull requests"
 
 # Build and test commands
 commands:

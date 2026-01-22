@@ -56,4 +56,4 @@ without introducing new features or unrelated refactors.
 - PR is mergeable and ready for review.
 
 ## Related Skill
-- `.github/skills/pr-conflict-resolution/SKILL.md`
+- `.github/agents/skills/pr-conflict-resolution/SKILL.md`

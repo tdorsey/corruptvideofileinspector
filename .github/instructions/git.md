@@ -34,7 +34,7 @@ Changes to GitHub Copilot agents and skills should use the `docs` type because t
 
 **What qualifies as agent/skill documentation:**
 - Files in `.github/agents/` directory → use `docs(agents):`
-- Files in `.github/skills/` directory → use `docs(skills):`
+- Files in `.github/agents/skills/` directory → use `docs(skills):`
 - Agent-related Copilot instructions → use `docs(copilot):` or `docs(agents):`
 - Workflow files that support agent functionality → use `docs(agents):` or `ci(agents):`
 
@@ -134,9 +134,31 @@ Using Conventional Commits helps:
 
 ### Pull Request Guidelines
 - Keep pull requests focused on a single feature or fix
+- **PR titles MUST follow Conventional Commits format** (same as commit messages)
+- **PR titles must start with lowercase** after the type/scope
 - Include descriptive titles and detailed descriptions
 - **Reference related issues in PR description** using `#issue-number` (e.g., "Fixes #123" or "Addresses #456")
 - Ensure all checks pass before requesting review
+
+#### PR Title Format (REQUIRED)
+PR titles must follow the same Conventional Commits format:
+```
+<type>[optional scope]: <description>
+```
+
+**Examples of valid PR titles:**
+- `feat(auth): add OAuth2 authentication`
+- `fix(video): resolve memory leak in scanner`
+- `docs(readme): update installation guide`
+- `refactor(database): optimize query performance`
+- `test(api): add integration tests for endpoints`
+
+**Examples of INVALID PR titles:**
+- `Consolidate issue automation workflows` ❌ (missing type)
+- `Fix: Update database` ❌ (description starts with capital)
+- `feat(auth): Add OAuth2.` ❌ (capital letter and period)
+
+**CI Check:** The `Validate PR Title` job will fail if the PR title doesn't follow this format.
 
 ## Pre-commit Considerations
 

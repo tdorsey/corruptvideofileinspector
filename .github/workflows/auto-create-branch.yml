@@ -23,6 +23,9 @@ jobs:
           script: |
             const issueNumber = context.issue.number;
             const issueTitle = context.payload.issue.title;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const commentMarker = '<!-- auto-branch-comment -->';
             
             // Create a slug from the issue title
             const slug = issueTitle
@@ -35,24 +38,38 @@ jobs:
 
             const branchName = `issue-${issueNumber}-${slug}`;
             
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100
+            });
+            
+            const existingComment = comments.find(comment =>
+              comment.body &&
+              (comment.body.includes(commentMarker) ||
+                comment.body.includes('🌿 **Branch Created**') ||
+                comment.body.includes('⚠️ **Branch Creation Failed**'))
+            );
+            
             try {
               // Get the default branch reference
               const { data: defaultBranch } = await github.rest.repos.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo
+                owner,
+                repo
               });
               
               // Get the SHA of the default branch
               const { data: ref } = await github.rest.git.getRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 ref: `heads/${defaultBranch.default_branch}`
               });
               
               // Create the new branch
               await github.rest.git.createRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 ref: `refs/heads/${branchName}`,
                 sha: ref.object.sha
               });
@@ -61,7 +78,11 @@ jobs:
               
               // Post a success comment on the issue
               const commentBody = [
+                commentMarker,
                 `🌿 **Branch Created**: \`${branchName}\``,
+                '',
+                '<details>',
+                '<summary>How to use this branch</summary>',
                 '',
                 'Thank you for opening this issue! A branch has been automatically created for you to work on this feature/fix.',
                 '',
@@ -77,15 +98,21 @@ jobs:
                 '- Run `make test` to validate your changes',
                 '- Use conventional commit messages (e.g., `feat:`, `fix:`, `docs:`)',
                 '',
-                'Happy coding! 🚀'
+                'Happy coding! 🚀',
+                '',
+                '</details>'
               ].join('\n');
 
-              await github.rest.issues.createComment({
-                issue_number: issueNumber,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: commentBody
-              });
+              if (existingComment) {
+                console.log('Branch comment already exists; skipping create.');
+              } else {
+                const { data: branchComment } = await github.rest.issues.createComment({
+                  issue_number: issueNumber,
+                  owner,
+                  repo,
+                  body: commentBody
+                });
+              }
               
               console.log(`✅ Comment posted successfully on issue #${issueNumber}`);
               
@@ -94,7 +121,11 @@ jobs:
               
               // If branch creation fails, post a comment about the failure
               const failureComment = [
+                commentMarker,
                 '⚠️ **Branch Creation Failed**',
+                '',
+                '<details>',
+                '<summary>Manual branch instructions</summary>',
                 '',
                 'There was an issue creating an automatic branch for this issue. This might be because:',
                 '- A branch with a similar name already exists',
@@ -105,16 +136,22 @@ jobs:
                 `git checkout -b issue-${issueNumber}-${slug}`,
                 '```',
                 '',
-                `The suggested branch name would have been: \`issue-${issueNumber}-${slug}\``
+                `The suggested branch name would have been: \`issue-${issueNumber}-${slug}\``,
+                '',
+                '</details>'
               ].join('\n');
 
               try {
-                await github.rest.issues.createComment({
-                  issue_number: issueNumber,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: failureComment
-                });
+                if (existingComment) {
+                  console.log('Branch comment already exists; skipping create.');
+                } else {
+                  const { data: failureCommentData } = await github.rest.issues.createComment({
+                    issue_number: issueNumber,
+                    owner,
+                    repo,
+                    body: failureComment
+                  });
+                }
               } catch (commentError) {
                 console.error('❌ Error posting failure comment:', commentError.message);
               }

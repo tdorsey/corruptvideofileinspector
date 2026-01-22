@@ -392,7 +392,7 @@ When troubleshooting a workflow failure:
 
 For detailed reference information, consult the skill documentation:
 
-- **`.github/skills/github-actions-troubleshooter/SKILL.md`** - Main skill documentation
+- **`.github/agents/skills/github-actions-troubleshooter/SKILL.md`** - Main skill documentation
 - **`references/common-errors.md`** - Detailed error catalog with solutions
 - **`references/workflow-templates.md`** - Complete workflow examples
 - **`references/best-practices.md`** - Performance and security guidelines

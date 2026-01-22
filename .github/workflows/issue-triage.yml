@@ -8,11 +8,16 @@ permissions:
   issues: write
   contents: read
 
+concurrency:
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   triage-issue:
     if: |
       github.event.issue.state == 'open' &&
       contains(github.event.issue.labels.*.name, 'triage:agent-pending') &&
+      !contains(github.event.issue.labels.*.name, 'triage:agent-processed') &&
       (
         github.event.action == 'opened' ||
         (github.event.action == 'labeled' && github.event.label.name == 'triage:agent-pending')
@@ -27,29 +32,6 @@ jobs:
             const issue = context.payload.issue;
             const originalBody = issue.body || '';
             const issueTitle = issue.title || '';
-            
-            // Post comment with original content for data preservation
-            const preservationComment = [
-              '## 📋 Original Issue Content (Preserved)',
-              '',
-              '> This comment preserves the original issue content before agent processing.',
-              '> If any context was lost during formatting, refer to this archive.',
-              '',
-              '---',
-              '',
-              originalBody,
-              '',
-              '---',
-              '',
-              '*Archived by Issue Triage Agent*'
-            ].join('\n');
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              body: preservationComment
-            });
             
             // Store original body and title for next steps using environment files
             // This is more secure than using step outputs for user-provided content
@@ -259,6 +241,7 @@ jobs:
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
           DETECTED_COMPONENT: ${{ env.DETECTED_COMPONENT }}
           DETECTED_STAKEHOLDER: ${{ env.DETECTED_STAKEHOLDER }}
+          GAPS: ${{ env.GAPS }}
         with:
           script: |
             const issue = context.payload.issue;
@@ -266,6 +249,24 @@ jobs:
             const issueType = process.env.ISSUE_TYPE || 'task';
             const detectedComponent = process.env.DETECTED_COMPONENT || 'Unknown';
             const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
+            const mention = issue.user?.login ? `@${issue.user.login}` : 'the submitter';
+            
+            let gaps = [];
+            try {
+              gaps = JSON.parse(process.env.GAPS || '[]');
+            } catch (e) {
+              console.log('Failed to parse gaps for formatting, using empty array');
+              gaps = [];
+            }
+            
+            const needsInfo = gaps.length > 0;
+            const questionSection = needsInfo
+              ? [
+                  `### Questions for ${mention}`,
+                  `The triage agent needs more details to proceed. ${mention}, please provide:`,
+                  gaps.map(gap => `- ${gap}`).join('\n')
+                ]
+              : [];
             
             // Remove tags like [QUICK], [FEAT], [FIX], etc. from the title
             let cleanedTitle = issue.title || '';
@@ -294,7 +295,8 @@ jobs:
                   '### Environment Information',
                   '_Please provide your environment details (OS, Python version, etc.)_',
                   '### Error Logs/Output',
-                  '```\n(No logs provided in original submission)\n```'
+                  '```\n(No logs provided in original submission)\n```',
+                  ...questionSection
                 ]);
                 break;
                 
@@ -309,7 +311,8 @@ jobs:
                   '### Unlike',
                   'The current implementation which does not include this feature.',
                   '### Additional Context',
-                  '_Please add any additional context about this feature request._'
+                  '_Please add any additional context about this feature request._',
+                  ...questionSection
                 ]);
                 break;
                 
@@ -324,7 +327,8 @@ jobs:
                   '### Unlike',
                   'The current documentation which may be incomplete or unclear.',
                   '### Documentation Details',
-                  '_Please specify which documentation files or sections need updates._'
+                  '_Please specify which documentation files or sections need updates._',
+                  ...questionSection
                 ]);
                 break;
                 
@@ -339,7 +343,8 @@ jobs:
                   '### Unlike',
                   'The current implementation which may be slower than expected.',
                   '### Performance Details',
-                  '_Please provide performance metrics, benchmarks, or specific scenarios._'
+                  '_Please provide performance metrics, benchmarks, or specific scenarios._',
+                  ...questionSection
                 ]);
                 break;
                 
@@ -356,7 +361,8 @@ jobs:
                   '### Maintenance Task Type',
                   'Other',
                   '### Specific Tasks',
-                  '_Please specify the exact tasks to be completed._'
+                  '_Please specify the exact tasks to be completed._',
+                  ...questionSection
                 ]);
             }
             
@@ -372,6 +378,7 @@ jobs:
       - name: Post Metadata Comment
         uses: actions/github-script@v7
         env:
+          ORIGINAL_BODY: ${{ env.ORIGINAL_BODY }}
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
           CONFIDENCE: ${{ env.CONFIDENCE }}
           GAPS: ${{ env.GAPS }}
@@ -380,10 +387,15 @@ jobs:
         with:
           script: |
             const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const originalBody = process.env.ORIGINAL_BODY || '';
             const issueType = process.env.ISSUE_TYPE || 'task';
             const confidence = process.env.CONFIDENCE || '50';
             const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
             const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
+            const marker = '<!-- triage-summary -->';
+            const mention = issue.user?.login ? `@${issue.user.login}` : 'the submitter';
             
             // Parse gaps safely
             let gaps = [];
@@ -399,8 +411,17 @@ jobs:
               ? gaps.map(g => `- ${g}`).join('\n')
               : '- None identified';
             
+            const questionSection = gaps.length > 0
+              ? [`Questions for ${mention}:`, '', gapsList]
+              : ['No open questions at this time.'];
+            
+            const originalContent = originalBody.trim().length > 0
+              ? originalBody
+              : '_No original content provided._';
+            
             const metadataComment = [
-              '## 🤖 Agent Processing Metadata',
+              marker,
+              '## 🤖 Issue Triage Summary',
               '',
               '| Metric | Value |',
               '|--------|-------|',
@@ -410,39 +431,120 @@ jobs:
               '| **Detected Stakeholder** | ' + detectedStakeholder + ' |',
               '| **Processing Time** | ' + new Date().toISOString() + ' |',
               '',
+              '<details>',
+              '<summary>Original Issue Content</summary>',
+              '',
+              originalContent,
+              '',
+              '</details>',
+              '',
+              '<details>',
+              '<summary>Gap Analysis</summary>',
+              '',
               '### Gap Analysis',
               '',
               'The following information was not found in the original submission:',
               '',
               gapsList,
               '',
+              '</details>',
+              '',
+              '<details>',
+              '<summary>Question History</summary>',
+              '',
+              ...questionSection,
+              '',
+              '</details>',
+              '',
               '---',
               '',
               '> **Note**: This issue was automatically formatted by the Issue Triage Agent.',
-              '> The original content has been preserved in a separate comment above.',
+              '> The original content and history are preserved in the folded sections above.',
               '> Component and stakeholder information have been applied as labels.',
               '> Please review and update any missing sections as needed.'
             ].join('\n');
             
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
               issue_number: issue.number,
-              body: metadataComment
+              per_page: 100
             });
-
+            
+            const existingComment = comments.find(comment =>
+              comment.body &&
+              (comment.body.includes(marker) ||
+                comment.body.includes('## 🤖 Issue Triage Summary') ||
+                comment.body.includes('## 🤖 Agent Processing Metadata'))
+            );
+            let metadataCommentData = null;
+            
+            if (existingComment) {
+              const { data: updatedComment } = await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body: metadataComment
+              });
+              metadataCommentData = updatedComment;
+            } else {
+              const { data: createdComment } = await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body: metadataComment
+              });
+              metadataCommentData = createdComment;
+            }
+            
+            const cleanupMarkers = [
+              '<!-- triage-preservation -->',
+              '## 📋 Original Issue Content (Preserved)',
+              '<!-- triage-question-history -->',
+              '## ❓ Triage Questions (History)',
+              '<!-- triage-metadata -->'
+            ];
+            
+            for (const comment of comments) {
+              if (!comment.body || comment.id === metadataCommentData?.id) {
+                continue;
+              }
+              if (cleanupMarkers.some(token => comment.body.includes(token))) {
+                try {
+                  await github.rest.issues.deleteComment({
+                    owner,
+                    repo,
+                    comment_id: comment.id
+                  });
+                } catch (error) {
+                  console.log('Unable to delete legacy triage comment:', error.message);
+                }
+              }
+            }
+      
       - name: Update Labels
         uses: actions/github-script@v7
         env:
           ISSUE_TYPE: ${{ env.ISSUE_TYPE }}
           DETECTED_COMPONENT: ${{ env.DETECTED_COMPONENT }}
           DETECTED_STAKEHOLDER: ${{ env.DETECTED_STAKEHOLDER }}
+          GAPS: ${{ env.GAPS }}
         with:
           script: |
             const issue = context.payload.issue;
             const issueType = process.env.ISSUE_TYPE || 'task';
             const detectedComponent = process.env.DETECTED_COMPONENT || 'Other';
             const detectedStakeholder = process.env.DETECTED_STAKEHOLDER || 'End User';
+            
+            let gaps = [];
+            try {
+              gaps = JSON.parse(process.env.GAPS || '[]');
+            } catch (e) {
+              console.log('Failed to parse gaps for labels, using empty array');
+              gaps = [];
+            }
+            
+            const needsInfo = gaps.length > 0;
             
             // Remove triage:agent-pending label
             try {
@@ -458,11 +560,32 @@ jobs:
                 console.log('Label triage:agent-pending not found or already removed');
               } else {
                 throw e;
+                }
+            }
+            
+            if (!needsInfo) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  name: 'triage:next'
+                });
+              } catch (e) {
+                const status = e?.status ?? e?.response?.status;
+                if (status === 404) {
+                  console.log('Label triage:next not found or already removed');
+                } else {
+                  throw e;
+                }
               }
             }
             
             // Add triage:agent-processed label
             const labelsToAdd = ['triage:agent-processed'];
+            if (needsInfo) {
+              labelsToAdd.push('triage:next');
+            }
             
             // Add type-specific labels based on classification
             switch (issueType) {
@@ -536,3 +659,25 @@ jobs:
               issue_number: issue.number,
               assignees: ['Copilot']
             });
+      
+      - name: Remove triage:next on failure
+        if: ${{ failure() }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                name: 'triage:next'
+              });
+            } catch (error) {
+              const status = error?.status ?? error?.response?.status;
+              if (status === 404) {
+                console.log('Label triage:next not found or already removed');
+              } else {
+                console.log('Unable to remove triage:next label on failure:', error.message);
+              }
+            }
