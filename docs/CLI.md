@@ -12,7 +12,17 @@ src/cli/
 └── utils.py        # CLI utility functions
 ```
 
-## Components
+## Command Groups
+
+The CLI is organized into several command groups:
+
+- **scan**: Video corruption detection and scanning
+- **report**: Report generation from scan results
+- **database**: Database management and queries
+- **trakt**: Trakt.tv watchlist synchronization
+- **config**: Configuration management
+
+## Scan Commands
 
 ### Main Entry Point (`main.py`)
 
@@ -22,85 +32,345 @@ The main entry point for the CLI application, responsible for:
 - Initializing the command dispatcher
 - Handling global error cases
 
-### Command Definitions (`commands.py`)
+## Scan Commands
 
-Defines the command structure and argument parsing using the Typer framework:
-- **Scan commands**: Video file corruption detection
-- **Trakt commands**: Watchlist synchronization 
-- **Configuration commands**: Config file generation and validation
-- **Utility commands**: File listing, version info
+### scan - Scan Videos for Corruption
 
-### Command Handlers (`handlers.py`)
-
-Implements the business logic for each command:
-
-#### `ScanHandler`
-- Coordinates video scanning operations
-- Manages scan modes (quick, deep, hybrid)
-- Handles progress reporting and resume functionality
-- Generates output in multiple formats (JSON, CSV, YAML, text)
-
-#### `TraktHandler`
-- Manages Trakt.tv API integration
-- Processes scan results for watchlist sync
-- Handles authentication and API rate limiting
-- Provides interactive mode for ambiguous matches
-
-#### `ConfigHandler`
-- Generates sample configuration files
-- Validates configuration settings
-- Handles different output formats (YAML, JSON)
-
-### CLI Utilities (`utils.py`)
-
-Provides common CLI functionality:
-- Progress display and formatting
-- User input validation
-- Error message formatting
-- Output path handling
-
-## Usage Examples
-
-### Basic Scanning
+Scan video files or directories for corruption with automatic database storage.
 
 ```bash
-# Quick scan with default settings
+# Basic directory scan
 corrupt-video-inspector scan /path/to/videos
 
-# Deep scan with JSON output
-corrupt-video-inspector scan --mode deep --output results.json /path/to/videos
+# Scan with specific mode
+corrupt-video-inspector scan /path/to/videos --mode deep
 
-# Hybrid scan with custom workers
-corrupt-video-inspector scan --mode hybrid --max-workers 8 /path/to/videos
+# Incremental scan (skip recently healthy files)
+corrupt-video-inspector scan /path/to/videos --incremental
+
+# Incremental with custom time window (14 days)
+corrupt-video-inspector scan /path/to/videos --incremental --max-age 14
+
+# Scan with custom worker count
+corrupt-video-inspector scan /path/to/videos --max-workers 8
+
+# Quick scan (fast, less thorough)
+corrupt-video-inspector scan /path/to/videos --mode quick
 ```
 
-### Trakt Integration
+**Options:**
+- `--mode`: Scan mode (quick, deep, hybrid) - default: hybrid
+- `--incremental`: Enable incremental scanning (skip recently healthy files)
+- `--max-age`: Days to look back for incremental scans (default: 7)
+- `--max-workers`: Number of parallel workers (default: CPU count)
+- `--timeout`: FFmpeg timeout in seconds (default: 300)
+
+**Scan Modes:**
+- **quick**: Fast metadata checks only
+- **deep**: Full frame-by-frame analysis (slowest, most thorough)
+- **hybrid**: Smart combination of quick and deep (recommended)
+
+**Database Integration:**
+All scan results are automatically stored in the SQLite database at `~/.corrupt-video-inspector/scans.db`. No additional flags required.
+
+## Report Commands
+
+### report - Generate Reports from Scan Results
+
+Generate reports from database-stored scan results with multiple output formats.
+
+```bash
+# Generate report from latest scan (text format)
+corrupt-video-inspector report
+
+# Report from specific scan ID
+corrupt-video-inspector report --scan-id 42
+
+# Report as JSON
+corrupt-video-inspector report --format json
+
+# Report as CSV
+corrupt-video-inspector report --scan-id 42 --format csv --output report.csv
+
+# Compare two scans
+corrupt-video-inspector report --compare 41 42
+
+# Compare with JSON output
+corrupt-video-inspector report --compare 41 42 --format json
+
+# Trend analysis for directory
+corrupt-video-inspector report --trend --directory /media/movies --days 30
+
+# Trend analysis as CSV
+corrupt-video-inspector report --trend --directory /media/tv --days 90 --format csv
+```
+
+**Options:**
+- `--scan-id`: Specific scan ID to report on (default: latest)
+- `--format`: Output format (text, json, csv, html, pdf) - default: text
+- `--output`: Output file path (default: stdout)
+- `--compare`: Compare two scans (format: SCAN_ID1 SCAN_ID2)
+- `--trend`: Enable trend analysis mode
+- `--directory`: Directory path for trend analysis (required with --trend)
+- `--days`: Number of days for trend analysis (default: 30)
+
+**Report Types:**
+
+1. **Single Scan Report** (default): Detailed report of one scan
+2. **Comparison Report** (`--compare`): Side-by-side comparison of two scans
+3. **Trend Report** (`--trend`): Corruption rate trends over time
+
+## Database Commands
+
+The `database` command group provides comprehensive database management capabilities.
+
+### database query - Query and Filter Results
+
+Search and filter scan results with advanced criteria.
+
+```bash
+# Show all corrupt files
+corrupt-video-inspector database query --corrupt
+
+# High-confidence corrupt files
+corrupt-video-inspector database query --corrupt --min-confidence 0.8
+
+# Query specific directory
+corrupt-video-inspector database query --directory "/media/movies"
+
+# Query specific scan
+corrupt-video-inspector database query --scan-id 42
+
+# Query with time filter
+corrupt-video-inspector database query --since "7 days ago"
+
+# Export to CSV
+corrupt-video-inspector database query --corrupt --format csv --output corrupt.csv
+
+# Limit results
+corrupt-video-inspector database query --limit 100
+
+# Complex query
+corrupt-video-inspector database query \
+  --directory "/media/tv" \
+  --corrupt \
+  --min-confidence 0.7 \
+  --limit 50 \
+  --format json
+```
+
+**Options:**
+- `--scan-id`: Filter by specific scan ID
+- `--directory`: Filter by directory path
+- `--corrupt`: Show only corrupt files
+- `--healthy`: Show only healthy files
+- `--min-confidence`: Minimum confidence threshold (0.0-1.0)
+- `--since`: Show results since date/time
+- `--limit`: Maximum number of results
+- `--format`: Output format (table, json, csv, yaml)
+- `--output`: Write to file instead of stdout
+
+### database stats - Database Statistics
+
+Display comprehensive database statistics.
+
+```bash
+# Show all statistics
+corrupt-video-inspector database stats
+```
+
+**Output includes:**
+- Total scans stored
+- Total scan results
+- Overall corruption rate
+- Database file size
+- Date range of data
+- Average scan duration
+
+### database list-scans - List Recent Scans
+
+Display a table of recent scan operations.
+
+```bash
+# List last 20 scans (default)
+corrupt-video-inspector database list-scans
+
+# List last 50 scans
+corrupt-video-inspector database list-scans --limit 50
+
+# Filter by directory
+corrupt-video-inspector database list-scans --directory "/media/movies"
+
+# Combined filters
+corrupt-video-inspector database list-scans --limit 10 --directory "/media/tv"
+```
+
+**Options:**
+- `--limit`: Number of scans to display (default: 20)
+- `--directory`: Filter by directory path
+
+### database cleanup - Remove Old Scans
+
+Clean up old scan data to manage database size.
+
+```bash
+# Preview cleanup without making changes
+corrupt-video-inspector database cleanup --days 30 --dry-run
+
+# Clean up scans older than 30 days
+corrupt-video-inspector database cleanup --days 30
+
+# Aggressive cleanup (90 days)
+corrupt-video-inspector database cleanup --days 90
+```
+
+**Options:**
+- `--days`: Remove scans older than N days (required)
+- `--dry-run`: Preview changes without modifying database
+
+**Features:**
+- Removes scans and results atomically
+- Auto-vacuum after cleanup to reclaim disk space
+- Shows count of removed records
+- Safe dry-run mode for preview
+
+### database backup - Create Backup
+
+Create a complete backup of the database.
+
+```bash
+# Auto-generated backup filename
+corrupt-video-inspector database backup
+
+# Custom backup location
+corrupt-video-inspector database backup --backup-path /backups/scans.db
+
+# Using --output parameter
+corrupt-video-inspector database backup --output backup-$(date +%Y%m%d).db
+```
+
+**Options:**
+- `--backup-path` or `--output`: Backup file path (default: timestamped filename)
+
+### database restore - Restore from Backup
+
+Restore database from a backup file.
+
+```bash
+# Restore with confirmation prompt
+corrupt-video-inspector database restore --input backup.db
+
+# Force restore without confirmation
+corrupt-video-inspector database restore --input backup.db --force
+```
+
+**Options:**
+- `--input`: Backup file to restore from (required)
+- `--force`: Skip confirmation prompt
+
+**Safety:** Current database is automatically backed up before restore.
+
+### database export - Export Results
+
+Export scan results to various formats for external analysis.
+
+```bash
+# Export latest scan to JSON
+corrupt-video-inspector database export --format json --output latest.json
+
+# Export specific scan to CSV
+corrupt-video-inspector database export --scan-id 42 --format csv --output scan-42.csv
+
+# Export corrupt files only
+corrupt-video-inspector database export --corrupt-only --format json
+
+# Export to stdout for piping
+corrupt-video-inspector database export --format json | jq '.results[] | select(.is_corrupt)'
+
+# Export all data to YAML
+corrupt-video-inspector database export --format yaml --output all-scans.yaml
+```
+
+**Options:**
+- `--scan-id`: Export specific scan (default: latest scan)
+- `--format`: Output format (json, csv, yaml)
+- `--output`: Output file path (default: stdout)
+- `--corrupt-only`: Export only corrupt files
+
+## Trakt Commands
+
+### trakt sync - Sync to Trakt Watchlist
+
+Synchronize healthy video files from database scans to Trakt.tv watchlist.
 
 ```bash
 # Set up Trakt credentials first
 make secrets-init  # Create secret files
 # Edit docker/secrets/trakt_client_id.txt and trakt_client_secret.txt
 
-# Sync scan results to Trakt
-corrupt-video-inspector trakt sync results.json
+# Sync latest scan (healthy files only)
+corrupt-video-inspector trakt sync
 
-# Interactive mode for manual selection
-corrupt-video-inspector trakt sync results.json --interactive
+# Sync specific scan
+corrupt-video-inspector trakt sync --scan-id 42
 
-# List available watchlists
-corrupt-video-inspector trakt list-watchlists
+# Sync with confidence threshold
+corrupt-video-inspector trakt sync --min-confidence 0.8
 
-# View watchlist contents
-corrupt-video-inspector trakt view --watchlist "my-movies"
+# Include suspicious files too
+corrupt-video-inspector trakt sync --include-status healthy --include-status suspicious
+
+# Dry run to preview
+corrupt-video-inspector trakt sync --dry-run
+
+# Sync to custom watchlist
+corrupt-video-inspector trakt sync --watchlist "my-movies"
+
+# Complex filtering
+corrupt-video-inspector trakt sync \
+  --scan-id 42 \
+  --min-confidence 0.9 \
+  --include-status healthy
 ```
 
-### Configuration Management
+**Options:**
+- `--scan-id`: Sync specific scan (default: latest)
+- `--min-confidence`: Minimum confidence threshold (0.0-1.0)
+- `--include-status`: File status to include (can be repeated: healthy, suspicious, corrupt)
+- `--dry-run`: Preview what would be synced without making changes
+- `--watchlist`: Target Trakt watchlist name (default: default watchlist)
+
+**Database Integration:**
+- Reads scan results directly from database
+- Filters by status (default: healthy only)
+- Supports confidence thresholding for quality control
+- Tracks sync statistics (movies added, shows added, failed, not found)
+
+## Configuration Commands
+
+## Configuration Commands
+
+### init-config - Generate Sample Config
+
+Generate sample configuration file with default settings.
 
 ```bash
-# Generate sample config file
+# Generate YAML config (default)
 corrupt-video-inspector init-config --format yaml --output config.yml
 
-# Validate existing config
+# Generate JSON config
+corrupt-video-inspector init-config --format json --output config.json
+
+# Output to stdout
+corrupt-video-inspector init-config
+```
+
+### validate-config - Validate Config File
+
+Validate configuration file syntax and settings.
+
+```bash
+# Validate config file
 corrupt-video-inspector validate-config config.yml
 ```
 

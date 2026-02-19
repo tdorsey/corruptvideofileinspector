@@ -168,6 +168,13 @@ def cli(
     help="Skip files that were recently scanned and found healthy",
     show_default=True,
 )
+@click.option(
+    "--max-age",
+    type=int,
+    default=7,
+    help="Maximum age in days for incremental scans (default: 7 days)",
+    show_default=True,
+)
 @click.pass_context
 def scan(
     ctx,
@@ -178,6 +185,7 @@ def scan(
     extensions,
     resume,
     incremental,
+    max_age,
     config,
 ):
     # If no arguments are provided, show the help for the scan subcommand
@@ -237,27 +245,6 @@ def scan(
         # Convert mode string to ScanMode enum
         scan_mode = ScanMode(mode.lower())
 
-        # Handle incremental scanning
-        if incremental:
-            try:
-                from src.database.service import DatabaseService
-
-                db_service = DatabaseService(
-                    app_config.database.path, app_config.database.auto_cleanup_days
-                )
-
-                # Get files that were recently scanned and found healthy
-                recent_healthy = db_service.get_files_needing_rescan(
-                    str(directory), scan_mode.value
-                )
-                # Invert the logic - skip files NOT in the rescan list
-                # (these are files that were healthy in recent scans)
-                click.echo(
-                    f"Incremental scan: focusing on {len(recent_healthy)} files that need rescanning"
-                )
-            except Exception as e:
-                logger.warning(f"Could not perform incremental scan: {e}")
-
         # Create and run scan handler
         handler = ScanHandler(app_config)
         summary = handler.run_scan(
@@ -265,6 +252,8 @@ def scan(
             scan_mode=scan_mode,
             recursive=recursive,
             resume=resume,
+            incremental=incremental,
+            max_age_days=max_age,
         )
         if summary is not None:
             click.echo("\nScan Summary:")
@@ -417,6 +406,11 @@ def trakt(ctx):
     help="Include files with these statuses (default: healthy only)",
     show_default=True,
 )
+@click.option(
+    "--min-confidence",
+    type=click.FloatRange(0.0, 1.0),
+    help="Minimum confidence level (0.0-1.0) for files to include",
+)
 @global_options
 @click.pass_context
 def sync(
@@ -427,6 +421,7 @@ def sync(
     dry_run,
     watchlist,
     include_status,
+    min_confidence,
     config,
 ):
     """
@@ -453,6 +448,10 @@ def sync(
     \b
     # Dry run to see what would be synced
     corrupt-video-inspector trakt sync --dry-run
+    
+    \b
+    # Sync with minimum confidence threshold
+    corrupt-video-inspector trakt sync --min-confidence 0.8
     """
     try:
         # Load configuration
@@ -497,8 +496,16 @@ def sync(
             for result in scan_results_db
             if FileStatus(result.status.upper()) in include_statuses
         ]
+        
+        # Filter by confidence if specified
+        if min_confidence is not None:
+            filtered_results = [
+                result
+                for result in filtered_results
+                if result.confidence >= min_confidence
+            ]
 
-        click.echo(f"Found {len(filtered_results)} files matching status filter")
+        click.echo(f"Found {len(filtered_results)} files matching filters")
 
         # Handle dry-run mode
         if dry_run:
@@ -911,10 +918,33 @@ def test_ffmpeg(ctx, config):
     help="Scan ID from database (use latest scan if not specified)",
 )
 @click.option(
+    "--compare",
+    nargs=2,
+    type=int,
+    help="Compare two scans by ID (e.g., --compare 41 42)",
+)
+@click.option(
+    "--trend",
+    is_flag=True,
+    help="Show corruption trend analysis over time",
+)
+@click.option(
+    "--directory",
+    "-d",
+    help="Directory for trend analysis (required with --trend)",
+)
+@click.option(
+    "--days",
+    type=click.IntRange(1, 365),
+    default=30,
+    help="Days to analyze for trend report",
+    show_default=True,
+)
+@click.option(
     "--format",
     "output_format",
-    type=click.Choice(["html", "pdf", "json"], case_sensitive=False),
-    default="json",
+    type=click.Choice(["text", "json", "csv", "html", "pdf"], case_sensitive=False),
+    default="text",
     help="Report format",
     show_default=True,
 )
@@ -928,25 +958,38 @@ def test_ffmpeg(ctx, config):
 def report(
     ctx,
     scan_id,
+    compare,
+    trend,
+    directory,
+    days,
     output_format,
     include_healthy,
     config,
 ):
     """
-    Generate a detailed report from scan results stored in database.
+    Generate detailed reports from scan results stored in database.
 
     Creates formatted reports with statistics, file lists, and analysis
-    from database scan results.
+    from database scan results. Supports single scan reports, comparison
+    between two scans, and trend analysis over time.
 
     Examples:
 
     \b
-    # Generate JSON report from latest scan
+    # Generate text report from latest scan
     corrupt-video-inspector report
 
     \b
     # Generate report from specific scan ID
     corrupt-video-inspector report --scan-id 42
+
+    \b
+    # Compare two scans
+    corrupt-video-inspector report --compare 41 42
+
+    \b
+    # Show corruption trend for directory
+    corrupt-video-inspector report --trend --directory /media/movies --days 30
 
     """
     try:
@@ -963,7 +1006,104 @@ def report(
             app_config.database.path, app_config.database.auto_cleanup_days
         )
 
-        # Get scan from database
+        # Handle trend report
+        if trend:
+            if not directory:
+                click.echo("Error: --directory is required with --trend", err=True)
+                sys.exit(1)
+
+            trend_data = db_service.get_corruption_trend(directory, days)
+
+            if not trend_data:
+                click.echo(f"No scan data found for directory: {directory}")
+                return
+
+            if output_format == "json":
+                click.echo(json.dumps({"directory": directory, "days": days, "trend": trend_data}, indent=2))
+            elif output_format == "csv":
+                import csv as csv_module
+                import io
+
+                output_io = io.StringIO()
+                writer = csv_module.DictWriter(output_io, fieldnames=trend_data[0].keys())
+                writer.writeheader()
+                for row in trend_data:
+                    writer.writerow(row)
+                click.echo(output_io.getvalue())
+            else:  # text format
+                from datetime import datetime
+
+                click.echo(f"\n=== Corruption Trend Report ===")
+                click.echo(f"Directory: {directory}")
+                click.echo(f"Period: Last {days} days")
+                click.echo(f"Data Points: {len(trend_data)}\n")
+                click.echo(f"{'Date':<12} {'Files':<8} {'Corrupt':<8} {'Rate':<10}")
+                click.echo("-" * 50)
+
+                for point in trend_data:
+                    date_str = datetime.fromtimestamp(point["timestamp"]).strftime("%Y-%m-%d")
+                    total = point.get("total_files", 0)
+                    corrupt = point.get("corrupt_files", 0)
+                    rate = point.get("corruption_rate", 0.0)
+                    click.echo(f"{date_str:<12} {total:<8} {corrupt:<8} {rate:<10.1f}%")
+            return
+
+        # Handle comparison report
+        if compare:
+            scan1_id, scan2_id = compare
+            scan1 = db_service.get_scan(scan1_id)
+            scan2 = db_service.get_scan(scan2_id)
+
+            if not scan1:
+                click.echo(f"Error: Scan ID {scan1_id} not found", err=True)
+                sys.exit(1)
+            if not scan2:
+                click.echo(f"Error: Scan ID {scan2_id} not found", err=True)
+                sys.exit(1)
+
+            results1 = db_service.get_scan_results(scan1_id)
+            results2 = db_service.get_scan_results(scan2_id)
+
+            if output_format == "json":
+                comparison = {
+                    "scan1": {"id": scan1_id, "summary": scan1.to_scan_summary().model_dump()},
+                    "scan2": {"id": scan2_id, "summary": scan2.to_scan_summary().model_dump()},
+                    "changes": {
+                        "files_change": scan2.total_files - scan1.total_files,
+                        "corrupt_change": scan2.corrupt_files - scan1.corrupt_files,
+                        "rate_change": (scan2.corrupt_files / max(scan2.total_files, 1) * 100) - (scan1.corrupt_files / max(scan1.total_files, 1) * 100),
+                    },
+                }
+                click.echo(json.dumps(comparison, indent=2, default=str))
+            else:  # text format
+                from datetime import datetime
+
+                click.echo(f"\n=== Scan Comparison Report ===\n")
+                click.echo(f"Scan 1 (ID: {scan1_id})")
+                click.echo(f"  Date: {datetime.fromtimestamp(scan1.started_at).strftime('%Y-%m-%d %H:%M:%S')}")
+                click.echo(f"  Directory: {scan1.directory}")
+                click.echo(f"  Files: {scan1.total_files}")
+                click.echo(f"  Corrupt: {scan1.corrupt_files}")
+                click.echo(f"  Rate: {scan1.corrupt_files / max(scan1.total_files, 1) * 100:.1f}%\n")
+
+                click.echo(f"Scan 2 (ID: {scan2_id})")
+                click.echo(f"  Date: {datetime.fromtimestamp(scan2.started_at).strftime('%Y-%m-%d %H:%M:%S')}")
+                click.echo(f"  Directory: {scan2.directory}")
+                click.echo(f"  Files: {scan2.total_files}")
+                click.echo(f"  Corrupt: {scan2.corrupt_files}")
+                click.echo(f"  Rate: {scan2.corrupt_files / max(scan2.total_files, 1) * 100:.1f}%\n")
+
+                click.echo("Changes:")
+                files_delta = scan2.total_files - scan1.total_files
+                corrupt_delta = scan2.corrupt_files - scan1.corrupt_files
+                rate_delta = (scan2.corrupt_files / max(scan2.total_files, 1) * 100) - (scan1.corrupt_files / max(scan1.total_files, 1) * 100)
+
+                click.echo(f"  Files: {files_delta:+d}")
+                click.echo(f"  Corrupt: {corrupt_delta:+d}")
+                click.echo(f"  Rate: {rate_delta:+.1f}%\n")
+            return
+
+        # Handle single scan report
         if scan_id is None:
             # Get latest scan
             recent_scans = db_service.get_recent_scans(limit=1)
@@ -986,26 +1126,67 @@ def report(
         scan_results_db = db_service.get_scan_results(scan_model.id or 0)
         results = [result.to_scan_result() for result in scan_results_db]
 
-        # Display report as JSON to stdout
-        if output_format.lower() == "json":
+        # Filter results if needed
+        if not include_healthy:
+            results = [r for r in results if r.is_corrupt]
+
+        # Display report based on format
+        if output_format == "json":
             report_data = {
                 "scan_id": scan_model.id,
                 "summary": summary.model_dump(),
-                "results": (
-                    [r.model_dump() for r in results]
-                    if include_healthy
-                    else [r.model_dump() for r in results if r.is_corrupt]
-                ),
+                "results": [r.model_dump() for r in results],
             }
             click.echo(json.dumps(report_data, indent=2, default=str))
-        else:
-            # For other formats, use ReportService if available
+
+        elif output_format == "csv":
+            import csv as csv_module
+            import io
+
+            output_io = io.StringIO()
+            if results:
+                writer = csv_module.DictWriter(output_io, fieldnames=results[0].model_dump().keys())
+                writer.writeheader()
+                for result in results:
+                    writer.writerow(result.model_dump())
+            click.echo(output_io.getvalue())
+
+        elif output_format == "text":
+            from datetime import datetime
+
+            click.echo(f"\n=== Scan Report ===")
+            click.echo(f"Scan ID: {scan_model.id}")
+            click.echo(f"Directory: {scan_model.directory}")
+            click.echo(f"Mode: {scan_model.scan_mode}")
+            click.echo(f"Started: {datetime.fromtimestamp(scan_model.started_at).strftime('%Y-%m-%d %H:%M:%S')}")
+            click.echo(f"Duration: {scan_model.scan_time:.1f}s\n")
+
+            click.echo("Summary:")
+            click.echo(f"  Total Files: {scan_model.total_files}")
+            click.echo(f"  Processed: {scan_model.processed_files}")
+            click.echo(f"  Corrupt: {scan_model.corrupt_files}")
+            click.echo(f"  Healthy: {scan_model.healthy_files}")
+            click.echo(f"  Corruption Rate: {scan_model.corrupt_files / max(scan_model.total_files, 1) * 100:.1f}%\n")
+
+            if results:
+                click.echo("Files:")
+                click.echo(f"{'Filename':<50} {'Status':<10} {'Confidence':<12}")
+                click.echo("-" * 80)
+                for result in results:
+                    filename = result.filename
+                    if len(filename) > 47:
+                        filename = "..." + filename[-44:]
+                    status = "CORRUPT" if result.is_corrupt else "HEALTHY"
+                    confidence = f"{result.confidence:.2f}"
+                    click.echo(f"{filename:<50} {status:<10} {confidence:<12}")
+
+        else:  # html, pdf - try ReportService
             try:
                 service = ReportService(app_config)
                 report_path = service.generate_report(
                     summary=summary,
                     results=results,
-                    format=output_format.lower(),
+                    format=output_format,
                     include_healthy=include_healthy,
                 )
                 click.echo(f"Report generated: {report_path}")
@@ -1491,6 +1672,269 @@ def backup(ctx, backup_path, config):
 
     except Exception as e:
         logger.exception("Database backup failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command(name="list-scans")
+@global_options
+@click.option(
+    "--limit",
+    type=click.IntRange(1, 1000),
+    default=20,
+    help="Maximum number of scans to show",
+    show_default=True,
+)
+@click.option(
+    "--directory",
+    "-d",
+    help="Filter by directory path",
+)
+@click.pass_context
+def list_scans(ctx, limit, directory, config):
+    """List recent scans from database.
+
+    Show recent scans in reverse chronological order with summary information.
+
+    Examples:
+
+    \b
+    # Show last 20 scans
+    corrupt-video-inspector database list-scans
+
+    \b
+    # Show last 50 scans for specific directory
+    corrupt-video-inspector database list-scans --limit 50 --directory /media/videos
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Import database components
+        from src.database.service import DatabaseService
+
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        # Get recent scans
+        scans = db_service.get_recent_scans(limit=limit)
+
+        # Filter by directory if specified
+        if directory:
+            scans = [s for s in scans if directory in s.directory]
+
+        if not scans:
+            click.echo("No scans found.")
+            return
+
+        # Display scans in table format
+        from datetime import datetime
+
+        click.echo(f"\nFound {len(scans)} scans:\n")
+        click.echo(
+            f"{'ID':<6} {'Directory':<40} {'Started':<20} {'Files':<8} {'Corrupt':<8} {'Mode':<8} {'Time (s)':<10}"
+        )
+        click.echo("-" * 110)
+
+        for scan in scans:
+            directory_str = scan.directory
+            if len(directory_str) > 37:
+                directory_str = "..." + directory_str[-34:]
+
+            started = datetime.fromtimestamp(scan.started_at).strftime("%Y-%m-%d %H:%M:%S")
+            files = f"{scan.processed_files}/{scan.total_files}"
+            corrupt = str(scan.corrupt_files)
+            mode = scan.scan_mode
+            scan_time = f"{scan.scan_time:.1f}"
+
+            click.echo(
+                f"{scan.id:<6} {directory_str:<40} {started:<20} {files:<8} {corrupt:<8} {mode:<8} {scan_time:<10}"
+            )
+
+    except Exception as e:
+        logger.exception("Failed to list scans")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--input",
+    type=PathType(),
+    required=True,
+    help="Path to backup file to restore from",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Skip confirmation prompt",
+)
+@click.pass_context
+def restore(ctx, input, force, config):
+    """Restore database from backup.
+
+    Restore the database from a previously created backup file.
+    This will overwrite the current database.
+
+    Example:
+
+    \b
+    # Restore from backup
+    corrupt-video-inspector database restore --input backup.db
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Check if backup file exists
+        if not input.exists():
+            click.echo(f"Error: Backup file not found: {input}", err=True)
+            sys.exit(1)
+
+        # Confirm before overwriting
+        if not force:
+            click.echo(f"This will overwrite the current database at: {app_config.database.path}")
+            if not click.confirm("Are you sure you want to continue?"):
+                click.echo("Restore cancelled.")
+                return
+
+        # Import database components
+        import shutil
+
+        # Create backup of current database if it exists
+        if app_config.database.path.exists():
+            backup_current = app_config.database.path.parent / f"{app_config.database.path.name}.pre-restore"
+            shutil.copy2(app_config.database.path, backup_current)
+            click.echo(f"Current database backed up to: {backup_current}")
+
+        # Copy backup file to database location
+        shutil.copy2(input, app_config.database.path)
+        click.echo(f"Database restored from: {input}")
+
+        # Verify restored database
+        from src.database.service import DatabaseService
+
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+        stats = db_service.get_database_stats()
+        click.echo(f"Restored database contains {stats.total_scans} scans and {stats.total_files} files")
+
+    except Exception as e:
+        logger.exception("Database restore failed")
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@database.command()
+@global_options
+@click.option(
+    "--scan-id",
+    type=int,
+    help="Export specific scan by ID (default: all results)",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["csv", "json", "yaml"], case_sensitive=False),
+    default="json",
+    help="Output format",
+    show_default=True,
+)
+@click.option(
+    "--output",
+    "-o",
+    type=PathType(),
+    help="Save to file (default: stdout)",
+)
+@click.option(
+    "--corrupt-only",
+    is_flag=True,
+    help="Only export corrupt files",
+)
+@click.pass_context
+def export(ctx, scan_id, output_format, output, corrupt_only, config):
+    """Export scan results to various formats.
+
+    Export scan results to CSV, JSON, or YAML format for external analysis.
+
+    Examples:
+
+    \b
+    # Export all results to JSON
+    corrupt-video-inspector database export --format json --output results.json
+
+    \b
+    # Export specific scan to CSV
+    corrupt-video-inspector database export --scan-id 123 --format csv --output scan-123.csv
+
+    \b
+    # Export only corrupt files to YAML
+    corrupt-video-inspector database export --corrupt-only --format yaml --output corrupt.yaml
+    """
+    try:
+        # Load configuration
+        app_config = load_config(config_path=config)
+
+        # Import database components
+        from src.database.models import DatabaseQueryFilter
+        from src.database.service import DatabaseService
+
+        # Initialize database service
+        db_service = DatabaseService(
+            app_config.database.path, app_config.database.auto_cleanup_days
+        )
+
+        # Get results based on filters
+        if scan_id:
+            results = db_service.get_scan_results(scan_id)
+        else:
+            filter_opts = DatabaseQueryFilter(
+                is_corrupt=True if corrupt_only else None,
+                limit=100000,  # Large limit for export
+            )
+            results = db_service.query_results(filter_opts)
+
+        if not results:
+            click.echo("No results to export.")
+            return
+
+        # Convert to dictionaries
+        data = [result.model_dump() for result in results]
+
+        # Format output
+        if output_format == "json":
+            import json
+
+            output_str = json.dumps(data, indent=2)
+        elif output_format == "csv":
+            import csv as csv_module
+            import io
+
+            output_io = io.StringIO()
+            if data:
+                writer = csv_module.DictWriter(output_io, fieldnames=data[0].keys())
+                writer.writeheader()
+                for row in data:
+                    writer.writerow(row)
+            output_str = output_io.getvalue()
+        elif output_format == "yaml":
+            import yaml
+
+            output_str = yaml.dump(data, default_flow_style=False, sort_keys=False)
+
+        # Write to file or stdout
+        if output:
+            output.write_text(output_str, encoding="utf-8")
+            click.echo(f"Exported {len(results)} results to {output}")
+        else:
+            click.echo(output_str)
+
+    except Exception as e:
+        logger.exception("Database export failed")
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 

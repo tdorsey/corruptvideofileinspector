@@ -47,20 +47,35 @@ make setup
 ### Basic Usage
 
 ```bash
-# Scan a directory for corrupt videos (results stored in database)
-corrupt-video-inspector scan /path/to/videos --mode hybrid
+# Scan a directory for corrupt videos (automatically stored in database)
+corrupt-video-inspector scan /path/to/videos
 
-# Incremental scan (skip recently healthy files)
+# Incremental scan (skip recently healthy files - 50-90% faster!)
 corrupt-video-inspector scan /path/to/videos --incremental
+
+# List recent scans
+corrupt-video-inspector database list-scans
 
 # Generate report from latest scan
 corrupt-video-inspector report
 
-# Generate report from specific scan ID
+# Generate report from specific scan
 corrupt-video-inspector report --scan-id 42
 
-# Sync latest scan to Trakt.tv
+# Compare two scans to see changes
+corrupt-video-inspector report --compare 41 42
+
+# Trend analysis over time
+corrupt-video-inspector report --trend --directory /path/to/videos --days 30
+
+# Sync healthy files to Trakt.tv
 corrupt-video-inspector trakt sync
+
+# Query corrupt files from database
+corrupt-video-inspector database query --corrupt --min-confidence 0.8
+
+# Export scan results to CSV
+corrupt-video-inspector database export --format csv --output results.csv
 
 # View help for all commands
 corrupt-video-inspector --help
@@ -140,20 +155,47 @@ open http://localhost:8000/graphql
 
 ### 🗄️ Database Storage
 
-=======
-### 🗄️ Database Storage
+All scan results are automatically stored in an SQLite database for persistent storage and powerful analysis:
 
-All scan results are stored in an SQLite database for persistent storage and advanced analysis:
-
-- **Historical Tracking**: Maintain scan history across multiple runs
-- **Incremental Scanning**: Skip recently scanned healthy files for faster scans
+**Key Features:**
+- **Automatic Storage**: Every scan is stored in database by default (`~/.corrupt-video-inspector/scans.db`)
+- **Historical Tracking**: Maintain complete scan history across multiple runs
+- **Incremental Scanning**: Skip recently scanned healthy files - 50-90% faster scans!
 - **Report Generation**: Generate reports from any previous scan by ID
-- **Trakt Integration**: Sync scan results directly from database
-- **Zero Configuration**: Embedded SQLite database requires no server setup
+- **Comparison Reports**: Compare two scans to identify new corruption
+- **Trend Analysis**: Track corruption rates over time for specific directories
+- **Advanced Queries**: Filter by status, confidence, date, directory
+- **Export Capabilities**: Export results to JSON, CSV, or YAML
+- **Database Management**: Backup, restore, cleanup, and statistics commands
+- **Trakt Integration**: Sync results directly from database with smart filtering
+- **Zero Configuration**: Embedded SQLite database - no server required
 
-**Note**: File-based output (JSON, CSV, YAML) has been removed. All results are stored in the database at `~/.corrupt-video-inspector/scans.db` by default.
+**Quick Examples:**
 
-**See [Database Documentation](docs/DATABASE.md) for complete details and examples.**
+```bash
+# Incremental scan (skip files healthy within 7 days)
+corrupt-video-inspector scan /media/videos --incremental
+
+# List recent scans with summary
+corrupt-video-inspector database list-scans
+
+# Compare two scans to see changes
+corrupt-video-inspector report --compare 41 42
+
+# View corruption trend over 30 days
+corrupt-video-inspector report --trend --directory /media/movies --days 30
+
+# Query high-confidence corrupt files
+corrupt-video-inspector database query --corrupt --min-confidence 0.8
+
+# Backup database
+corrupt-video-inspector database backup --output backup.db
+
+# Clean up scans older than 90 days
+corrupt-video-inspector database cleanup --days 90
+```
+
+**See [Database Documentation](docs/DATABASE.md) for complete details and [Database Migration Guide](docs/DATABASE_MIGRATION.md) for upgrading from file-based storage.**
 
 **Note**: FFmpeg is a critical system dependency required for video analysis. The `make install-system-deps` command will install it automatically on most systems, or see [FFmpeg Installation](https://ffmpeg.org/download.html) for manual installation.
 

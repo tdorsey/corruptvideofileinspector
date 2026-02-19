@@ -1,31 +1,639 @@
-[
-  {
-    "category": "Issue #280 - File Format Guidelines Implementation",
-    "description": "Verify and complete implementation of file format selection guidelines for agent context optimization, then close issue #280",
-    "steps": [
-      "Review issue #280 requirements: file format selection guidelines (JSONL, YAML, Markdown)",
-      "Check what was already done in PR #281 (merged on 2026-01-16)",
-      "Verify that all agent files have file format guidelines",
-      "If guidelines are present and complete, close issue #280 with reference to PR #281",
-      "If guidelines are missing or incomplete:",
-      "  - Create branch: git checkout -b fix/280-file-format-guidelines",
-      "  - Add file format guidelines to ALL agent .md files in .github/agents/",
-      "  - Guidelines should cover: JSONL (fast access), YAML (token efficient), Markdown (readable), JSON (universal)",
-      "  - Include optimization tips for subprocess latency vs inference latency",
-      "  - Commit changes: git commit -m 'docs(agents): add file format selection guidelines to all agents (#280)'",
-      "  - Push branch: git push origin fix/280-file-format-guidelines",
-      "  - Create PR: gh pr create --title 'docs(agents): complete file format guidelines for all agents (#280)' --body 'Fixes #280' --base main",
-      "  - Merge PR if it looks good"
+{
+  "title": "SQLite Integration Completion",
+  "version": "1.0",
+  "created": "2024-01-19",
+  "author": "GitHub Copilot",
+  "target_completion": "3-4 weeks",
+  "assigned_to": "Ralph (Autonomous Development Agent)",
+  
+  "overview": {
+    "description": "Complete the SQLite database integration for the Corrupt Video Inspector project to provide persistent storage, historical tracking, and advanced querying capabilities for video scan results.",
+    "goals": [
+      "Store all scan results automatically in SQLite database",
+      "Implement incremental scanning to skip recently scanned healthy files",
+      "Provide comprehensive CLI commands for database management",
+      "Enable report generation from historical database scans",
+      "Integrate Trakt sync with database scan results"
+    ]
+  },
+  
+  "current_state": {
+    "completed": [
+      {
+        "component": "Database Models",
+        "file": "src/database/models.py",
+        "features": [
+          "ScanDatabaseModel for scan metadata",
+          "ScanResultDatabaseModel for individual file results",
+          "DatabaseQueryFilter for query system",
+          "DatabaseStats for metrics"
+        ]
+      },
+      {
+        "component": "Database Service",
+        "file": "src/database/service.py",
+        "features": [
+          "Schema initialization with indexes",
+          "CRUD operations for scans and results",
+          "Query system with filtering",
+          "Statistics and trending",
+          "Cleanup and maintenance operations",
+          "Backup functionality"
+        ]
+      },
+      {
+        "component": "Configuration",
+        "file": "src/config/config.py",
+        "features": [
+          "DatabaseConfig model",
+          "Default path: ~/.corrupt-video-inspector/scans.db",
+          "Auto-cleanup and backup settings"
+        ]
+      },
+      {
+        "component": "Documentation",
+        "file": "docs/DATABASE.md",
+        "features": [
+          "Comprehensive user documentation",
+          "Usage examples and best practices",
+          "Query examples and troubleshooting"
+        ]
+      }
     ],
-    "success_criteria": [
-      "All agent files have file format selection guidelines",
-      "Guidelines cover JSONL, YAML, Markdown, JSON",
-      "Optimization advice for subprocess vs inference latency included",
-      "Issue #280 closed (either directly or via PR merge)",
-      "Documentation is consistent across all agents"
+    
+    "partially_implemented": [
+      {
+        "component": "CLI Integration",
+        "file": "src/cli/commands.py",
+        "status": {
+          "completed": [
+            "Basic database command group",
+            "Query command (partial)",
+            "Stats command"
+          ],
+          "missing": [
+            "Scan command database integration",
+            "Report command database integration",
+            "Cleanup command",
+            "Backup/restore commands",
+            "List-scans command",
+            "Export command",
+            "Incremental scan implementation"
+          ]
+        }
+      },
+      {
+        "component": "Scan Handlers",
+        "file": "src/cli/handlers.py",
+        "status": {
+          "completed": [
+            "Basic database storage skeleton"
+          ],
+          "missing": [
+            "Integration with actual scan flow",
+            "Store results during scans",
+            "Incremental scan support"
+          ]
+        }
+      },
+      {
+        "component": "Trakt Integration",
+        "status": {
+          "missing": [
+            "Database integration for Trakt sync",
+            "Sync from database scan results"
+          ]
+        }
+      }
     ],
-    "processed": true,
-    "outcome": "✅ COMPLETED - Added file format selection guidelines to all 7 remaining agent files. All 9 agent files now have comprehensive guidelines covering JSONL, YAML, and Markdown formats with optimization advice, decision trees, and agent-specific examples. Committed to branch fix/280-file-format-guidelines and pushed to remote.",
-    "completion_date": "2026-01-17"
+    
+    "not_implemented": [
+      "Incremental scanning feature",
+      "Report generation from database",
+      "Complete CLI database commands",
+      "Database integration tests",
+      "Trakt sync from database"
+    ]
+  },
+  
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "title": "Complete Scan-to-Database Integration",
+      "priority": "CRITICAL",
+      "description": "All scan operations must automatically store results in database",
+      "acceptance_criteria": [
+        "All scan operations store results in database automatically",
+        "Both directory and file scans persist results",
+        "Scan summary and individual results stored atomically",
+        "Failed scans logged without corrupting database",
+        "Duplicate scan prevention (warn if scanning same directory recently)"
+      ],
+      "implementation_notes": {
+        "file": "src/cli/handlers.py",
+        "method": "ScanHandler.handle()",
+        "changes": [
+          "After scan completes, create ScanDatabaseModel from summary",
+          "Store scan metadata and get scan_id",
+          "Store individual ScanResult objects as ScanResultDatabaseModel",
+          "Wrap in try-except for error handling"
+        ]
+      },
+      "sub_requirements": [
+        {
+          "id": "REQ-1.1",
+          "title": "Update Scanner to Return Detailed Results",
+          "description": "VideoScanner.scan_directory() only returns ScanSummary, need individual file results",
+          "changes": [
+            "Modify VideoScanner.scan_directory() to track ScanResult objects",
+            "Return both summary and results list",
+            "Maintain backward compatibility"
+          ]
+        }
+      ]
+    },
+    
+    {
+      "id": "REQ-2",
+      "title": "Implement Incremental Scanning",
+      "priority": "HIGH",
+      "description": "Skip files that were recently scanned and found healthy",
+      "cli_examples": [
+        "corrupt-video-inspector scan /media/videos --incremental",
+        "corrupt-video-inspector scan /media/videos --incremental --max-age 7d"
+      ],
+      "acceptance_criteria": [
+        "--incremental flag added to scan command",
+        "--max-age option to define recent (default: 7 days)",
+        "Only rescan files that: were corrupt, were suspicious, weren't in last scan, or older than max-age"
+      ],
+      "implementation": {
+        "database_method": {
+          "class": "DatabaseService",
+          "method": "get_healthy_files_recently_scanned",
+          "params": ["directory", "max_age_seconds"],
+          "returns": "list[str]"
+        },
+        "scanner_integration": {
+          "file": "src/core/scanner.py",
+          "method": "scan_directory",
+          "logic": "Query database for healthy files within max_age, filter video_files list to exclude them"
+        }
+      }
+    },
+    
+    {
+      "id": "REQ-3",
+      "title": "Complete Database CLI Commands",
+      "priority": "HIGH",
+      "description": "Provide comprehensive CLI commands for database management",
+      "commands": [
+        {
+          "name": "list-scans",
+          "usage": "corrupt-video-inspector database list-scans [--limit N] [--directory PATH]",
+          "output_format": "Table with columns: ID, Directory, Started, Files, Corrupt, Mode, Time",
+          "features": [
+            "Show recent scans in reverse chronological order",
+            "Filter by directory",
+            "Limit results"
+          ]
+        },
+        {
+          "name": "cleanup",
+          "usage": "corrupt-video-inspector database cleanup --days 30 [--dry-run]",
+          "features": [
+            "Remove scans older than specified days",
+            "Show count of removed scans",
+            "Support dry-run mode",
+            "Respect foreign key constraints",
+            "Vacuum database after cleanup"
+          ],
+          "acceptance_criteria": [
+            "Removes scans and results atomically",
+            "Shows count before and after",
+            "Dry-run doesn't modify database",
+            "Auto-vacuum on completion"
+          ]
+        },
+        {
+          "name": "backup",
+          "usage": "corrupt-video-inspector database backup --output backup.db",
+          "features": [
+            "Create complete database backup",
+            "Verify backup integrity",
+            "Show backup size and location"
+          ]
+        },
+        {
+          "name": "restore",
+          "usage": "corrupt-video-inspector database restore --input backup.db",
+          "features": [
+            "Restore from backup file",
+            "Confirm before overwriting",
+            "Validate backup before restore"
+          ]
+        },
+        {
+          "name": "export",
+          "usage": "corrupt-video-inspector database export [--scan-id ID] --format csv --output file.csv",
+          "features": [
+            "Export to CSV, JSON, or YAML",
+            "Export specific scan or all results",
+            "Filter by corrupt status, confidence, etc.",
+            "Support piping to stdout"
+          ]
+        }
+      ]
+    },
+    
+    {
+      "id": "REQ-4",
+      "title": "Report Generation from Database",
+      "priority": "MEDIUM",
+      "description": "Generate reports from historical database scans",
+      "cli_examples": [
+        "corrupt-video-inspector report",
+        "corrupt-video-inspector report --scan-id 42",
+        "corrupt-video-inspector report --compare 41 42",
+        "corrupt-video-inspector report --trend /media/movies --days 30"
+      ],
+      "acceptance_criteria": [
+        "Report command reads from database by default",
+        "Falls back to legacy file-based if database empty",
+        "Support multiple output formats (text, JSON, CSV, HTML)",
+        "Include scan metadata in reports",
+        "Historical comparison between scans",
+        "Trend analysis over time"
+      ],
+      "features": [
+        {
+          "name": "scan_id_selection",
+          "description": "Select which scan to report on"
+        },
+        {
+          "name": "historical_comparison",
+          "description": "Compare two scans to show changes"
+        },
+        {
+          "name": "trend_reports",
+          "description": "Show corruption rate trends over time"
+        }
+      ]
+    },
+    
+    {
+      "id": "REQ-5",
+      "title": "Trakt Integration with Database",
+      "priority": "MEDIUM",
+      "description": "Enable Trakt sync using database scan results",
+      "cli_examples": [
+        "corrupt-video-inspector trakt sync",
+        "corrupt-video-inspector trakt sync --scan-id 42",
+        "corrupt-video-inspector trakt sync --min-confidence 0.8"
+      ],
+      "acceptance_criteria": [
+        "Read healthy files from database scan",
+        "Support filtering by scan ID, confidence, date",
+        "Track sync operations in database (optional)",
+        "Report sync statistics (added, skipped, failed)"
+      ],
+      "implementation": {
+        "file": "src/cli/handlers.py",
+        "class": "TraktHandler",
+        "method": "sync_from_database",
+        "logic": [
+          "Get scan by ID or use most recent",
+          "Query scan results",
+          "Filter for healthy files",
+          "Process files for Trakt sync",
+          "Report results"
+        ]
+      }
+    },
+    
+    {
+      "id": "REQ-6",
+      "title": "Testing Requirements",
+      "priority": "HIGH",
+      "description": "Comprehensive test coverage for database features",
+      "test_files": [
+        {
+          "file": "tests/integration/test_database_integration.py",
+          "tests": [
+            "test_scan_stores_results_in_database",
+            "test_incremental_scan_skips_healthy_files",
+            "test_report_from_database_scan",
+            "test_database_cleanup",
+            "test_query_with_filters",
+            "test_trakt_sync_from_database",
+            "test_backup_and_restore",
+            "test_export_formats"
+          ]
+        }
+      ],
+      "unit_tests": [
+        "Test database service methods independently",
+        "Test model conversions (to/from database models)",
+        "Test query filter generation",
+        "Test edge cases (empty database, missing scans, etc.)"
+      ],
+      "coverage_target": "80%"
+    },
+    
+    {
+      "id": "REQ-7",
+      "title": "Documentation Updates",
+      "priority": "MEDIUM",
+      "description": "Update all documentation to reflect database features",
+      "files_to_update": [
+        {
+          "file": "docs/DATABASE.md",
+          "changes": ["Add incremental scanning section", "Add CLI command reference"]
+        },
+        {
+          "file": "docs/CLI.md",
+          "changes": ["Document all database commands", "Add usage examples"]
+        },
+        {
+          "file": "README.md",
+          "changes": ["Update quick start with database examples"]
+        },
+        {
+          "file": "docs/CONTRIBUTING.md",
+          "changes": ["Add database testing guidelines"]
+        }
+      ],
+      "new_files": [
+        {
+          "file": "docs/DATABASE_MIGRATION.md",
+          "content": [
+            "Migration from file-based to database storage",
+            "Backward compatibility notes",
+            "Performance considerations",
+            "Troubleshooting guide"
+          ]
+        }
+      ]
+    },
+    
+    {
+      "id": "REQ-8",
+      "title": "Configuration Enhancements",
+      "priority": "LOW",
+      "description": "Add additional database configuration options",
+      "config_additions": {
+        "max_scan_history": {
+          "type": "int",
+          "default": 100,
+          "description": "Maximum number of scans to keep (0 = unlimited)"
+        },
+        "vacuum_on_cleanup": {
+          "type": "bool",
+          "default": true,
+          "description": "Run VACUUM after cleanup to reclaim space"
+        },
+        "incremental_max_age_days": {
+          "type": "int",
+          "default": 7,
+          "description": "Default max age for incremental scans"
+        }
+      }
+    }
+  ],
+  
+  "implementation_plan": {
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Core Database Integration",
+        "duration": "Week 1",
+        "tasks": [
+          "Modify VideoScanner.scan_directory() to track individual results",
+          "Integrate database storage in ScanHandler.handle()",
+          "Test scan-to-database pipeline",
+          "Update configuration validation"
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "Incremental Scanning",
+        "duration": "Week 1-2",
+        "tasks": [
+          "Add --incremental flag to scan command",
+          "Implement get_healthy_files_recently_scanned() in DatabaseService",
+          "Add incremental scan logic to VideoScanner",
+          "Test incremental scan workflows"
+        ]
+      },
+      {
+        "phase": 3,
+        "name": "Database Commands",
+        "duration": "Week 2",
+        "tasks": [
+          "Implement database list-scans command",
+          "Implement database cleanup command",
+          "Implement database backup/restore commands",
+          "Implement database export command",
+          "Add comprehensive CLI help text"
+        ]
+      },
+      {
+        "phase": 4,
+        "name": "Report & Trakt Integration",
+        "duration": "Week 3",
+        "tasks": [
+          "Update report command to read from database",
+          "Implement historical comparison reports",
+          "Integrate Trakt sync with database",
+          "Test end-to-end workflows"
+        ]
+      },
+      {
+        "phase": 5,
+        "name": "Testing & Documentation",
+        "duration": "Week 3-4",
+        "tasks": [
+          "Write integration tests",
+          "Write unit tests",
+          "Update all documentation",
+          "Create migration guide",
+          "Review and refactor"
+        ]
+      }
+    ]
+  },
+  
+  "success_criteria": {
+    "functional": [
+      "All scans automatically store results in database",
+      "Incremental scanning reduces scan time by 50%+ for large libraries",
+      "Database commands work reliably with proper error handling",
+      "Reports can be generated from any historical scan",
+      "Trakt sync works with database scan results",
+      "Tests pass with >80% coverage on database code"
+    ],
+    "non_functional": [
+      "Database operations complete in <500ms for typical operations",
+      "Incremental scan for 10,000+ files completes in reasonable time",
+      "Database cleanup runs without blocking other operations",
+      "Clear error messages for all failure scenarios",
+      "Backward compatible with existing configurations",
+      "Documentation is comprehensive and accurate"
+    ]
+  },
+  
+  "technical_considerations": {
+    "database_schema": {
+      "status": "Well-designed, no changes needed",
+      "notes": [
+        "Ensure indexes are optimal for common queries",
+        "Consider adding scan_operations table for tracking Trakt syncs (future)"
+      ]
+    },
+    "performance": {
+      "considerations": [
+        "Use batch inserts for large scan results (already implemented)",
+        "Add pagination for large query results",
+        "Consider connection pooling for concurrent operations (future)"
+      ]
+    },
+    "error_handling": {
+      "requirements": [
+        "Database failures should not crash the application",
+        "Provide clear error messages with recovery suggestions",
+        "Log all database operations for debugging"
+      ]
+    },
+    "backward_compatibility": {
+      "notes": [
+        "Database is optional (enabled by default but can be disabled)",
+        "File-based output removed but configuration kept for compatibility",
+        "Existing scans without database still supported"
+      ]
+    }
+  },
+  
+  "ralph_implementation_guide": {
+    "getting_started": [
+      "Review existing database code in src/database/",
+      "Examine current CLI integration in src/cli/commands.py",
+      "Run existing tests to understand expected behavior",
+      "Read docs/DATABASE.md for user-facing requirements"
+    ],
+    "development_workflow": [
+      "Create feature branch from feature/complete-sqlite-integration",
+      "Implement one phase at a time (follow Implementation Plan)",
+      "Write tests alongside implementation (TDD approach)",
+      "Update documentation for each completed feature",
+      "Run full test suite before marking phase complete",
+      "Create checkpoints/commits after each major component"
+    ],
+    "testing_commands": [
+      "pytest tests/integration/test_database*.py -v",
+      "pytest --cov=src/database --cov=src/cli tests/",
+      "pytest tests/integration/test_database_integration.py::test_scan_stores_results -v"
+    ],
+    "key_files": [
+      {
+        "file": "src/cli/handlers.py",
+        "purpose": "Add database integration to handlers"
+      },
+      {
+        "file": "src/cli/commands.py",
+        "purpose": "Add new database commands"
+      },
+      {
+        "file": "src/core/scanner.py",
+        "purpose": "Add result tracking and incremental scan logic"
+      },
+      {
+        "file": "src/database/service.py",
+        "purpose": "Add new query methods as needed"
+      },
+      {
+        "file": "tests/integration/test_database_integration.py",
+        "purpose": "New integration tests"
+      }
+    ],
+    "common_pitfalls": [
+      "Don't break existing non-database workflows",
+      "Ensure database is properly closed in error scenarios",
+      "Handle missing database gracefully (user-friendly errors)",
+      "Don't store absolute paths that won't work across systems",
+      "Test with large datasets (1000+ files)"
+    ]
+  },
+  
+  "questions_for_clarification": [
+    "Should incremental scan be opt-in (--incremental) or default behavior?",
+    "What should happen if database is corrupted? Auto-rebuild or error?",
+    "Should we add a 'database init' command for manual initialization?",
+    "Export format priorities: JSON, CSV, HTML, or others?",
+    "Should cleanup command auto-vacuum by default or require flag?"
+  ],
+  
+  "dependencies": {
+    "required": [
+      "SQLite3 (Python stdlib)",
+      "Pydantic (already in project)",
+      "Click (already in project)"
+    ],
+    "new": []
+  },
+  
+  "risks_and_mitigations": [
+    {
+      "risk": "Database corruption",
+      "impact": "HIGH",
+      "mitigation": "Regular backups, atomic operations, proper error handling"
+    },
+    {
+      "risk": "Performance degradation with large databases",
+      "impact": "MEDIUM",
+      "mitigation": "Proper indexing, pagination, vacuum on cleanup"
+    },
+    {
+      "risk": "Backward compatibility issues",
+      "impact": "MEDIUM",
+      "mitigation": "Thorough testing, feature flags, fallback mechanisms"
+    },
+    {
+      "risk": "Complex query logic bugs",
+      "impact": "MEDIUM",
+      "mitigation": "Comprehensive test coverage, query validation"
+    },
+    {
+      "risk": "Incremental scan misses corrupt files",
+      "impact": "HIGH",
+      "mitigation": "Conservative skipping logic, user documentation"
+    }
+  ],
+  
+  "deliverables": {
+    "code": [
+      "Fully integrated database storage for all scans",
+      "Complete set of database CLI commands",
+      "Incremental scanning implementation",
+      "Database-backed report generation",
+      "Trakt sync from database"
+    ],
+    "tests": [
+      "Integration tests for all database workflows",
+      "Unit tests for database service methods",
+      "Edge case and error handling tests",
+      "Performance tests for large datasets"
+    ],
+    "documentation": [
+      "Updated CLI documentation",
+      "Database features guide",
+      "Migration guide for existing users",
+      "API documentation for database service"
+    ],
+    "quality_assurance": [
+      "All tests passing",
+      "Code coverage >80% for new code",
+      "No linting errors",
+      "Type checking passes (mypy)"
+    ]
   }
-]
+}

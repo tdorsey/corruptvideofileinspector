@@ -49,14 +49,56 @@ database:
 ### Basic Scanning with Database
 
 ```bash
-# Store scan results in database
-corrupt-video-inspector scan /media/videos --database
+# Scan directory and store results in database (automatic)
+corrupt-video-inspector scan /media/videos
 
 # Incremental scan (skip recently healthy files)
-corrupt-video-inspector scan /media/videos --incremental --database
+corrupt-video-inspector scan /media/videos --incremental
+
+# Incremental scan with custom time window (default: 7 days)
+corrupt-video-inspector scan /media/videos --incremental --max-age 14
 ```
 
-### Database Queries
+### Incremental Scanning
+
+Incremental scanning dramatically speeds up repeated scans of large video libraries by skipping files that were recently scanned and found healthy. This feature queries the database to identify which files can be safely skipped.
+
+**How It Works:**
+1. Query database for files scanned within the `--max-age` window (default: 7 days)
+2. Filter out files that were found healthy in recent scans
+3. Always rescan files that were previously corrupt or suspicious
+4. Scan any new files not found in previous scans
+
+**Usage Examples:**
+
+```bash
+# Skip files scanned and healthy within last 7 days (default)
+corrupt-video-inspector scan /media/videos --incremental
+
+# Custom time window: 14 days
+corrupt-video-inspector scan /media/videos --incremental --max-age 14
+
+# Aggressive caching: 30 days
+corrupt-video-inspector scan /media/videos --incremental --max-age 30
+```
+
+**Performance Benefits:**
+- 50-90% time reduction on repeated scans of large libraries
+- Focuses scanning effort on files that need attention
+- Preserves thorough scanning of problematic files
+
+**When to Use Incremental Scanning:**
+- ✅ Regular monitoring of stable video libraries
+- ✅ Large collections with infrequent file additions
+- ✅ CI/CD pipelines with frequent scan runs
+- ❌ First-time scans (no previous data to reference)
+- ❌ After significant library reorganization
+
+### Database Commands Reference
+
+#### query - Query and Filter Scan Results
+
+Search and filter scan results with advanced criteria:
 
 ```bash
 # Show all corrupt files
@@ -73,23 +115,184 @@ corrupt-video-inspector database query --corrupt --format csv --output corrupt_f
 
 # Query specific directory
 corrupt-video-inspector database query --directory "/media/movies"
+
+# Query specific scan by ID
+corrupt-video-inspector database query --scan-id 42
+
+# Limit results for large datasets
+corrupt-video-inspector database query --limit 100
+
+# Query with multiple filters
+corrupt-video-inspector database query --corrupt --min-confidence 0.7 --directory "/media/tv"
 ```
 
-### Database Management
+**Options:**
+- `--scan-id`: Filter by specific scan ID
+- `--directory`: Filter by directory path
+- `--corrupt`: Show only corrupt files
+- `--healthy`: Show only healthy files
+- `--min-confidence`: Minimum confidence threshold (0.0-1.0)
+- `--since`: Show results since date/time
+- `--limit`: Maximum number of results
+- `--format`: Output format (table, json, csv, yaml)
+- `--output`: Write to file instead of stdout
+
+#### stats - Database Statistics
+
+Display comprehensive database statistics:
 
 ```bash
 # Show database statistics
 corrupt-video-inspector database stats
+```
 
-# Clean up old scans (older than 30 days)
-corrupt-video-inspector database cleanup --days 30
+**Output includes:**
+- Total number of scans
+- Total scan results stored
+- Overall corruption rate
+- Database file size
+- Date range of stored scans
+- Average scan duration
 
-# Create database backup
-corrupt-video-inspector database backup --backup-path backup.db
+#### list-scans - List Recent Scans
 
+Display a table of recent scan operations:
+
+```bash
+# List last 20 scans (default)
+corrupt-video-inspector database list-scans
+
+# List last 50 scans
+corrupt-video-inspector database list-scans --limit 50
+
+# Filter by directory
+corrupt-video-inspector database list-scans --directory "/media/movies"
+
+# Combine filters
+corrupt-video-inspector database list-scans --limit 10 --directory "/media/tv"
+```
+
+**Output columns:**
+- Scan ID
+- Directory scanned
+- Start time
+- Total files processed
+- Corrupt files found
+- Scan mode (quick/deep/hybrid)
+- Scan duration
+
+**Options:**
+- `--limit`: Number of scans to display (default: 20)
+- `--directory`: Filter by directory path
+
+#### cleanup - Remove Old Scans
+
+Clean up old scan data to manage database size:
+
+```bash
 # Preview cleanup (dry run)
 corrupt-video-inspector database cleanup --days 30 --dry-run
+
+# Clean up scans older than 30 days
+corrupt-video-inspector database cleanup --days 30
+
+# Aggressive cleanup (90 days)
+corrupt-video-inspector database cleanup --days 90
 ```
+
+**Features:**
+- Removes scans and associated results atomically
+- Respects foreign key constraints
+- Displays count of affected records
+- Auto-vacuum after cleanup to reclaim space
+- Dry-run mode for safe preview
+
+**Options:**
+- `--days`: Remove scans older than N days (required)
+- `--dry-run`: Preview changes without modifying database
+
+#### backup - Create Database Backup
+
+Create a complete backup of the database:
+
+```bash
+# Backup to default location with timestamp
+corrupt-video-inspector database backup
+
+# Backup to specific file
+corrupt-video-inspector database backup --backup-path /backups/scans-$(date +%Y%m%d).db
+
+# Backup with custom output
+corrupt-video-inspector database backup --output backup.db
+```
+
+**Features:**
+- Creates complete database copy
+- Verifies backup integrity
+- Shows backup size and location
+- Atomic operation (backup fails if disk space insufficient)
+
+**Options:**
+- `--backup-path` or `--output`: Backup file path (default: auto-generated with timestamp)
+
+#### restore - Restore from Backup
+
+Restore database from a backup file:
+
+```bash
+# Restore from backup (with confirmation prompt)
+corrupt-video-inspector database restore --input backup.db
+
+# Force restore without confirmation
+corrupt-video-inspector database restore --input backup.db --force
+```
+
+**Features:**
+- Validates backup file before restore
+- Creates backup of current database before restore
+- Confirmation prompt (unless `--force` used)
+- Displays statistics after restore
+- Verifies data integrity post-restore
+
+**Options:**
+- `--input`: Backup file to restore from (required)
+- `--force`: Skip confirmation prompt
+
+**Safety Note:** Current database is automatically backed up before restore operation.
+
+#### export - Export Scan Results
+
+Export scan results to various formats for external analysis:
+
+```bash
+# Export latest scan to JSON
+corrupt-video-inspector database export --format json --output latest.json
+
+# Export specific scan to CSV
+corrupt-video-inspector database export --scan-id 42 --format csv --output scan-42.csv
+
+# Export corrupt files only
+corrupt-video-inspector database export --corrupt-only --format json --output corrupt.json
+
+# Export all scans to YAML
+corrupt-video-inspector database export --format yaml --output all-scans.yaml
+
+# Export to stdout for piping
+corrupt-video-inspector database export --format json | jq '.results[] | select(.is_corrupt)'
+```
+
+**Features:**
+- Multiple format support (JSON, CSV, YAML)
+- Filter by scan ID or export all
+- Corrupt-only filtering
+- Stdout or file output
+- Supports large exports (100k+ records)
+
+**Options:**
+- `--scan-id`: Export specific scan (default: latest)
+- `--format`: Output format (json, csv, yaml)
+- `--output`: Output file (default: stdout)
+- `--corrupt-only`: Export only corrupt files
 
 ## Database Schema
 

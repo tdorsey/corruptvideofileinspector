@@ -122,6 +122,192 @@ Run the integration tests to ensure your changes don't break existing functional
 make test
 # or
 python3 tests/run_tests.py
+
+# Run specific test file
+pytest tests/integration/test_database_integration.py -v
+
+# Run specific test
+pytest tests/integration/test_database_integration.py::test_scan_stores_results_in_database -v
+
+# Run with coverage
+pytest --cov=src --cov-report=html --cov-report=term
+
+# Run database tests only
+pytest tests/integration/test_database*.py -v
+```
+
+### Database Testing Guidelines
+
+When making changes to database-related code, follow these testing practices:
+
+#### 1. Use Temporary Databases
+
+Always use temporary databases in tests to avoid affecting real data:
+
+```python
+import tempfile
+from pathlib import Path
+from src.database.service import DatabaseService
+
+def test_my_feature():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "test.db"
+        db_service = DatabaseService(db_path)
+        # Your test code here
+```
+
+#### 2. Test Database Integration
+
+Test the full integration flow from scan to storage:
+
+```python
+def test_scan_stores_in_database(temp_db, test_video_dir):
+    """Test that scan results are stored in database."""
+    # Run scan
+    summary, results = run_scan(test_video_dir, database_path=temp_db)
+    
+    # Verify database storage
+    db = DatabaseService(temp_db)
+    scans = db.get_recent_scans(limit=1)
+    assert len(scans) == 1
+    
+    # Verify results
+    stored_results = db.get_scan_results(scans[0].id)
+    assert len(stored_results) == len(results)
+```
+
+#### 3. Test Error Handling
+
+Ensure database operations handle errors gracefully:
+
+```python
+def test_database_error_handling():
+    """Test that database errors don't crash the application."""
+    # Test with invalid path
+    with pytest.raises(DatabaseError):
+        db = DatabaseService("/invalid/path/db.sqlite")
+        db.store_scan(...)
+```
+
+#### 4. Test Query Methods
+
+Verify all database query methods return correct results:
+
+```python
+def test_query_filters(sample_db):
+    """Test query filtering by various criteria."""
+    db = DatabaseService(sample_db)
+    
+    # Test corrupt filter
+    corrupt = db.query_results(is_corrupt=True)
+    assert all(r.is_corrupt for r in corrupt)
+    
+    # Test confidence filter
+    high_conf = db.query_results(min_confidence=0.8)
+    assert all(r.confidence >= 0.8 for r in high_conf)
+```
+
+#### 5. Test Data Integrity
+
+Ensure database maintains referential integrity:
+
+```python
+def test_foreign_key_constraints(temp_db):
+    """Test that foreign key constraints are enforced."""
+    db = DatabaseService(temp_db)
+    
+    # Store scan and results
+    scan_id = db.store_scan(summary)
+    db.store_scan_results(scan_id, results)
+    
+    # Delete scan should cascade to results
+    db.delete_scan(scan_id)
+    remaining = db.get_scan_results(scan_id)
+    assert len(remaining) == 0
+```
+
+#### 6. Test Cleanup Operations
+
+Verify cleanup operations work correctly:
+
+```python
+def test_cleanup_old_scans(temp_db):
+    """Test cleanup removes old scans correctly."""
+    db = DatabaseService(temp_db)
+    
+    # Create old and recent scans
+    # ... setup code ...
+    
+    # Run cleanup
+    removed = db.cleanup_old_scans(days=30)
+    
+    # Verify only old scans removed
+    remaining = db.get_recent_scans(limit=100)
+    assert all(scan.age_days < 30 for scan in remaining)
+```
+
+#### 7. Integration Test Coverage
+
+The project includes comprehensive integration tests in `tests/integration/test_database_integration.py`:
+
+- `test_scan_stores_results_in_database`: Verify scan-to-database pipeline
+- `test_incremental_scan_skips_healthy_files`: Test incremental scanning logic
+- `test_report_from_database_scan`: Test report generation
+- `test_database_cleanup`: Test cleanup and vacuum operations
+- `test_query_with_filters`: Test advanced querying
+- `test_trakt_sync_from_database`: Test Trakt integration
+- `test_backup_and_restore`: Test backup/restore workflow
+- `test_export_formats`: Test export to JSON/CSV/YAML
+
+Run these tests before submitting database-related changes:
+
+```bash
+pytest tests/integration/test_database_integration.py -v
+```
+
+#### 8. Performance Testing
+
+For large-scale operations, consider performance:
+
+```python
+import time
+
+def test_large_scan_performance(temp_db):
+    """Test database performance with large datasets."""
+    db = DatabaseService(temp_db)
+    
+    # Generate 10,000 sample results
+    results = [create_sample_result(i) for i in range(10000)]
+    
+    start = time.time()
+    db.store_scan_results(scan_id, results)
+    duration = time.time() - start
+    
+    # Should complete in reasonable time
+    assert duration < 5.0, f"Bulk insert too slow: {duration}s"
+```
+
+#### 9. Fixtures for Testing
+
+Use pytest fixtures for common test setup:
+
+```python
+@pytest.fixture
+def temp_db():
+    """Provide temporary database for testing."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "test.db"
+        yield db_path
+
+@pytest.fixture
+def sample_scan_summary():
+    """Provide sample scan summary."""
+    return ScanSummary(
+        directory="/test/videos",
+        total_files=10,
+        corrupt_files=2,
+        # ... other fields ...
+    )
 ```
 
 ## Dependency Management

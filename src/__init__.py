@@ -13,11 +13,12 @@ Example:
     >>> from pathlib import Path
     >>>
     >>> scanner = VideoScanner()
-    >>> results = scanner.scan_directory(
+    >>> summary, results = scanner.scan_directory(
     ...     Path("/path/to/videos"),
     ...     scan_mode=ScanMode.HYBRID
     ... )
-    >>> print(f"Found {results.corrupt_files} corrupt files")
+    >>> print(f"Found {summary.corrupt_files} corrupt files")
+    >>> print(f"Scanned {len(results)} individual files")
 """
 
 from __future__ import annotations
