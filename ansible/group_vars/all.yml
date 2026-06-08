@@ -1,0 +1,9 @@
+---
+# Phase 1: smallest available model — used to validate Ollama is working (523 MB)
+ollama_validation_model: "qwen3:0.6b"
+
+# Phase 2: coding-focused model sized for a 16 GB Mac mini (4.7 GB)
+ollama_coding_model: "qwen2.5-coder:7b"
+
+ollama_api_url: "http://localhost:11434"
+ollama_api_port: 11434

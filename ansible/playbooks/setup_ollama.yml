@@ -1,0 +1,92 @@
+---
+- name: Configure Ollama via Homebrew
+  hosts: localhost
+  gather_facts: true
+
+  vars:
+    ollama_pull_timeout: 600  # seconds — large models can take a while
+
+  tasks:
+    # -------------------------------------------------------------------------
+    # Homebrew + Ollama installation
+    # -------------------------------------------------------------------------
+    - name: Ensure Homebrew is available
+      ansible.builtin.command: which brew
+      changed_when: false
+      failed_when: brew_check.rc != 0
+      register: brew_check
+
+    - name: Install ollama via Homebrew
+      community.general.homebrew:
+        name: ollama
+        state: present
+
+    - name: Start ollama service
+      community.general.homebrew_service:
+        name: ollama
+        state: started
+
+    - name: Wait for Ollama API to be ready
+      ansible.builtin.wait_for:
+        host: localhost
+        port: "{{ ollama_api_port }}"
+        timeout: 30
+        msg: "Ollama API did not start within 30 seconds"
+
+    # -------------------------------------------------------------------------
+    # Discover existing models
+    # -------------------------------------------------------------------------
+    - name: List currently installed models
+      ansible.builtin.command: ollama list
+      register: ollama_existing
+      changed_when: false
+
+    - name: Show existing models
+      ansible.builtin.debug:
+        msg: "{{ ollama_existing.stdout_lines }}"
+
+    # -------------------------------------------------------------------------
+    # Phase 1 — Validation model (qwen3:0.6b, 523 MB)
+    # -------------------------------------------------------------------------
+    - name: "Phase 1 | Pull {{ ollama_validation_model }} if not present"
+      ansible.builtin.command: "ollama pull {{ ollama_validation_model }}"
+      when: ollama_validation_model not in ollama_existing.stdout
+      async: "{{ ollama_pull_timeout }}"
+      poll: 10
+      register: pull_validation
+
+    - name: "Phase 1 | Run inference smoke-test"
+      ansible.builtin.command: >
+        ollama run {{ ollama_validation_model }} "Reply with exactly one word: hello"
+      register: validation_response
+      changed_when: false
+      failed_when: validation_response.stdout | trim | length == 0
+
+    - name: "Phase 1 | Show validation response"
+      ansible.builtin.debug:
+        msg: "Validation model response: {{ validation_response.stdout | trim }}"
+
+    # -------------------------------------------------------------------------
+    # Phase 2 — Coding model (qwen2.5-coder:7b, 4.7 GB)
+    # -------------------------------------------------------------------------
+    - name: "Phase 2 | Pull {{ ollama_coding_model }} if not present"
+      ansible.builtin.command: "ollama pull {{ ollama_coding_model }}"
+      when: ollama_coding_model not in ollama_existing.stdout
+      async: "{{ ollama_pull_timeout }}"
+      poll: 10
+      register: pull_coding
+
+    - name: "Phase 2 | Confirm coding model is present"
+      ansible.builtin.command: ollama list
+      register: ollama_final
+      changed_when: false
+
+    - name: "Phase 2 | Show final model list"
+      ansible.builtin.debug:
+        msg: "{{ ollama_final.stdout_lines }}"
+
+    - name: "Phase 2 | Assert coding model installed"
+      ansible.builtin.assert:
+        that: ollama_coding_model in ollama_final.stdout
+        fail_msg: "{{ ollama_coding_model }} was not found after pull — check the output above"
+        success_msg: "{{ ollama_coding_model }} is ready"
